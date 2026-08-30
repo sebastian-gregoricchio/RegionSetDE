@@ -2,7 +2,7 @@
 #'
 #' @description Builds, for every region set, the universe of its competitive test: the set itself together with the rows it will be compared against. The comparison rows come from the other sets of the object, or from an index of your own, and they can be matched to each set on width and on baseline abundance so that the comparison is not driven by the sets simply being made of different kinds of intervals.
 #'
-#' Calling this is optional. \code{\link{fitRegions}} builds a matched universe and keeps it in the fit, and \code{matchOn} and \code{universeRatio} cover the common adjustments there. Come here to reach \code{strata} and \code{seed}, or to supply an index of your own through \code{type = "supplied"}.
+#' Calling this is optional. \code{\link{fitRegions}} builds a matched universe and keeps it in the fit, and \code{matchOn} and \code{universeRatio} cover the common adjustments there. Come here to reach \code{strata}, or to supply an index of your own through \code{type = "supplied"}.
 #'
 #' @param object \code{RegionSetDE.fit} or \code{RegionSetDE.counts} object.
 #' @param type String with the source of the comparison rows, either \code{"otherSets"} (the rows of every other set) or \code{"supplied"}. Default: \code{"otherSets"}.
@@ -11,7 +11,6 @@
 #' @param strata Numeric value with the number of strata used per covariate. Default: \code{5}.
 #' @param regionSets Character vector with the names of the sets to build a universe for. Default: \code{NULL}, all of them.
 #' @param index List with one vector of row positions per set, holding the comparison rows. Only for \code{type = "supplied"}. Default: \code{NULL}.
-#' @param seed Numeric value with the seed of the sampling, so that a universe can be rebuilt identically. Default: \code{42}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{RegionSetDE.universe} object.
@@ -21,6 +20,8 @@
 #' Matching on width and abundance is what keeps the answer from being about the intervals rather than the biology. A set of 40 kb domains has more reads per region than a set of 400 bp promoter windows, and more reads mean a tighter fold change estimate, so an unmatched competitive test can separate the two sets on precision alone. The rows are binned on the quantiles of each covariate and the comparison is drawn within the bins, at \code{ratio} rows per region of the set. When a stratum runs out of eligible rows the whole stratum is taken and the shortfall shows up in the diagnostics, where the medians of the set and of its comparison should sit close together.
 #'
 #' The abundance used for the matching is the width-adjusted one, the same quantity \code{\link{filterRegions}} thresholds on, so a universe matched on abundance is also matched on signal density rather than on total signal.
+#'
+#' The draw inside a stratum is deterministic. The candidates are ordered on the covariate being matched and taken evenly spaced across that order, which spreads the comparison over the stratum, gives the same universe on every call, and leaves the random number generator of the session alone.
 #'
 #' A single region set leaves nothing to compare against and this function stops. Either load the sets that make the comparison interesting, or add the genome bins as a set of their own before counting.
 #'
@@ -58,7 +59,6 @@ makeSetUniverse <-
            strata = 5,
            regionSets = NULL,
            index = NULL,
-           seed = 42,
            verbose = TRUE) {
 
     #------------------------#
@@ -131,8 +131,6 @@ makeSetUniverse <-
                   "'), and a competitive test needs something to compare it to."), call. = FALSE)
     }
 
-    set.seed(seed)
-
     universeIndex <-
       lapply(setNames,
              function(setName) {
@@ -155,9 +153,15 @@ makeSetUniverse <-
     diagnosticsTable <- .universeDiagnostics(rowTable = rowTable, universeIndex = universeIndex, setNames = setNames)
 
     if (isTRUE(verbose)) {
-      message(paste0("Universe built for ", length(setNames), " sets",
-                     if (length(match) > 0) {paste0(", matched on ", paste(match, collapse = " and "))} else {""}, "."))
-      print(diagnosticsTable, row.names = FALSE)
+      message("Universe built for ", length(setNames), " sets",
+              if (length(match) > 0) {paste0(", matched on ", paste(match, collapse = " and "))} else {""}, ".")
+
+      # One line per set rather than a printed table, so nothing is written outside a show method
+      for (i in seq_len(nrow(diagnosticsTable))) {
+        message("  ", diagnosticsTable$region.set[i], ": ", diagnosticsTable$n.regions, " regions vs ",
+                diagnosticsTable$n.comparison[i], " compared against, median abundance ",
+                diagnosticsTable$median.abundance[i], " vs ", diagnosticsTable$median.abundance.comparison[i])
+      }
     }
 
     return(new(Class = "RegionSetDE.universe",
@@ -365,7 +369,11 @@ makeSetUniverse <-
                         return(candidateIndex)
                       }
 
-                      return(sample(x = candidateIndex, size = requestedNumber, replace = FALSE))
+                      # Ordering on the matched covariate and taking evenly spaced candidates spreads the
+                      # comparison over the stratum without touching the random number generator of the session
+                      candidateOrder <- order(eligibleRows[[if (match[1] == "width") {"row.width"} else {"abundance"}]][eligibleStratum == stratumName])
+
+                      return(candidateIndex[candidateOrder][.thinIndex(n = length(candidateIndex), maxPoints = requestedNumber)])
                     }),
              use.names = FALSE)
 

@@ -119,10 +119,8 @@ asDGEList <-
 #' @return A \code{DESeqDataSet}, unfitted.
 #'
 #' @details The normalisation goes into \code{normalizationFactors} rather than \code{sizeFactors}, since the object may hold one value per region and per sample rather than one per sample. \code{DESeq2} asks those factors to have a geometric mean of one on each row, which is what the row centring here is for; without it the fitted values come out on a scale that has nothing to do with the counts.
-#'
 #' The object is returned unfitted, so \code{DESeq2::DESeq} still has to be run on it. Nothing stops a design being passed that differs from the one the package used, which is the point of the conversion, but a result obtained that way is a different analysis and not a check of this one.
-#'
-#' \code{as(counts, "DESeqDataSet")} does the same with an intercept-only design.
+#' There is no \code{as(counts, "DESeqDataSet")} to go with it, because a coercion has to be registered when the package is built and the class it points at only exists when \code{DESeq2} is installed.
 #'
 #' @examples
 #' \dontrun{
@@ -221,37 +219,37 @@ asDESeqDataSet <-
 
 
 
-#' @title Register the coercion methods
+#' @title Coerce a counts object to a DGEList
 #'
-#' @description Attaches the \code{as(x, "DGEList")} and \code{as(x, "DESeqDataSet")} idioms when the packages holding those classes are installed. They live here rather than at the top level because both come from suggested packages, and because \code{DGEList} is an old-style class in some versions of \code{edgeR} and a formal one in others.
+#' @description Registers the \code{as(x, "DGEList")} idiom, which calls \code{\link{asDGEList}} with its defaults.
 #'
-#' @param libname Library the package is being loaded from.
-#' @param pkgname Name of the package.
+#' @name coerce-RegionSetDE.counts-DGEList
+#' @aliases coerce,RegionSetDE.counts,DGEList-method
 #'
-#' @return Invisibly \code{NULL}, called for the registration.
+#' @return A \code{DGEList} holding the counts, the sample metadata, the region annotation and the normalisation as offsets.
+#'
+#' @examples
+#' \dontrun{
+#' dgeList <- as(counts, "DGEList")
+#' }
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom methods setAs setOldClass
+#' @seealso \code{\link{asDGEList}}
 #'
-#' @keywords internal
+#' @importFrom methods setAs setOldClass isClass
+#'
+#' @exportMethod coerce
+NULL
 
-.onLoad <-
-  function(libname,
-           pkgname) {
 
-    if (requireNamespace("edgeR", quietly = TRUE)) {
-      try(methods::setOldClass("DGEList"), silent = TRUE)
-      try(methods::setAs(from = "RegionSetDE.counts", to = "DGEList",
-                         def = function(from) {asDGEList(counts = from, verbose = FALSE)}),
-          silent = TRUE)
-    }
+# edgeR has carried DGEList as an old-style class, and registering it is what lets setAs point at it.
+# The guard is there in case a future version defines it formally, where re-registering would be an error.
+if (!methods::isClass("DGEList")) {
+  methods::setOldClass("DGEList")
+}
 
-    if (requireNamespace("DESeq2", quietly = TRUE)) {
-      try(methods::setAs(from = "RegionSetDE.counts", to = "DESeqDataSet",
-                         def = function(from) {asDESeqDataSet(counts = from, verbose = FALSE)}),
-          silent = TRUE)
-    }
 
-    return(invisible(NULL))
-  } # END function
+setAs(from = "RegionSetDE.counts",
+      to = "DGEList",
+      def = function(from) {asDGEList(counts = from, verbose = FALSE)})

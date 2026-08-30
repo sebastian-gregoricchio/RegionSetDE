@@ -31,10 +31,8 @@ Turns a \code{RegionSetDE.counts} object into a \code{DESeqDataSet}, with the no
 }
 \details{
 The normalisation goes into \code{normalizationFactors} rather than \code{sizeFactors}, since the object may hold one value per region and per sample rather than one per sample. \code{DESeq2} asks those factors to have a geometric mean of one on each row, which is what the row centring here is for; without it the fitted values come out on a scale that has nothing to do with the counts.
-
 The object is returned unfitted, so \code{DESeq2::DESeq} still has to be run on it. Nothing stops a design being passed that differs from the one the package used, which is the point of the conversion, but a result obtained that way is a different analysis and not a check of this one.
-
-\code{as(counts, "DESeqDataSet")} does the same with an intercept-only design.
+There is no \code{as(counts, "DESeqDataSet")} to go with it, because a coercion has to be registered when the package is built and the class it points at only exists when \code{DESeq2} is installed.
 }
 \examples{
 \dontrun{

@@ -9,7 +9,6 @@ Authors@R: c(
       role = c("aut", "cre")
     )
   )
-Maintainer: Sebastian Gregoricchio <s.gregoricchio@nki.nl>
 Description:
   Differential analysis of chromatin profiling data over genomic
   regions supplied by the user, with no peak calling step. Regions are

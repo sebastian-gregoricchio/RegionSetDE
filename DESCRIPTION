@@ -24,23 +24,21 @@ Description:
 License: GPL-3 + file LICENSE
 Depends:
 	R (>= 4.4.0),
-	methods,
-	GenomicRanges
+	GenomicRanges,
+	methods
 Imports:
   BiocGenerics,
   BiocParallel,
-  circlize,
   csaw,
   dplyr,
   edgeR,
+  farver,
   GenomeInfoDb,
-  GenomicRanges,
   ggplot2,
-  ggpubr,
   ggtext,
+  grid,
   IRanges,
   limma,
-  methods,
   Rsamtools,
   rtracklayer,
   S4Vectors,
@@ -51,13 +49,32 @@ Imports:
   utils,
   viridisLite
 Suggests:
-  DESeq2,
-  variancePartition,
-  lme4,
-  ggrepel,
+  BiocStyle,
   BiocManager,
+  circlize,
+  ComplexHeatmap,
+  DESeq2,
+  ggrepel,
+  knitr,
+  lme4,
+  rmarkdown,
   testthat (>= 3.0.0)
+  variancePartition
 biocViews:
+  Software,
+  ChIPSeq,
+  ATACSeq,
+  Epigenetics,
+  FunctionalGenomics,
+  Sequencing,
+  Coverage,
+  DifferentialPeakCalling,
+  GeneSetEnrichment,
+  MultipleComparison,
+  Normalization,
+  Regression,
+  QualityControl,
+  Visualization
 Encoding: UTF-8
 LazyData: true
 LazyDataCompression: xz

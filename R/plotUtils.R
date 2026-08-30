@@ -55,7 +55,7 @@
                      axis.title.x = ggtext::element_markdown(colour = "black"),
                      axis.title.y = ggtext::element_markdown(colour = "black"),
                      plot.title = ggtext::element_markdown(face = "bold", hjust = 0.5),
-                     plot.subtitle = ggtext::element_markdown(face = "bold", hjust = 0.5),
+                     plot.subtitle = ggtext::element_markdown(hjust = 0.5),
                      plot.caption = ggplot2::element_text(colour = "gray30"),
                      strip.background = ggplot2::element_blank(),
                      strip.text = ggplot2::element_text(face = "bold"),

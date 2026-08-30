@@ -58,7 +58,7 @@ Suggests:
   knitr,
   lme4,
   rmarkdown,
-  testthat (>= 3.0.0)
+  testthat (>= 3.0.0),
   variancePartition
 biocViews:
   Software,

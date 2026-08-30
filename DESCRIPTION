@@ -1,0 +1,71 @@
+Package: RegionSetDE
+Type: Package
+Title: Differential analysis of chromatin signal over user-defined genomic region sets, without peak calling
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "Sebastian", "Gregoricchio",
+      email = "s.gregoricchio@nki.nl",
+      role = c("aut", "cre")
+    )
+  )
+Maintainer: Sebastian Gregoricchio <s.gregoricchio@nki.nl>
+Description:
+  Differential analysis of chromatin profiling data over genomic
+  regions supplied by the user, with no peak calling step. Regions are
+  grouped into named sets of arbitrary width and size, such as promoter
+  classes, enhancer catalogues or chromatin states, and are counted per
+  region or per tile. Normalisation factors can be estimated from
+  background bins or supplied externally, for instance from spike-in or
+  greenlist approaches. A single model fit supports testing at two levels:
+  individual regions, and whole region sets, including direct contrasts
+  between two sets to ask whether a condition effect differs across
+  classes of regions.
+License: GPL-3 + file LICENSE
+Depends:
+	R (>= 4.4.0),
+	methods,
+	GenomicRanges
+Imports:
+  BiocGenerics,
+  BiocParallel,
+  circlize,
+  csaw,
+  dplyr,
+  edgeR,
+  GenomeInfoDb,
+  GenomicRanges,
+  ggplot2,
+  ggpubr,
+  ggtext,
+  IRanges,
+  limma,
+  methods,
+  Rsamtools,
+  rtracklayer,
+  S4Vectors,
+  scales,
+  stats,
+  SummarizedExperiment,
+  rlang,
+  utils,
+  viridisLite
+Suggests:
+  DESeq2,
+  variancePartition,
+  lme4,
+  ggrepel,
+  BiocManager,
+  testthat (>= 3.0.0)
+biocViews:
+Encoding: UTF-8
+LazyData: true
+LazyDataCompression: xz
+RoxygenNote: 7.3.3
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL:
+	https://sebastian-gregoricchio.github.io/RegionSetDE/
+	https://github.com/sebastian-gregoricchio/RegionSetDE/
+	https://sebastian-gregoricchio.github.io/
+BugReports: https://github.com/sebastian-gregoricchio/RegionSetDE/issues

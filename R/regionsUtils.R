@@ -96,8 +96,7 @@ renameBedColumns <-
       bed <-
         bed %>%
         dplyr::filter(!grepl("^(track|browser|#)", seqnames)) %>%
-        dplyr::filter(!is.na(suppressWarnings(as.numeric(start))),
-                      !is.na(suppressWarnings(as.numeric(end)))) %>%
+        dplyr::filter(grepl("^[0-9]+$", trimws(start)), grepl("^[0-9]+$", trimws(end))) %>%
         dplyr::mutate(seqnames = as.character(seqnames),
                       start = as.numeric(start) + 1, # BED files are 0-based, GRanges are 1-based
                       end = as.numeric(end))

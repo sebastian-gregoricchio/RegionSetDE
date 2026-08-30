@@ -49,11 +49,15 @@ Imports:
   utils,
   viridisLite
 Suggests:
+  ATACseqTFEA,
   BiocStyle,
   BiocManager,
+  BSgenome.Mmusculus.UCSC.mm10,
+  chipseqDBData,
   circlize,
   ComplexHeatmap,
   DESeq2,
+  GenomeInfoDb,
   ggrepel,
   knitr,
   lme4,

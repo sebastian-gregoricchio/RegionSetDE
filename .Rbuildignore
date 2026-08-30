@@ -1,2 +1,15 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.github$
+^\.gitignore$
+^\.DS_Store$
+^\.vscode$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^README\.Rmd$
+^codecov\.yml$
+^\.covrignore$
+^\.lintr$
+^doc$
+^Meta$

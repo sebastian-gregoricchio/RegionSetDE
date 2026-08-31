@@ -116,17 +116,24 @@ Sebastian Gregoricchio
 # rtracklayer ships a small bigWig, and the regions are taken from its own content
 bigwigFile <- file.path(system.file("tests", package = "rtracklayer"), "test.bw")
 
-exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-exampleRegions$setName <- "covered"
+# The UCSC library behind rtracklayer reads a Windows drive letter as a URL
+# protocol, so an absolute path to the packaged file cannot be opened there
+if (.Platform$OS.type != "windows") {
 
-exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                seqlevelsStyle = NULL, verbose = FALSE)
+  exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+  exampleRegions$setName <- "covered"
 
-signal <- countBigwig(exampleSets,
-                      bigwigFiles = bigwigFile,
-                      sampleNames = "example",
-                      verbose = FALSE)
-signal
+  exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
+                                  seqlevelsStyle = NULL, verbose = FALSE)
+
+  signal <- countBigwig(exampleSets,
+                        bigwigFiles = bigwigFile,
+                        sampleNames = "example",
+                        verbose = FALSE)
+
+  print(signal)
+  print(SummarizedExperiment::assay(signal, "counts"))
+}
 #> class: RegionSetDE.counts 
 #> dim: 2 1 
 #> metadata(1): signal.type
@@ -135,8 +142,6 @@ signal
 #> rowData names(3): region.set region.id tile.id
 #> colnames(1): example
 #> colData names(4): sample bigwig.file library.size total.signal
-
-SummarizedExperiment::assay(signal, "counts")
 #>                         example
 #> covered|chr2:1-1500        -750
 #> covered|chr19:1501-2700     750

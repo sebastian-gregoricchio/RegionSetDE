@@ -1,7 +1,7 @@
 Package: RegionSetDE
 Type: Package
 Title: Differential analysis of chromatin signal over user-defined genomic region sets, without peak calling
-Version: 0.1.0
+Version: 0.99.0
 Authors@R: c(
     person(
       "Sebastian", "Gregoricchio",
@@ -53,6 +53,7 @@ Suggests:
   BiocManager,
   circlize,
   ComplexHeatmap,
+  covr,
   DESeq2,
   ggrepel,
   knitr,

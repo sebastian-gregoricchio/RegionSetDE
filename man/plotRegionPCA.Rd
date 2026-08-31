@@ -60,7 +60,7 @@ plotRegionPCA(
 \item{baseSize}{Numeric value with the base font size. Default: \code{12}.}
 }
 \value{
-A \code{ggplot} object, carrying the coordinates and the variance explained as the \code{pca} attribute.
+A \code{ggplot} object, carrying the coordinates and the variance explained as the \code{pca} attribute, in the \code{x.variance} and \code{y.variance} columns. The variance explained is written on the axis titles when a single panel is drawn, and in the panel labels when there are several, since every panel recomputes its own components.
 }
 \description{
 Places the samples on the first principal components of the region signal, which is the fastest way to see whether the conditions separate, whether the replicates pair, and whether either of those is really the sequencing depth in disguise.

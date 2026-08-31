@@ -134,3 +134,36 @@ test_that("exportResults creates the output directory when it is missing", {
   expect_true(dir.exists(outputDirectory))
   expect_gt(length(list.files(outputDirectory)), 0)
 })
+
+
+test_that("the PCA axis labels carry the variance explained", {
+
+  counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+
+  singlePanel <- plotRegionPCA(counts, colourBy = "condition")
+
+  expect_match(singlePanel$labels$x, "^PC1 \\([0-9.]+%\\)$")
+  expect_match(singlePanel$labels$y, "^PC2 \\([0-9.]+%\\)$")
+
+  # The shares travel in the pca attribute as well
+  pcaTable <- attr(singlePanel, "pca")
+  expect_true(all(c("x.variance", "y.variance") %in% colnames(pcaTable)))
+  expect_true(all(pcaTable$x.variance >= pcaTable$y.variance))
+
+  # With several panels each one recomputes its components, so the axes stay bare
+  facetedPanels <- plotRegionPCA(counts, facetBySet = TRUE)
+
+  expect_identical(facetedPanels$labels$x, "PC1")
+  expect_identical(facetedPanels$labels$y, "PC2")
+})
+
+
+test_that("plotRegionPCA honours the requested components", {
+
+  counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+
+  pcaPlot <- plotRegionPCA(counts, colourBy = "condition", dimensions = c(2, 3))
+
+  expect_match(pcaPlot$labels$x, "^PC2 \\(")
+  expect_match(pcaPlot$labels$y, "^PC3 \\(")
+})

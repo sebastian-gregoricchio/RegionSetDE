@@ -1,0 +1,662 @@
+---
+title: "*RegionSetDE*: differential chromatin signal over user-defined region sets"
+date: "Last update: `r format(Sys.time(), '%d<sup>th</sup> %B, %Y')`"
+author:
+- name: "Sebastian Gregoricchio, Ph.D."
+  affiliation:
+    - "Netherlands Cancer Institute, Oncogenomics division, Amsterdam - Netherlands"
+  email: 's.gregoricchio@nki.nl'
+package: "*[RegionSetDE](https://github.com/sebastian-gregoricchio/RegionSetDE/)*"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    fig_caption: true
+vignette: >
+  %\VignetteIndexEntry{RegionSetDE: differential chromatin signal over user-defined region sets}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = ">",
+                      warning = FALSE, message = FALSE, fig.align = "center",
+                      dev = "png", dpi = 96, fig.width = 7, fig.height = 4.5)
+
+library(RegionSetDE)
+library(dplyr)
+```
+
+----------------------------------------------------------
+
+# **Introduction** {#intro}
+
+*RegionSetDE* (*Region* *Set* *D*ifferential *E*nrichment) asks whether chromatin signal changes over regions that you define, rather than over regions that a peak caller happens to find. The regions are grouped into named sets of arbitrary width and number, such as promoter classes, enhancer catalogues, chromatin states, or motif-derived binding sites, and the same model fit is then tested at two levels: one region at a time, and one whole set at a time.
+
+The second level is the reason the package exists. A great deal of chromatin biology is phrased as a question about a class of elements rather than about individual loci. *Does H3K4me3 redistribute away from CpG island promoters in this mutant?* is a question about a set, and answering it by counting how many members of the set reached an FDR threshold conflates the size of the effect with the power to detect it. Here the set is the unit of the test, and the effect size on the set comes with a confidence interval that accounts for regions inside a set not being independent of one another.
+
+Because no peak calling happens anywhere in the pipeline, the region definitions come from you and stay fixed across conditions. Nothing is redefined when the signal moves, which is what makes a redistribution visible instead of being absorbed into a new set of peak boundaries.
+
+<br>
+
+## What this vignette covers
+
+The example follows one dataset from BAM files to an interpreted result. Along the way each object is opened up, so that you know what it holds and how to pull the parts out. The last section is a decision guide: which function answers which question.
+
+<br>
+
+## Installation
+
+```{r installation, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install("RegionSetDE")
+
+# Development version
+# devtools::install_github("sebastian-gregoricchio/RegionSetDE")
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **The example dataset** {#dataset}
+
+The objects shipped with the package come from the liver ChIP-seq libraries of the EURATRANS project, distributed through the *chromstaRData* package. The contrast compares H3K4me3 in the spontaneously hypertensive rat (SHR) against the Brown Norway strain (BN), two biological replicates each, aligned to rn4 and restricted to chromosome 12 so that everything in this vignette runs in seconds.
+
+Four region sets were built, ordered by the amount of H3K4me3 they are expected to carry:
+
+| Set | Definition | Expectation |
+| ---------------: | :--------- | :---------- |
+| *promoterCpG*    | 1 kb windows on transcription start sites overlapping a CpG island | highest signal, where a promoter effect should appear |
+| *promoterNonCpG* | 1 kb windows on transcription start sites with no CpG island | intermediate |
+| *geneBody*       | 1 kb windows inside genes, at least 2 kb from any start site | low |
+| *intergenic*     | 1 kb windows at least 10 kb from any gene | the negative control |
+
+The sets are disjoint by construction, and a window claimed by an earlier set is never reused by a later one, so a region belongs to exactly one set. The intergenic set earns its place: a method that returns hits there is returning noise, and having a set whose answer you already know is the cheapest calibration available.
+
+Every object is loaded through a single accessor.
+
+```{r load_example}
+counts <- loadExampleData("counts")
+```
+
+Notice that the script which generated all of them is installed with the package, and it is the place to look when you want to know exactly how something was built:
+
+```{r make_data_path, eval = FALSE}
+file.edit(system.file("scripts", "make-data.R", package = "RegionSetDE"))
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **Loading the regions** {#regions}
+
+A region set collection is built with `loadRegions()`, which accepts a named list whose elements are BED file paths, `GRanges` objects, or data.frames with chromosome, start and end columns. The three can be mixed in the same call.
+
+```{r load_regions_generic, eval = FALSE}
+regions <- loadRegions(list(promoters = "annotation/promoters.bed",
+                            enhancers = enhancerGRanges,
+                            CTCF      = "peaks/CTCF.narrowPeak"),
+                       genomeAssembly = "hg38")
+```
+
+When the sets are already encoded in a column of one table, `splitLoadRegions()` does the splitting and the loading in one step, which is the more common situation with an annotated BED file.
+
+```{r split_load_regions}
+regionTable <- loadExampleData("regions", verbose = FALSE)
+
+regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
+                                                        keep.extra.columns = TRUE)
+
+regions <- splitLoadRegions(regionRanges,
+                            splitBy = "setName",
+                            genomeAssembly = "rn4",
+                            verbose = FALSE)
+
+regions
+```
+
+The result is an S4 object of class `RegionSetDE`. Its slots are reached with `@`:
+
+| Slot | Description |
+| ---------------: | :---------- |
+| *regions*         | `GRangesList` with one element per region set, named |
+| *blacklist*       | the exclusion regions applied, `NULL` until `applyBlacklist()` runs |
+| *whitelist*       | the regions kept, `NULL` until `applyWhitelist()` runs |
+| *genome.assembly* | assembly string, or `NULL` |
+| *seqlevels.style* | naming style the sets were harmonised to |
+| *filtering.log*   | one row per filtering step, with how many regions each set lost |
+| *parameters*      | the arguments of every call that touched the object |
+
+The set names come back from `regionSetNames()`, and the regions themselves from the `regions` slot:
+
+```{r regions_accessors}
+regionSetNames(regions)
+
+lengths(regions@regions)
+
+head(regions@regions$promoterCpG, 3)
+```
+
+<br>
+
+## Excluding regions {#blacklist}
+
+Regions overlapping an exclusion list are dropped before anything is counted. Working on the object rather than on the coordinates means the operation is recorded and can be read back later.
+
+```{r apply_blacklist}
+exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
+
+regions <- applyBlacklist(regions,
+                          blacklist = exclusionRegions,
+                          verbose = FALSE)
+
+regions@filtering.log
+```
+
+`applyWhitelist()` is the complement and keeps only what falls inside the supplied regions, which is how you restrict an analysis to a capture panel or to a single chromosome.
+
+Notice that the exclusion list shipped here is **not** an ENCODE blacklist. Rat rn4 has none, so it was assembled from the UCSC assembly gap track together with bins carrying implausible coverage in the input libraries. It is fine for an example and should not be reused elsewhere.
+
+<br>
+
+----------------------------------------------------------
+
+# **Counting** {#counting}
+
+`countReads()` counts alignments over every region of every set. Reads can be counted once per region, which is the default, or over fixed-width tiles inside each region when `tileWidth` is set.
+
+```{r count_reads, eval = FALSE}
+counts <- countReads(regions,
+                     bamFiles = bamPaths,
+                     sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+                     sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+                                                 condition = c("BN", "BN", "SHR", "SHR")),
+                     pairedEnd = FALSE,
+                     fragmentLength = 180,
+                     minMapq = 10,
+                     nThreads = 4)
+```
+
+`countBigwig()` is the equivalent for coverage tracks, and `loadCounts()` takes a count matrix produced elsewhere, so an existing *featureCounts* or *deepTools* table can enter the pipeline without recounting.
+
+The object returned extends `RangedSummarizedExperiment`, which means the whole Bioconductor idiom applies to it directly:
+
+```{r counts_structure}
+counts <- loadExampleData("counts", verbose = FALSE)
+
+dim(counts)
+
+head(SummarizedExperiment::assay(counts, "counts"), 3)
+
+SummarizedExperiment::colData(counts)
+```
+
+The region set membership travels in the `rowData`, one label per row, which is how every downstream function knows which rows belong to which set:
+
+```{r counts_rowdata}
+head(SummarizedExperiment::rowData(counts), 3)
+
+table(SummarizedExperiment::rowData(counts)$region.set)
+```
+
+Whether the object is counted per region or per tile is recorded in its own slot, and the filters applied upstream are still there:
+
+```{r counts_provenance}
+counts@counting.level
+
+counts@genome.assembly
+```
+
+<br>
+
+## Background bins {#background}
+
+`countBackground()` counts the same libraries over wide bins tiling the genome, by default 10 kb, excluding the regions under analysis. Those bins are the closest thing available to a set of rows known to carry no biological effect, and three separate steps use them: normalisation, filtering, and the calibration checks.
+
+```{r count_background, eval = FALSE}
+counts <- countBackground(counts, binSize = 10000, nThreads = 4)
+```
+
+They live in the metadata of the object and can be inspected like any matrix:
+
+```{r background_access}
+backgroundBins <- S4Vectors::metadata(counts)$background
+
+dim(backgroundBins)
+
+head(backgroundBins, 3)
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **Normalisation** {#normalization}
+
+The scaling factors decide what a fold change means, and in chromatin data they are rarely a detail. `normalizeCounts()` offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`, `"background"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
+
+The distinction that matters is what each method assumes:
+
+- **`"TMM"`, `"RLE"`, `"upperQuartile"`** estimate the factors from the regions themselves, and assume most of them do not change. That assumption is safe when the regions are a broad sample of the genome and unsafe when they are a curated set chosen because it is expected to respond.
+- **`"background"`** estimates them from the background bins instead. The assumption moves to the bins, which is where you want it: the regions under test are free to change as much as they like.
+- **`"spikeIn"` and `"manual"`** take the factors from outside altogether, which is the right answer whenever an exogenous reference or a greenlist estimate exists.
+
+```{r normalize}
+counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
+SummarizedExperiment::colData(counts)
+```
+
+A second assay is added and the original counts are left untouched:
+
+```{r norm_assays}
+SummarizedExperiment::assayNames(counts)
+```
+
+Before committing, it is worth seeing how much the choice actually moves the samples. `plotNormComparison()` puts the methods side by side, and `returnData = TRUE` hands back the numbers.
+
+```{r plot_norm_comparison, fig.height = 4}
+plotNormComparison(loadExampleData("counts", verbose = FALSE))
+```
+
+When the methods agree, the choice does not matter and any of them will do. When they disagree, they are disagreeing about whether a global shift is technical or biological, and no amount of statistics downstream will resolve that. This is the moment to decide it, using what you know about the experiment.
+
+`plotSetMA()` asks the same question set by set, which catches the case where one class of regions carries a shift the others do not.
+
+```{r plot_set_ma, fig.height = 4.5}
+plotSetMA(counts, groupBy = "condition")
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **Filtering and quality control** {#filtering}
+
+`filterRegions()` drops the rows carrying too little signal to be worth testing, with the criterion chosen among `"background"`, `"abundance"`, `"proportion"`, `"byExpr"` and `"manual"`. The default compares each region against the background bins and keeps what rises above them by a given fold change.
+
+```{r filter_regions}
+nrow(counts)
+
+counts <- filterRegions(counts, method = "background", foldChange = 2, verbose = FALSE)
+
+nrow(counts)
+
+table(SummarizedExperiment::rowData(counts)$region.set)
+```
+
+Notice what happened to the sets. The intergenic control loses most of its rows, which is the expected behaviour and a useful sanity check: if the low-signal set survives filtering intact, either the filter is too permissive or the regions are not what you think they are.
+
+Two plots are worth a look before fitting anything.
+
+```{r plot_qc, fig.height = 4}
+plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
+```
+
+```{r plot_correlation, fig.height = 4.5}
+plotSampleCorrelation(counts, groupBy = "condition")
+```
+
+If the samples do not separate by condition here, that is not necessarily fatal, since a real effect can be confined to a small class of regions and be invisible in a global ordination. It does mean the effect is not global, which is information worth having before interpreting a set-level result. Running `plotRegionPCA(set = )` on one set at a time is the way to find out where the structure lives.
+
+<br>
+
+----------------------------------------------------------
+
+# **Fitting the model** {#fit}
+
+One fit serves both levels of testing. `fitRegions()` takes a formula evaluated on the `colData` and an engine among `"edgeR"` (quasi-likelihood negative binomial), `"voom"` (limma on log-CPM with precision weights), `"dream"` (limma with random effects) and `"deseq2"` (negative binomial Wald test).
+
+```{r fit_regions}
+fit <- fitRegions(counts,
+                  design = ~ condition,
+                  engine = "edgeR",
+                  verbose = FALSE)
+
+fit
+```
+
+The engines are not interchangeable in the way a menu suggests. `"edgeR"` is the default and the right choice for counts with replicates. `"voom"` becomes preferable as the number of samples grows and library sizes vary widely. `"dream"` is the only option when the design carries a random effect, for instance repeated measures on the same donor, written as `~ condition + (1|donor)`. `"deseq2"` is there for continuity with an existing analysis rather than because it answers a different question.
+
+The `RegionSetDE.fit` object holds:
+
+| Slot | Description |
+| ---------------: | :---------- |
+| *fit*            | list with the engine's own fit object |
+| *engine*         | which engine produced it |
+| *design*         | the design matrix |
+| *design.formula* | the formula it came from |
+| *dispersion*     | the dispersion used, and where it came from |
+| *counts*         | the `RegionSetDE.counts` the model was fitted on, filtering included |
+| *universe*       | the comparison rows for the set-level test, built once here |
+| *samples*        | the samples that entered the fit |
+
+Two accessors avoid reaching into the slots:
+
+```{r fit_accessors}
+fitCounts(fit)
+
+class(fitObject(fit))
+```
+
+<br>
+
+## The comparison universe {#universe}
+
+A competitive set test asks whether the regions of a set moved *more than other regions did*, so it needs something to compare them against. Taking every other row as it stands would confound the comparison with region width and coverage, since a set of 1 kb promoters compared against a background of long, weakly covered intergenic windows will look different for reasons that have nothing to do with the condition.
+
+`fitRegions()` therefore builds a matched universe by default, drawing comparison rows with a similar width and abundance distribution. `plotUniverseMatching()` shows whether the matching worked.
+
+```{r plot_universe, fig.height = 4}
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+
+plotUniverseMatching(setResults, set = "promoterCpG", covariate = "abundance")
+```
+
+If the two distributions do not overlap, the competitive test is comparing apples to oranges and its p-value should not be trusted. Raising `universeRatio`, or matching on fewer covariates, usually fixes it.
+
+<br>
+
+----------------------------------------------------------
+
+# **Testing regions** {#test_regions}
+
+`testRegions()` tests every region for a change between two groups.
+
+```{r test_regions}
+results <- testRegions(fit,
+                       contrast = c("condition", "SHR", "BN"),
+                       verbose = FALSE)
+
+results
+```
+
+The three-element form of `contrast` averages the design rows of each group and takes the difference, which gives the same answer whichever level happens to be the reference and whether the design was written as `~ condition` or `~ 0 + condition`. Naming a coefficient directly also works, and is the usual source of confusion when the coefficient turns out to be the reference level.
+
+The results table comes out with `resultsTable()`:
+
+```{r results_table}
+resultTable <- resultsTable(results)
+
+head(resultTable, 3)
+```
+
+| Column | Meaning |
+| ---------------: | :---------- |
+| *region.set*     | which set the region belongs to |
+| *region.id*      | region identifier, carried from the input |
+| *seqnames*, *start*, *end*, *width* | coordinates |
+| *log2FC*         | log2 fold change of the second group over the first |
+| *average.signal* | average abundance, the x axis of an MA plot |
+| *stat*           | the engine's test statistic |
+| *p.value*        | raw p-value |
+| *FDR*            | adjusted p-value |
+| *diff.status*    | `up`, `down` or `null` from the stored thresholds |
+
+Notice that the correction is applied over all the rows of the object, across the sets, and `regionSets` subsets the output afterwards. Correcting inside each set separately would make the FDR of one set depend on how many other sets you happened to load, which is not a property anyone wants in a result.
+
+Other accessors reach the rest of the object:
+
+```{r results_accessors}
+contrastName(results)
+
+head(resultRanges(results), 2)
+
+resultCounts(results)
+```
+
+`topRegions()` ranks and filters in one call. With `FDR = 1` it ranks without filtering, which is what you want when exploring or when power is limited:
+
+```{r top_regions}
+topRegions(results, n = 5, FDR = 1)
+```
+
+```{r top_regions_set}
+topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
+```
+
+<br>
+
+## Tiled regions {#tiles}
+
+When the counting was tiled, the p-value of a region is a Simes combination across its tiles. That answers *does any part of this region change* rather than *does the whole region change*, and the distinction matters for wide domains: a long region that moves over one tile in forty comes out with a small p-value and a small overall fold change. The `log2FC` reported is the fold change of the most significant tile, not an average, because that is the quantity matching the p-value.
+
+The tile-level table stays available:
+
+```{r tile_table, eval = FALSE}
+head(tileTable(tiledResults))
+```
+
+On an object counted per region there are no tiles and `tileTable()` says so rather than returning an empty table.
+
+<br>
+
+## Looking at the results {#region_plots}
+
+```{r plot_volcano, fig.height = 5}
+plotVolcano(results, labelTop = 3)
+```
+
+```{r plot_ma, fig.height = 5}
+plotResultsMA(results)
+```
+
+Faceting by set is the default in both, and it is the more informative view here: a volcano split by region class shows immediately whether the changes concentrate in one kind of element.
+
+```{r plot_region, fig.height = 4}
+topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
+
+plotRegion(results, region = topRegion, groupBy = "condition")
+```
+
+```{r plot_heatmap, fig.height = 5}
+plotTopHeatmap(results, n = 20, FDR = 1)
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **Testing region sets** {#test_sets}
+
+This is the level the package was built for. `testRegionSets()` asks whether a whole set responded, and runs two tests that answer genuinely different questions.
+
+```{r test_region_sets}
+setResults <- testRegionSets(fit,
+                             contrast = c("condition", "SHR", "BN"),
+                             method = c("camera", "fry"),
+                             verbose = FALSE)
+
+setResults
+```
+
+```{r set_results_table}
+setTable <- resultsTable(setResults)
+
+setTable
+```
+
+| Column | Meaning |
+| -------------------------: | :---------- |
+| *region.set*               | the set |
+| *n.regions*                | how many of its regions survived filtering |
+| *mean.log2FC*              | mean fold change of the set |
+| *mean.log2FC.comparison*   | mean fold change of the comparison rows |
+| *delta.log2FC*             | the difference between the two, the effect size |
+| *CI.lower*, *CI.upper*     | confidence interval on `delta.log2FC` |
+| *camera.FDR*               | competitive test, adjusted |
+| *fry.FDR*                  | self-contained test, adjusted |
+
+<br>
+
+## Reading the output {#set_interpretation}
+
+**Read the effect size before the p-value.** A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which tells you nothing about whether the shift matters. Regions inside a set are not independent either, since neighbouring elements in the same domain move together, so the variance of the mean is inflated by `1 + (n - 1) * rho`, with `rho` estimated from the residuals of the fit. The confidence interval carries that inflation. It is the number to look at first.
+
+**The pattern between the two tests is itself informative.** `camera` is competitive: it asks whether the set moved more than the regions it is compared against, and it is invariant to a scaling error affecting everything equally. `fry` is self-contained: it asks whether the set moved away from zero at all, which a global shift in the mark, or a leftover normalisation error, will satisfy for every set at once.
+
+| camera | fry | Reading |
+| :----- | :-- | :------ |
+| significant | significant | the set moved, and it moved more than its comparison. The clean result. |
+| significant | not | the sets redistributed signal between them, with little net change overall |
+| not | significant | everything moved together. Revisit the normalisation before the biology. |
+| not | not | no detectable set-level effect |
+
+The competitive test is the one to lead with. It runs on the per-region statistics through `limma::cameraPR`, which makes it behave identically across all four engines, whereas the self-contained test is computed on the log-CPM matrix and is therefore a transformation away from what `edgeR` and `DESeq2` actually fitted.
+
+In the table above no set reaches significance, which is the honest outcome for four libraries on one chromosome. The informative part is `promoterCpG`: a `delta.log2FC` around -0.9 with an interval that only just includes zero, in the direction H3K4me3 biology would predict, and in the one set where a promoter effect belongs. The intergenic control sits near zero, as it should.
+
+<br>
+
+## Plots for the set level {#set_plots}
+
+```{r plot_set_effect, fig.height = 4}
+plotSetEffect(setResults)
+```
+
+```{r plot_set_distribution, fig.height = 4}
+plotSetDistribution(setResults)
+```
+
+`plotSetEffect()` shows the effect size and its interval, which is the figure to put in a paper. `plotSetDistribution()` shows the whole fold change distribution behind each summary, which is where you find out that a mean of zero came from a set splitting in two rather than from a set not moving.
+
+```{r plot_set_signal, fig.height = 4.5}
+plotSetSignal(setResults, groupBy = "condition")
+```
+
+<br>
+
+## Contrasting two sets directly {#set_contrast}
+
+*Did the effect differ between CpG island promoters and everything else?* is a different question from *did either of them change*, and `testSetContrast()` is the one that answers it.
+
+```{r test_set_contrast}
+setContrast <- testSetContrast(fit,
+                               contrast = c("condition", "SHR", "BN"),
+                               set1 = "promoterCpG",
+                               set2 = "intergenic",
+                               verbose = FALSE)
+
+setContrast
+```
+
+Use this whenever the hypothesis is comparative. Comparing two `camera` p-values by eye is not the same test, and it is wrong in the usual way: a difference in significance is not a significant difference.
+
+<br>
+
+----------------------------------------------------------
+
+# **Checking the calibration** {#calibration}
+
+A set-level result rests on the dispersion and on the null being where you think it is, and both can be checked directly rather than assumed.
+
+`estimateNullDispersion()` estimates the dispersion from rows that should carry no effect, which is what makes an analysis with no replicates possible at all:
+
+```{r null_dispersion}
+nullDispersion <- estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
+                                           normalizeCounts(method = "background", verbose = FALSE),
+                                         source = "background",
+                                         verbose = FALSE)
+
+nullDispersion
+```
+
+`checkNullCalibration()` goes further and runs the actual contrast on those null rows. Under a correctly calibrated test the p-values should be uniform.
+
+```{r null_calibration, fig.height = 4}
+calibration <- checkNullCalibration(fit,
+                                    contrast = c("condition", "SHR", "BN"),
+                                    source = "background",
+                                    verbose = FALSE)
+
+plotNullCalibration(calibration)
+```
+
+A flat histogram means the test is behaving. A peak near zero means it is anticonservative and the FDRs downstream are optimistic, usually because the dispersion is underestimated or because the normalisation left a systematic difference between the groups. A peak near one means the opposite, and the analysis is losing power it could have.
+
+Notice that a set defined as low-signal is a poor source of null rows, even though it sounds like the natural choice. `estimateNullDispersion()` will refuse rather than return a dispersion estimated from rows with almost no counts:
+
+```{r null_from_intergenic, error = TRUE}
+estimateNullDispersion(counts, source = "regionSet",
+                       regionSets = "intergenic", verbose = FALSE)
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **Exporting** {#export}
+
+`exportResults()` writes the tables in a form that survives leaving R.
+
+```{r export_results}
+outputDirectory <- file.path(tempdir(), "regionSetDE-vignette")
+dir.create(outputDirectory, showWarnings = FALSE)
+
+exportResults(results,
+              path = outputDirectory,
+              prefix = "SHR_vs_BN",
+              verbose = FALSE)
+
+list.files(outputDirectory)
+```
+
+Three kinds of file come out. The TSV holds the results table. The BED holds the same regions with zero-based starts, as the format requires, so its coordinates sit one lower than the TSV; with `colourByStatus` it carries nine columns and an item colour per direction, which is what makes a genome browser show increasing and decreasing regions apart without a second file. The score maps `-log10(FDR)` onto the range the format allows and saturates at the top, so 1000 means *at least that*, not *exactly that*.
+
+The parameters file is the one worth keeping. It flattens everything the object carries in its `parameters` slot into one parameter per line: counting level, normalisation method and factors, filter and threshold, engine, design, contrast, correction, and on a fit with no replicates the dispersion and its source.
+
+```{r read_provenance}
+parameterFile <- list.files(outputDirectory, pattern = "parameters", full.names = TRUE)
+
+head(read.delim(parameterFile), 10)
+```
+
+Six months later that file is the difference between a result that can be reproduced and one that can only be repeated.
+
+```{r cleanup, include = FALSE}
+unlink(outputDirectory, recursive = TRUE)
+```
+
+<br>
+
+----------------------------------------------------------
+
+# **Which analysis for which question** {#decision}
+
+| Question | Function | Read |
+| :------- | :------- | :--- |
+| Which individual regions changed? | `testRegions()` | `FDR` and `log2FC`, through `topRegions()` |
+| Did this class of regions respond as a class? | `testRegionSets()` | `delta.log2FC` and its interval, then `camera.FDR` |
+| Did the effect differ between two classes? | `testSetContrast()` | the contrast between the two sets |
+| Did the mark redistribute rather than change globally? | `testRegionSets()` | camera significant, fry not |
+| Is a global shift technical or biological? | `plotNormComparison()`, `plotSetMA()` | how far the methods disagree |
+| Are my p-values trustworthy? | `checkNullCalibration()` | flatness of the histogram |
+| Can I test without replicates? | `estimateNullDispersion()` | dispersion from the background, then `fitRegions(dispersion = )` |
+| Is the competitive comparison fair? | `plotUniverseMatching()` | overlap of the two distributions |
+| Where in the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` | the tile-level profile |
+
+<br>
+
+Two habits are worth adopting from the start. Include a set you expect not to move, and check that it does not; the intergenic set in this vignette costs nothing and would have caught a normalisation problem immediately. And decide the normalisation question deliberately rather than by default, because in chromatin data it is a biological decision wearing technical clothing, and no test downstream can undo it.
+
+<br>
+
+----------------------------------------------------------
+
+# **Session info** {#session}
+
+```{r session_info}
+sessionInfo()
+```

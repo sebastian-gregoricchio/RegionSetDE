@@ -20,7 +20,7 @@
 #' @param legendPosition String with the position of the legend. Default: \code{"right"}.
 #' @param baseSize Numeric value with the base font size. Default: \code{12}.
 #'
-#' @return A \code{ggplot} object, carrying the coordinates and the variance explained as the \code{pca} attribute.
+#' @return A \code{ggplot} object, carrying the coordinates and the variance explained as the \code{pca} attribute, in the \code{x.variance} and \code{y.variance} columns. The variance explained is written on the axis titles when a single panel is drawn, and in the panel labels when there are several, since every panel recomputes its own components.
 #'
 #' @details \code{compareOffsets} is the argument worth using. Scaling factors estimated outside the object, from a spike-in or a greenlist, impose a grouping of their own, and when that grouping happens to match the replicates it is indistinguishable from a batch effect until the two ordinations are put side by side. A separation that survives the normalisation being removed is in the data; one that appears only with it is the factors writing themselves into the ordination, and blocking on it would be blocking on an artefact.
 #'
@@ -112,6 +112,8 @@ plotRegionPCA <-
           data.frame(sample = colnames(counts),
                      x.value = pcaObject$x[, dimensions[1]],
                      y.value = pcaObject$x[, dimensions[2]],
+                     x.variance = varianceShare[dimensions[1]],
+                     y.variance = varianceShare[dimensions[2]],
                      region.set = setName,
                      offset.label = offsetLabel,
                      panel = sprintf("%s%s — PC%d %.1f%%, PC%d %.1f%%",
@@ -129,6 +131,16 @@ plotRegionPCA <-
     #-------------------------------#
     # Build the plot                #
     #-------------------------------#
+    # Each panel recomputes its own components, so the variance explained can go on
+    # the axes only when there is one of them. With several it stays in the strip.
+    if (length(unique(plotTable$panel)) > 1) {
+      xAxisLabel <- paste0("PC", dimensions[1])
+      yAxisLabel <- paste0("PC", dimensions[2])
+    } else {
+      xAxisLabel <- sprintf("PC%d (%.1f%%)", dimensions[1], plotTable$x.variance[1])
+      yAxisLabel <- sprintf("PC%d (%.1f%%)", dimensions[2], plotTable$y.variance[1])
+    }
+
     pcaPlot <-
       ggplot2::ggplot(data = plotTable,
                       mapping = ggplot2::aes(x = .data$x.value, y = .data$y.value)) +
@@ -136,8 +148,8 @@ plotRegionPCA <-
       ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "gray60") +
       ggplot2::geom_point(mapping = ggplot2::aes(colour = .data$colour.group, shape = .data$shape.group),
                           size = pointSize, stroke = NA) +
-      ggplot2::labs(x = paste0("PC", dimensions[1]),
-                    y = paste0("PC", dimensions[2]),
+      ggplot2::labs(x = xAxisLabel,
+                    y = yAxisLabel,
                     colour = if (is.null(colourBy)) {""} else {colourBy},
                     shape = if (is.null(shapeBy)) {""} else {shapeBy},
                     title = title,

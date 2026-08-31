@@ -1,4 +1,4 @@
-# RegionSetDE 0.1.0
+# RegionSetDE 0.99.0
 First version.
 
 ## Regions and counting

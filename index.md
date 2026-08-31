@@ -61,6 +61,11 @@ visible instead of being absorbed into a new set of peak boundaries.
 - **Tiled counting.** Regions can be split into fixed-width tiles, so a
   change confined to part of a wide domain is not diluted across the
   whole of it.
+- **No replicates needed.** One library per condition is testable: the
+  dispersion is estimated from rows assumed not to respond, half of them
+  held back so
+  [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
+  can check the assumption rather than confirm it.
 
   
 

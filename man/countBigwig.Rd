@@ -54,19 +54,24 @@ A bigWig holds coverage, not reads, so the library sizes cannot be recovered fro
 # rtracklayer ships a small bigWig, and the regions are taken from its own content
 bigwigFile <- file.path(system.file("tests", package = "rtracklayer"), "test.bw")
 
-exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-exampleRegions$setName <- "covered"
+# The UCSC library behind rtracklayer reads a Windows drive letter as a URL
+# protocol, so an absolute path to the packaged file cannot be opened there
+if (.Platform$OS.type != "windows") {
 
-exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                seqlevelsStyle = NULL, verbose = FALSE)
+  exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+  exampleRegions$setName <- "covered"
 
-signal <- countBigwig(exampleSets,
-                      bigwigFiles = bigwigFile,
-                      sampleNames = "example",
-                      verbose = FALSE)
-signal
+  exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
+                                  seqlevelsStyle = NULL, verbose = FALSE)
 
-SummarizedExperiment::assay(signal, "counts")
+  signal <- countBigwig(exampleSets,
+                        bigwigFiles = bigwigFile,
+                        sampleNames = "example",
+                        verbose = FALSE)
+
+  print(signal)
+  print(SummarizedExperiment::assay(signal, "counts"))
+}
 
 }
 \seealso{

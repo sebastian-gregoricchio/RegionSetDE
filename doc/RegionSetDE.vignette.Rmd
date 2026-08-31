@@ -32,6 +32,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = ">",
 
 library(RegionSetDE)
 library(dplyr)
+library(ggplot2)
 ```
 
 ----------------------------------------------------------
@@ -116,8 +117,9 @@ When the sets are already encoded in a column of one table, `splitLoadRegions()`
 ```{r split_load_regions}
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
-regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
-                                                        keep.extra.columns = TRUE)
+regionRanges <-
+  GenomicRanges::makeGRangesFromDataFrame(regionTable,
+                                          keep.extra.columns = TRUE)
 
 regions <- splitLoadRegions(regionRanges,
                             splitBy = "setName",
@@ -178,15 +180,16 @@ Notice that the exclusion list shipped here is **not** an ENCODE blacklist. Rat 
 `countReads()` counts alignments over every region of every set. Reads can be counted once per region, which is the default, or over fixed-width tiles inside each region when `tileWidth` is set.
 
 ```{r count_reads, eval = FALSE}
-counts <- countReads(regions,
-                     bamFiles = bamPaths,
-                     sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-                     sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-                                                 condition = c("BN", "BN", "SHR", "SHR")),
-                     pairedEnd = FALSE,
-                     fragmentLength = 180,
-                     minMapq = 10,
-                     nThreads = 4)
+counts <-
+  countReads(regions,
+             bamFiles = bamPaths,
+             sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+             sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+                                         condition = c("BN", "BN", "SHR", "SHR")),
+             pairedEnd = FALSE,
+             fragmentLength = 180,
+             minMapq = 10,
+             nThreads = 4)
 ```
 
 `countBigwig()` is the equivalent for coverage tracks, and `loadCounts()` takes a count matrix produced elsewhere, so an existing *featureCounts* or *deepTools* table can enter the pipeline without recounting.
@@ -360,9 +363,13 @@ A competitive set test asks whether the regions of a set moved *more than other 
 `fitRegions()` therefore builds a matched universe by default, drawing comparison rows with a similar width and abundance distribution. `plotUniverseMatching()` shows whether the matching worked.
 
 ```{r plot_universe, fig.height = 4}
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+setResults <- testRegionSets(fit = fit,
+                             contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
 
-plotUniverseMatching(setResults, set = "promoterCpG", covariate = "abundance")
+plotUniverseMatching(object = setResults,
+                     set = "promoterCpG",
+                     covariate = "abundance")
 ```
 
 If the two distributions do not overlap, the competitive test is comparing apples to oranges and its p-value should not be trusted. Raising `universeRatio`, or matching on fewer covariates, usually fixes it.
@@ -461,7 +468,7 @@ topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
 plotRegion(results, region = topRegion, groupBy = "condition")
 ```
 
-```{r plot_heatmap, fig.height = 5}
+```{r plot_heatmap, fig.height = 7}
 plotTopHeatmap(results, n = 20, FDR = 1)
 ```
 
@@ -532,7 +539,7 @@ plotSetDistribution(setResults)
 
 `plotSetEffect()` shows the effect size and its interval, which is the figure to put in a paper. `plotSetDistribution()` shows the whole fold change distribution behind each summary, which is where you find out that a mean of zero came from a set splitting in two rather than from a set not moving.
 
-```{r plot_set_signal, fig.height = 4.5}
+```{r plot_set_signal, fig.height = 6.5}
 plotSetSignal(setResults, groupBy = "condition")
 ```
 
@@ -565,10 +572,12 @@ A set-level result rests on the dispersion and on the null being where you think
 `estimateNullDispersion()` estimates the dispersion from rows that should carry no effect, which is what makes an analysis with no replicates possible at all:
 
 ```{r null_dispersion}
-nullDispersion <- estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
-                                           normalizeCounts(method = "background", verbose = FALSE),
-                                         source = "background",
-                                         verbose = FALSE)
+nullDispersion <-
+  estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
+                           normalizeCounts(method = "background",
+                                           verbose = FALSE),
+                         source = "background",
+                         verbose = FALSE)
 
 nullDispersion
 ```
@@ -576,7 +585,7 @@ nullDispersion
 `checkNullCalibration()` goes further and runs the actual contrast on those null rows. Under a correctly calibrated test the p-values should be uniform.
 
 ```{r null_calibration, fig.height = 4}
-calibration <- checkNullCalibration(fit,
+calibration <- checkNullCalibration(fit = fit,
                                     contrast = c("condition", "SHR", "BN"),
                                     source = "background",
                                     verbose = FALSE)
@@ -589,11 +598,222 @@ A flat histogram means the test is behaving. A peak near zero means it is antico
 Notice that a set defined as low-signal is a poor source of null rows, even though it sounds like the natural choice. `estimateNullDispersion()` will refuse rather than return a dispersion estimated from rows with almost no counts:
 
 ```{r null_from_intergenic, error = TRUE}
-estimateNullDispersion(counts, source = "regionSet",
-                       regionSets = "intergenic", verbose = FALSE)
+estimateNullDispersion(counts = counts,
+                       source = "regionSet",
+                       regionSets = "intergenic",
+                       verbose = FALSE)
 ```
 
 <br>
+
+
+----------------------------------------------------------
+
+# **Working without replicates** {#no_replicates}
+One library per condition is the normal situation in CUT&Tag and in a good deal of ChIP-seq, and it is the case every count-based method refuses outright. The refusal is well founded: with a single sample on each side there are no residual degrees of freedom, so a dispersion cannot be read from the residual variation. There is none to read.
+
+*RegionSetDE* takes the way out that the experiment already suggests. Some rows are not expected to respond, the background bins most obviously, and the variation across those rows is the variation that would have been seen between replicates. Estimate the dispersion there, hold it fixed, and the test becomes possible.
+
+This happens on its own. `fitRegions()` notices that the design has no residual degrees of freedom and estimates the dispersion from the background rather than failing or, worse, fitting a Poisson and returning confident nonsense. What follows is mostly about seeing what it did and checking whether it was reasonable.
+
+Notice what the approach buys and what it costs. The assumption moves from *most regions do not change* to *these particular rows do not change*, which is a statement you can inspect and, further down, test. It is weaker than pretending replicates exist and stronger than having them.
+
+<br>
+
+
+## Reducing the example to one sample per strain
+The packaged data has two biological replicates on each side, which makes it convenient for showing the method: the same contrast runs both ways and the answers can be compared. Both strains have a `bio2` library and both are male, so the subset is a clean one-versus-one with the sex difference removed as well.
+
+```{r single_sample_subset}
+counts <- loadExampleData("counts", verbose = FALSE)
+
+singleCounts <- selectSamples(counts = counts,
+                              biologicalReplicate == "bio2",
+                              verbose = FALSE)
+
+SummarizedExperiment::colData(singleCounts)
+```
+
+`selectSamples()` drops the normalisation when it subsets, since scaling factors estimated on four libraries do not describe two, so the object is renormalised and refiltered from scratch.
+
+```{r single_sample_prepare}
+singleCounts <- normalizeCounts(singleCounts,
+                                method = "background",
+                                verbose = FALSE)
+
+singleCounts <- filterRegions(singleCounts, verbose = FALSE)
+
+nrow(singleCounts)
+```
+
+<br>
+
+## Fitting
+Nothing about the call changes.
+
+```{r single_sample_fit}
+singleFit <- fitRegions(singleCounts,
+                        design = ~ condition,
+                        engine = "edgeR",
+                        verbose = FALSE)
+
+singleFit
+```
+
+What changed is inside, and the fit records it rather than leaving you to guess:
+
+```{r single_sample_dispersion_slot}
+singleFit@dispersion[c("common", "fixed", "no.replicates", "source")]
+```
+
+`no.replicates` marks that the fallback was taken, `fixed` that the dispersion was held rather than fitted, and `source` where the null rows came from. All of it travels into the file written by `exportResults()`, so the choice is recoverable from the output months later.
+
+> **NOTE**: this only applies to `engine = "edgeR"`. The negative binomial fit takes the dispersion as an explicit parameter, so a value estimated elsewhere can be held fixed. The precision weights of `voom`, and the shrinkage in `dream` and `DESeq2`, are all derived from the sample-to-sample variation itself, which is the very thing a design without replicates does not have.
+
+<br>
+
+## Taking control of the estimate
+
+The automatic path uses the background bins with the default settings. When you want a different null, or want to see the number before committing to it, `estimateNullDispersion()` runs the same estimation on its own.
+
+```{r single_sample_dispersion}
+nullDispersion <- estimateNullDispersion(singleCounts,
+                                         source = "background",
+                                         holdout = 0.5,
+                                         verbose = FALSE)
+
+nullDispersion$dispersion
+
+nullDispersion$bcv
+```
+
+The biological coefficient of variation is the number to read, since it sits on the scale of a fold change rather than of a squared one. Around 0.1 is what well-behaved technical replicates give, 0.2 to 0.4 what biological replicates of a cell line give, and above 0.6 says the two libraries differ enough that a differential test will find very little. The value here, close to 0.19, is unremarkable for two animals of different strains.
+
+The result is passed back in, which is also how you would supply a dispersion taken from a previous experiment or from the literature:
+
+```{r single_sample_supplied, eval = FALSE}
+singleFit <- fitRegions(singleCounts,
+                        design = ~ condition,
+                        dispersion = nullDispersion)
+
+# Or a bare number, when it comes from somewhere else entirely
+singleFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04)
+
+# Or a region set believed to be invariant, rather than the background bins
+singleFit <- fitRegions(singleCounts, design = ~ condition,
+                        dispersion = "regionSet", nullRegionSets = "intergenic")
+```
+
+
+<br>
+
+## Checking that the dispersion was reasonable
+This step is not optional here. In a replicated analysis a poorly estimated dispersion is a matter of degree; without replicates it is an assumption imported from elsewhere, and this check is the only thing between that assumption and the p-values.
+
+The `holdout` is what makes the check meaningful. Half the null rows are kept out of the estimate, so the calibration can be tested on rows the dispersion was never fitted to. Checking on the same rows that produced it would be circular and would report good calibration whatever the truth. The held-out positions travel in the fit, so nothing has to be recomputed:
+
+```{r single_sample_calibration, fig.height = 4}
+singleCalibration <-
+  checkNullCalibration(singleFit,
+                       contrast = c("condition", "SHR", "BN"),
+                       source = "background",
+                       index = singleFit@dispersion$holdout.index,
+                       verbose = FALSE)
+
+plotNullCalibration(singleCalibration)
+```
+
+A flat histogram means the dispersion describes these two libraries adequately. A peak near zero means it is too small, the test is anticonservative, and every FDR downstream is optimistic. A peak near one means the opposite and the analysis is discarding power it could have had. In the second case the usual cause is that the null rows are not as null as assumed, and moving `source` to a region set you trust more is the first thing to try.
+
+<br>
+
+## Testing
+From here nothing differs from the replicated case. Both levels are available and the objects behave identically.
+
+```{r single_sample_results}
+singleResults <- testRegions(singleFit,
+                             contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
+
+singleSetResults <- testRegionSets(singleFit,
+                                   contrast = c("condition", "SHR", "BN"),
+                                   verbose = FALSE)
+
+resultsTable(singleSetResults)
+```
+
+<br>
+
+
+## How much is lost
+Since the packaged data has replicates, the same contrast can be run both ways and the answers compared, which is the check a reader wants before trusting the approach on data where it cannot be done.
+
+```{r replicated_comparison}
+fit <- loadExampleData("fit", verbose = FALSE)
+
+replicatedTable <-
+  resultsTable(testRegions(fit = fit,
+                           contrast = c("condition", "SHR", "BN"),
+                           verbose = FALSE))
+
+singleTable <- resultsTable(singleResults)
+
+sharedRegions <- intersect(replicatedTable$region.id, singleTable$region.id)
+
+comparisonTable <- data.frame(
+  replicated = replicatedTable$log2FC[match(sharedRegions, replicatedTable$region.id)],
+  singleSample = singleTable$log2FC[match(sharedRegions, singleTable$region.id)])
+
+correlationTest <- stats::cor.test(comparisonTable$replicated,
+                                   comparisonTable$singleSample,
+                                   method = "spearman",
+                                   exact = FALSE)
+```
+
+<br>
+
+```{r comparison_plot, fig.height = 3.5}
+# Below the double precision floor the exact value is meaningless
+pValueLabel <- if (correlationTest$p.value < 2.2e-16) {
+  "p < 2.2e-16"
+} else {
+  sprintf("p = %.3g", correlationTest$p.value)
+}
+
+annotationLabel <- sprintf("rho = %.3f\n%s",
+                           correlationTest$estimate,
+                           pValueLabel)
+
+corr_plot <-
+  ggplot(comparisonTable,
+         aes(x = replicated, y = singleSample)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "gray50") +
+  geom_smooth(formula = y ~ x, method = "glm",
+              fill = "steelblue4", color = "navy") +
+  geom_point(alpha = 0.2, size = 1.2, stroke = NA) +
+  annotate(geom = "text",
+           x = -Inf, y = Inf,
+           hjust = -0.2, vjust = 1.3,
+           label = annotationLabel, size = 3.5, lineheight = 1.1) +
+  labs(x = "log2FC, two replicates per strain",
+       y = "log2FC, one library per strain") +
+  theme_bw(base_size = 10) +
+  theme(aspect.ratio = 1,
+        axis.text = element_text(color = "black"))
+
+corr_plot
+```
+
+
+The two track each other, but not tightly, and the scatter widens toward the extremes, which is exactly where a single library has the least to say. Part of that is the comparison itself: the two analyses filter independently, so the shared regions are an intersection of two different sets rather than the same rows twice.
+
+The fold changes are estimated from the same counts and the dispersion does not enter the point estimate, so what the replicates buy is not the effect size but the standard error around it, and therefore the ranking and the FDR. The honest summary of the no-replicate mode is that it gives you the same estimates with uncertainty resting on an assumption you have to check rather than on data you have measured.
+
+That is also why the set level is where this mode earns its place. Averaging across the hundreds or thousands of regions in a set is far less sensitive to a misjudged dispersion than the fate of any single region, so `testRegionSets()` stays informative on one pair of libraries long after `testRegions()` has stopped returning anything worth reading.
+
+<br>
+
 
 ----------------------------------------------------------
 
@@ -618,7 +838,9 @@ Three kinds of file come out. The TSV holds the results table. The BED holds the
 The parameters file is the one worth keeping. It flattens everything the object carries in its `parameters` slot into one parameter per line: counting level, normalisation method and factors, filter and threshold, engine, design, contrast, correction, and on a fit with no replicates the dispersion and its source.
 
 ```{r read_provenance}
-parameterFile <- list.files(outputDirectory, pattern = "parameters", full.names = TRUE)
+parameterFile <- list.files(outputDirectory,
+                            pattern = "parameters",
+                            full.names = TRUE)
 
 head(read.delim(parameterFile), 10)
 ```
@@ -646,6 +868,7 @@ unlink(outputDirectory, recursive = TRUE)
 | Can I test without replicates? | `estimateNullDispersion()` | dispersion from the background, then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | `plotUniverseMatching()` | overlap of the two distributions |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` | the tile-level profile |
+| Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` | see [Working without replicates](#no_replicates) |
 
 <br>
 

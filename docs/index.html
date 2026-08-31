@@ -82,6 +82,8 @@
 <strong>Calibration you can check.</strong> <code><a href="reference/checkNullCalibration.html">checkNullCalibration()</a></code> runs the contrast on rows known to be null and shows whether the p-values come out uniform.</li>
 <li>
 <strong>Tiled counting.</strong> Regions can be split into fixed-width tiles, so a change confined to part of a wide domain is not diluted across the whole of it.</li>
+<li>
+<strong>No replicates needed.</strong> One library per condition is testable: the dispersion is estimated from rows assumed not to respond, half of them held back so <code><a href="reference/checkNullCalibration.html">checkNullCalibration()</a></code> can check the assumption rather than confirm it.</li>
 </ul>
 <p><br></p>
 </div>

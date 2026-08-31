@@ -5,6 +5,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = ">",
 
 library(RegionSetDE)
 library(dplyr)
+library(ggplot2)
 
 ## ----installation, eval = FALSE-----------------------------------------------
 # if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -31,8 +32,9 @@ counts <- loadExampleData("counts")
 ## ----split_load_regions-------------------------------------------------------
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
-regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
-                                                        keep.extra.columns = TRUE)
+regionRanges <-
+  GenomicRanges::makeGRangesFromDataFrame(regionTable,
+                                          keep.extra.columns = TRUE)
 
 regions <- splitLoadRegions(regionRanges,
                             splitBy = "setName",
@@ -58,15 +60,16 @@ regions <- applyBlacklist(regions,
 regions@filtering.log
 
 ## ----count_reads, eval = FALSE------------------------------------------------
-# counts <- countReads(regions,
-#                      bamFiles = bamPaths,
-#                      sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-#                      sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-#                                                  condition = c("BN", "BN", "SHR", "SHR")),
-#                      pairedEnd = FALSE,
-#                      fragmentLength = 180,
-#                      minMapq = 10,
-#                      nThreads = 4)
+# counts <-
+#   countReads(regions,
+#              bamFiles = bamPaths,
+#              sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+#              sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+#                                          condition = c("BN", "BN", "SHR", "SHR")),
+#              pairedEnd = FALSE,
+#              fragmentLength = 180,
+#              minMapq = 10,
+#              nThreads = 4)
 
 ## ----counts_structure---------------------------------------------------------
 counts <- loadExampleData("counts", verbose = FALSE)
@@ -140,9 +143,13 @@ fitCounts(fit)
 class(fitObject(fit))
 
 ## ----plot_universe, fig.height = 4--------------------------------------------
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+setResults <- testRegionSets(fit = fit,
+                             contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
 
-plotUniverseMatching(setResults, set = "promoterCpG", covariate = "abundance")
+plotUniverseMatching(object = setResults,
+                     set = "promoterCpG",
+                     covariate = "abundance")
 
 ## ----test_regions-------------------------------------------------------------
 results <- testRegions(fit,
@@ -183,7 +190,7 @@ topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
 
 plotRegion(results, region = topRegion, groupBy = "condition")
 
-## ----plot_heatmap, fig.height = 5---------------------------------------------
+## ----plot_heatmap, fig.height = 7---------------------------------------------
 plotTopHeatmap(results, n = 20, FDR = 1)
 
 ## ----test_region_sets---------------------------------------------------------
@@ -205,7 +212,7 @@ plotSetEffect(setResults)
 ## ----plot_set_distribution, fig.height = 4------------------------------------
 plotSetDistribution(setResults)
 
-## ----plot_set_signal, fig.height = 4.5----------------------------------------
+## ----plot_set_signal, fig.height = 6.5----------------------------------------
 plotSetSignal(setResults, groupBy = "condition")
 
 ## ----test_set_contrast--------------------------------------------------------
@@ -218,15 +225,17 @@ setContrast <- testSetContrast(fit,
 setContrast
 
 ## ----null_dispersion----------------------------------------------------------
-nullDispersion <- estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
-                                           normalizeCounts(method = "background", verbose = FALSE),
-                                         source = "background",
-                                         verbose = FALSE)
+nullDispersion <-
+  estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
+                           normalizeCounts(method = "background",
+                                           verbose = FALSE),
+                         source = "background",
+                         verbose = FALSE)
 
 nullDispersion
 
 ## ----null_calibration, fig.height = 4-----------------------------------------
-calibration <- checkNullCalibration(fit,
+calibration <- checkNullCalibration(fit = fit,
                                     contrast = c("condition", "SHR", "BN"),
                                     source = "background",
                                     verbose = FALSE)
@@ -235,9 +244,136 @@ plotNullCalibration(calibration)
 
 ## ----null_from_intergenic, error = TRUE---------------------------------------
 try({
-estimateNullDispersion(counts, source = "regionSet",
-                       regionSets = "intergenic", verbose = FALSE)
+estimateNullDispersion(counts = counts,
+                       source = "regionSet",
+                       regionSets = "intergenic",
+                       verbose = FALSE)
 })
+
+## ----single_sample_subset-----------------------------------------------------
+counts <- loadExampleData("counts", verbose = FALSE)
+
+singleCounts <- selectSamples(counts = counts,
+                              biologicalReplicate == "bio2",
+                              verbose = FALSE)
+
+SummarizedExperiment::colData(singleCounts)
+
+## ----single_sample_prepare----------------------------------------------------
+singleCounts <- normalizeCounts(singleCounts,
+                                method = "background",
+                                verbose = FALSE)
+
+singleCounts <- filterRegions(singleCounts, verbose = FALSE)
+
+nrow(singleCounts)
+
+## ----single_sample_fit--------------------------------------------------------
+singleFit <- fitRegions(singleCounts,
+                        design = ~ condition,
+                        engine = "edgeR",
+                        verbose = FALSE)
+
+singleFit
+
+## ----single_sample_dispersion_slot--------------------------------------------
+singleFit@dispersion[c("common", "fixed", "no.replicates", "source")]
+
+## ----single_sample_dispersion-------------------------------------------------
+nullDispersion <- estimateNullDispersion(singleCounts,
+                                         source = "background",
+                                         holdout = 0.5,
+                                         verbose = FALSE)
+
+nullDispersion$dispersion
+
+nullDispersion$bcv
+
+## ----single_sample_supplied, eval = FALSE-------------------------------------
+# singleFit <- fitRegions(singleCounts,
+#                         design = ~ condition,
+#                         dispersion = nullDispersion)
+# 
+# # Or a bare number, when it comes from somewhere else entirely
+# singleFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04)
+# 
+# # Or a region set believed to be invariant, rather than the background bins
+# singleFit <- fitRegions(singleCounts, design = ~ condition,
+#                         dispersion = "regionSet", nullRegionSets = "intergenic")
+
+## ----single_sample_calibration, fig.height = 4--------------------------------
+singleCalibration <-
+  checkNullCalibration(singleFit,
+                       contrast = c("condition", "SHR", "BN"),
+                       source = "background",
+                       index = singleFit@dispersion$holdout.index,
+                       verbose = FALSE)
+
+plotNullCalibration(singleCalibration)
+
+## ----single_sample_results----------------------------------------------------
+singleResults <- testRegions(singleFit,
+                             contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
+
+singleSetResults <- testRegionSets(singleFit,
+                                   contrast = c("condition", "SHR", "BN"),
+                                   verbose = FALSE)
+
+resultsTable(singleSetResults)
+
+## ----replicated_comparison----------------------------------------------------
+fit <- loadExampleData("fit", verbose = FALSE)
+
+replicatedTable <-
+  resultsTable(testRegions(fit = fit,
+                           contrast = c("condition", "SHR", "BN"),
+                           verbose = FALSE))
+
+singleTable <- resultsTable(singleResults)
+
+sharedRegions <- intersect(replicatedTable$region.id, singleTable$region.id)
+
+comparisonTable <- data.frame(
+  replicated = replicatedTable$log2FC[match(sharedRegions, replicatedTable$region.id)],
+  singleSample = singleTable$log2FC[match(sharedRegions, singleTable$region.id)])
+
+correlationTest <- stats::cor.test(comparisonTable$replicated,
+                                   comparisonTable$singleSample,
+                                   method = "spearman",
+                                   exact = FALSE)
+
+## ----comparison_plot, fig.height = 3.5----------------------------------------
+# Below the double precision floor the exact value is meaningless
+pValueLabel <- if (correlationTest$p.value < 2.2e-16) {
+  "p < 2.2e-16"
+} else {
+  sprintf("p = %.3g", correlationTest$p.value)
+}
+
+annotationLabel <- sprintf("rho = %.3f\n%s",
+                           correlationTest$estimate,
+                           pValueLabel)
+
+corr_plot <-
+  ggplot(comparisonTable,
+         aes(x = replicated, y = singleSample)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "gray50") +
+  geom_smooth(formula = y ~ x, method = "glm",
+              fill = "steelblue4", color = "navy") +
+  geom_point(alpha = 0.2, size = 1.2, stroke = NA) +
+  annotate(geom = "text",
+           x = -Inf, y = Inf,
+           hjust = -0.2, vjust = 1.3,
+           label = annotationLabel, size = 3.5, lineheight = 1.1) +
+  labs(x = "log2FC, two replicates per strain",
+       y = "log2FC, one library per strain") +
+  theme_bw(base_size = 10) +
+  theme(aspect.ratio = 1,
+        axis.text = element_text(color = "black"))
+
+corr_plot
 
 ## ----export_results-----------------------------------------------------------
 outputDirectory <- file.path(tempdir(), "regionSetDE-vignette")
@@ -251,7 +387,9 @@ exportResults(results,
 list.files(outputDirectory)
 
 ## ----read_provenance----------------------------------------------------------
-parameterFile <- list.files(outputDirectory, pattern = "parameters", full.names = TRUE)
+parameterFile <- list.files(outputDirectory,
+                            pattern = "parameters",
+                            full.names = TRUE)
 
 head(read.delim(parameterFile), 10)
 

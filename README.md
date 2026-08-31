@@ -30,6 +30,7 @@ Because no peak calling happens anywhere in the pipeline, the region definitions
 * **Four engines.** `edgeR`, `limma-voom`, `variancePartition::dream` for random effects, and `DESeq2`.
 * **Calibration you can check.** `checkNullCalibration()` runs the contrast on rows known to be null and shows whether the p-values come out uniform.
 * **Tiled counting.** Regions can be split into fixed-width tiles, so a change confined to part of a wide domain is not diluted across the whole of it.
+* **No replicates needed.** One library per condition is testable: the dispersion is estimated from rows assumed not to respond, half of them held back so `checkNullCalibration()` can check the assumption rather than confirm it.
 
 <br>
 

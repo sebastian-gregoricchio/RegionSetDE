@@ -151,10 +151,10 @@ plotSetMA <-
     # With no set named every set gets its own panel, with the whole object greyed underneath as a reference
     if (is.null(set)) {
       highlightTable <- dplyr::mutate(maTable, panel = .data$region.set)
-      backdropTable <- dplyr::select(maTable, .data$A, .data$M)
+      backdropTable <- dplyr::select(maTable, "A", "M")
     } else {
       highlightTable <- dplyr::mutate(dplyr::filter(maTable, .data$region.set %in% set), panel = paste(set, collapse = ", "))
-      backdropTable <- dplyr::select(dplyr::filter(maTable, !(.data$region.set %in% set)), .data$A, .data$M)
+      backdropTable <- dplyr::select(dplyr::filter(maTable, !(.data$region.set %in% set)), "A", "M")
     }
 
     # The backdrop carries no panel column, so it is redrawn in every facet: thinning it keeps that cost flat

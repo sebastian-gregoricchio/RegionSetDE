@@ -191,7 +191,7 @@ plotNormComparison <-
     maTable <- dplyr::mutate(maTable, sample = factor(.data$sample, levels = colnames(counts)))
 
     referenceFactors <- dplyr::filter(factorTable, .data$sample == colnames(counts)[referenceIndex])
-    referenceFactors <- dplyr::select(referenceFactors, method = .data$method, reference.factor = .data$scaling.factor)
+    referenceFactors <- dplyr::select(referenceFactors, method = "method", reference.factor = "scaling.factor")
 
     lineTable <- dplyr::filter(factorTable, .data$sample != colnames(counts)[referenceIndex])
     lineTable <- dplyr::left_join(lineTable, referenceFactors, by = "method")

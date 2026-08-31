@@ -47,7 +47,7 @@ test_that("the counts level plots build", {
   counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
 
   expect_s3_class(plotNormComparison(exampleCounts()), "ggplot")
-  expect_s3_class(suppressWarnings(plotSetMA(counts, groupBy = "condition")), "ggplot")
+  expect_s3_class(plotSetMA(counts, groupBy = "condition"), "ggplot")
   expect_s3_class(plotRegionPCA(counts, colourBy = "condition"), "ggplot")
   expect_s3_class(plotSampleCorrelation(counts, groupBy = "condition"), "ggplot")
 })
@@ -78,7 +78,7 @@ test_that("the set level plots build", {
 
   setResults <- exampleSetResults()
 
-  expect_s3_class(suppressWarnings(plotSetEffect(setResults)), "ggplot")
+  expect_s3_class(plotSetEffect(setResults), "ggplot")
   expect_s3_class(plotSetDistribution(setResults), "ggplot")
   expect_s3_class(plotSetSignal(setResults, groupBy = "condition"), "ggplot")
   expect_s3_class(plotUniverseMatching(setResults, set = "promoterCpG"), "ggplot")

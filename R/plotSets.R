@@ -36,7 +36,7 @@
 #'
 #' @seealso \code{\link{testRegionSets}}, \code{\link{plotSetDistribution}}, \code{\link{plotSetSignal}}
 #'
-#' @importFrom ggplot2 ggplot aes geom_point geom_errorbarh geom_vline geom_text labs theme element_blank element_rect element_line scale_colour_manual guides guide_legend
+#' @importFrom ggplot2 ggplot aes geom_point geom_errorbar geom_vline geom_text labs theme element_blank element_rect element_line scale_colour_manual guides guide_legend
 #' @importFrom dplyr mutate
 #' @importFrom rlang .data
 #' @importFrom stats reorder
@@ -159,8 +159,8 @@ plotSetEffect <-
 
     if (value == "delta.log2FC") {
       effectPlot <- effectPlot +
-        ggplot2::geom_errorbarh(mapping = ggplot2::aes(xmin = .data$lower, xmax = .data$upper),
-                                height = 0.15, linewidth = 0.5)
+        ggplot2::geom_errorbar(mapping = ggplot2::aes(xmin = .data$lower, xmax = .data$upper),
+                               orientation = "y", width = 0.15, linewidth = 0.5)
     }
 
     if (isTRUE(showN)) {

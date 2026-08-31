@@ -2,17 +2,26 @@
 ##
 ## Builds the example objects shipped in inst/extdata for RegionSetDE.
 ##
-## Source data: NF-YA ChIP-seq in mouse embryonic stem cells and terminal
-## neurons (GSE25532, Tiwari et al. 2012), aligned to mm10 and distributed as
-## sorted, indexed, duplicate-marked BAM files by the chipseqDBData package.
-## Two biological replicates per condition plus one input library.
+## Source data: liver ChIP-seq from the EURATRANS project, comparing the Brown
+## Norway (BN) and spontaneously hypertensive (SHR) rat strains. The BAM files
+## are distributed inside the chromstaRData package, aligned to rn4 and
+## restricted to chromosome 12.
 ##
-## Analysis is restricted to chr17 and chr19 to keep the shipped objects small.
+## Contrast: H3K4me3, SHR against BN, two biological replicates per strain, all
+## tech1. This is the only mark in the package with two biological replicates on
+## both sides. BN bio1 is female and the other three libraries are male, so sex
+## is not confounded with strain but does add within-group variance. With two
+## replicates per side there is no way to model it.
 ##
-## Run once from the package root. The script is not part of the build and
-## belongs in .Rbuildignore. Expect the first run to take a while: the BAM files
-## are downloaded from ExperimentHub and the motif scan covers two whole
-## chromosomes.
+## The input libraries take no part in the counting. They are used only to build
+## the exclusion list, which keeps that list independent of the H3K4me3
+## libraries that get tested afterwards.
+##
+## Nothing here contacts ExperimentHub or AnnotationHub. The BAM files ship with
+## the package and the annotation tables come from the UCSC download server.
+##
+## Run once from the package root. The script installs with the package under
+## inst/scripts and should not be added to .Rbuildignore.
 ##
 ## Author: Sebastian Gregoricchio
 
@@ -20,35 +29,45 @@
 # ---- Parameters -------------------------------------------------------------
 
 randomSeed <- 20260101L
-targetChromosomes <- c("chr17", "chr19")
-regionWidth <- 300L
-promoterUpstream <- 1000L
-promoterDownstream <- 500L
-motifPvalueCutoff <- 1e-05
-nullSetSize <- 1000L
+targetChromosomes <- "chr12"
+genomeBuild <- "rn4"
+
+regionWidth <- 1000L
+promoterFlank <- 500L
+geneBodyTileWidth <- 5000L
+intergenicTileWidth <- 10000L
+minimumDistanceFromTss <- 2000L
+minimumDistanceFromGene <- 10000L
+maxRegionsPerSet <- 1500L
+minRegionsPerSet <- 100L
+
+exclusionBinWidth <- 1000L
+exclusionQuantile <- 0.9995
+backgroundBinSize <- 10000L
 maxCrossCorrelationDistance <- 500L
+minimumMappingQuality <- 10L
 
 outputDir <- file.path("inst", "extdata")
 scriptDir <- file.path("inst", "scripts")
+ucscBaseUrl <- paste0("https://hgdownload.soe.ucsc.edu/goldenPath/",
+                      genomeBuild, "/database/")
 
 set.seed(randomSeed)
 
 
 # ---- Dependency check -------------------------------------------------------
 
-# Everything here runs offline, so none of these belong in DESCRIPTION.
+# All of this runs offline, so none of these belong in DESCRIPTION.
 requiredPackages <- c(
-  "chipseqDBData",
-  "AnnotationHub",
-  "ATACseqTFEA",
-  "BSgenome.Mmusculus.UCSC.mm10",
-  "TxDb.Mmusculus.UCSC.mm10.knownGene",
+  "chromstaRData",
+  "TxDb.Rnorvegicus.UCSC.rn4.ensGene",
   "GenomicFeatures",
   "GenomicRanges",
+  "GenomicAlignments",
+  "SummarizedExperiment",
   "GenomeInfoDb",
   "IRanges",
   "Rsamtools",
-  "BiocGenerics",
   "csaw",
   "dplyr",
   "RegionSetDE"
@@ -73,301 +92,445 @@ dir.create(outputDir, recursive = TRUE, showWarnings = FALSE)
 dir.create(scriptDir, recursive = TRUE, showWarnings = FALSE)
 
 
-# ---- BAM files and sample sheet ---------------------------------------------
+# ---- UCSC helpers -----------------------------------------------------------
 
-# NFYAData() downloads to the ExperimentHub cache and returns Name, Description
-# and a List of BamFile objects.
-nfyaData <- chipseqDBData::NFYAData()
+# Older UCSC assemblies store some tracks per chromosome, so a genome-wide table
+# name may not exist. Returns NA_character_ when a file is absent, which the
+# caller uses to pick the other layout.
+downloadUcscFile <- function(tableName) {
 
-if (nrow(nfyaData) != 5) {
-  stop("NFYAData() returned ", nrow(nfyaData), " libraries; 5 were expected.")
+  destinationFile <- tempfile(fileext = ".txt.gz")
+  downloadUrl <- paste0(ucscBaseUrl, tableName, ".txt.gz")
+
+  downloadStatus <- tryCatch(
+    utils::download.file(downloadUrl, destinationFile,
+                         mode = "wb", quiet = TRUE, method = "libcurl"),
+    error = function(condition) 1L,
+    warning = function(condition) 1L
+  )
+
+  if (downloadStatus != 0 || !file.exists(destinationFile) ||
+      file.size(destinationFile) == 0) {
+    return(NA_character_)
+  }
+
+  destinationFile
 }
 
-bamPaths <- vapply(
-  as.list(nfyaData$Path),
-  function(bamFile) BiocGenerics::path(bamFile),
-  character(1)
+# UCSC database dumps carry no header and an optional leading bin column, so the
+# chromosome column is located by content rather than by position. Coordinates
+# are 0-based half-open and get shifted here.
+readUcscTable <- function(tableName, chromosomes, chromosomeInfo) {
+
+  # Genome-wide layout first, per-chromosome layout second.
+  downloadedFiles <- downloadUcscFile(tableName)
+
+  if (is.na(downloadedFiles)) {
+    downloadedFiles <- vapply(
+      paste0(chromosomes, "_", tableName), downloadUcscFile, character(1)
+    )
+  }
+
+  if (all(is.na(downloadedFiles))) {
+    stop("Could not download the UCSC ", tableName, " table for ", genomeBuild,
+         " under either the genome-wide or the per-chromosome layout. ",
+         "List the database directory to see which tables exist.")
+  }
+
+  rawTable <- do.call(
+    rbind,
+    lapply(
+      downloadedFiles[!is.na(downloadedFiles)],
+      function(filePath) {
+        utils::read.delim(gzfile(filePath), header = FALSE,
+                          stringsAsFactors = FALSE)
+      }
+    )
+  )
+
+  chromosomeColumn <- which(
+    vapply(
+      rawTable,
+      function(column) {
+        is.character(column) && all(grepl("^chr", utils::head(column, 100)))
+      },
+      logical(1)
+    )
+  )[1]
+
+  if (is.na(chromosomeColumn)) {
+    stop("No chromosome column found in the UCSC ", tableName, " table.")
+  }
+
+  regionTable <-
+    data.frame(
+      seqnames = rawTable[[chromosomeColumn]],
+      start = as.integer(rawTable[[chromosomeColumn + 1L]]) + 1L,
+      end = as.integer(rawTable[[chromosomeColumn + 2L]]),
+      stringsAsFactors = FALSE
+    ) |>
+    dplyr::filter(seqnames %in% chromosomes)
+
+  if (nrow(regionTable) == 0) {
+    stop("The UCSC ", tableName, " table holds no rows on ",
+         paste(chromosomes, collapse = ", "), ".")
+  }
+
+  GenomicRanges::makeGRangesFromDataFrame(regionTable, seqinfo = chromosomeInfo)
+}
+
+
+# ---- Sample sheet -----------------------------------------------------------
+
+euratransDir <- system.file("extdata", "euratrans", package = "chromstaRData",
+                            mustWork = TRUE)
+
+bamFileNames <- dir(euratransDir, pattern = "\\.bam$")
+
+# File names encode everything: tissue-mark-strain-sex-bioRep-techRep.
+nameFields <- do.call(
+  rbind,
+  strsplit(sub("\\.bam$", "", bamFileNames), "-", fixed = TRUE)
 )
 
-# Conditions and replicate numbers come straight out of the Description strings
-# ("NF-YA ESC (1)", "NF-YA TN (2)", "Input").
+if (ncol(nameFields) != 6) {
+  stop("Expected six dash-separated fields in the chromstaRData file names, found ",
+       ncol(nameFields), ".")
+}
+
+colnames(nameFields) <- c("tissue", "mark", "strain", "sex",
+                          "biologicalReplicate", "technicalReplicate")
+
 sampleSheet <-
-  data.frame(
-    sampleName = as.character(nfyaData$Name),
-    description = as.character(nfyaData$Description),
-    bamPath = unname(bamPaths),
-    stringsAsFactors = FALSE
-  ) |>
+  as.data.frame(nameFields, stringsAsFactors = FALSE) |>
   dplyr::mutate(
-    condition = dplyr::case_when(
-      grepl("ESC", description) ~ "ESC",
-      grepl("TN", description) ~ "TN",
-      TRUE ~ "input"
-    ),
-    replicate = as.integer(
-      dplyr::if_else(
-        grepl("\\([0-9]+\\)", description),
-        sub(".*\\(([0-9]+)\\).*", "\\1", description),
-        "1"
-      )
-    ),
-    isInput = condition == "input"
+    sampleName = sub("\\.bam$", "", bamFileNames),
+    bamPath = file.path(euratransDir, bamFileNames),
+    isInput = mark == "input"
   ) |>
-  dplyr::arrange(condition, replicate)
+  dplyr::select(sampleName, tissue, mark, strain, sex, biologicalReplicate,
+                technicalReplicate, isInput, bamPath) |>
+  dplyr::arrange(mark, strain, biologicalReplicate, technicalReplicate)
 
-if (!all(c("ESC", "TN", "input") %in% sampleSheet$condition)) {
-  stop("Could not assign ESC, TN and input conditions from the NFYAData descriptions.")
+# H3K4me3 tech1 only, which leaves two biological replicates per strain.
+chipSamples <-
+  sampleSheet |>
+  dplyr::filter(mark == "H3K4me3", technicalReplicate == "tech1") |>
+  dplyr::mutate(condition = strain)
+
+inputSamples <- sampleSheet |> dplyr::filter(isInput)
+
+replicateCount <- chipSamples |> dplyr::count(condition, name = "nReplicates")
+print(replicateCount)
+
+if (nrow(replicateCount) != 2 || any(replicateCount$nReplicates < 2)) {
+  stop("The H3K4me3 contrast does not have two replicates in both strains.")
 }
 
-chipSamples <- sampleSheet |> dplyr::filter(!isInput)
-inputSample <- sampleSheet |> dplyr::filter(isInput)
+if (nrow(inputSamples) == 0) {
+  stop("No input libraries found; the exclusion list needs them.")
+}
 
 
-# ---- Exclusion list ---------------------------------------------------------
+# ---- Sequence information ---------------------------------------------------
 
-# mm10 ENCODE blacklist v2 (Amemiya et al. 2019), read straight from the
-# Boyle Lab release rather than through AnnotationHub.
-blacklistUrl <- paste0(
-  "https://github.com/Boyle-Lab/Blacklist/raw/master/lists/mm10-blacklist.v2.bed.gz"
+# Chromosome lengths come from the BAM header, which avoids pulling in a
+# BSgenome package worth close to a gigabyte for one field.
+bamTargets <- Rsamtools::scanBamHeader(chipSamples$bamPath[1])[[1]]$targets
+
+if (!all(targetChromosomes %in% names(bamTargets))) {
+  stop("Chromosome ", paste(targetChromosomes, collapse = ", "),
+       " is absent from the BAM header.")
+}
+
+chromosomeInfo <- GenomeInfoDb::Seqinfo(
+  seqnames = targetChromosomes,
+  seqlengths = as.integer(bamTargets[targetChromosomes]),
+  isCircular = rep(FALSE, length(targetChromosomes)),
+  genome = genomeBuild
 )
-
-blacklist <-
-  rtracklayer::import(blacklistUrl, format = "BED") |>
-  GenomeInfoDb::keepSeqlevels(targetChromosomes, pruning.mode = "coarse")
-
-GenomeInfoDb::genome(blacklist) <- "mm10"
 
 
 # ---- Fragment extension length ----------------------------------------------
 
-# Single-end reads, so the extension length is estimated once here and hard-coded
-# into the vignette rather than recomputed at build time.
+# Reads are single-end, so the extension length is estimated once here and
+# recorded rather than recomputed when the vignette builds. Duplicates are not
+# flagged in these files, so deduplication stays off throughout.
 crossCorrelation <- csaw::correlateReads(
   chipSamples$bamPath[1],
   max.dist = maxCrossCorrelationDistance,
-  param = csaw::readParam(dedup = TRUE, restrict = targetChromosomes)
+  param = csaw::readParam(
+    dedup = FALSE,
+    minq = minimumMappingQuality,
+    restrict = targetChromosomes
+  )
 )
 
 extensionLength <- csaw::maximizeCcf(crossCorrelation)
 message("Estimated fragment extension length: ", extensionLength, " bp")
 
 
-# ---- NF-Y binding sites -----------------------------------------------------
+# ---- Exclusion regions ------------------------------------------------------
 
-# ATACseqTFEA ships a merged PWMatrixList; keep the NF-Y entries (CCAAT box).
-motifList <- readRDS(
-  system.file("extdata", "PWMatrixList.rds", package = "ATACseqTFEA", mustWork = TRUE)
+# rn4 has no curated blacklist. The exclusion list combines assembly gaps with
+# bins carrying implausible input coverage, a stripped-down version of how the
+# ENCODE lists were built.
+gapRegions <- readUcscTable("gap", targetChromosomes, chromosomeInfo)
+
+coverageBins <- GenomicRanges::tileGenome(
+  chromosomeInfo,
+  tilewidth = exclusionBinWidth,
+  cut.last.tile.in.chrom = TRUE
 )
 
-nfyMotifs <- motifList[grepl("NFY", names(motifList), ignore.case = TRUE)]
+inputBinCounts <- GenomicAlignments::summarizeOverlaps(
+  features = coverageBins,
+  reads = Rsamtools::BamFileList(inputSamples$bamPath),
+  singleEnd = TRUE,
+  ignore.strand = TRUE
+)
 
-if (length(nfyMotifs) == 0) {
-  stop("No NF-Y motif found in the ATACseqTFEA PWMatrixList. Fall back to JASPAR via TFBSTools.")
+pooledInputCounts <- rowSums(SummarizedExperiment::assay(inputBinCounts))
+
+coverageThreshold <- stats::quantile(
+  pooledInputCounts[pooledInputCounts > 0], exclusionQuantile
+)
+
+highCoverageRegions <-
+  coverageBins[pooledInputCounts > coverageThreshold] |>
+  GenomicRanges::reduce(min.gapwidth = exclusionBinWidth)
+
+exclusionRegions <- GenomicRanges::reduce(c(gapRegions, highCoverageRegions))
+GenomeInfoDb::genome(exclusionRegions) <- genomeBuild
+
+if (length(exclusionRegions) == 0) {
+  stop("The exclusion list came out empty. Check the gap download and the ",
+       "coverage threshold.")
 }
 
-message("Scanning ", length(nfyMotifs), " NF-Y motif(s) over ",
-        paste(targetChromosomes, collapse = " and "), ".")
-
-# Arguments are passed positionally to match the prepareBindingSites() signature.
-# If memory becomes an issue, loop over chromosomes and pass the grange argument.
-motifSites <- ATACseqTFEA::prepareBindingSites(
-  nfyMotifs,
-  BSgenome.Mmusculus.UCSC.mm10::Mmusculus,
-  targetChromosomes,
-  p.cutoff = motifPvalueCutoff
-)
-
-motifSites <- GenomicRanges::granges(motifSites)
-GenomicRanges::strand(motifSites) <- "*"
+message("Exclusion regions: ", length(exclusionRegions), " intervals covering ",
+        round(sum(GenomicRanges::width(exclusionRegions)) / 1e3), " kb")
 
 
-# ---- Promoters --------------------------------------------------------------
+# ---- Annotation -------------------------------------------------------------
 
-txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene::TxDb.Mmusculus.UCSC.mm10.knownGene
+txdb <- TxDb.Rnorvegicus.UCSC.rn4.ensGene::TxDb.Rnorvegicus.UCSC.rn4.ensGene
 
-promoterRegions <-
-  GenomicFeatures::promoters(
-    txdb,
-    upstream = promoterUpstream,
-    downstream = promoterDownstream
-  ) |>
-  GenomeInfoDb::keepSeqlevels(targetChromosomes, pruning.mode = "coarse") |>
-  GenomicRanges::reduce(ignore.strand = TRUE)
-
-transcriptStarts <-
+transcriptRanges <-
   GenomicFeatures::transcripts(txdb) |>
-  GenomeInfoDb::keepSeqlevels(targetChromosomes, pruning.mode = "coarse") |>
-  GenomicRanges::resize(width = 1L, fix = "start")
+  GenomeInfoDb::keepSeqlevels(targetChromosomes, pruning.mode = "coarse")
 
+geneRanges <-
+  GenomicFeatures::genes(txdb) |>
+  GenomeInfoDb::keepSeqlevels(targetChromosomes, pruning.mode = "coarse")
+
+transcriptStarts <- GenomicRanges::resize(transcriptRanges, width = 1L, fix = "start")
 GenomicRanges::strand(transcriptStarts) <- "*"
 transcriptStarts <- unique(GenomicRanges::granges(transcriptStarts))
+
+GenomicRanges::strand(geneRanges) <- "*"
+geneRanges <- GenomicRanges::reduce(GenomicRanges::granges(geneRanges))
+
+cpgIslands <- readUcscTable("cpgIslandExt", targetChromosomes, chromosomeInfo)
+
+
+# ---- Candidate anchors per region set ---------------------------------------
+
+# Each set gets one anchor point per candidate region. Windows are cut to a
+# fixed width later so that counts stay comparable across sets.
+promoterWindows <- GenomicRanges::resize(
+  transcriptStarts, width = 2L * promoterFlank, fix = "center"
+)
+
+# Positions inside genes but clear of any transcription start site.
+geneBodyAnchors <-
+  unlist(GenomicRanges::tile(geneRanges, width = geneBodyTileWidth)) |>
+  GenomicRanges::resize(width = 1L, fix = "center")
+
+geneBodyAnchors <- geneBodyAnchors[
+  !IRanges::overlapsAny(
+    GenomicRanges::resize(geneBodyAnchors,
+                          width = 2L * minimumDistanceFromTss, fix = "center"),
+    transcriptStarts,
+    ignore.strand = TRUE
+  )
+]
+
+# Positions well away from anything annotated. This set is the low-signal control.
+intergenicAnchors <-
+  GenomicRanges::tileGenome(chromosomeInfo, tilewidth = intergenicTileWidth,
+                            cut.last.tile.in.chrom = TRUE) |>
+  GenomicRanges::resize(width = 1L, fix = "center")
+
+intergenicAnchors <- intergenicAnchors[
+  !IRanges::overlapsAny(
+    GenomicRanges::resize(intergenicAnchors,
+                          width = 2L * minimumDistanceFromGene, fix = "center"),
+    geneRanges,
+    ignore.strand = TRUE
+  )
+]
+
+# Promoters split by CpG island overlap. H3K4me3 sits mostly on the CpG side, so
+# the two halves give a signal contrast inside the same feature class.
+promoterIsCpG <- IRanges::overlapsAny(promoterWindows, cpgIslands,
+                                      ignore.strand = TRUE)
+
+anchorSets <- list(
+  promoterCpG = GenomicRanges::resize(promoterWindows[promoterIsCpG],
+                                      width = 1L, fix = "center"),
+  promoterNonCpG = GenomicRanges::resize(promoterWindows[!promoterIsCpG],
+                                         width = 1L, fix = "center"),
+  geneBody = geneBodyAnchors,
+  intergenic = intergenicAnchors
+)
 
 
 # ---- Region universe --------------------------------------------------------
 
-# Candidate anchors are motif midpoints and transcription start sites. Each one
-# becomes a fixed-width window so that counts stay comparable across sets.
-candidateAnchors <- c(
-  GenomicRanges::resize(motifSites, width = 1L, fix = "center"),
-  transcriptStarts
-)
+# Sets are resolved in order, so a window claimed by an earlier set is never
+# reused by a later one. Promoters win any collision. The exclusion list is not
+# applied here: applyBlacklist does that on the object, where it gets logged.
+keptRegions <- GenomicRanges::GRanges(seqinfo = chromosomeInfo)
 
-GenomeInfoDb::seqlevels(candidateAnchors, pruning.mode = "coarse") <- targetChromosomes
-GenomeInfoDb::seqinfo(candidateAnchors) <-
-  GenomeInfoDb::seqinfo(BSgenome.Mmusculus.UCSC.mm10::Mmusculus)[targetChromosomes]
+for (setName in names(anchorSets)) {
 
-candidateRegions <-
-  candidateAnchors |>
-  GenomicRanges::resize(width = regionWidth, fix = "center") |>
-  GenomicRanges::trim() |>
-  sort()
+  candidateRegions <-
+    anchorSets[[setName]] |>
+    GenomicRanges::resize(width = regionWidth, fix = "center") |>
+    GenomicRanges::trim() |>
+    sort()
 
-# Windows clipped at a chromosome edge are dropped rather than kept ragged.
-candidateRegions <- candidateRegions[GenomicRanges::width(candidateRegions) == regionWidth]
+  # Windows clipped at a chromosome edge are dropped rather than kept ragged.
+  candidateRegions <- candidateRegions[
+    GenomicRanges::width(candidateRegions) == regionWidth
+  ]
 
-# disjointBins assigns overlapping ranges to different bins, so the first bin is
-# a non-overlapping subset of the candidates.
-candidateRegions <- candidateRegions[GenomicRanges::disjointBins(candidateRegions) == 1L]
+  # disjointBins puts overlapping ranges in different bins, so the first bin is
+  # a non-overlapping subset.
+  candidateRegions <- candidateRegions[
+    GenomicRanges::disjointBins(candidateRegions) == 1L
+  ]
 
-# Anything touching the exclusion list goes.
-candidateRegions <- candidateRegions[
-  !IRanges::overlapsAny(candidateRegions, blacklist, ignore.strand = TRUE)
-]
+  candidateRegions <- candidateRegions[
+    !IRanges::overlapsAny(candidateRegions, keptRegions, ignore.strand = TRUE)
+  ]
 
+  if (length(candidateRegions) > maxRegionsPerSet) {
+    candidateRegions <- sort(sample(candidateRegions, maxRegionsPerSet))
+  }
 
-# ---- Null control regions ---------------------------------------------------
+  candidateRegions <- GenomicRanges::granges(candidateRegions)
+  candidateRegions$setName <- setName
 
-# Random windows matched in width, kept clear of motifs, promoters, the exclusion
-# list and the rest of the universe. These should come out non-significant and
-# are what shows the method is not calling hits everywhere.
-chromosomeLengths <-
-  GenomeInfoDb::seqlengths(BSgenome.Mmusculus.UCSC.mm10::Mmusculus)[targetChromosomes]
-
-sampledStarts <- lapply(targetChromosomes, function(chromosome) {
-  nDraws <- nullSetSize * 10L
-  GenomicRanges::GRanges(
-    seqnames = chromosome,
-    ranges = IRanges::IRanges(
-      start = sample.int(chromosomeLengths[[chromosome]] - regionWidth, nDraws),
-      width = regionWidth
-    )
-  )
-})
-
-nullCandidates <- do.call(c, sampledStarts)
-GenomeInfoDb::seqinfo(nullCandidates) <-
-  GenomeInfoDb::seqinfo(BSgenome.Mmusculus.UCSC.mm10::Mmusculus)[targetChromosomes]
-
-occupiedRanges <- c(
-  GenomicRanges::granges(candidateRegions),
-  GenomicRanges::granges(motifSites),
-  GenomicRanges::granges(promoterRegions),
-  GenomicRanges::granges(blacklist)
-)
-
-nullRegions <- nullCandidates[
-  !IRanges::overlapsAny(nullCandidates, occupiedRanges, ignore.strand = TRUE)
-]
-
-nullRegions <- nullRegions[GenomicRanges::disjointBins(sort(nullRegions)) == 1L]
-
-if (length(nullRegions) < nullSetSize) {
-  stop("Only ", length(nullRegions), " null regions survived filtering; ",
-       nullSetSize, " were requested.")
+  keptRegions <- c(keptRegions, candidateRegions)
 }
 
-nullRegions <- sort(sample(nullRegions, nullSetSize))
+keptRegions <- sort(keptRegions)
+
+# Strand stays unset throughout: two windows differing only by strand would draw
+# their counts from the same reads.
+GenomicRanges::strand(keptRegions) <- "*"
 
 
-# ---- Region table and region sets -------------------------------------------
+# ---- Region sets ------------------------------------------------------------
 
-allRegions <- sort(c(GenomicRanges::granges(candidateRegions), nullRegions))
-
-regions <-
+regionTable <-
   data.frame(
-    seqnames = as.character(GenomicRanges::seqnames(allRegions)),
-    start = GenomicRanges::start(allRegions),
-    end = GenomicRanges::end(allRegions),
+    seqnames = as.character(GenomicRanges::seqnames(keptRegions)),
+    start = GenomicRanges::start(keptRegions),
+    end = GenomicRanges::end(keptRegions),
+    setName = keptRegions$setName,
     stringsAsFactors = FALSE
   ) |>
-  dplyr::mutate(
-    regionId = sprintf("region_%05d", dplyr::row_number()),
-    hasMotif = IRanges::overlapsAny(allRegions, motifSites, ignore.strand = TRUE),
-    isPromoter = IRanges::overlapsAny(allRegions, promoterRegions, ignore.strand = TRUE),
-    isNull = IRanges::overlapsAny(allRegions, nullRegions, type = "equal")
-  ) |>
-  dplyr::select(regionId, seqnames, start, end, hasMotif, isPromoter, isNull)
+  dplyr::mutate(regionId = sprintf("region_%05d", dplyr::row_number())) |>
+  dplyr::select(regionId, seqnames, start, end, setName)
 
-# Four sets: the expected responders, a distal comparison, a motif-free contrast
-# and the null control.
-regionSets <-
-  dplyr::bind_rows(
-    regions |>
-      dplyr::filter(hasMotif, isPromoter) |>
-      dplyr::mutate(setName = "promoter_CCAAT"),
-    regions |>
-      dplyr::filter(hasMotif, !isPromoter) |>
-      dplyr::mutate(setName = "distal_CCAAT"),
-    regions |>
-      dplyr::filter(!hasMotif, isPromoter) |>
-      dplyr::mutate(setName = "promoter_noMotif"),
-    regions |>
-      dplyr::filter(isNull) |>
-      dplyr::mutate(setName = "random_null")
-  ) |>
-  dplyr::select(setName, regionId) |>
-  dplyr::arrange(setName, regionId)
+regionsGRanges <- GenomicRanges::makeGRangesFromDataFrame(
+  regionTable,
+  keep.extra.columns = TRUE,
+  seqinfo = chromosomeInfo
+)
+names(regionsGRanges) <- regionTable$regionId
 
-setSizes <- regionSets |> dplyr::count(setName, name = "nRegions")
+regions <- RegionSetDE::splitLoadRegions(
+  regions = regionsGRanges,
+  splitBy = "setName",
+  minRegionsPerSet = minRegionsPerSet,
+  seqlevelsStyle = "UCSC",
+  genomeAssembly = genomeBuild
+)
+
+# Filtering runs on the object so that it lands in filtering.log and the vignette
+# can show what was removed.
+regions <- RegionSetDE::applyBlacklist(
+  regionSet = regions,
+  blacklist = exclusionRegions,
+  ignoreStrand = TRUE,
+  emptySets = "stop"
+)
+
+setSizes <- data.frame(
+  setName = names(regions@regions),
+  nRegions = lengths(regions@regions),
+  stringsAsFactors = FALSE
+)
+
 print(setSizes)
 
-if (any(setSizes$nRegions < 100)) {
-  stop("At least one region set holds fewer than 100 regions. Loosen the motif ",
-       "p-value cutoff or widen the promoter window.")
+if (nrow(setSizes) != length(anchorSets) || any(setSizes$nRegions < minRegionsPerSet)) {
+  stop("At least one region set holds fewer than ", minRegionsPerSet,
+       " regions after blacklisting. Widen the promoter flank or loosen the ",
+       "distance thresholds.")
 }
+
+
+# ---- Sample metadata --------------------------------------------------------
+
+# BN is the reference level, so the contrast reads as SHR against BN.
+sampleMetadata <-
+  chipSamples |>
+  dplyr::select(sample = sampleName, condition, sex, biologicalReplicate) |>
+  dplyr::mutate(condition = factor(condition, levels = c("BN", "SHR")))
 
 
 # ---- Counting ---------------------------------------------------------------
 
-# NOTE: adjust the argument names below once countReads() and countBackground()
-# are frozen. Reads are single-end and duplicates are marked but not removed in
-# the source BAM files.
-regionsGRanges <- GenomicRanges::makeGRangesFromDataFrame(
-  regions,
-  keep.extra.columns = TRUE
-)
-names(regionsGRanges) <- regions$regionId
-
-readCounts <- RegionSetDE::countReads(
+# Duplicates are not flagged in these BAM files, so removeDuplicates would be a
+# no-op and is switched off to keep the record honest.
+counts <- RegionSetDE::countReads(
+  regionSet = regions,
   bamFiles = chipSamples$bamPath,
   sampleNames = chipSamples$sampleName,
-  regions = regionsGRanges,
+  sampleMetadata = sampleMetadata,
   pairedEnd = FALSE,
-  extensionLength = extensionLength,
-  ignoreDuplicates = TRUE,
-  blacklist = blacklist
+  fragmentLength = extensionLength,
+  minMapq = minimumMappingQuality,
+  removeDuplicates = FALSE,
+  restrictChromosomes = targetChromosomes,
+  nThreads = 1,
+  verbose = TRUE
 )
 
-backgroundCounts <- RegionSetDE::countBackground(
-  bamFiles = c(chipSamples$bamPath, inputSample$bamPath),
-  sampleNames = c(chipSamples$sampleName, inputSample$sampleName),
-  regions = regionsGRanges,
-  pairedEnd = FALSE,
-  extensionLength = extensionLength,
-  ignoreDuplicates = TRUE,
-  blacklist = blacklist
+# The bins go into metadata(counts)$background, so this returns the same object.
+counts <- RegionSetDE::countBackground(
+  counts = counts,
+  binSize = backgroundBinSize,
+  excludeRegions = TRUE,
+  nThreads = 1,
+  verbose = TRUE
 )
 
 
 # ---- Save -------------------------------------------------------------------
 
+# bamPath is dropped: those paths point inside the installed chromstaRData tree
+# and mean nothing on another machine.
 objectsToSave <- list(
-  "nfya_sampleSheet.rds" = sampleSheet |> dplyr::select(-bamPath),
-  "nfya_regions.rds" = regions,
-  "nfya_regionSets.rds" = regionSets,
-  "nfya_blacklist.rds" = blacklist,
-  "nfya_readCounts.rds" = readCounts,
-  "nfya_backgroundCounts.rds" = backgroundCounts
+  "euratrans_sampleSheet.rds" = sampleSheet |> dplyr::select(-bamPath),
+  "euratrans_regions.rds" = regionTable,
+  "euratrans_exclusionRegions.rds" = exclusionRegions,
+  "euratrans_counts.rds" = counts
 )
 
 invisible(
@@ -386,22 +549,29 @@ invisible(
 buildMetadata <- list(
   buildDate = Sys.Date(),
   randomSeed = randomSeed,
+  genomeBuild = genomeBuild,
   targetChromosomes = targetChromosomes,
-  genomeBuild = "mm10",
+  mark = "H3K4me3",
+  contrast = "SHR against BN, rat liver",
   regionWidth = regionWidth,
-  promoterWindow = c(upstream = promoterUpstream, downstream = promoterDownstream),
-  motifPvalueCutoff = motifPvalueCutoff,
-  extensionLength = extensionLength,
-  blacklistRecord = blacklistId,
-  motifNames = names(nfyMotifs),
-  sourceAccession = "GSE25532",
+  promoterFlank = promoterFlank,
+  minimumDistanceFromTss = minimumDistanceFromTss,
+  minimumDistanceFromGene = minimumDistanceFromGene,
+  fragmentLength = extensionLength,
+  minMapq = minimumMappingQuality,
+  backgroundBinSize = backgroundBinSize,
+  exclusionSource = "UCSC rn4 gap track and high-coverage input bins",
+  exclusionQuantile = exclusionQuantile,
+  annotationSource = "TxDb.Rnorvegicus.UCSC.rn4.ensGene and UCSC cpgIslandExt",
+  sourceProject = "EURATRANS",
   sourcePackage = paste0(
-    "chipseqDBData ",
-    as.character(utils::packageVersion("chipseqDBData"))
+    "chromstaRData ",
+    as.character(utils::packageVersion("chromstaRData"))
   )
 )
 
-saveRDS(buildMetadata, file.path(outputDir, "nfya_buildMetadata.rds"), compress = "xz")
+saveRDS(buildMetadata, file.path(outputDir, "euratrans_buildMetadata.rds"),
+        compress = "xz")
 
 writeLines(
   utils::capture.output(utils::sessionInfo()),
@@ -413,7 +583,7 @@ writeLines(
 
 sizeReport <-
   data.frame(
-    file = list.files(outputDir, pattern = "^nfya_"),
+    file = list.files(outputDir, pattern = "^euratrans_"),
     stringsAsFactors = FALSE
   ) |>
   dplyr::mutate(sizeKb = round(file.size(file.path(outputDir, file)) / 1024, 1)) |>
@@ -421,5 +591,3 @@ sizeReport <-
 
 print(sizeReport)
 message("Total: ", round(sum(sizeReport$sizeKb) / 1024, 2), " MB in ", outputDir)
-
-

@@ -2,31 +2,40 @@
 % Please edit documentation in R/loadExampleData.R
 \name{loadExampleData}
 \alias{loadExampleData}
-\title{Load the packaged NF-YA example objects}
+\title{loadExampleData}
 \usage{
-loadExampleData(
-  dataset = c("readCounts", "backgroundCounts", "regions", "regionSets", "blacklist",
-    "sampleSheet", "buildMetadata")
-)
+loadExampleData(dataset = "counts", verbose = TRUE)
 }
 \arguments{
-\item{dataset}{Character, the object to load. One of \code{"readCounts"},
-\code{"backgroundCounts"}, \code{"regions"}, \code{"regionSets"},
-\code{"blacklist"}, \code{"sampleSheet"} or \code{"buildMetadata"}.}
+\item{dataset}{String indicating which object to load, one among \code{"counts"}, \code{"regions"}, \code{"exclusionRegions"}, \code{"sampleSheet"} and \code{"buildMetadata"}. The string \code{"blacklist"} is accepted as a synonym of \code{"exclusionRegions"}. Default: \code{"counts"}.}
+
+\item{verbose}{Logical value to indicate whether the loading message must be printed. Default: \code{TRUE}.}
 }
 \value{
-The requested object.
+The requested object. \code{"counts"} returns a \code{RegionSetDE.counts} object with the background bins already stored in its metadata, \code{"regions"} a data.frame with one row per region and its set membership, \code{"exclusionRegions"} a \code{GRanges}, \code{"sampleSheet"} a data.frame describing every library of the source dataset, and \code{"buildMetadata"} a list with the parameters used to generate the other four.
 }
 \description{
-Loads one of the precomputed objects shipped in \code{inst/extdata}. These
-were built from the NF-YA ChIP-seq libraries distributed by
-\pkg{chipseqDBData}, restricted to chr17 and chr19 of mm10. See
-\code{inst/scripts/make-data.R} for how each object was generated.
+Loads one of the example objects installed with RegionSetDE. The objects cover the whole path from a collection of genomic regions to a counted object ready to be normalised, and are the ones used throughout the vignette.
+}
+\details{
+The example data comes from the liver ChIP-seq libraries of the EURATRANS project, distributed by the \code{chromstaRData} package and aligned to rn4. The contrast is H3K4me3 in the spontaneously hypertensive (SHR) rat against the Brown Norway (BN) strain, two biological replicates each, restricted to chromosome 12.
+
+The regions are one kilobase windows split into four sets ordered by the amount of H3K4me3 they are expected to carry: promoters overlapping a CpG island, promoters without one, positions inside gene bodies away from any transcription start site, and intergenic positions that serve as the low-signal control. The sets are disjoint, and a window claimed by an earlier set is never reused by a later one.
+
+rn4 has no curated blacklist, so \code{"exclusionRegions"} is assembled from the UCSC assembly gap track and from bins carrying implausible coverage in the input libraries. It is not an ENCODE-grade exclusion list and should not be reused outside these examples.
+
+The script that generated every object is installed with the package, at \code{system.file("scripts", "make-data.R", package = "RegionSetDE")}.
 }
 \examples{
-regionSets <- loadExampleData("regionSets")
-head(regionSets)
+counts <- loadExampleData("counts")
+counts
 
+regionTable <- loadExampleData("regions", verbose = FALSE)
+head(regionTable)
+
+}
+\seealso{
+\code{\link{loadRegions}}, \code{\link{splitLoadRegions}}, \code{\link{applyBlacklist}}, \code{\link{countReads}}, \code{\link{countBackground}}
 }
 \author{
 Sebastian Gregoricchio

@@ -49,15 +49,11 @@ Imports:
   utils,
   viridisLite
 Suggests:
-  ATACseqTFEA,
   BiocStyle,
   BiocManager,
-  BSgenome.Mmusculus.UCSC.mm10,
-  chipseqDBData,
   circlize,
   ComplexHeatmap,
   DESeq2,
-  GenomeInfoDb,
   ggrepel,
   knitr,
   lme4,
@@ -83,8 +79,5 @@ Encoding: UTF-8
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL:
-	https://sebastian-gregoricchio.github.io/RegionSetDE/
-	https://github.com/sebastian-gregoricchio/RegionSetDE/
-	https://sebastian-gregoricchio.github.io/
+URL: https://github.com/sebastian-gregoricchio/RegionSetDE/
 BugReports: https://github.com/sebastian-gregoricchio/RegionSetDE/issues

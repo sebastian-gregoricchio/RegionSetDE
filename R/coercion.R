@@ -232,7 +232,7 @@ asDESeqDataSet <-
 #'
 #' @seealso \code{\link{asDGEList}}
 #'
-#' @importFrom methods setAs setOldClass isClass
+#' @importFrom methods setAs setOldClass isClass coerce
 #'
 #' @exportMethod coerce
 NULL

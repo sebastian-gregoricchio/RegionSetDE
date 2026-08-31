@@ -813,6 +813,7 @@ setMethod(f = "show",
 #'
 #' @param x \code{RegionSetDE.resultsList} object.
 #' @param i String with the name of a contrast, or its position.
+#' @param j Not used, present because the \code{[[} generic carries it.
 #' @param name String with the name of a contrast.
 #' @param ... Not used.
 #'
@@ -911,14 +912,3 @@ setMethod(f = "length",
 
     return(results@results[[contrast[1]]])
   } # END function
-
-
-
-
-
-
-
-
-
-
-

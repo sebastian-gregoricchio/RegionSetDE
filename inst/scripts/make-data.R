@@ -555,7 +555,11 @@ fit <- RegionSetDE::fitRegions(
   verbose = TRUE
 )
 
-# One test run so that a broken fit is caught here and not in the man pages.
+# The fit is deliberately NOT saved: it carries the internals of its engine, and
+# those change between releases of edgeR and limma, so a serialised one breaks as
+# soon as the engine moves. loadExampleData("fit") rebuilds it from the counts,
+# using the parameters recorded in buildMetadata below. Fitting and testing here
+# is a check that those parameters still produce a usable model.
 testRun <- RegionSetDE::testRegions(
   fit = fit,
   contrast = c("condition", "SHR", "BN"),
@@ -573,8 +577,7 @@ objectsToSave <- list(
   "euratrans_sampleSheet.rds" = sampleSheet |> dplyr::select(-bamPath),
   "euratrans_regions.rds" = regionTable,
   "euratrans_exclusionRegions.rds" = exclusionRegions,
-  "euratrans_counts.rds" = counts,
-  "euratrans_fit.rds" = fit
+  "euratrans_counts.rds" = counts
 )
 
 invisible(

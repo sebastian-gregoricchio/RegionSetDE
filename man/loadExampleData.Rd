@@ -12,7 +12,7 @@ loadExampleData(dataset = "counts", verbose = TRUE)
 \item{verbose}{Logical value to indicate whether the loading message must be printed. Default: \code{TRUE}.}
 }
 \value{
-The requested object. \code{"counts"} returns a \code{RegionSetDE.counts} object, unnormalised and unfiltered, with the background bins already stored in its metadata. \code{"fit"} returns a \code{RegionSetDE.fit} object obtained from the same counts after background normalisation and filtering, ready for \code{\link{testRegions}} and \code{\link{testRegionSets}}. \code{"regions"} returns a data.frame with one row per region and its set membership, \code{"exclusionRegions"} a \code{GRanges}, \code{"sampleSheet"} a data.frame describing every library of the source dataset, and \code{"buildMetadata"} a list with the parameters used to generate the others.
+The requested object. \code{"counts"} returns a \code{RegionSetDE.counts} object, unnormalised and unfiltered, with the background bins already stored in its metadata. \code{"fit"} returns a \code{RegionSetDE.fit} object ready for \code{\link{testRegions}} and \code{\link{testRegionSets}}. \code{"regions"} returns a data.frame with one row per region and its set membership, \code{"exclusionRegions"} a \code{GRanges}, \code{"sampleSheet"} a data.frame describing every library of the source dataset, and \code{"buildMetadata"} a list with the parameters used to generate the others.
 }
 \description{
 Loads one of the example objects installed with RegionSetDE. The objects cover the whole path from a collection of genomic regions to a fitted model, and are the ones used throughout the vignette and the examples.
@@ -22,11 +22,11 @@ The example data comes from the liver ChIP-seq libraries of the EURATRANS projec
 
 The regions are one kilobase windows split into four sets ordered by the amount of H3K4me3 they are expected to carry: promoters overlapping a CpG island, promoters without one, positions inside gene bodies away from any transcription start site, and intergenic positions that serve as the low-signal control. The sets are disjoint, and a window claimed by an earlier set is never reused by a later one.
 
-The counts are shipped before normalisation so that the vignette can run \code{\link{normalizeCounts}} and \code{\link{filterRegions}} itself. The fit is shipped after both, since estimating the dispersion and matching the universe is the slow step and every example that needs a model would otherwise repeat it.
+Only the counts are stored on disk. Asking for \code{"fit"} runs \code{\link{normalizeCounts}}, \code{\link{filterRegions}} and \code{\link{fitRegions}} on them, with the parameters recorded in \code{"buildMetadata"}, and keeps the result for the rest of the session. A fitted model carries the internals of its engine, and those change between releases of \code{edgeR} and \code{limma}, so a serialised fit would break as soon as the engine moved underneath it.
 
 rn4 has no curated blacklist, so \code{"exclusionRegions"} is assembled from the UCSC assembly gap track and from bins carrying implausible coverage in the input libraries. It is not an ENCODE-grade exclusion list and should not be reused outside these examples.
 
-The script that generated every object is installed with the package, at \code{system.file("scripts", "make-data.R", package = "RegionSetDE")}.
+The script that generated the stored objects is installed with the package, at \code{system.file("scripts", "make-data.R", package = "RegionSetDE")}.
 }
 \examples{
 counts <- loadExampleData("counts")
@@ -34,7 +34,7 @@ counts
 
 fit <- loadExampleData("fit", verbose = FALSE)
 results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
-topRegions(results, n = 5)
+topRegions(results, n = 5, FDR = 1)
 
 }
 \seealso{

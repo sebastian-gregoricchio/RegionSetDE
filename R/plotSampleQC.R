@@ -116,7 +116,7 @@ plotRegionPCA <-
                      y.variance = varianceShare[dimensions[2]],
                      region.set = setName,
                      offset.label = offsetLabel,
-                     panel = sprintf("%s%s — PC%d %.1f%%, PC%d %.1f%%",
+                     panel = sprintf("%s%s - PC%d %.1f%%, PC%d %.1f%%",
                                      if (setName == "all") {""} else {paste0(setName, ", ")},
                                      offsetLabel, dimensions[1], varianceShare[dimensions[1]],
                                      dimensions[2], varianceShare[dimensions[2]]),

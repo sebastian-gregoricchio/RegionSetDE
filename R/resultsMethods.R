@@ -482,7 +482,7 @@ setMethod(f = "resultsTable",
                                   dplyr::relocate(
                                     dplyr::mutate(resultsTable(singleResult),
                                                   contrast = contrastName(singleResult)),
-                                    contrast)
+                                    "contrast")
                                 })
 
             return(dplyr::bind_rows(tableList))
@@ -503,7 +503,7 @@ setMethod(f = "resultsTable",
                                   dplyr::relocate(
                                     dplyr::mutate(resultsTable(singleResult),
                                                   contrast = contrastName(singleResult)),
-                                    contrast)
+                                    "contrast")
                                 })
 
             return(dplyr::bind_rows(tableList))
@@ -592,7 +592,7 @@ setMethod(f = "tileTable",
                                   dplyr::relocate(
                                     dplyr::mutate(singleTable,
                                                   contrast = contrastName(singleResult)),
-                                    contrast)
+                                    "contrast")
                                 })
 
             return(dplyr::bind_rows(tableList))
@@ -671,9 +671,3 @@ setMethod(f = "regionSetNames",
 
             return(regionSetNames(object@results[[1]]))
           })
-
-
-
-
-
-

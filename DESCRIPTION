@@ -80,5 +80,7 @@ Encoding: UTF-8
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/sebastian-gregoricchio/RegionSetDE/
+URL:
+  https://github.com/sebastian-gregoricchio/RegionSetDE/,
+  https://sebastian-gregoricchio.github.io/RegionSetDE/
 BugReports: https://github.com/sebastian-gregoricchio/RegionSetDE/issues

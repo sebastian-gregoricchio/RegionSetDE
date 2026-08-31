@@ -32,6 +32,8 @@
 
 \item{i}{String with the name of a contrast, or its position.}
 
+\item{j}{Not used, present because the \code{[[} generic carries it.}
+
 \item{...}{Not used.}
 
 \item{name}{String with the name of a contrast.}

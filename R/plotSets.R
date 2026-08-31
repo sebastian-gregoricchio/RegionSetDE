@@ -23,11 +23,14 @@
 #' Both levels of the colour scale are kept in the legend even when only one of them occurs, so that a figure in which nothing reaches the cut-off still says what the cut-off was.
 #'
 #' @examples
-#' \dontrun{
-#' plotSetEffect(setRes)
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+#'                              verbose = FALSE)
 #'
-#' plotSetEffect(setRes, value = "mean.log2FC", colourBy = "direction")
-#' }
+#' # One point per set, with its confidence interval
+#' plotSetEffect(setResults)
+#'
+#' plotSetEffect(setResults, value = "mean.log2FC", orderBy = "name")
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -190,11 +193,15 @@ plotSetEffect <-
 #' @return A \code{ggplot} object.
 #'
 #' @examples
-#' \dontrun{
-#' plotSetDistribution(setRes)
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+#'                              verbose = FALSE)
 #'
-#' plotSetDistribution(setRes, style = "ecdf")
-#' }
+#' # The whole fold change distribution behind each set-level statistic
+#' plotSetDistribution(setResults)
+#'
+#' plotSetDistribution(setResults, style = "boxplot", set = "promoterCpG")
+
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -349,22 +356,14 @@ plotSetDistribution <-
 #' Sets larger than \code{maxRegions} are thinned, deterministically, before the violin is computed. The annotation is unaffected, since it is read from the test rather than recomputed here.
 #'
 #' @examples
-#' \dontrun{
-#' # groupBy defaults to the column the contrast separates
-#' plotSetSignal(setRes)
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+#'                              verbose = FALSE)
 #'
-#' plotSetSignal(setRes, style = "boxplot", facetScales = "free_y")
+#' plotSetSignal(setResults, groupBy = "condition")
 #'
-#' # Ordered by replicate: the violins are recoloured, the bracket is dropped
-#' plotSetSignal(setRes, groupBy = "replicate")
-#'
-#' # Three groups, two brackets
-#' plotSetSignal(setRes, groupBy = "treatment",
-#'               comparisons = list(c("DMSO", "EPZ"), c("DMSO", "COMBO")))
-#'
-#' # Before any test has been run
-#' plotSetSignal(counts, groupBy = "treatment", annotate = FALSE)
-#' }
+#' plotSetSignal(setResults, set = "promoterCpG", groupBy = "condition",
+#'               style = "boxplot")
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -841,16 +840,14 @@ plotSetSignal <-
 #' @details One panel per region set, holding two density curves: the regions of the set and the rows it is compared against. Read it as a check on the matching rather than as a result. Curves lying on top of each other mean the two groups are comparable on that covariate, so a difference found by \code{\link{testRegionSets}} cannot be attributed to it. Curves offset from each other mean the matching did not find enough eligible rows in some strata, which happens when a set occupies a corner of the width or abundance range that nothing else reaches, and the numbers behind it are in the \code{diagnostics} slot of the universe.
 #'
 #' @examples
-#' \dontrun{
-#' # Straight off the fit, before any test has been run
-#' plotUniverseMatching(fit, covariate = "abundance")
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+#'                              verbose = FALSE)
 #'
-#' setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
-#' plotUniverseMatching(setRes, covariate = "width")
+#' # Whether the universe really matches the set it is compared against
+#' plotUniverseMatching(setResults, set = "promoterCpG")
 #'
-#' # On a universe built by hand
-#' plotUniverseMatching(fit, universe = makeSetUniverse(fit, match = "width"))
-#' }
+#' plotUniverseMatching(setResults, set = "promoterCpG", covariate = "width")
 #'
 #' @author Sebastian Gregoricchio
 #'

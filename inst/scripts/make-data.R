@@ -47,6 +47,11 @@ backgroundBinSize <- 10000L
 maxCrossCorrelationDistance <- 500L
 minimumMappingQuality <- 10L
 
+normalizationMethod <- "background"
+filterMethod <- "background"
+filterFoldChange <- 2
+fitEngine <- "edgeR"
+
 outputDir <- file.path("inst", "extdata")
 scriptDir <- file.path("inst", "scripts")
 ucscBaseUrl <- paste0("https://hgdownload.soe.ucsc.edu/goldenPath/",
@@ -522,6 +527,44 @@ counts <- RegionSetDE::countBackground(
 )
 
 
+# ---- Fit --------------------------------------------------------------------
+
+# The shipped counts object stays raw so that the vignette can run the
+# normalisation and the filtering itself. The fit is built on a separate copy.
+fitCountsObject <- RegionSetDE::normalizeCounts(
+  counts = counts,
+  method = normalizationMethod,
+  verbose = TRUE
+)
+
+fitCountsObject <- RegionSetDE::filterRegions(
+  counts = fitCountsObject,
+  method = filterMethod,
+  foldChange = filterFoldChange,
+  verbose = TRUE
+)
+
+# The formula is built against baseenv(): a formula created here would otherwise
+# carry the whole script environment into the serialised object.
+designFormula <- stats::as.formula("~ condition", env = baseenv())
+
+fit <- RegionSetDE::fitRegions(
+  counts = fitCountsObject,
+  design = designFormula,
+  engine = fitEngine,
+  verbose = TRUE
+)
+
+# One test run so that a broken fit is caught here and not in the man pages.
+testRun <- RegionSetDE::testRegions(
+  fit = fit,
+  contrast = c("condition", "SHR", "BN"),
+  verbose = FALSE
+)
+
+print(utils::head(RegionSetDE::topRegions(testRun, n = 5)))
+
+
 # ---- Save -------------------------------------------------------------------
 
 # bamPath is dropped: those paths point inside the installed chromstaRData tree
@@ -530,7 +573,8 @@ objectsToSave <- list(
   "euratrans_sampleSheet.rds" = sampleSheet |> dplyr::select(-bamPath),
   "euratrans_regions.rds" = regionTable,
   "euratrans_exclusionRegions.rds" = exclusionRegions,
-  "euratrans_counts.rds" = counts
+  "euratrans_counts.rds" = counts,
+  "euratrans_fit.rds" = fit
 )
 
 invisible(
@@ -563,6 +607,11 @@ buildMetadata <- list(
   exclusionSource = "UCSC rn4 gap track and high-coverage input bins",
   exclusionQuantile = exclusionQuantile,
   annotationSource = "TxDb.Rnorvegicus.UCSC.rn4.ensGene and UCSC cpgIslandExt",
+  normalizationMethod = normalizationMethod,
+  filterMethod = filterMethod,
+  filterFoldChange = filterFoldChange,
+  fitEngine = fitEngine,
+  fitDesign = "~ condition",
   sourceProject = "EURATRANS",
   sourcePackage = paste0(
     "chromstaRData ",

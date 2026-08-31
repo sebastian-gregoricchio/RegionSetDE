@@ -18,6 +18,17 @@ A \code{RegionSetDE.counts} object.
 \description{
 Returns the \code{RegionSetDE.counts} object on which a model was fitted.
 }
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+# The counts the model was fitted on, normalisation and filtering included
+fitCounts(fit)
+
+# The underlying engine object, here an edgeR fit
+class(fitObject(fit))
+
+
+}
 \author{
 Sebastian Gregoricchio
 }

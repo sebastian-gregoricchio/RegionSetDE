@@ -45,18 +45,20 @@ Returns the regions that respond most strongly to a contrast, optionally restric
 Ranking by \code{"log2FC"} sorts on the effect size alone and returns whatever passes the cut-offs, which on a small object is often a handful of low-count regions with a large and badly estimated fold change. Keep an FDR cut-off in place when doing so.
 }
 \examples{
-\dontrun{
-topRegions(res)
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
-topRegions(res, n = 20)
+# By default only the regions passing the thresholds come back
+topRegions(results, n = 10)
 
-# Twenty per set, so that a large set does not fill the table
-topRegions(res, n = 20, set = c("tss", "enhancers"))
+# FDR = 1 ranks everything instead, which is what you want when power is low
+topRegions(results, n = 10, FDR = 1)
 
-topRegions(res, n = 50, direction = "down", sortBy = "log2FC", FDR = 0.01)
+# One set at a time, ranked rather than filtered
+topRegions(results, n = 5, set = "promoterCpG", FDR = 1)
 
-topRegions(resList, contrast = "combo", set = "enhancers")
-}
+# Sorting by effect size instead of significance
+topRegions(results, n = 5, FDR = 1, sortBy = "log2FC", direction = "down")
 
 }
 \seealso{

@@ -2,24 +2,47 @@
 % Please edit documentation in R/resultsMethods.R
 \name{regionSetNames}
 \alias{regionSetNames}
-\alias{regionSetNames,RegionSetDE.results-method}
+\alias{regionSetNames,RegionSetDE-method}
+\alias{regionSetNames,RegionSetDE.counts-method}
 \alias{regionSetNames,RegionSetDE.fit-method}
+\alias{regionSetNames,RegionSetDE.results-method}
+\alias{regionSetNames,RegionSetDE.setResults-method}
+\alias{regionSetNames,RegionSetDE.resultsList-method}
+\alias{regionSetNames,RegionSetDE.setResultsList-method}
 \title{regionSetNames}
 \usage{
 regionSetNames(object)
 
-\S4method{regionSetNames}{RegionSetDE.results}(object)
+\S4method{regionSetNames}{RegionSetDE}(object)
+
+\S4method{regionSetNames}{RegionSetDE.counts}(object)
 
 \S4method{regionSetNames}{RegionSetDE.fit}(object)
+
+\S4method{regionSetNames}{RegionSetDE.results}(object)
+
+\S4method{regionSetNames}{RegionSetDE.setResults}(object)
+
+\S4method{regionSetNames}{RegionSetDE.resultsList}(object)
+
+\S4method{regionSetNames}{RegionSetDE.setResultsList}(object)
 }
 \arguments{
 \item{object}{\code{RegionSetDE}, \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or \code{RegionSetDE.results} object.}
 }
 \value{
-A character vector.
+Character vector with the names of the region sets, in the order they are stored.
 }
 \description{
-Returns the names of the region sets held by an object of the package.
+Returns the names of the region sets carried by an object, at any stage of the analysis.
+}
+\examples{
+counts <- loadExampleData("counts", verbose = FALSE)
+regionSetNames(counts)
+
+}
+\seealso{
+\code{\link{loadRegions}}, \code{\link{splitLoadRegions}}
 }
 \author{
 Sebastian Gregoricchio

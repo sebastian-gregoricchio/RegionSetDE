@@ -3,11 +3,20 @@
 \name{resultCounts}
 \alias{resultCounts}
 \alias{resultCounts,RegionSetDE.results-method}
+\alias{resultCounts,RegionSetDE.setResults-method}
+\alias{resultCounts,RegionSetDE.resultsList-method}
+\alias{resultCounts,RegionSetDE.setResultsList-method}
 \title{resultCounts}
 \usage{
 resultCounts(results)
 
 \S4method{resultCounts}{RegionSetDE.results}(results)
+
+\S4method{resultCounts}{RegionSetDE.setResults}(results)
+
+\S4method{resultCounts}{RegionSetDE.resultsList}(results)
+
+\S4method{resultCounts}{RegionSetDE.setResultsList}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object.}

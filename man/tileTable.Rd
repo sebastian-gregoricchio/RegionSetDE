@@ -3,11 +3,14 @@
 \name{tileTable}
 \alias{tileTable}
 \alias{tileTable,RegionSetDE.results-method}
+\alias{tileTable,RegionSetDE.resultsList-method}
 \title{tileTable}
 \usage{
 tileTable(results)
 
 \S4method{tileTable}{RegionSetDE.results}(results)
+
+\S4method{tileTable}{RegionSetDE.resultsList}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object.}
@@ -17,6 +20,32 @@ A data.frame with one row per tile.
 }
 \description{
 Returns the per-tile table of a \code{RegionSetDE.results} object, empty when the counts were not tiled.
+}
+\examples{
+# Tiling splits each region into fixed-width windows, kept alongside the region
+bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
+
+exampleRegions <- GenomicRanges::GRanges(
+  seqnames = rep(c("seq1", "seq2"), each = 2),
+  ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400))
+
+exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 2)
+
+exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
+                                seqlevelsStyle = NULL, verbose = FALSE)
+
+tiledCounts <- countReads(exampleSets, bamFiles = bamFile,
+                          sampleNames = "example", tileWidth = 100,
+                          verbose = FALSE)
+
+head(SummarizedExperiment::rowData(tiledCounts))
+
+\dontrun{
+# After testing, the per-tile statistics sit behind the combined ones
+tiledResults <- testRegions(tiledFit, contrast = c("condition", "SHR", "BN"))
+head(tileTable(tiledResults))
+}
+
 }
 \author{
 Sebastian Gregoricchio

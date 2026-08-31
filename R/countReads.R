@@ -27,6 +27,26 @@
 #' Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.
 #'
 #' @examples
+#' # Rsamtools ships a small alignment file, enough to run the counting itself
+#' bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
+#'
+#' exampleRegions <- GenomicRanges::GRanges(
+#'   seqnames = rep(c("seq1", "seq2"), each = 3),
+#'   ranges = IRanges::IRanges(start = rep(c(1, 500, 1000), 2), width = 300))
+#'
+#' exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 3)
+#'
+#' exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
+#'                                 seqlevelsStyle = NULL, verbose = FALSE)
+#'
+#' counts <- countReads(exampleSets,
+#'                      bamFiles = bamFile,
+#'                      sampleNames = "example",
+#'                      verbose = FALSE)
+#' counts
+#'
+#' SummarizedExperiment::assay(counts, "counts")
+#'
 #' \dontrun{
 #' counts <- countReads(regions,
 #'                      bamFiles = list.files("bam", pattern = "\\.bam$", full.names = TRUE),
@@ -37,6 +57,7 @@
 #'
 #' countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
 #' }
+#'
 #'
 #' @author Sebastian Gregoricchio
 #'

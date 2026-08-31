@@ -26,11 +26,13 @@
 #' The median line is the number to read: a set whose median sits at zero behaves like the rest of the genome under the chosen normalisation, whichever way the individual regions scatter. When every set shares the same non zero median, the shift belongs to the normalisation rather than to the biology.
 #'
 #' @examples
-#' \dontrun{
-#' plotSetMA(counts, groupBy = "treatment", contrast = c("combo", "DMSO"))
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#' plotSetMA(counts, set = "H2AK119ub1_peaks", groupBy = "treatment", contrast = c("combo", "DMSO"))
-#' }
+#' # One panel per region set, each against the rest of the data
+#' plotSetMA(counts, groupBy = "condition")
+#'
+#' plotSetMA(counts, set = "promoterCpG", groupBy = "condition")
 #'
 #' @author Sebastian Gregoricchio
 #'

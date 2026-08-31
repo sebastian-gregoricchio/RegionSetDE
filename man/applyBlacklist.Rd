@@ -42,9 +42,16 @@ An object of the same class as the input, with the blacklisted regions removed. 
 Removes from every region set the regions overlapping a blacklist, such as the ENCODE blacklisted regions. The blacklist can be provided as a BED-like file, a \code{GRanges} or a data.frame.
 }
 \examples{
-\dontrun{
-regions <- applyBlacklist(regions, blacklist = "hg38-blacklist.v2.bed")
-}
+regionTable <- loadExampleData("regions", verbose = FALSE)
+exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
+
+regions <- splitLoadRegions(
+  GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+  splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+
+# The example regions are shipped before the filtering, so this removes rows
+regions <- applyBlacklist(regions, blacklist = exclusionRegions, verbose = FALSE)
+regions
 
 }
 \seealso{

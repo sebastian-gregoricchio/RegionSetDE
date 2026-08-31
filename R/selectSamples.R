@@ -15,13 +15,14 @@
 #' The background bins stored in the metadata, when present, are subset along with the regions.
 #'
 #' @examples
-#' \dontrun{
-#' k27 <- selectSamples(counts, mark == "H3K27ac")
+#' counts <- loadExampleData("counts", verbose = FALSE)
 #'
-#' k27dmso <- selectSamples(counts, mark == "H3K27ac", condition %in% c("DMSO", "COMBO"))
+#' brownNorway <- selectSamples(counts, condition == "BN", verbose = FALSE)
+#' SummarizedExperiment::colData(brownNorway)
 #'
-#' subsetCounts <- selectSamples(counts, samples = c("dmso_rep1", "combo_rep1"))
-#' }
+#' firstReplicates <- selectSamples(counts, biologicalReplicate == "bio2",
+#'                                  verbose = FALSE)
+#' SummarizedExperiment::colData(firstReplicates)
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -145,13 +146,11 @@ selectSamples <-
 #' @return A named list of \code{RegionSetDE.counts} objects.
 #'
 #' @examples
-#' \dontrun{
-#' countsByMark <- splitSamples(counts, by = "mark")
+#' counts <- loadExampleData("counts", verbose = FALSE)
 #'
-#' countsByMark <- lapply(countsByMark, normalizeCounts, method = "background")
-#'
-#' fitList <- lapply(countsByMark, fitRegions, design = ~ replicate + condition, engine = "edgeR")
-#' }
+#' byStrain <- splitSamples(counts, by = "condition", verbose = FALSE)
+#' names(byStrain)
+#' byStrain[[1]]
 #'
 #' @author Sebastian Gregoricchio
 #'

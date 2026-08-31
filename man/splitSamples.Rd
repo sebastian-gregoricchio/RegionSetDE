@@ -30,13 +30,11 @@ A named list of \code{RegionSetDE.counts} objects.
 Splits a \code{RegionSetDE.counts} object into a list of objects, one per level of a column of the \code{colData}. Convenient when several marks or assays have been counted together over the same regions and each of them needs its own normalisation and its own fit.
 }
 \examples{
-\dontrun{
-countsByMark <- splitSamples(counts, by = "mark")
+counts <- loadExampleData("counts", verbose = FALSE)
 
-countsByMark <- lapply(countsByMark, normalizeCounts, method = "background")
-
-fitList <- lapply(countsByMark, fitRegions, design = ~ replicate + condition, engine = "edgeR")
-}
+byStrain <- splitSamples(counts, by = "condition", verbose = FALSE)
+names(byStrain)
+byStrain[[1]]
 
 }
 \seealso{

@@ -18,6 +18,14 @@
 #' @return A \code{RegionSetDE} object or, depending on \code{outputFormat}, a named \code{GRangesList} or a named list of \code{GRanges}.
 #'
 #' @examples
+#' regionTable <- loadExampleData("regions", verbose = FALSE)
+#'
+#' regionList <- split(regionTable[, c("seqnames", "start", "end")],
+#'                     regionTable$setName)
+#'
+#' regions <- loadRegions(regionList, genomeAssembly = "rn4", verbose = FALSE)
+#' regions
+#'
 #' \dontrun{
 #' regions <- loadRegions(list(promoters = "peaks/promoters.bed",
 #'                             enhancers = grEnhancers,

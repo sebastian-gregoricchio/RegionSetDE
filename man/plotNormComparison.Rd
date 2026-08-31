@@ -57,11 +57,13 @@ Compares the scaling factors that different normalisation methods give for the s
 The MA plot is drawn on the raw counts, so what it shows is the bias before any correction: a cloud sitting away from zero means that the sample and the reference differ by more than a common factor. The line of each method marks the shift that method would subtract, which makes the comparison direct, a line running through the middle of the cloud describes the data while one sitting off to the side does not. Methods estimated on the regions follow the regions by construction, so the interesting comparison is against \code{"background"} or against a manual set of factors, which are free to disagree.
 }
 \examples{
-\dontrun{
+counts <- loadExampleData("counts", verbose = FALSE)
+
+# Scaling factors from four methods side by side, before committing to one
 plotNormComparison(counts)
 
-plotNormComparison(counts, plotType = "ma", useBackground = TRUE)
-}
+# The numbers behind the panel
+head(plotNormComparison(counts, returnData = TRUE))
 
 }
 \seealso{

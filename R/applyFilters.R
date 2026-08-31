@@ -285,9 +285,16 @@
 #' @return An object of the same class as the input, with the blacklisted regions removed. For a \code{RegionSetDE} object the blacklist and the filtering counts are stored in the corresponding slots.
 #'
 #' @examples
-#' \dontrun{
-#' regions <- applyBlacklist(regions, blacklist = "hg38-blacklist.v2.bed")
-#' }
+#' regionTable <- loadExampleData("regions", verbose = FALSE)
+#' exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
+#'
+#' regions <- splitLoadRegions(
+#'   GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+#'   splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+#'
+#' # The example regions are shipped before the filtering, so this removes rows
+#' regions <- applyBlacklist(regions, blacklist = exclusionRegions, verbose = FALSE)
+#' regions
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -338,9 +345,19 @@ applyBlacklist <-
 #' @return An object of the same class as the input, restricted to the whitelisted regions. For a \code{RegionSetDE} object the whitelist and the filtering counts are stored in the corresponding slots.
 #'
 #' @examples
-#' \dontrun{
-#' regions <- applyWhitelist(regions, whitelist = "hg38-accessible-regions.bed")
-#' }
+#' regionTable <- loadExampleData("regions", verbose = FALSE)
+#'
+#' regions <- splitLoadRegions(
+#'   GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+#'   splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+#'
+#' # Restrict the analysis to the first half of the chromosome
+#' whitelist <- GenomicRanges::GRanges(
+#'   seqnames = "chr12",
+#'   ranges = IRanges::IRanges(start = 1, end = 25e6))
+#'
+#' regions <- applyWhitelist(regions, whitelist = whitelist, verbose = FALSE)
+#' regions
 #'
 #' @author Sebastian Gregoricchio
 #'

@@ -85,16 +85,15 @@ The bars carry the colour of the direction they point to and no outline of their
 On a tiled object the rows of the counts are tiles, so a region contributes several of them. Only the tile carrying the region level statistic is drawn, which is the representative tile chosen by the Simes combination in \code{\link{testRegions}}.
 }
 \examples{
-\dontrun{
-plotTopHeatmap(res, n = 25, annotationColumns = c("condition", "replicate"))
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
-plotTopHeatmap(res, n = 40, sortBy = "FDR", direction = "down", scaleRows = FALSE)
+# FDR = 1 ranks the regions instead of filtering them, which this small
+# example dataset needs to fill a heatmap
+plotTopHeatmap(results, n = 25, FDR = 1)
 
-plotTopHeatmap(res, limits = c(-1.5, 1.5))
-
-heatmapObject <- plotTopHeatmap(resList, contrast = "combo")
-ComplexHeatmap::draw(heatmapObject, merge_legend = TRUE)
-}
+plotTopHeatmap(results, n = 15, set = "promoterCpG", FDR = 1,
+               annotationColumns = "condition")
 
 }
 \seealso{

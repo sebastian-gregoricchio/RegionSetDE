@@ -3,11 +3,20 @@
 \name{contrastName}
 \alias{contrastName}
 \alias{contrastName,RegionSetDE.results-method}
+\alias{contrastName,RegionSetDE.setResults-method}
+\alias{contrastName,RegionSetDE.resultsList-method}
+\alias{contrastName,RegionSetDE.setResultsList-method}
 \title{contrastName}
 \usage{
 contrastName(results)
 
 \S4method{contrastName}{RegionSetDE.results}(results)
+
+\S4method{contrastName}{RegionSetDE.setResults}(results)
+
+\S4method{contrastName}{RegionSetDE.resultsList}(results)
+
+\S4method{contrastName}{RegionSetDE.setResultsList}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object.}
@@ -17,6 +26,13 @@ A string.
 }
 \description{
 Returns the contrast that produced a \code{RegionSetDE.results} object.
+}
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+
+contrastName(results)
+
 }
 \author{
 Sebastian Gregoricchio

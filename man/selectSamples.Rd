@@ -35,13 +35,14 @@ Marks, and more generally experiments run on different antibodies or different a
 The background bins stored in the metadata, when present, are subset along with the regions.
 }
 \examples{
-\dontrun{
-k27 <- selectSamples(counts, mark == "H3K27ac")
+counts <- loadExampleData("counts", verbose = FALSE)
 
-k27dmso <- selectSamples(counts, mark == "H3K27ac", condition \%in\% c("DMSO", "COMBO"))
+brownNorway <- selectSamples(counts, condition == "BN", verbose = FALSE)
+SummarizedExperiment::colData(brownNorway)
 
-subsetCounts <- selectSamples(counts, samples = c("dmso_rep1", "combo_rep1"))
-}
+firstReplicates <- selectSamples(counts, biologicalReplicate == "bio2",
+                                 verbose = FALSE)
+SummarizedExperiment::colData(firstReplicates)
 
 }
 \seealso{

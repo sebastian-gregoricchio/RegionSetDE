@@ -35,12 +35,12 @@ The object is returned unfitted, so \code{DESeq2::DESeq} still has to be run on 
 There is no \code{as(counts, "DESeqDataSet")} to go with it, because a coercion has to be registered when the package is built and the class it points at only exists when \code{DESeq2} is installed.
 }
 \examples{
-\dontrun{
-dds <- asDESeqDataSet(counts, design = ~ replicate + treatment)
-dds <- DESeq2::DESeq(dds)
+counts <- loadExampleData("counts", verbose = FALSE)
+counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
-# Straight off a fit, keeping its design
-dds <- asDESeqDataSet(fit)
+if (requireNamespace("DESeq2", quietly = TRUE)) {
+  deseqData <- asDESeqDataSet(counts, design = ~ condition, verbose = FALSE)
+  deseqData
 }
 
 }

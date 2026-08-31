@@ -31,13 +31,13 @@
 #' The counts in the corners come from the full table, before any thinning, and they are the number of regions labelled \code{"down"} on the left and \code{"up"} on the right.
 #'
 #' @examples
-#' \dontrun{
-#' plotVolcano(res)
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 #'
-#' plotVolcano(res, facetScales = "free_y", labelTop = 10)
+#' plotVolcano(results)
 #'
-#' plotVolcano(resList, contrast = "combo", title = "**H3K27ac**", subtitle = "*COMBO vs DMSO*")
-#' }
+#' # One set, with the strongest regions labelled
+#' plotVolcano(results, set = "promoterCpG", labelTop = 5)
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -211,11 +211,12 @@ plotVolcano <-
 #' @details A trend that leaves zero at one end of the abundance range is the usual sign that the normalisation has not done its job, and it is easier to see here than on any summary statistic. This plot answers a different question from \code{\link{plotSetMA}}, which compares samples before any model is fitted: here the y axis is a fitted coefficient rather than a difference between two libraries.
 #'
 #' @examples
-#' \dontrun{
-#' plotResultsMA(res)
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 #'
-#' plotResultsMA(res, facetScales = "free_x", showTrend = TRUE)
-#' }
+#' plotResultsMA(results)
+#'
+#' plotResultsMA(results, set = "promoterCpG", facetBySet = FALSE)
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -362,13 +363,15 @@ plotResultsMA <-
 #' @details The values come from the object and nothing is re-read from the BAM or bigWig files, so the resolution of the plot is the resolution of the counting. A region counted as a single row gives a single point per sample, which is the honest picture of what the model saw.
 #'
 #' @examples
-#' \dontrun{
-#' plotRegion(res, region = "enhancers|enh_00412", groupBy = "condition")
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 #'
-#' plotRegion(res, region = "tss|ENSG00000141510", groupBy = "condition", summarise = TRUE)
+#' topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
 #'
-#' plotRegion(counts, region = "enhancers|enh_00412", groupBy = "treatment")
-#' }
+#' plotRegion(results, region = topRegion, groupBy = "condition")
+#'
+#' # Summarised to one point per group rather than one per sample
+#' plotRegion(results, region = topRegion, groupBy = "condition", summarise = TRUE)
 #'
 #' @author Sebastian Gregoricchio
 #'

@@ -22,14 +22,21 @@
 #' @return A \code{RegionSetDE} object or, depending on \code{outputFormat}, a named \code{GRangesList} or a named list of \code{GRanges}.
 #'
 #' @examples
+#' regionTable <- loadExampleData("regions", verbose = FALSE)
+#'
+#' regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
+#'                                                         keep.extra.columns = TRUE)
+#'
+#' regions <- splitLoadRegions(regionRanges,
+#'                             splitBy = "setName",
+#'                             genomeAssembly = "rn4",
+#'                             verbose = FALSE)
+#' regionSetNames(regions)
+#'
 #' \dontrun{
 #' regions <- splitLoadRegions("peaks/all_peaks_annotated.bed",
 #'                             splitBy = "name",
 #'                             genomeAssembly = "hg38")
-#'
-#' regions <- splitLoadRegions(grAllPeaks,
-#'                             splitBy = "cluster",
-#'                             minRegionsPerSet = 50)
 #' }
 #'
 #' @author Sebastian Gregoricchio

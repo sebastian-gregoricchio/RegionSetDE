@@ -14,16 +14,11 @@
 #' \code{as(counts, "DGEList")} does the same with the defaults.
 #'
 #' @examples
-#' \dontrun{
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#'
 #' dgeList <- asDGEList(counts)
-#' edgeR::plotMDS(dgeList)
-#'
-#' # The same thing
-#' dgeList <- as(counts, "DGEList")
-#'
-#' # Raw counts and library sizes, with the normalisation left out
-#' dgeList <- asDGEList(counts, useOffsets = FALSE)
-#' }
+#' dgeList$samples
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -123,12 +118,12 @@ asDGEList <-
 #' There is no \code{as(counts, "DESeqDataSet")} to go with it, because a coercion has to be registered when the package is built and the class it points at only exists when \code{DESeq2} is installed.
 #'
 #' @examples
-#' \dontrun{
-#' dds <- asDESeqDataSet(counts, design = ~ replicate + treatment)
-#' dds <- DESeq2::DESeq(dds)
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#' # Straight off a fit, keeping its design
-#' dds <- asDESeqDataSet(fit)
+#' if (requireNamespace("DESeq2", quietly = TRUE)) {
+#'   deseqData <- asDESeqDataSet(counts, design = ~ condition, verbose = FALSE)
+#'   deseqData
 #' }
 #'
 #' @author Sebastian Gregoricchio

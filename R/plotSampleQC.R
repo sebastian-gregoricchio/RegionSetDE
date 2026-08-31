@@ -29,14 +29,14 @@
 #' Marks and assays should not share an ordination any more than they share a model. Split with \code{\link{splitSamples}} first, or use \code{facetBySet} when the sets themselves are the question.
 #'
 #' @examples
-#' \dontrun{
-#' plotRegionPCA(counts, colourBy = "treatment", shapeBy = "replicate")
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#' # Is the separation in the data, or in the scaling factors?
-#' plotRegionPCA(counts, colourBy = "treatment", compareOffsets = TRUE)
+#' plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 #'
-#' plotRegionPCA(counts, colourBy = "treatment", facetBySet = TRUE)
-#' }
+#' # Restricted to one set, which is where the strain effect should show
+#' plotRegionPCA(counts, set = "promoterCpG", colourBy = "condition")
+
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -219,14 +219,14 @@ plotRegionPCA <-
 #' The clustering order is taken from the first panel and reused in the others, so that a comparison across \code{compareOffsets} shows the values changing rather than the rows moving. No dendrogram is drawn for the same reason: a single dendrogram cannot describe several panels, and one per panel would defeat the comparison.
 #'
 #' @examples
-#' \dontrun{
-#' plotSampleCorrelation(counts, groupBy = "treatment")
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#' # Does the clustering survive the normalisation being removed?
-#' plotSampleCorrelation(counts, groupBy = "treatment", compareOffsets = TRUE)
+#' plotSampleCorrelation(counts, groupBy = "condition")
 #'
-#' plotSampleCorrelation(counts, limits = c(0.9, 1), digits = 3)
-#' }
+#' # Pearson on the CpG island promoters only
+#' plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson")
+
 #'
 #' @author Sebastian Gregoricchio
 #'

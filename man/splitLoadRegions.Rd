@@ -63,14 +63,21 @@ A \code{RegionSetDE} object or, depending on \code{outputFormat}, a named \code{
 Imports a collection of genomic regions stored in a single object or file and splits them into individual region sets according to the values of one of its columns. The regions can be provided as a \code{GRanges}, a data.frame or the path to a BED-like/tabular file. All the arguments controlling the import are passed to \code{\link{loadRegions}}.
 }
 \examples{
+regionTable <- loadExampleData("regions", verbose = FALSE)
+
+regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
+                                                        keep.extra.columns = TRUE)
+
+regions <- splitLoadRegions(regionRanges,
+                            splitBy = "setName",
+                            genomeAssembly = "rn4",
+                            verbose = FALSE)
+regionSetNames(regions)
+
 \dontrun{
 regions <- splitLoadRegions("peaks/all_peaks_annotated.bed",
                             splitBy = "name",
                             genomeAssembly = "hg38")
-
-regions <- splitLoadRegions(grAllPeaks,
-                            splitBy = "cluster",
-                            minRegionsPerSet = 50)
 }
 
 }

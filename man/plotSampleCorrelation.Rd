@@ -92,14 +92,13 @@ With \code{groupBy}, the mean correlation within a group and between groups is w
 The clustering order is taken from the first panel and reused in the others, so that a comparison across \code{compareOffsets} shows the values changing rather than the rows moving. No dendrogram is drawn for the same reason: a single dendrogram cannot describe several panels, and one per panel would defeat the comparison.
 }
 \examples{
-\dontrun{
-plotSampleCorrelation(counts, groupBy = "treatment")
+counts <- loadExampleData("counts", verbose = FALSE)
+counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
-# Does the clustering survive the normalisation being removed?
-plotSampleCorrelation(counts, groupBy = "treatment", compareOffsets = TRUE)
+plotSampleCorrelation(counts, groupBy = "condition")
 
-plotSampleCorrelation(counts, limits = c(0.9, 1), digits = 3)
-}
+# Pearson on the CpG island promoters only
+plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson")
 
 }
 \seealso{

@@ -19,28 +19,19 @@
 #' @return A list with the p-values of the null rows, the proportions passing the two cut-offs, the same broken down by abundance, the dispersion the fit used, a suggested one when it is off, and the verdict.
 #'
 #' @details The logic is the same one that made the dispersion estimable in the first place. Rows assumed not to respond are fitted with the same design, the same offsets, the same dispersion and the same test as the regions, and their p-values are read against what they should look like if nothing is happening: uniform between zero and one, with a fraction \code{pValue} of them below the raw cut-off and essentially none surviving the correction.
-#'
 #' Too many small p-values means the dispersion is too low, the fit is treating library-to-library variation as treatment effect, and the regions are inheriting the same optimism at the same rate. Too few means the opposite and costs power rather than credibility. The ratio of what was seen to what was expected is reported as the inflation, and one is what a calibrated fit looks like.
-#'
 #' Checking a dispersion on the rows it was fitted to would be calibrated by construction, so \code{\link{estimateNullDispersion}} holds half of them back and this function uses that half by default. Passing \code{subset} yourself overrides it, and a check run against a region set believed to be invariant, with the dispersion estimated on the genome, is stronger still.
-#'
 #' The breakdown by abundance is where the answer usually is when the check fails. Overdispersion concentrated in the weakest rows means the filter was too loose and \code{\link{filterRegions}} is the fix; raising the dispersion globally would instead cost real signal in the abundant rows to pay for noise in the faint ones.
 #'
 #' @examples
-#' \dontrun{
-#' fit <- fitRegions(counts, design = "~ 0 + sample")
+#' fit <- loadExampleData("fit", verbose = FALSE)
 #'
-#' # Uses the rows the fit held out of its estimate
-#' calibration <- checkNullCalibration(fit, contrast = c("sample", "COMBO_rep1", "DMSO_rep1"))
-#' calibration$inflation
-#'
-#' plotNullCalibration(calibration)
-#' plotNullCalibration(calibration, style = "abundance")
-#'
-#' # A stronger check: estimated on the genome, checked on a set believed to be invariant
-#' calibration <- checkNullCalibration(fit, contrast = c("sample", "COMBO_rep1", "DMSO_rep1"),
-#'                                     source = "regionSet", regionSets = "housekeeping")
-#' }
+#' # The background bins carry no strain effect, so the p-values should be flat
+#' calibration <- checkNullCalibration(fit,
+#'                                     contrast = c("condition", "SHR", "BN"),
+#'                                     source = "background",
+#'                                     verbose = FALSE)
+#' calibration
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -335,13 +326,17 @@ checkNullCalibration <-
 #' The quantile plot says the same thing with more resolution in the tail, which is where the regions that end up in a figure come from. The abundance plot says where the trouble is: a flat line across the strata means the dispersion is wrong everywhere, while a line rising towards the weak rows means the filter is too loose and \code{\link{filterRegions}} is the fix.
 #'
 #' @examples
-#' \dontrun{
-#' calibration <- checkNullCalibration(fit, contrast = c("sample", "COMBO_rep1", "DMSO_rep1"))
+#' fit <- loadExampleData("fit", verbose = FALSE)
 #'
+#' calibration <- checkNullCalibration(fit,
+#'                                     contrast = c("condition", "SHR", "BN"),
+#'                                     source = "background",
+#'                                     verbose = FALSE)
+#'
+#' # A flat histogram is what a well calibrated test looks like
 #' plotNullCalibration(calibration)
+#'
 #' plotNullCalibration(calibration, style = "qq")
-#' plotNullCalibration(calibration, style = "abundance")
-#' }
 #'
 #' @author Sebastian Gregoricchio
 #'

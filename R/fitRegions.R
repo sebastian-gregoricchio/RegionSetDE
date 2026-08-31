@@ -30,21 +30,21 @@
 #' Low-count rows are not removed here. Filter them with \code{\link{filterRegions}} first, or the dispersion trend is fitted on rows that carry no information.
 #'
 #' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- filterRegions(counts, verbose = FALSE)
+#'
+#' fit <- fitRegions(counts, design = ~ condition, engine = "edgeR", verbose = FALSE)
+#' fit
+#'
+#' \donttest{
+#' # limma-voom on the same design
+#' voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
+#' }
+#'
 #' \dontrun{
-#' k27 <- selectSamples(counts, mark == "H3K27ac")
-#' k27 <- normalizeCounts(k27, method = "background")
-#'
-#' fit <- fitRegions(k27, design = ~ replicate + condition, engine = "edgeR")
-#'
-#' # No replicates: the dispersion comes from the background bins, and is reported
-#' fitSingle <- fitRegions(k27, design = "~ 0 + sample")
-#' checkNullCalibration(fitSingle, contrast = c("sample", "COMBO_rep1", "DMSO_rep1"))
-#'
-#' # Repeated measures on the same donors, without spending a coefficient per donor
-#' fitBlocked <- fitRegions(k27, design = ~ condition, engine = "voom", block = "donor")
-#'
-#' # The same structure written as a random effect
-#' fitMixed <- fitRegions(k27, design = ~ condition + (1|donor), engine = "dream")
+#' # Random effects need the dream engine and the formula given as such
+#' mixedFit <- fitRegions(counts, design = ~ condition + (1|donor), engine = "dream")
 #' }
 #'
 #' @author Sebastian Gregoricchio

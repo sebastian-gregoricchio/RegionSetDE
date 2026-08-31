@@ -51,12 +51,22 @@ Summarises the signal of a group of bigWig files over the regions of a \code{Reg
 A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the \code{library.size} column of the \code{colData} is left as \code{NA} and the total signal falling in the regions is reported in \code{total.signal} instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig, and the values are rounded by default because the count-based models expect integers. Files carrying an already normalised coverage will produce values that no longer follow a count distribution, which is worth keeping in mind at the testing step.
 }
 \examples{
-\dontrun{
-counts <- countBigwig(regions,
-                      bigwigFiles = list.files("bigwig", pattern = "\\\\.bw$", full.names = TRUE),
-                      summaryFunction = "sum",
-                      nThreads = 4)
-}
+# rtracklayer ships a small bigWig, and the regions are taken from its own content
+bigwigFile <- file.path(system.file("tests", package = "rtracklayer"), "test.bw")
+
+exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+exampleRegions$setName <- "covered"
+
+exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
+                                seqlevelsStyle = NULL, verbose = FALSE)
+
+signal <- countBigwig(exampleSets,
+                      bigwigFiles = bigwigFile,
+                      sampleNames = "example",
+                      verbose = FALSE)
+signal
+
+SummarizedExperiment::assay(signal, "counts")
 
 }
 \seealso{

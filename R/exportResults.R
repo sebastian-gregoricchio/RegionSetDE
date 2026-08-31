@@ -25,14 +25,18 @@
 #' A set level result has no coordinates of its own and only the table is written.
 #'
 #' @examples
-#' \dontrun{
-#' exportResults(res, path = "results/H3K27ac")
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 #'
-#' # One set of files per contrast
-#' exportResults(resList, path = "results", onlyChanging = TRUE, splitByDirection = TRUE)
+#' outputDirectory <- file.path(tempdir(), "regionSetDE-example")
+#' dir.create(outputDirectory, showWarnings = FALSE)
 #'
-#' exportResults(setRes, path = "results", prefix = "sets")
-#' }
+#' exportResults(results, path = outputDirectory, prefix = "euratrans",
+#'               verbose = FALSE)
+#'
+#' list.files(outputDirectory)
+#'
+#' unlink(outputDirectory, recursive = TRUE)
 #'
 #' @author Sebastian Gregoricchio
 #'

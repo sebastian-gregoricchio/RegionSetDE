@@ -51,6 +51,14 @@ A \code{RegionSetDE} object or, depending on \code{outputFormat}, a named \code{
 Imports a collection of genomic regions provided as BED-like files and/or GRanges objects and returns them as a single \code{RegionSetDE} object. Files, ranges and data.frames can be mixed within the same list.
 }
 \examples{
+regionTable <- loadExampleData("regions", verbose = FALSE)
+
+regionList <- split(regionTable[, c("seqnames", "start", "end")],
+                    regionTable$setName)
+
+regions <- loadRegions(regionList, genomeAssembly = "rn4", verbose = FALSE)
+regions
+
 \dontrun{
 regions <- loadRegions(list(promoters = "peaks/promoters.bed",
                             enhancers = grEnhancers,

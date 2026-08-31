@@ -3,11 +3,20 @@
 \name{resultsTable}
 \alias{resultsTable}
 \alias{resultsTable,RegionSetDE.results-method}
+\alias{resultsTable,RegionSetDE.setResults-method}
+\alias{resultsTable,RegionSetDE.resultsList-method}
+\alias{resultsTable,RegionSetDE.setResultsList-method}
 \title{resultsTable}
 \usage{
 resultsTable(results)
 
 \S4method{resultsTable}{RegionSetDE.results}(results)
+
+\S4method{resultsTable}{RegionSetDE.setResults}(results)
+
+\S4method{resultsTable}{RegionSetDE.resultsList}(results)
+
+\S4method{resultsTable}{RegionSetDE.setResultsList}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object.}
@@ -17,6 +26,17 @@ A data.frame with one row per region.
 }
 \description{
 Returns the per-region table of a \code{RegionSetDE.results} object.
+}
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+
+resultTable <- resultsTable(results)
+head(resultTable)
+
+table(resultTable$region.set, resultTable$diff.status)
+
+
 }
 \author{
 Sebastian Gregoricchio

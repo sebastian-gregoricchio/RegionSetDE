@@ -49,17 +49,18 @@ Asks whether a contrast affects one region set differently from another. This is
 }
 \details{
 The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with a confidence interval carrying the variance inflation of both sets.
-
 A region that belongs to both sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Those regions are removed by default and the number removed is reported; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
 }
 \examples{
-\dontrun{
-setContrast <- testSetContrast(fit, contrast = "conditionCOMBO",
-                               set1 = "enhancers", set2 = "tss")
+fit <- loadExampleData("fit", verbose = FALSE)
 
-# Every pair at once
-allPairs <- testSetContrast(fit, contrast = "conditionCOMBO")
-}
+# Do the CpG island promoters respond differently from the intergenic control?
+setContrast <- testSetContrast(fit,
+                               contrast = c("condition", "SHR", "BN"),
+                               set1 = "promoterCpG",
+                               set2 = "intergenic",
+                               verbose = FALSE)
+setContrast
 
 }
 \seealso{

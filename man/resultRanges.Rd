@@ -3,11 +3,14 @@
 \name{resultRanges}
 \alias{resultRanges}
 \alias{resultRanges,RegionSetDE.results-method}
+\alias{resultRanges,RegionSetDE.resultsList-method}
 \title{resultRanges}
 \usage{
 resultRanges(results)
 
 \S4method{resultRanges}{RegionSetDE.results}(results)
+
+\S4method{resultRanges}{RegionSetDE.resultsList}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object.}

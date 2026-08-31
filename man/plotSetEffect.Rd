@@ -59,11 +59,14 @@ Draws the effect size of every region set with its confidence interval, which is
 Both levels of the colour scale are kept in the legend even when only one of them occurs, so that a figure in which nothing reaches the cut-off still says what the cut-off was.
 }
 \examples{
-\dontrun{
-plotSetEffect(setRes)
+fit <- loadExampleData("fit", verbose = FALSE)
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
 
-plotSetEffect(setRes, value = "mean.log2FC", colourBy = "direction")
-}
+# One point per set, with its confidence interval
+plotSetEffect(setResults)
+
+plotSetEffect(setResults, value = "mean.log2FC", orderBy = "name")
 
 }
 \seealso{

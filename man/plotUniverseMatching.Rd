@@ -45,16 +45,14 @@ Compares a region set with the rows it is compared against, on width and on abun
 One panel per region set, holding two density curves: the regions of the set and the rows it is compared against. Read it as a check on the matching rather than as a result. Curves lying on top of each other mean the two groups are comparable on that covariate, so a difference found by \code{\link{testRegionSets}} cannot be attributed to it. Curves offset from each other mean the matching did not find enough eligible rows in some strata, which happens when a set occupies a corner of the width or abundance range that nothing else reaches, and the numbers behind it are in the \code{diagnostics} slot of the universe.
 }
 \examples{
-\dontrun{
-# Straight off the fit, before any test has been run
-plotUniverseMatching(fit, covariate = "abundance")
+fit <- loadExampleData("fit", verbose = FALSE)
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
 
-setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
-plotUniverseMatching(setRes, covariate = "width")
+# Whether the universe really matches the set it is compared against
+plotUniverseMatching(setResults, set = "promoterCpG")
 
-# On a universe built by hand
-plotUniverseMatching(fit, universe = makeSetUniverse(fit, match = "width"))
-}
+plotUniverseMatching(setResults, set = "promoterCpG", covariate = "width")
 
 }
 \seealso{

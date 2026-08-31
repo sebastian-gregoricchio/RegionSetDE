@@ -44,13 +44,17 @@ A flat histogram sitting on the expected line is the target. Bars piling up near
 The quantile plot says the same thing with more resolution in the tail, which is where the regions that end up in a figure come from. The abundance plot says where the trouble is: a flat line across the strata means the dispersion is wrong everywhere, while a line rising towards the weak rows means the filter is too loose and \code{\link{filterRegions}} is the fix.
 }
 \examples{
-\dontrun{
-calibration <- checkNullCalibration(fit, contrast = c("sample", "COMBO_rep1", "DMSO_rep1"))
+fit <- loadExampleData("fit", verbose = FALSE)
 
+calibration <- checkNullCalibration(fit,
+                                    contrast = c("condition", "SHR", "BN"),
+                                    source = "background",
+                                    verbose = FALSE)
+
+# A flat histogram is what a well calibrated test looks like
 plotNullCalibration(calibration)
+
 plotNullCalibration(calibration, style = "qq")
-plotNullCalibration(calibration, style = "abundance")
-}
 
 }
 \seealso{

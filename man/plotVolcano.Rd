@@ -79,13 +79,13 @@ Only the points labelled \code{"null"} are thinned by \code{maxPoints}, and the 
 The counts in the corners come from the full table, before any thinning, and they are the number of regions labelled \code{"down"} on the left and \code{"up"} on the right.
 }
 \examples{
-\dontrun{
-plotVolcano(res)
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
-plotVolcano(res, facetScales = "free_y", labelTop = 10)
+plotVolcano(results)
 
-plotVolcano(resList, contrast = "combo", title = "**H3K27ac**", subtitle = "*COMBO vs DMSO*")
-}
+# One set, with the strongest regions labelled
+plotVolcano(results, set = "promoterCpG", labelTop = 5)
 
 }
 \seealso{

@@ -30,17 +30,16 @@
 #' On a tiled object the filter applies to the tiles. A region that loses every tile disappears, and the count of regions lost this way is reported. \code{wholeRegion = TRUE} keeps all the tiles of a region as soon as one of them passes, which preserves the span of the region at the cost of carrying the empty tiles through the fit; the Simes combination in \code{\link{testRegions}} pays for those tiles in multiplicity, so the default leaves them out.
 #'
 #' @examples
-#' \dontrun{
-#' counts <- filterRegions(counts, method = "background", foldChange = 3)
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#' # Ten reads in a region of 1 kb, whatever the actual widths are
-#' counts <- filterRegions(counts, method = "abundance", minCount = 10, referenceWidth = 1000)
+#' filtered <- filterRegions(counts, foldChange = 2, verbose = FALSE)
 #'
-#' # Keep the strongest half of each set, within width strata
-#' counts <- filterRegions(counts, method = "proportion", proportion = 0.5, bySet = TRUE)
+#' nrow(counts)
+#' nrow(filtered)
 #'
-#' counts <- filterRegions(counts, method = "byExpr", group = "condition")
-#' }
+#' # The intergenic control set is the one that loses most of its rows
+#' table(SummarizedExperiment::rowData(filtered)$region.set)
 #'
 #' @author Sebastian Gregoricchio
 #'

@@ -73,14 +73,13 @@ The regions are the same in both panels, chosen once by variance on the normalis
 Marks and assays should not share an ordination any more than they share a model. Split with \code{\link{splitSamples}} first, or use \code{facetBySet} when the sets themselves are the question.
 }
 \examples{
-\dontrun{
-plotRegionPCA(counts, colourBy = "treatment", shapeBy = "replicate")
+counts <- loadExampleData("counts", verbose = FALSE)
+counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
-# Is the separation in the data, or in the scaling factors?
-plotRegionPCA(counts, colourBy = "treatment", compareOffsets = TRUE)
+plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 
-plotRegionPCA(counts, colourBy = "treatment", facetBySet = TRUE)
-}
+# Restricted to one set, which is where the strain effect should show
+plotRegionPCA(counts, set = "promoterCpG", colourBy = "condition")
 
 }
 \seealso{

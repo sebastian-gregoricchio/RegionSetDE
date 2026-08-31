@@ -22,21 +22,19 @@
 #' The choice of the method matters more than usual on region sets. \code{"TMM"} and \code{"RLE"} assume that most of the regions do not change, which is reasonable for a catalogue of thousands of peaks but not for a handful of hand-picked ones, and not for a mark that is globally redistributed by the treatment. \code{"background"} sidesteps that assumption by estimating the factors on the genome wide bins, where the signal of the experiment is diluted, and is the safest option when a global shift is expected. \code{"spikeIn"} relies on the exogenous genome alone and ignores the regions altogether. \code{"loess"} corrects a bias that changes with the abundance, which no single factor per sample can describe, so it returns a matrix of offsets rather than a vector and leaves \code{scaling.factor} empty.
 #'
 #' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#'
+#' # Scaling factors from the background bins, which is what they are counted for
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' SummarizedExperiment::colData(counts)
+#'
+#' # TMM estimates them from the regions themselves instead
+#' tmmCounts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+#' SummarizedExperiment::colData(tmmCounts)$scaling.factor
+#'
 #' \dontrun{
-#' counts <- normalizeCounts(counts, method = "TMM")
-#'
-#' counts <- normalizeCounts(counts, method = "background")
-#'
-#' counts <- normalizeCounts(counts,
-#'                           method = "spikeIn",
-#'                           spikeInCounts = c(dmso_rep1 = 412553, dmso_rep2 = 388120,
-#'                                             combo_rep1 = 501233, combo_rep2 = 470981))
-#'
-#' # Factors written by deeptools multiply the signal, so they are declared as such
-#' counts <- normalizeCounts(counts,
-#'                           method = "manual",
-#'                           scalingFactors = c(0.81, 0.94, 1.12, 1.05),
-#'                           factorType = "multiplication")
+#' # Factors coming from a spike-in, or from any external estimate
+#' counts <- normalizeCounts(counts, scalingFactors = spikeInFactors)
 #' }
 #'
 #' @author Sebastian Gregoricchio

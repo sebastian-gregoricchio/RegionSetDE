@@ -57,10 +57,15 @@ Counts the reads falling in large genome wide bins, which provide the background
 Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
 }
 \examples{
-\dontrun{
-counts <- countBackground(counts, binSize = 10000, nThreads = 4)
+# The example counts already carry their background bins
+counts <- loadExampleData("counts", verbose = FALSE)
 
 backgroundBins <- S4Vectors::metadata(counts)$background
+backgroundBins
+
+\dontrun{
+# Recomputing them needs the BAM files the object was counted from
+counts <- countBackground(counts, binSize = 10000, nThreads = 4)
 }
 
 }

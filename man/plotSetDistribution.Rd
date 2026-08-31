@@ -45,11 +45,14 @@ A \code{ggplot} object.
 Draws the whole distribution of the per-region log2 fold changes of every set, rather than its summary. A set whose mean has moved because a small group of regions collapsed looks nothing like one whose regions all shifted a little, and only the distribution tells the two apart.
 }
 \examples{
-\dontrun{
-plotSetDistribution(setRes)
+fit <- loadExampleData("fit", verbose = FALSE)
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
 
-plotSetDistribution(setRes, style = "ecdf")
-}
+# The whole fold change distribution behind each set-level statistic
+plotSetDistribution(setResults)
+
+plotSetDistribution(setResults, style = "boxplot", set = "promoterCpG")
 
 }
 \seealso{

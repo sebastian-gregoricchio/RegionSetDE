@@ -27,16 +27,11 @@ This exists because the conversion is easy to get backwards. The object stores a
 \code{as(counts, "DGEList")} does the same with the defaults.
 }
 \examples{
-\dontrun{
+counts <- loadExampleData("counts", verbose = FALSE)
+counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
 dgeList <- asDGEList(counts)
-edgeR::plotMDS(dgeList)
-
-# The same thing
-dgeList <- as(counts, "DGEList")
-
-# Raw counts and library sizes, with the normalisation left out
-dgeList <- asDGEList(counts, useOffsets = FALSE)
-}
+dgeList$samples
 
 }
 \seealso{

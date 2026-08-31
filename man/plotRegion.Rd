@@ -63,13 +63,15 @@ Draws the signal of a single region across the samples. On a tiled object the va
 The values come from the object and nothing is re-read from the BAM or bigWig files, so the resolution of the plot is the resolution of the counting. A region counted as a single row gives a single point per sample, which is the honest picture of what the model saw.
 }
 \examples{
-\dontrun{
-plotRegion(res, region = "enhancers|enh_00412", groupBy = "condition")
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
-plotRegion(res, region = "tss|ENSG00000141510", groupBy = "condition", summarise = TRUE)
+topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
 
-plotRegion(counts, region = "enhancers|enh_00412", groupBy = "treatment")
-}
+plotRegion(results, region = topRegion, groupBy = "condition")
+
+# Summarised to one point per group rather than one per sample
+plotRegion(results, region = topRegion, groupBy = "condition", summarise = TRUE)
 
 }
 \seealso{

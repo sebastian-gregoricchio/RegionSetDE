@@ -57,26 +57,18 @@ A design written as \code{~ condition} spends one coefficient per level except t
 The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
 }
 \examples{
-\dontrun{
-fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
+fit <- loadExampleData("fit", verbose = FALSE)
 
-res <- testRegions(fit, contrast = "conditionCOMBO")
+# The three-element form works whatever the reference level is
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+results
 
-# Two levels of a column, whichever of them the design took as reference
-res <- testRegions(fit, contrast = c("condition", "COMBO", "DMSO"))
+head(resultsTable(results))
 
-# Difference between two coefficients of the design
-res <- testRegions(fit, contrast = "conditionCOMBO - conditionEPZ")
-
-# Several contrasts on the same fit
-resList <- testRegions(fit, contrast = list(combo = c("condition", "COMBO", "DMSO"),
-                                            epz = c("condition", "EPZ", "DMSO")))
-resList
-topRegions(resList, contrast = "combo")
-
-# Threshold inside the test rather than on the output
-resStrict <- testRegions(fit, contrast = "conditionCOMBO", lfcThreshold = 1)
-}
+# Testing against a fold change threshold rather than against zero
+strictResults <- testRegions(fit, contrast = c("condition", "SHR", "BN"),
+                             lfcThreshold = 1, verbose = FALSE)
+strictResults
 
 }
 \seealso{

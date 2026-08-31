@@ -23,17 +23,22 @@
 #' @details The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
 #'
 #' @examples
-#' \dontrun{
-#' counts <- loadCounts(regions,
-#'                      counts = "featureCounts/all_samples.txt",
-#'                      sampleMetadata = sampleSheet,
-#'                      librarySizes = c(2.3e7, 2.1e7, 1.9e7, 2.4e7))
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' regionRanges <- SummarizedExperiment::rowRanges(counts)
 #'
-#' counts <- loadCounts(regions,
-#'                      counts = bedtoolsMatrix,
-#'                      startsAt = 0,
-#'                      missingRegions = "zero")
-#' }
+#' # A count table as it would come out of featureCounts or a coverage tool
+#' countTable <- data.frame(
+#'   seqnames = as.character(GenomicRanges::seqnames(regionRanges)),
+#'   start = GenomicRanges::start(regionRanges),
+#'   end = GenomicRanges::end(regionRanges),
+#'   SummarizedExperiment::assay(counts, "counts"),
+#'   check.names = FALSE)
+#'
+#' regions <- splitLoadRegions(regionRanges, splitBy = "region.set",
+#'                             genomeAssembly = "rn4", verbose = FALSE)
+#'
+#' reloaded <- loadCounts(regions, counts = countTable, verbose = FALSE)
+#' reloaded
 #'
 #' @author Sebastian Gregoricchio
 #'

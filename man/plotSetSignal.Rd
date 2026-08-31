@@ -86,22 +86,14 @@ Each group is given a colour family and the replicates inside it a shade, runnin
 Sets larger than \code{maxRegions} are thinned, deterministically, before the violin is computed. The annotation is unaffected, since it is read from the test rather than recomputed here.
 }
 \examples{
-\dontrun{
-# groupBy defaults to the column the contrast separates
-plotSetSignal(setRes)
+fit <- loadExampleData("fit", verbose = FALSE)
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
+                             verbose = FALSE)
 
-plotSetSignal(setRes, style = "boxplot", facetScales = "free_y")
+plotSetSignal(setResults, groupBy = "condition")
 
-# Ordered by replicate: the violins are recoloured, the bracket is dropped
-plotSetSignal(setRes, groupBy = "replicate")
-
-# Three groups, two brackets
-plotSetSignal(setRes, groupBy = "treatment",
-              comparisons = list(c("DMSO", "EPZ"), c("DMSO", "COMBO")))
-
-# Before any test has been run
-plotSetSignal(counts, groupBy = "treatment", annotate = FALSE)
-}
+plotSetSignal(setResults, set = "promoterCpG", groupBy = "condition",
+              style = "boxplot")
 
 }
 \seealso{

@@ -8,10 +8,17 @@
 #' @return The input data.frame with the first columns renamed.
 #'
 #' @examples
-#' \dontrun{
-#' peaks <- utils::read.delim("peaks.bed", header = FALSE)
-#' peaks <- renameBedColumns(peaks, bedFormat = 6)
-#' }
+#' bedTable <- data.frame(V1 = "chr12",
+#'                        V2 = c(1000, 5000),
+#'                        V3 = c(2000, 6000),
+#'                        V4 = c("peak_1", "peak_2"),
+#'                        V5 = c(120, 340),
+#'                        V6 = c("+", "-"))
+#'
+#' renameBedColumns(bedTable, bedFormat = 6)
+#'
+#' # Only the first three columns are renamed, the rest keep their names
+#' renameBedColumns(bedTable, bedFormat = 3)
 #'
 #' @author Sebastian Gregoricchio
 #'

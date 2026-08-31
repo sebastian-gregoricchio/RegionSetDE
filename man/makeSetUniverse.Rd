@@ -52,17 +52,10 @@ The draw inside a stratum is deterministic. The candidates are ordered on the co
 A single region set leaves nothing to compare against and this function stops. Either load the sets that make the comparison interesting, or add the genome bins as a set of their own before counting.
 }
 \examples{
-\dontrun{
-# Not needed for the usual case, fitRegions does this itself
-fit <- fitRegions(counts, design = ~ replicate + condition)
+fit <- loadExampleData("fit", verbose = FALSE)
 
-# Finer control over the matching
-universeObject <- makeSetUniverse(fit, match = c("width", "abundance"), ratio = 10, strata = 8)
-setRes <- testRegionSets(fit, contrast = "conditionCOMBO", universe = universeObject)
-
-# An index of your own
-universeObject <- makeSetUniverse(fit, type = "supplied", index = list(enhancers = myRows))
-}
+universe <- makeSetUniverse(fit, verbose = FALSE)
+universe
 
 }
 \seealso{

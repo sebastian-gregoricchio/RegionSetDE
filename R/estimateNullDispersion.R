@@ -22,18 +22,20 @@
 #' A plausible number is not a replicate. Everything downstream stays conditional on this estimate being right, which is why \code{\link{checkNullCalibration}} exists and why it should be run before any of the output is believed. Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in \code{holdout.index} for that check to use.
 #'
 #' @examples
-#' \dontrun{
-#' counts <- countBackground(counts)
-#' counts <- normalizeCounts(counts, method = "background")
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#' nullDispersion <- estimateNullDispersion(counts)
-#' nullDispersion$bcv
+#' # The background bins cover the genome and carry no strain effect
+#' nullDispersion <- estimateNullDispersion(counts, source = "background",
+#'                                          verbose = FALSE)
+#' nullDispersion
 #'
-#' fit <- fitRegions(counts, design = "~ 0 + treatment", dispersion = nullDispersion)
-#'
-#' # From a set believed to be invariant rather than from the genome
-#' nullDispersion <- estimateNullDispersion(counts, source = "regionSet", regionSets = "housekeeping")
-#' }
+#' # Any set believed to be invariant works the same way, as long as it has signal
+#' fromRegions <- estimateNullDispersion(counts,
+#'                                       source = "regionSet",
+#'                                       regionSets = "geneBody",
+#'                                       verbose = FALSE)
+#' fromRegions
 #'
 #' @author Sebastian Gregoricchio
 #'

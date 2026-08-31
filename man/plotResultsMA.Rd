@@ -69,11 +69,12 @@ Draws the log2 fold change of a contrast against the average signal, one panel p
 A trend that leaves zero at one end of the abundance range is the usual sign that the normalisation has not done its job, and it is easier to see here than on any summary statistic. This plot answers a different question from \code{\link{plotSetMA}}, which compares samples before any model is fitted: here the y axis is a fitted coefficient rather than a difference between two libraries.
 }
 \examples{
-\dontrun{
-plotResultsMA(res)
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
-plotResultsMA(res, facetScales = "free_x", showTrend = TRUE)
-}
+plotResultsMA(results)
+
+plotResultsMA(results, set = "promoterCpG", facetBySet = FALSE)
 
 }
 \seealso{

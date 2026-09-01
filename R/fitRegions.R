@@ -92,7 +92,7 @@ fitRegions <-
 
     enginePackage <- c("edgeR" = "edgeR", "voom" = "limma", "dream" = "variancePartition", "deseq2" = "DESeq2")[[engine]]
     if (!requireNamespace(enginePackage, quietly = TRUE)) {
-      stop(paste0("The '", enginePackage, "' package is needed for the '", engine, "' engine."), call. = FALSE)
+      stop("The '", enginePackage, "' package is needed for the '", engine, "' engine.", call. = FALSE)
     }
 
     if (!is.null(block) & engine != "voom") {
@@ -104,7 +104,7 @@ fitRegions <-
     }
 
     if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop(paste0("The assay '", assay, "' is absent from the object."), call. = FALSE)
+      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
     }
 
     #-------------------------------#
@@ -144,13 +144,13 @@ fitRegions <-
     dispersion <- dispersionObject$dispersion
 
     if (residualDegrees < 1 & engine != "dream" & isTRUE(verbose)) {
-      message(paste0("No residual degree of freedom: fitting with a fixed dispersion of ", signif(dispersion, 3),
-                     " (BCV ", signif(sqrt(dispersion), 3), ") and a likelihood ratio test."))
+      message("No residual degree of freedom: fitting with a fixed dispersion of ", signif(dispersion, 3),
+              " (BCV ", signif(sqrt(dispersion), 3), ") and a likelihood ratio test.")
     }
 
     if (isTRUE(verbose)) {
-      message(paste0("Fitting ", nrow(counts), " ", counts@counting.level, "s over ", ncol(counts),
-                     " samples with '", engine, "' (", paste(colnames(designMatrix), collapse = ", "), ")."))
+      message("Fitting ", nrow(counts), " ", counts@counting.level, "s over ", ncol(counts),
+              " samples with '", engine, "' (", paste(colnames(designMatrix), collapse = ", "), ").")
     }
 
     #-------------------------------#
@@ -236,8 +236,8 @@ fitRegions <-
 
     if (isTRUE(verbose)) {
       if (!is.null(fitList$dispersion$common)) {
-        message(paste0("Done. Common dispersion: ", signif(fitList$dispersion$common, 3),
-                       " (BCV ", signif(sqrt(fitList$dispersion$common), 3), ")."))
+        message("Done. Common dispersion: ", signif(fitList$dispersion$common, 3),
+                " (BCV ", signif(sqrt(fitList$dispersion$common), 3), ").")
       } else {
         message("Done.")
       }
@@ -331,7 +331,7 @@ fitRegions <-
     designVariables <- all.vars(fixedFormula)
     absentVariables <- setdiff(designVariables, colnames(colTable))
     if (length(absentVariables) > 0) {
-      stop(paste0("The following design variables are absent from the colData: ", paste(absentVariables, collapse = ", "), "."), call. = FALSE)
+      stop("The following design variables are absent from the colData: ", paste(absentVariables, collapse = ", "), ".", call. = FALSE)
     }
 
     designMatrix <- stats::model.matrix(object = fixedFormula, data = colTable)
@@ -515,7 +515,7 @@ fitRegions <-
 
     } else {
       if (!(block %in% colnames(colTable))) {
-        stop(paste0("The column '", block, "' is absent from the colData."), call. = FALSE)
+        stop("The column '", block, "' is absent from the colData.", call. = FALSE)
       }
       blockVector <- colTable[[block]]
 
@@ -526,7 +526,7 @@ fitRegions <-
       consensusCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
 
       if (isTRUE(verbose)) {
-        message(paste0("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), "."))
+        message("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), ".")
       }
 
       linearFit <- limma::lmFit(object = voomObject, design = designMatrix,
@@ -681,7 +681,7 @@ fitRegions <-
     parsedFormula <- try(stats::as.formula(x), silent = TRUE)
 
     if (inherits(parsedFormula, "try-error")) {
-      stop(paste0("The '", parameterName, "' parameter is a string that cannot be read as a formula."), call. = FALSE)
+      stop("The '", parameterName, "' parameter is a string that cannot be read as a formula.", call. = FALSE)
     }
 
     return(parsedFormula)
@@ -750,8 +750,8 @@ fitRegions <-
     }
 
     if (engine != "edgeR") {
-      stop(paste0("The design uses one sample per coefficient, which leaves no residual to estimate the dispersion from. ",
-                  "Only the \'edgeR\' engine can be fitted with a dispersion brought in from outside."), call. = FALSE)
+      stop("The design uses one sample per coefficient, which leaves no residual to estimate the dispersion from. ",
+           "Only the \'edgeR\' engine can be fitted with a dispersion brought in from outside.", call. = FALSE)
     }
 
     # A fit that cannot be produced at all is worse than one that announces where its dispersion came from
@@ -766,8 +766,8 @@ fitRegions <-
                           silent = TRUE)
 
     if (inherits(nullDispersion, "try-error")) {
-      stop(paste0("The dispersion could not be estimated: ", sub("^Error[^:]*: ", "", nullDispersion[1]),
-                  "\n  Supply one through \'dispersion\', as a BCV squared, and check it with checkNullCalibration()."), call. = FALSE)
+      stop("The dispersion could not be estimated: ", sub("^Error[^:]*: ", "", nullDispersion[1]),
+           "\n  Supply one through \'dispersion\', as a BCV squared, and check it with `checkNullCalibration()`.", call. = FALSE)
     }
 
     return(list(dispersion = nullDispersion$dispersion,

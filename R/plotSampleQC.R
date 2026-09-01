@@ -103,7 +103,7 @@ plotRegionPCA <-
         varianceShare <- round(100 * pcaObject$sdev^2 / sum(pcaObject$sdev^2), 1)
 
         if (max(dimensions) > ncol(pcaObject$x)) {
-          stop(paste0("Only ", ncol(pcaObject$x), " components exist, which is fewer than requested."), call. = FALSE)
+          stop("Only ", ncol(pcaObject$x), " components exist, which is fewer than requested.", call. = FALSE)
         }
 
         offsetLabel <- if (isTRUE(offsetFlag)) {"normalised"} else {"library size only"}
@@ -304,7 +304,7 @@ plotSampleCorrelation <-
     if (!is.null(groupBy)) {
       colTable <- as.data.frame(SummarizedExperiment::colData(counts))
       if (!(groupBy %in% colnames(colTable))) {
-        stop(paste0("The column '", groupBy, "' is absent from the colData."), call. = FALSE)
+        stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
       }
       groupVector <- as.character(colTable[[groupBy]])
     }
@@ -499,8 +499,8 @@ plotSampleCorrelation <-
     outsideCount <- sum(drawnValues < limits[1] | drawnValues > limits[2], na.rm = TRUE)
 
     if (outsideCount > 0) {
-      message(paste0(outsideCount, " ", label, "s fall outside the scale and are drawn at its ends, ",
-                     "so how far past they went is not visible."))
+      message(outsideCount, " ", label, "s fall outside the scale and are drawn at its ends, ",
+              "so how far past they went is not visible.")
     }
 
     return(limits)
@@ -580,7 +580,7 @@ plotSampleCorrelation <-
     if (!is.null(set)) {
       absentSets <- setdiff(set, unique(rowSets))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       keptRows <- which(rowSets %in% set)
     } else {
@@ -668,7 +668,7 @@ plotSampleCorrelation <-
 
     for (columnName in c(colourBy, shapeBy, labelBy)) {
       if (!is.null(columnName) && columnName != "sample" && !(columnName %in% colnames(colTable))) {
-        stop(paste0("The column '", columnName, "' is absent from the colData."), call. = FALSE)
+        stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
       }
     }
 

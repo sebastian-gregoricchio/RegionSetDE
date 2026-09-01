@@ -83,7 +83,7 @@ makeSetUniverse <-
     if (!is.null(regionSets)) {
       absentSets <- setdiff(regionSets, setNames)
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       setNames <- regionSets
     }
@@ -98,7 +98,7 @@ makeSetUniverse <-
 
       absentSets <- setdiff(setNames, names(index))
       if (length(absentSets) > 0) {
-        stop(paste0("The 'index' list is missing the following sets: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The 'index' list is missing the following sets: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
 
       universeIndex <- lapply(setNames,
@@ -120,8 +120,8 @@ makeSetUniverse <-
     # Other sets, matched or not    #
     #-------------------------------#
     if (length(unique(rowTable$region.set)) < 2) {
-      stop(paste0("The object holds a single region set ('", unique(rowTable$region.set)[1],
-                  "'), and a competitive test needs something to compare it to."), call. = FALSE)
+      stop("The object holds a single region set ('", unique(rowTable$region.set)[1],
+           "'), and a competitive test needs something to compare it to.", call. = FALSE)
     }
 
     universeIndex <-
@@ -236,7 +236,7 @@ makeSetUniverse <-
       # A fit is useful without a universe, so failing to build one there is a remark rather than an error
       if (isTRUE(soft)) {
         if (isTRUE(verbose)) {
-          message(paste0("No comparison universe was built: ", sub("^Error[^:]*: ", "", builtUniverse[1])))
+          message("No comparison universe was built: ", sub("^Error[^:]*: ", "", builtUniverse[1]))
         }
         return(new(Class = "RegionSetDE.universe"))
       }

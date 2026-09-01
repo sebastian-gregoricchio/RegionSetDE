@@ -86,7 +86,7 @@ testRegions <-
         lapply(names(contrast),
                function(contrastName) {
                  if (isTRUE(verbose)) {
-                   message(paste0("--- ", contrastName, " ---"))
+                   message("--- ", contrastName, " ---")
                  }
                  return(testRegions(fit = fit, contrast = contrast[[contrastName]], combine = combine,
                                     combineMethod = combineMethod, lfcThreshold = lfcThreshold, FDR = FDR,
@@ -114,7 +114,7 @@ testRegions <-
                                        colData = SummarizedExperiment::colData(fit@counts))
 
     if (isTRUE(verbose)) {
-      message(paste0("Testing '", contrastObject$label, "' on ", nrow(fit@counts), " ", fit@counting.level, "s."))
+      message("Testing '", contrastObject$label, "' on ", nrow(fit@counts), " ", fit@counting.level, "s.")
 
       # The p-values are conditional on a number that was assumed rather than measured
       if (isTRUE(fit@dispersion$no.replicates)) {
@@ -189,7 +189,7 @@ testRegions <-
     if (!is.null(regionSets)) {
       absentSets <- setdiff(regionSets, unique(resultTable$region.set))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
 
       # The correction has already run over every row, subsetting here does not change the FDR of what is kept
@@ -253,9 +253,9 @@ testRegions <-
 
     if (isTRUE(verbose)) {
       statusTable <- table(resultTable$diff.status)
-      message(paste0("Done. ", statusTable[["up"]], " up and ", statusTable[["down"]],
-                     " down out of ", nrow(resultTable), " regions (FDR < ", FDR,
-                     if (log2FC > 0) {paste0(", |log2FC| > ", log2FC)} else {""}, ")."))
+      message("Done. ", statusTable[["up"]], " up and ", statusTable[["down"]],
+              " down out of ", nrow(resultTable), " regions (FDR < ", FDR,
+              if (log2FC > 0) {paste0(", |log2FC| > ", log2FC)} else {""}, ").")
     }
 
     return(resultsObject)
@@ -292,7 +292,7 @@ testRegions <-
     #-------------------------------#
     if (is.numeric(contrast)) {
       if (length(contrast) != length(coefficientNames)) {
-        stop(paste0("The contrast vector must have one value per design column (", length(coefficientNames), ")."), call. = FALSE)
+        stop("The contrast vector must have one value per design column (", length(coefficientNames), ").", call. = FALSE)
       }
       contrastVector <- as.numeric(contrast)
       names(contrastVector) <- coefficientNames
@@ -318,15 +318,15 @@ testRegions <-
       columnName <- contrast[1]
 
       if (!(columnName %in% colnames(colTable))) {
-        stop(paste0("The column \'", columnName, "\' is absent from the colData. Available: ",
-                    paste(colnames(colTable), collapse = ", "), "."), call. = FALSE)
+        stop("The column \'", columnName, "\' is absent from the colData. Available: ",
+             paste(colnames(colTable), collapse = ", "), ".", call. = FALSE)
       }
 
       columnValues <- as.character(colTable[[columnName]])
       absentGroups <- setdiff(contrast[2:3], unique(columnValues))
       if (length(absentGroups) > 0) {
-        stop(paste0("The following levels are absent from \'", columnName, "\': ", paste(absentGroups, collapse = ", "),
-                    ". Available: ", paste(unique(columnValues), collapse = ", "), "."), call. = FALSE)
+        stop("The following levels are absent from \'", columnName, "\': ", paste(absentGroups, collapse = ", "),
+             ". Available: ", paste(unique(columnValues), collapse = ", "), ".", call. = FALSE)
       }
 
       firstRows <- which(columnValues == contrast[2])
@@ -339,8 +339,8 @@ testRegions <-
       names(contrastVector) <- coefficientNames
 
       if (all(contrastVector == 0)) {
-        stop(paste0("The design does not separate \'", contrast[2], "\' from \'", contrast[3],
-                    "\', the two groups share the same coefficients."), call. = FALSE)
+        stop("The design does not separate \'", contrast[2], "\' from \'", contrast[3],
+             "\', the two groups share the same coefficients.", call. = FALSE)
       }
 
       return(list(vector = contrastVector,
@@ -376,9 +376,9 @@ testRegions <-
     contrastMatrix <- try(limma::makeContrasts(contrasts = safeContrast, levels = safeNames), silent = TRUE)
 
     if (inherits(contrastMatrix, "try-error")) {
-      stop(paste0("The contrast \'", contrast, "\' could not be read. Available coefficients: ",
-                  paste(coefficientNames, collapse = ", "), ".",
-                  .contrastSuggestion(contrast = contrast, coefficientNames = coefficientNames, colData = colData)), call. = FALSE)
+      stop("The contrast \'", contrast, "\' could not be read. Available coefficients: ",
+           paste(coefficientNames, collapse = ", "), ".",
+           .contrastSuggestion(contrast = contrast, coefficientNames = coefficientNames, colData = colData), call. = FALSE)
     }
 
     contrastVector <- as.numeric(contrastMatrix[, 1])
@@ -784,7 +784,7 @@ testRegions <-
     resultTable <- dplyr::mutate(resultTable, FDR = stats::p.adjust(.data$p.value, method = adjustMethod))
 
     if (isTRUE(verbose)) {
-      message(paste0(nrow(tileTable), " tiles combined into ", nrow(resultTable), " regions by ", method, "."))
+      message(nrow(tileTable), " tiles combined into ", nrow(resultTable), " regions by ", method, ".")
     }
 
     return(list(results = resultTable, regions = regionRanges))

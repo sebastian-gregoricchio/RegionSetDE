@@ -106,7 +106,7 @@ countBackground <-
 
     missingFiles <- bamFiles[!file.exists(bamFiles)]
     if (length(missingFiles) > 0) {
-      stop(paste0("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), "."), call. = FALSE)
+      stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
     }
 
     parallelParam <- .makeParallelParam(nThreads = nThreads)
@@ -115,7 +115,7 @@ countBackground <-
     # Count in the bins #
     #-------------------#
     if (isTRUE(verbose)) {
-      message(paste0("Counting reads in ", format(binSize, big.mark = ","), " bp bins across ", length(bamFiles), " samples..."))
+      message("Counting reads in ", format(binSize, big.mark = ","), " bp bins across ", length(bamFiles), " samples...")
     }
 
     backgroundList <-
@@ -201,8 +201,8 @@ countBackground <-
                                                        restrictChromosomes = restrictChromosomes)))
 
     if (isTRUE(verbose)) {
-      message(paste0("Done. ", format(nrow(backgroundCounts), big.mark = ","), " background bins retained out of ",
-                     format(nrow(binTable), big.mark = ","), "."))
+      message("Done. ", format(nrow(backgroundCounts), big.mark = ","), " background bins retained out of ",
+              format(nrow(binTable), big.mark = ","), ".")
     }
 
     return(counts)

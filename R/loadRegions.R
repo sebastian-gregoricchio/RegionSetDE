@@ -118,12 +118,12 @@ loadRegions <-
     # User-provided names win over the list names, which in turn win over the fallbacks
     if (!is.null(regionNames)) {
       if (length(regionNames) != length(regions)) {
-        stop(paste0("The number of 'regionNames' (", length(regionNames),
-                    ") differs from the number of elements in 'regions' (", length(regions), ")."), call. = FALSE)
+        stop("The number of 'regionNames' (", length(regionNames),
+             ") differs from the number of elements in 'regions' (", length(regions), ").", call. = FALSE)
       }
       if (any(duplicated(regionNames))) {
-        stop(paste0("The 'regionNames' contain duplicated values: ",
-                    paste(unique(regionNames[duplicated(regionNames)]), collapse = ", "), "."), call. = FALSE)
+        stop("The 'regionNames' contain duplicated values: ",
+             paste(unique(regionNames[duplicated(regionNames)]), collapse = ", "), ".", call. = FALSE)
       }
       names(regions) <- regionNames
     } else if (is.null(names(regions))) {
@@ -136,8 +136,8 @@ loadRegions <-
 
     # Files sharing a base name across directories are renamed, but the user must know about it
     if (any(duplicated(names(regions)))) {
-      warning(paste0("Duplicated region names (", paste(unique(names(regions)[duplicated(names(regions))]), collapse = ", "),
-                     ") have been made unique by adding a numeric suffix."), call. = FALSE)
+      warning("Duplicated region names (", paste(unique(names(regions)[duplicated(names(regions))]), collapse = ", "),
+              ") have been made unique by adding a numeric suffix.", call. = FALSE)
       names(regions) <- make.unique(names(regions), sep = "_")
     }
 
@@ -152,7 +152,7 @@ loadRegions <-
     handleFailure <-
       function(errorMessage) {
         if (skipInvalid == TRUE) {
-          warning(paste0(errorMessage, " The element will be skipped."), call. = FALSE)
+          warning(errorMessage, " The element will be skipped.", call. = FALSE)
           return(NULL)
         } else {
           stop(errorMessage, call. = FALSE)
@@ -225,7 +225,7 @@ loadRegions <-
                  nDuplicated <- sum(BiocGenerics::duplicated(gr))
                  if (nDuplicated > 0) {
                    gr <- BiocGenerics::unique(gr)
-                   if (verbose == TRUE) {message(paste0("  ", names(regions)[i], ": ", nDuplicated, " duplicated regions removed"))}
+                   if (verbose == TRUE) {message("  ", names(regions)[i], ": ", nDuplicated, " duplicated regions removed")}
                  }
                }
 
@@ -233,7 +233,7 @@ loadRegions <-
                if (sortRegions == TRUE) {gr <- BiocGenerics::sort(gr, ignore.strand = TRUE)}
                if (!is.null(genomeAssembly)) {GenomeInfoDb::genome(gr) <- genomeAssembly}
 
-               if (verbose == TRUE) {message(paste0("  ", names(regions)[i], ": ", length(gr), " regions"))}
+               if (verbose == TRUE) {message("  ", names(regions)[i], ": ", length(gr), " regions")}
 
                return(gr)
              })
@@ -254,9 +254,9 @@ loadRegions <-
       hasChrPrefix <- vapply(regionList, function(gr) {any(grepl("^chr", GenomeInfoDb::seqlevels(gr)))}, logical(1))
 
       if (length(unique(hasChrPrefix)) > 1) {
-        stop(paste0("The region sets mix UCSC ('chr1') and Ensembl/NCBI ('1') chromosome names: ",
-                    paste0(names(regionList), " [", ifelse(hasChrPrefix, "UCSC", "Ensembl/NCBI"), "]", collapse = ", "),
-                    ". Use the 'seqlevelsStyle' parameter to harmonize them."), call. = FALSE)
+        stop("The region sets mix UCSC ('chr1') and Ensembl/NCBI ('1') chromosome names: ",
+             paste0(names(regionList), " [", ifelse(hasChrPrefix, "UCSC", "Ensembl/NCBI"), "]", collapse = ", "),
+             ". Use the 'seqlevelsStyle' parameter to harmonize them.", call. = FALSE)
       }
     }
 
@@ -294,11 +294,11 @@ loadRegions <-
 
       if (length(duplicatedIdx) > 0) {
         if (duplicatedSets == "stop") {
-          stop(paste0("Some region sets contain exactly the same regions: ", paste(duplicatedMsg, collapse = ", "),
-                      ". Redundant sets are perfectly correlated and bias the multiple-testing correction. ",
-                      "Set 'duplicatedSets' to 'remove' or 'keep' to proceed."), call. = FALSE)
+          stop("Some region sets contain exactly the same regions: ", paste(duplicatedMsg, collapse = ", "),
+               ". Redundant sets are perfectly correlated and bias the multiple-testing correction. ",
+               "Set 'duplicatedSets' to 'remove' or 'keep' to proceed.", call. = FALSE)
         } else {
-          warning(paste0("Redundant region sets removed: ", paste(duplicatedMsg, collapse = ", "), "."), call. = FALSE)
+          warning("Redundant region sets removed: ", paste(duplicatedMsg, collapse = ", "), ".", call. = FALSE)
           regionList <- regionList[-duplicatedIdx]
         }
       }

@@ -90,7 +90,7 @@ testRegionSets <-
         lapply(names(contrast),
                function(contrastName) {
                  if (isTRUE(verbose)) {
-                   message(paste0("--- ", contrastName, " ---"))
+                   message("--- ", contrastName, " ---")
                  }
                  return(testRegionSets(fit = fit, contrast = contrast[[contrastName]], method = method,
                                        universe = universe, matchOn = matchOn, universeRatio = universeRatio,
@@ -119,8 +119,8 @@ testRegionSets <-
     # fry fits a model inside each set, which needs something left over to measure it against
     if ("fry" %in% method & residualDegrees < 1) {
       if (identical(method, "fry")) {
-        stop(paste0("The design uses ", ncol(fit@design), " coefficients for ", nrow(fit@design),
-                    " samples, leaving no residual for the self-contained test. Use method = 'camera'."), call. = FALSE)
+        stop("The design uses ", ncol(fit@design), " coefficients for ", nrow(fit@design),
+             " samples, leaving no residual for the self-contained test. Use method = 'camera'.", call. = FALSE)
       }
 
       method <- setdiff(method, "fry")
@@ -159,13 +159,13 @@ testRegionSets <-
     if (!is.null(regionSets)) {
       absentSets <- setdiff(regionSets, setNames)
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       setNames <- regionSets
     }
 
     if (isTRUE(verbose)) {
-      message(paste0("Testing ", length(setNames), " region sets for '", contrastObject$label, "'."))
+      message("Testing ", length(setNames), " region sets for '", contrastObject$label, "'.")
     }
 
     # Only fry and the correlation read the values themselves, the competitive test reads the statistics
@@ -180,7 +180,7 @@ testRegionSets <-
                setIndex <- which(regionStats$region.set == setName)
 
                if (length(setIndex) < 2) {
-                 stop(paste0("The set '", setName, "' holds fewer than 2 regions, a set level test needs more."), call. = FALSE)
+                 stop("The set '", setName, "' holds fewer than 2 regions, a set level test needs more.", call. = FALSE)
                }
 
                # The universe holds the set as well, the comparison is what is left once it is taken out
@@ -191,7 +191,7 @@ testRegionSets <-
                }
 
                if (length(backgroundIndex) < 10) {
-                 stop(paste0("The set '", setName, "' has fewer than 10 rows in its universe to be compared against."), call. = FALSE)
+                 stop("The set '", setName, "' has fewer than 10 rows in its universe to be compared against.", call. = FALSE)
                }
 
                #-------------------------------#
@@ -387,7 +387,7 @@ testSetContrast <-
         lapply(names(contrast),
                function(contrastName) {
                  if (isTRUE(verbose)) {
-                   message(paste0("--- ", contrastName, " ---"))
+                   message("--- ", contrastName, " ---")
                  }
                  return(testSetContrast(fit = fit, contrast = contrast[[contrastName]], set1 = set1, set2 = set2,
                                         interRegionCor = interRegionCor, useRanks = useRanks,
@@ -435,7 +435,7 @@ testSetContrast <-
       }
       absentSets <- setdiff(c(set1, set2), setNames)
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       pairTable <- data.frame(set.1 = paste(set1, collapse = "+"),
                               set.2 = paste(set2, collapse = "+"),
@@ -464,16 +464,16 @@ testSetContrast <-
 
                if (length(sharedKeys) > 0) {
                  if (sharedRegions == "stop") {
-                   stop(paste0(length(sharedKeys), " regions belong to both '", pairTable$set.1[i], "' and '",
-                               pairTable$set.2[i], "'."), call. = FALSE)
+                   stop(length(sharedKeys), " regions belong to both '", pairTable$set.1[i], "' and '",
+                        pairTable$set.2[i], "'.", call. = FALSE)
                  }
                  firstIndex <- firstIndex[!(regionStats$region.key.plain[firstIndex] %in% sharedKeys)]
                  secondIndex <- secondIndex[!(regionStats$region.key.plain[secondIndex] %in% sharedKeys)]
                }
 
                if (length(firstIndex) < 2 | length(secondIndex) < 2) {
-                 stop(paste0("Fewer than 2 regions are left in one side of the pair '", pairTable$set.1[i],
-                             "' versus '", pairTable$set.2[i], "'."), call. = FALSE)
+                 stop("Fewer than 2 regions are left in one side of the pair '", pairTable$set.1[i],
+                      "' versus '", pairTable$set.2[i], "'.", call. = FALSE)
                }
 
                #-------------------------------#
@@ -526,7 +526,7 @@ testSetContrast <-
     rownames(resultTable) <- NULL
 
     if (isTRUE(verbose)) {
-      message(paste0("Done. ", nrow(resultTable), " pairs tested for '", contrastObject$label, "'."))
+      message("Done. ", nrow(resultTable), " pairs tested for '", contrastObject$label, "'.")
     }
 
     return(new(Class = "RegionSetDE.setResults",

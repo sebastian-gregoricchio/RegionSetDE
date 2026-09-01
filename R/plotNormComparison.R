@@ -78,8 +78,8 @@ plotNormComparison <-
     availableMethods <- c("librarySize", "TMM", "TMMwsp", "RLE", "upperQuartile", "background")
     unknownMethods <- setdiff(methods, availableMethods)
     if (length(unknownMethods) > 0) {
-      stop(paste0("The following methods cannot be compared here: ", paste(unknownMethods, collapse = ", "),
-                  ". Only the ones needing no extra input are accepted: ", paste(availableMethods, collapse = ", "), "."), call. = FALSE)
+      stop("The following methods cannot be compared here: ", paste(unknownMethods, collapse = ", "),
+           ". Only the ones needing no extra input are accepted: ", paste(availableMethods, collapse = ", "), ".", call. = FALSE)
     }
 
     #-----------------------------------#
@@ -95,7 +95,7 @@ plotNormComparison <-
                                                      minCount = minCount,
                                                      verbose = FALSE),
                                      error = function(e) {
-                                       warning(paste0("The '", oneMethod, "' method could not be applied: ", conditionMessage(e)), call. = FALSE)
+                                       warning("The '", oneMethod, "' method could not be applied: ", conditionMessage(e), call. = FALSE)
                                        return(NULL)
                                      })
 

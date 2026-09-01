@@ -85,7 +85,7 @@ plotSetMA <-
     }
 
     if (!(assayName %in% SummarizedExperiment::assayNames(counts))) {
-      stop(paste0("The assay '", assayName, "' is absent from the object."), call. = FALSE)
+      stop("The assay '", assayName, "' is absent from the object.", call. = FALSE)
     }
 
     valueMatrix <- SummarizedExperiment::assay(counts, assayName)
@@ -101,7 +101,7 @@ plotSetMA <-
       contrast <- if (is.null(contrast)) {colnames(counts)} else {contrast}
     } else {
       if (!(groupBy %in% colnames(SummarizedExperiment::colData(counts)))) {
-        stop(paste0("The column '", groupBy, "' is absent from the sample metadata."), call. = FALSE)
+        stop("The column '", groupBy, "' is absent from the sample metadata.", call. = FALSE)
       }
       groupVector <- as.character(SummarizedExperiment::colData(counts)[[groupBy]])
       if (is.null(contrast)) {contrast <- sort(unique(groupVector))}
@@ -113,7 +113,7 @@ plotSetMA <-
 
     absentGroups <- setdiff(contrast, groupVector)
     if (length(absentGroups) > 0) {
-      stop(paste0("The following groups are absent from the samples: ", paste(absentGroups, collapse = ", "), "."), call. = FALSE)
+      stop("The following groups are absent from the samples: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
     }
 
     numeratorColumns <- which(groupVector == contrast[1])
@@ -141,7 +141,7 @@ plotSetMA <-
     if (!is.null(set)) {
       absentSets <- setdiff(set, unique(maTable$region.set))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
     }
 

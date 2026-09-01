@@ -89,14 +89,14 @@ splitLoadRegions <-
 
       if (is.numeric(splitBy)) {
         if (splitBy > ncol(regionTable)) {
-          stop(paste0("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the file (", ncol(regionTable), ")."), call. = FALSE)
+          stop("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the file (", ncol(regionTable), ").", call. = FALSE)
         }
         splitBy <- colnames(regionTable)[splitBy]
       }
 
       if (!(splitBy %in% colnames(regionTable))) {
-        stop(paste0("The column '", splitBy, "' is not available in the file. The columns found are: ",
-                    paste(colnames(regionTable), collapse = ", "), "."), call. = FALSE)
+        stop("The column '", splitBy, "' is not available in the file. The columns found are: ",
+             paste(colnames(regionTable), collapse = ", "), ".", call. = FALSE)
       }
 
       setLabels <- as.character(regionTable[[splitBy]])
@@ -106,14 +106,14 @@ splitLoadRegions <-
       ### Data.frame input
       if (is.numeric(splitBy)) {
         if (splitBy > ncol(regions)) {
-          stop(paste0("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the data.frame (", ncol(regions), ")."), call. = FALSE)
+          stop("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the data.frame (", ncol(regions), ").", call. = FALSE)
         }
         splitBy <- colnames(regions)[splitBy]
       }
 
       if (!(splitBy %in% colnames(regions))) {
-        stop(paste0("The column '", splitBy, "' is not available in the data.frame. The columns found are: ",
-                    paste(colnames(regions), collapse = ", "), "."), call. = FALSE)
+        stop("The column '", splitBy, "' is not available in the data.frame. The columns found are: ",
+             paste(colnames(regions), collapse = ", "), ".", call. = FALSE)
       }
 
       setLabels <- as.character(regions[[splitBy]])
@@ -125,7 +125,7 @@ splitLoadRegions <-
 
       if (is.numeric(splitBy)) {
         if (splitBy > length(metadataColumns)) {
-          stop(paste0("The 'splitBy' position (", splitBy, ") exceeds the number of metadata columns of the GRanges (", length(metadataColumns), ")."), call. = FALSE)
+          stop("The 'splitBy' position (", splitBy, ") exceeds the number of metadata columns of the GRanges (", length(metadataColumns), ").", call. = FALSE)
         }
         splitBy <- metadataColumns[splitBy]
       }
@@ -135,8 +135,8 @@ splitLoadRegions <-
       } else if (splitBy == "seqnames") {
         setLabels <- as.character(GenomeInfoDb::seqnames(regions))
       } else {
-        stop(paste0("The column '", splitBy, "' is not available in the GRanges. The metadata columns found are: ",
-                    ifelse(length(metadataColumns) == 0, "none", paste(metadataColumns, collapse = ", ")), "."), call. = FALSE)
+        stop("The column '", splitBy, "' is not available in the GRanges. The metadata columns found are: ",
+             ifelse(length(metadataColumns) == 0, "none", paste(metadataColumns, collapse = ", ")), ".", call. = FALSE)
       }
 
       allRegions <- regions
@@ -151,19 +151,19 @@ splitLoadRegions <-
     # Regions without a label belong to no set, dropping them silently would hide a truncated import
     unlabelled <- which(is.na(setLabels) | setLabels == "")
     if (length(unlabelled) > 0) {
-      warning(paste0(length(unlabelled), " regions carry no value in the column '", splitBy, "' and have been discarded."), call. = FALSE)
+      warning(length(unlabelled), " regions carry no value in the column '", splitBy, "' and have been discarded.", call. = FALSE)
       allRegions <- allRegions[-unlabelled]
       setLabels <- setLabels[-unlabelled]
     }
 
     if (length(allRegions) == 0) {
-      stop(paste0("No region left after discarding the entries without a value in the column '", splitBy, "'."), call. = FALSE)
+      stop("No region left after discarding the entries without a value in the column '", splitBy, "'.", call. = FALSE)
     }
 
     # Splitting on a continuous column would generate one set per region
     if (length(unique(setLabels)) > maxSets) {
-      stop(paste0("The column '", splitBy, "' contains ", length(unique(setLabels)), " distinct values, above the 'maxSets' threshold (", maxSets,
-                  "). Please check that the splitting column holds the region set names."), call. = FALSE)
+      stop("The column '", splitBy, "' contains ", length(unique(setLabels)), " distinct values, above the 'maxSets' threshold (", maxSets,
+           "). Please check that the splitting column holds the region set names.", call. = FALSE)
     }
 
     #-------------------#
@@ -183,8 +183,8 @@ splitLoadRegions <-
     if (!is.null(selectedSets)) {
       missingSets <- setdiff(selectedSets, names(regionSets))
       if (length(missingSets) > 0) {
-        stop(paste0("The following sets are not present in the column '", splitBy, "': ", paste(missingSets, collapse = ", "),
-                    ". The sets available are: ", paste(names(regionSets), collapse = ", "), "."), call. = FALSE)
+        stop("The following sets are not present in the column '", splitBy, "': ", paste(missingSets, collapse = ", "),
+             ". The sets available are: ", paste(names(regionSets), collapse = ", "), ".", call. = FALSE)
       }
       regionSets <- regionSets[selectedSets]
     }
@@ -193,8 +193,8 @@ splitLoadRegions <-
     setSizes <- vapply(regionSets, length, numeric(1))
     if (any(setSizes < minRegionsPerSet)) {
       smallSets <- names(regionSets)[setSizes < minRegionsPerSet]
-      warning(paste0("Region sets discarded because containing less than ", minRegionsPerSet, " regions: ",
-                     paste0(smallSets, " (", setSizes[smallSets], ")", collapse = ", "), "."), call. = FALSE)
+      warning("Region sets discarded because containing less than ", minRegionsPerSet, " regions: ",
+              paste0(smallSets, " (", setSizes[smallSets], ")", collapse = ", "), ".", call. = FALSE)
       regionSets <- regionSets[setSizes >= minRegionsPerSet]
     }
 
@@ -203,7 +203,7 @@ splitLoadRegions <-
     }
 
     if (verbose == TRUE) {
-      message(paste0("Regions split by '", splitBy, "' into ", length(regionSets), " sets."))
+      message("Regions split by '", splitBy, "' into ", length(regionSets), " sets.")
     }
 
     #-----------------------#

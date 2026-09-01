@@ -92,7 +92,7 @@ loadCounts <-
     #------------------------#
     if (is.character(counts) & length(counts) == 1) {
       if (!file.exists(counts)) {
-        stop(paste0("The file '", counts, "' does not exist."), call. = FALSE)
+        stop("The file '", counts, "' does not exist.", call. = FALSE)
       }
       countTable <- utils::read.delim(file = counts, header = header, comment.char = "#", check.names = FALSE, stringsAsFactors = FALSE)
     } else if (is.matrix(counts)) {
@@ -126,7 +126,7 @@ loadCounts <-
 
     absentColumns <- setdiff(countColumns, colnames(countTable))
     if (length(absentColumns) > 0) {
-      stop(paste0("The following columns are missing from the count table: ", paste(absentColumns, collapse = ", "), "."), call. = FALSE)
+      stop("The following columns are missing from the count table: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
     }
 
     #-------------------------------#
@@ -182,12 +182,12 @@ loadCounts <-
 
     if (unmatchedRegions > 0) {
       if (missingRegions == "stop") {
-        stop(paste0(unmatchedRegions, " regions out of ", length(allRegions), " have no matching row in the count table. ",
-                    "Check the 'startsAt' parameter, or set 'missingRegions' to 'zero' or 'drop'."), call. = FALSE)
+        stop(unmatchedRegions, " regions out of ", length(allRegions), " have no matching row in the count table. ",
+             "Check the 'startsAt' parameter, or set 'missingRegions' to 'zero' or 'drop'.", call. = FALSE)
       }
       if (isTRUE(verbose)) {
-        message(paste0(unmatchedRegions, " regions have no matching row in the count table and have been ",
-                       ifelse(missingRegions == "drop", "removed.", "set to zero.")))
+        message(unmatchedRegions, " regions have no matching row in the count table and have been ",
+                ifelse(missingRegions == "drop", "removed.", "set to zero."))
       }
     }
 
@@ -242,7 +242,7 @@ loadCounts <-
                                      metadataList = list(signal.type = "external"))
 
     if (isTRUE(verbose)) {
-      message(paste0("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples."))
+      message("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples.")
     }
 
     return(countsObject)

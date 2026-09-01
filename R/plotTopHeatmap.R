@@ -136,7 +136,7 @@ plotTopHeatmap <-
 
     absentRegions <- sum(is.na(matrixIndex))
     if (absentRegions > 0) {
-      warning(paste0(absentRegions, " regions of the result are absent from the counts and have been dropped."), call. = FALSE)
+      warning(absentRegions, " regions of the result are absent from the counts and have been dropped.", call. = FALSE)
       topTable <- topTable[!is.na(matrixIndex), , drop = FALSE]
       matrixIndex <- matrixIndex[!is.na(matrixIndex)]
     }
@@ -194,7 +194,7 @@ plotTopHeatmap <-
       colTable <- as.data.frame(SummarizedExperiment::colData(counts))
       absentColumns <- setdiff(annotationColumns, colnames(colTable))
       if (length(absentColumns) > 0) {
-        stop(paste0("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), "."), call. = FALSE)
+        stop("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
       }
 
       topAnnotation <- ComplexHeatmap::HeatmapAnnotation(df = colTable[, annotationColumns, drop = FALSE],

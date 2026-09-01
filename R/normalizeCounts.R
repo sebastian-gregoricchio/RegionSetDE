@@ -122,7 +122,7 @@ normalizeCounts <-
     if (!is.null(useRegionSets)) {
       absentSets <- setdiff(useRegionSets, unique(rowTable$region.set))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       estimationRows <- dplyr::filter(estimationRows, .data$region.set %in% useRegionSets)
     }
@@ -133,7 +133,7 @@ normalizeCounts <-
 
     # A handful of regions gives a factor that reflects those regions rather than the experiment
     if (nrow(estimationRows) < 100 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "loess")) {
-      warning(paste0("Only ", nrow(estimationRows), " regions are used to estimate the factors, consider 'background' or 'spikeIn' normalisation."), call. = FALSE)
+      warning("Only ", nrow(estimationRows), " regions are used to estimate the factors, consider 'background' or 'spikeIn' normalisation.", call. = FALSE)
     }
 
     #-------------------------------#
@@ -226,8 +226,8 @@ normalizeCounts <-
       if (method == "loess") {
         message("Done. A matrix of log offsets has been stored in the 'offset' assay, no single factor per sample applies.")
       } else {
-        message(paste0("Done. The counts have been divided by the scaling factors (",
-                       paste(round(range(scalingFactorVector), 3), collapse = " - "), ")."))
+        message("Done. The counts have been divided by the scaling factors (",
+                paste(round(range(scalingFactorVector), 3), collapse = " - "), ").")
       }
     }
 
@@ -257,30 +257,30 @@ normalizeCounts <-
            parameterName) {
 
     if (!is.numeric(values)) {
-      stop(paste0("The '", parameterName, "' parameter must be numeric."), call. = FALSE)
+      stop("The '", parameterName, "' parameter must be numeric.", call. = FALSE)
     }
 
     # Names are the only way to be sure of the pairing, an unnamed vector is trusted to follow the columns
     if (!is.null(names(values))) {
       if (any(duplicated(names(values)))) {
-        stop(paste0("The '", parameterName, "' parameter contains duplicated sample names."), call. = FALSE)
+        stop("The '", parameterName, "' parameter contains duplicated sample names.", call. = FALSE)
       }
 
       absentSamples <- setdiff(sampleNames, names(values))
       if (length(absentSamples) > 0) {
-        stop(paste0("The '", parameterName, "' parameter is missing the following samples: ", paste(absentSamples, collapse = ", "), "."), call. = FALSE)
+        stop("The '", parameterName, "' parameter is missing the following samples: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
       }
 
       # Values for samples absent from the object are dropped, so one table can serve several objects
       values <- values[sampleNames]
     } else {
       if (length(values) != length(sampleNames)) {
-        stop(paste0("The '", parameterName, "' parameter must have one value per sample, or be named after the samples."), call. = FALSE)
+        stop("The '", parameterName, "' parameter must have one value per sample, or be named after the samples.", call. = FALSE)
       }
     }
 
     if (any(is.na(values))) {
-      stop(paste0("The '", parameterName, "' parameter contains missing values."), call. = FALSE)
+      stop("The '", parameterName, "' parameter contains missing values.", call. = FALSE)
     }
 
     return(values)
@@ -312,7 +312,7 @@ normalizeCounts <-
 
     if (is.character(sample)) {
       if (!(sample[1] %in% sampleNames)) {
-        stop(paste0("The sample '", sample[1], "' is absent from the object."), call. = FALSE)
+        stop("The sample '", sample[1], "' is absent from the object.", call. = FALSE)
       }
       return(match(sample[1], sampleNames))
     }

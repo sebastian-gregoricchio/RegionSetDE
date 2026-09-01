@@ -54,7 +54,7 @@ asDGEList <-
     }
 
     if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop(paste0("The assay '", assay, "' is absent from the object."), call. = FALSE)
+      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
     }
 
     #-------------------------------#
@@ -161,7 +161,7 @@ asDESeqDataSet <-
     }
 
     if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop(paste0("The assay '", assay, "' is absent from the object."), call. = FALSE)
+      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
     }
 
     countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
@@ -198,12 +198,12 @@ asDESeqDataSet <-
     }
 
     if (isTRUE(verbose)) {
-      message(paste0("The object is unfitted. Run DESeq2::DESeq(dds",
-                     if (!is.null(designMatrix)) {", full = <design matrix>, betaPrior = FALSE"} else {""}, ")."))
+      message("The object is unfitted. Run DESeq2::DESeq(dds",
+              if (!is.null(designMatrix)) {", full = <design matrix>, betaPrior = FALSE"} else {""}, ").")
 
       if (!is.null(designMatrix)) {
-        message(paste0("The design matrix is returned as the 'designMatrix' attribute, with the coefficients: ",
-                       paste(colnames(designMatrix), collapse = ", "), "."))
+        message("The design matrix is returned as the 'designMatrix' attribute, with the coefficients: ",
+                paste(colnames(designMatrix), collapse = ", "), ".")
       }
     }
 

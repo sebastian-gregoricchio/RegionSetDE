@@ -249,7 +249,7 @@ plotSetDistribution <-
     if (!is.null(set)) {
       absentSets <- setdiff(set, unique(plotTable$region.set))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       plotTable <- dplyr::filter(plotTable, .data$region.set %in% set)
     }
@@ -430,7 +430,7 @@ plotSetSignal <-
     if (!is.null(set)) {
       absentSets <- setdiff(set, unique(as.character(rowTable$region.set)))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       rowTable <- dplyr::filter(rowTable, .data$region.set %in% set)
     }
@@ -466,7 +466,7 @@ plotSetSignal <-
 
     if (!is.null(groupBy)) {
       if (!(groupBy %in% colnames(colTable))) {
-        stop(paste0("The column '", groupBy, "' is absent from the colData."), call. = FALSE)
+        stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
       }
       colTable$group <- as.character(colTable[[groupBy]])
     } else {
@@ -531,10 +531,10 @@ plotSetSignal <-
 
       } else if (isFALSE(groupsMatchContrast)) {
         # Labelling a bracket over the replicates with the treatment effect would attach the number to the wrong comparison
-        message(paste0("The samples are grouped by '", if (is.null(groupBy)) {"sample"} else {groupBy},
-                       "' while the contrast compares ",
-                       if (is.null(contrastColumn)) {"coefficients of the design"} else {paste0("'", contrastColumn, "'")},
-                       ", so no fold change is written."))
+        message("The samples are grouped by '", if (is.null(groupBy)) {"sample"} else {groupBy},
+                "' while the contrast compares ",
+                if (is.null(contrastColumn)) {"coefficients of the design"} else {paste0("'", contrastColumn, "'")},
+                ", so no fold change is written.")
 
       } else {
         bracketTable <- .signalBrackets(plotTable = plotTable,
@@ -598,7 +598,7 @@ plotSetSignal <-
     if (!is.null(groupOrder)) {
       absentGroups <- setdiff(groupOrder, groupLevels)
       if (length(absentGroups) > 0) {
-        stop(paste0("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), "."), call. = FALSE)
+        stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
       }
       return(c(groupOrder, setdiff(groupLevels, groupOrder)))
     }
@@ -747,7 +747,7 @@ plotSetSignal <-
 
     absentGroups <- setdiff(unlist(comparisons), groupOrder)
     if (length(absentGroups) > 0) {
-      stop(paste0("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), "."), call. = FALSE)
+      stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
     }
 
     # A pair the contrast did not compare has no fold change of its own, so it gets no bracket rather than a borrowed one
@@ -926,7 +926,7 @@ plotUniverseMatching <-
     setNames <- if (is.null(set)) {names(universe@index)} else {set}
     absentSets <- setdiff(setNames, names(universe@index))
     if (length(absentSets) > 0) {
-      stop(paste0("The universe holds no entry for: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+      stop("The universe holds no entry for: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
     }
 
     #-------------------------------#

@@ -893,8 +893,8 @@ setMethod(f = "length",
       if (length(results@results) == 1) {
         return(results@results[[1]])
       }
-      stop(paste0("The object holds several contrasts, name one with 'contrast': ",
-                  paste(names(results@results), collapse = ", "), "."), call. = FALSE)
+      stop("The object holds several contrasts, name one with 'contrast': ",
+           paste(names(results@results), collapse = ", "), ".", call. = FALSE)
     }
 
     if (is.numeric(contrast)) {
@@ -906,8 +906,8 @@ setMethod(f = "length",
     }
 
     if (!(contrast[1] %in% names(results@results))) {
-      stop(paste0("The contrast '", contrast[1], "' is absent from the object. Available: ",
-                  paste(names(results@results), collapse = ", "), "."), call. = FALSE)
+      stop("The contrast '", contrast[1], "' is absent from the object. Available: ",
+           paste(names(results@results), collapse = ", "), ".", call. = FALSE)
     }
 
     return(results@results[[contrast[1]]])

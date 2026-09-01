@@ -159,7 +159,7 @@ plotVolcano <-
     #-------------------------------#
     if (labelTop > 0) {
       if (!(labelColumn %in% colnames(plotTable))) {
-        stop(paste0("The column '", labelColumn, "' is absent from the results table."), call. = FALSE)
+        stop("The column '", labelColumn, "' is absent from the results table.", call. = FALSE)
       }
       if (!requireNamespace("ggrepel", quietly = TRUE)) {
         stop("The 'ggrepel' package is needed to label the points.", call. = FALSE)
@@ -449,7 +449,7 @@ plotRegion <-
 
     if (!is.null(groupBy)) {
       if (!(groupBy %in% colnames(colTable))) {
-        stop(paste0("The column '", groupBy, "' is absent from the colData."), call. = FALSE)
+        stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
       }
       plotTable$group <- as.character(colTable[[groupBy]])[match(plotTable$sample, colTable$sample)]
     } else {
@@ -738,7 +738,7 @@ plotRegion <-
     if (!is.null(set)) {
       absentSets <- setdiff(set, unique(plotTable$region.set))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       plotTable <- dplyr::filter(plotTable, .data$region.set %in% set)
     }
@@ -862,13 +862,13 @@ plotRegion <-
     }
 
     if (nrow(regionRows) == 0) {
-      stop(paste0("No row matches '", regionLabel, "'."), call. = FALSE)
+      stop("No row matches '", regionLabel, "'.", call. = FALSE)
     }
 
     # An identifier shared by several sets points at two different rows, the set has to be named
     if (length(unique(regionRows$region.key)) > 1) {
-      stop(paste0("The identifier matches several region sets (",
-                  paste(unique(regionRows$region.set), collapse = ", "), "), write it as 'set|id'."), call. = FALSE)
+      stop("The identifier matches several region sets (",
+           paste(unique(regionRows$region.set), collapse = ", "), "), write it as 'set|id'.", call. = FALSE)
     }
 
     return(regionRows)
@@ -903,7 +903,7 @@ plotRegion <-
     }
 
     if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop(paste0("The assay '", assay, "' is absent from the object."), call. = FALSE)
+      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
     }
 
     return(assay)

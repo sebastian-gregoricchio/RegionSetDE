@@ -66,7 +66,7 @@ selectSamples <-
       if (is.character(samples)) {
         absentSamples <- setdiff(samples, colnames(counts))
         if (length(absentSamples) > 0) {
-          stop(paste0("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), "."), call. = FALSE)
+          stop("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
         }
         colTable <- dplyr::filter(colTable, .data$sample.name %in% samples)
       } else {
@@ -111,8 +111,8 @@ selectSamples <-
       S4Vectors::metadata(selectedCounts)$normalization <- NULL
 
       if (isTRUE(verbose)) {
-        message(paste0("The normalisation computed with '", normalizationInfo$method,
-                       "' has been removed, run normalizeCounts on the selected samples."))
+        message("The normalisation computed with '", normalizationInfo$method,
+                "' has been removed, run normalizeCounts on the selected samples.")
       }
     } else if (!is.null(normalizationInfo) & isTRUE(verbose)) {
       warning("The scaling factors have been kept but were estimated on the whole set of samples.", call. = FALSE)
@@ -123,8 +123,8 @@ selectSamples <-
                                                              dropNormalization = dropNormalization)))
 
     if (isTRUE(verbose)) {
-      message(paste0("Kept ", nrow(colTable), " samples out of ", ncol(counts), ": ",
-                     paste(colTable$sample.name, collapse = ", "), "."))
+      message("Kept ", nrow(colTable), " samples out of ", ncol(counts), ": ",
+              paste(colTable$sample.name, collapse = ", "), ".")
     }
 
     return(selectedCounts)
@@ -180,7 +180,7 @@ splitSamples <-
     colTable <- as.data.frame(SummarizedExperiment::colData(counts))
     absentColumns <- setdiff(by, colnames(colTable))
     if (length(absentColumns) > 0) {
-      stop(paste0("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), "."), call. = FALSE)
+      stop("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
     }
 
     #-------------------------------#
@@ -216,8 +216,8 @@ splitSamples <-
 
     if (isTRUE(verbose)) {
       groupSizes <- vapply(countsList, ncol, integer(1))
-      message(paste0("Split into ", length(countsList), " groups: ",
-                     paste(paste0(names(groupSizes), " (n=", groupSizes, ")"), collapse = ", "), "."))
+      message("Split into ", length(countsList), " groups: ",
+              paste(paste0(names(groupSizes), " (n=", groupSizes, ")"), collapse = ", "), ".")
     }
 
     return(countsList)

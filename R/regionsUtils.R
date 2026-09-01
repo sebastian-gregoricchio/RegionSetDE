@@ -39,7 +39,7 @@ renameBedColumns <-
     }
 
     if (ncol(table) < bedFormat) {
-      stop(paste0("The table contains ", ncol(table), " columns, less than the ", bedFormat, " required by the requested BED format."), call. = FALSE)
+      stop("The table contains ", ncol(table), " columns, less than the ", bedFormat, " required by the requested BED format.", call. = FALSE)
     }
 
     ### Renaming of the coordinate columns, the extra ones keep their original names
@@ -51,8 +51,8 @@ renameBedColumns <-
 
     # Renaming a column onto a name already used further right would break any subsequent selection
     if (any(duplicated(colnames(table)))) {
-      stop(paste0("The renaming produces duplicated column names: ",
-                  paste(unique(colnames(table)[duplicated(colnames(table))]), collapse = ", "), "."), call. = FALSE)
+      stop("The renaming produces duplicated column names: ",
+           paste(unique(colnames(table)[duplicated(colnames(table))]), collapse = ", "), ".", call. = FALSE)
     }
 
     return(table)
@@ -86,13 +86,13 @@ renameBedColumns <-
            asGRanges = TRUE) {
 
     if (!file.exists(filePath)) {
-      stop(paste0("The file '", filePath, "' does not exist."), call. = FALSE)
+      stop("The file '", filePath, "' does not exist.", call. = FALSE)
     }
 
     bed <- utils::read.delim(filePath, header = header, comment.char = "#", stringsAsFactors = FALSE, quote = "")
 
     if (ncol(bed) < 3) {
-      stop(paste0("The file '", filePath, "' contains less than 3 columns."), call. = FALSE)
+      stop("The file '", filePath, "' contains less than 3 columns.", call. = FALSE)
     }
 
     ### Headerless files follow the BED specification, only the first 6 columns have a defined meaning
@@ -115,7 +115,7 @@ renameBedColumns <-
     }
 
     if (nrow(bed) == 0) {
-      stop(paste0("No valid region found in '", filePath, "'."), call. = FALSE)
+      stop("No valid region found in '", filePath, "'.", call. = FALSE)
     }
 
     if (asGRanges == FALSE) {return(bed)}

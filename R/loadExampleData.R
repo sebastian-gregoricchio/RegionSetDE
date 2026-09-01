@@ -64,7 +64,7 @@ loadExampleData <-
       filePath <- system.file("extdata", paste0("euratrans_", objectName, ".rds"), package = "RegionSetDE")
 
       if (filePath == "" | !file.exists(filePath)) {
-        stop(paste0("The example object '", objectName, "' is not installed with RegionSetDE, please reinstall the package."), call. = FALSE)
+        stop("The example object '", objectName, "' is not installed with RegionSetDE, please reinstall the package.", call. = FALSE)
       }
 
       return(readRDS(filePath))
@@ -74,7 +74,7 @@ loadExampleData <-
       exampleObject <- readStoredObject(dataset)
 
       if (isTRUE(verbose)) {
-        message(paste0("Loaded the '", dataset, "' example object (", class(exampleObject)[1], ")."))
+        message("Loaded the '", dataset, "' example object (", class(exampleObject)[1], ").")
       }
 
       return(exampleObject)

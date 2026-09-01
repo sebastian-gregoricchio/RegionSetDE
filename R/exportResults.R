@@ -118,7 +118,7 @@ exportResults <-
       if (!is.null(set)) {
         absentSets <- setdiff(set, unique(resultTable$region.set))
         if (length(absentSets) > 0) {
-          stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+          stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
         }
         resultTable <- dplyr::filter(resultTable, .data$region.set %in% set)
       }
@@ -179,7 +179,7 @@ exportResults <-
     }
 
     if (isTRUE(verbose)) {
-      message(paste0("Written to ", normalizePath(path), ":\n  ", paste(basename(writtenPaths), collapse = "\n  ")))
+      message("Written to ", normalizePath(path), ":\n  ", paste(basename(writtenPaths), collapse = "\n  "))
     }
 
     return(invisible(writtenPaths))

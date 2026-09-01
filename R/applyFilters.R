@@ -190,13 +190,13 @@
                               function(gr) {any(GenomeInfoDb::seqlevels(gr) %in% GenomeInfoDb::seqlevels(filterRegions))},
                               logical(1))
     if (all(sharedSeqlevels == FALSE)) {
-      stop(paste0("The ", filterLabel, " shares no chromosome name with the region sets, please check the chromosome naming styles."), call. = FALSE)
+      stop("The ", filterLabel, " shares no chromosome name with the region sets, please check the chromosome naming styles.", call. = FALSE)
     }
 
     #--------------------#
     # Filter the regions #
     #--------------------#
-    if (verbose == TRUE) {message(paste0("Applying the ", filterLabel, " (", length(filterRegions), " regions):"))}
+    if (verbose == TRUE) {message("Applying the ", filterLabel, " (", length(filterRegions), " regions):")}
 
     nBefore <- vapply(regionSets, length, numeric(1))
 
@@ -213,8 +213,8 @@
 
     if (verbose == TRUE) {
       for (i in seq_along(filteredSets)) {
-        message(paste0("  ", names(filteredSets)[i], ": ", nAfter[i], "/", nBefore[i], " regions retained (",
-                       round(100 * (nBefore[i] - nAfter[i]) / max(nBefore[i], 1), 1), "% removed)"))
+        message("  ", names(filteredSets)[i], ": ", nAfter[i], "/", nBefore[i], " regions retained (",
+                round(100 * (nBefore[i] - nAfter[i]) / max(nBefore[i], 1), 1), "% removed)")
       }
     }
 
@@ -226,11 +226,11 @@
       emptyNames <- names(filteredSets)[nAfter == 0]
 
       if (emptySets == "stop") {
-        stop(paste0("The ", filterLabel, " left the following region sets without any region: ",
-                    paste(emptyNames, collapse = ", "),
-                    ". Set 'emptySets' to 'remove' or 'keep' to proceed."), call. = FALSE)
+        stop("The ", filterLabel, " left the following region sets without any region: ",
+             paste(emptyNames, collapse = ", "),
+             ". Set 'emptySets' to 'remove' or 'keep' to proceed.", call. = FALSE)
       } else {
-        warning(paste0("Empty region sets removed: ", paste(emptyNames, collapse = ", "), "."), call. = FALSE)
+        warning("Empty region sets removed: ", paste(emptyNames, collapse = ", "), ".", call. = FALSE)
         filteredSets <- filteredSets[nAfter > 0]
       }
     }

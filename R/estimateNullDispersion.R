@@ -86,8 +86,8 @@ estimateNullDispersion <-
                               index = index, subset = subset, minCount = minCount, maxRows = maxRows)
 
     if (length(nullObject$kept.rows) < 100) {
-      stop(paste0("Only ", length(nullObject$kept.rows), " null rows reach ", minCount,
-                  " counts, which is too few to estimate a dispersion from."), call. = FALSE)
+      stop("Only ", length(nullObject$kept.rows), " null rows reach ", minCount,
+           " counts, which is too few to estimate a dispersion from.", call. = FALSE)
     }
 
     #-------------------------------#
@@ -122,9 +122,9 @@ estimateNullDispersion <-
     }
 
     if (isTRUE(verbose)) {
-      message(paste0("Dispersion estimated on ", nrow(countMatrix), " ", source, " rows over ", ncol(countMatrix),
-                     " samples: ", signif(commonDispersion, 3), " (BCV ", signif(sqrt(commonDispersion), 3), ")",
-                     if (length(holdoutIndex) > 0) {paste0(", ", length(holdoutIndex), " rows held out for the check")} else {""}, "."))
+      message("Dispersion estimated on ", nrow(countMatrix), " ", source, " rows over ", ncol(countMatrix),
+              " samples: ", signif(commonDispersion, 3), " (BCV ", signif(sqrt(commonDispersion), 3), ")",
+              if (length(holdoutIndex) > 0) {paste0(", ", length(holdoutIndex), " rows held out for the check")} else {""}, ".")
       message("This is an assumption, not a replicate. Run checkNullCalibration before reading the p-values.")
     }
 
@@ -194,7 +194,7 @@ estimateNullDispersion <-
       rowSets <- as.character(SummarizedExperiment::rowData(counts)$region.set)
       absentSets <- setdiff(regionSets, unique(rowSets))
       if (length(absentSets) > 0) {
-        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
+        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
       }
       countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))[rowSets %in% regionSets, , drop = FALSE]
 

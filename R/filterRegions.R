@@ -86,7 +86,7 @@ filterRegions <-
     }
 
     if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop(paste0("The assay '", assay, "' is absent from the object."), call. = FALSE)
+      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
     }
 
     if (proportion <= 0 | proportion > 1) {
@@ -190,9 +190,14 @@ filterRegions <-
       }
 
       groupVector <- NULL
+
       if (!is.null(group)) {
-        if (!(group %in% colnames(SummarizedExperiment::colData(counts)))) {
-          stop(paste0("The column '", group, "' is absent from the colData."), call. = FALSE)
+        # A vector of values rather than a column name would reach the check below with
+        # length > 1, where R's own error replaces the one meant for the user
+        if (!is.character(group) || length(group) != 1) {
+          stop("The 'group' parameter must be a single column name of the colData.", call. = FALSE)
+        } else if (!(group %in% colnames(SummarizedExperiment::colData(counts)))) {
+          stop("The column '", group, "' is absent from the colData.", call. = FALSE)
         }
         groupVector <- SummarizedExperiment::colData(counts)[[group]]
       }
@@ -291,22 +296,22 @@ filterRegions <-
     # Report                        #
     #-------------------------------#
     if (isTRUE(verbose)) {
-      message(paste0("Filter: ", thresholdMessage, "."))
-      message(paste0("Kept ", length(keptIndex), " out of ", nrow(counts), " ", counts@counting.level, "s (",
-                     round(100 * length(keptIndex) / nrow(counts), 1), "%)."))
+      message("Filter: ", thresholdMessage, ".")
+      message("Kept ", length(keptIndex), " out of ", nrow(counts), " ", counts@counting.level, "s (",
+              round(100 * length(keptIndex) / nrow(counts), 1), "%).")
 
       if (lostRegions > 0) {
-        message(paste0(lostRegions, " regions lost every tile and have been removed."))
+        message(lostRegions, " regions lost every tile and have been removed.")
       }
 
       for (i in seq_len(nrow(stepLog))) {
-        message(paste0("  ", stepLog$region.set[i], ": ", stepLog$n.output[i], " / ", stepLog$n.input[i]))
+        message("  ", stepLog$region.set[i], ": ", stepLog$n.output[i], " / ", stepLog$n.input[i])
       }
 
       # A set reduced to a handful of rows cannot carry a set level test afterwards
       emptiedSets <- stepLog$region.set[stepLog$n.output < 10]
       if (length(emptiedSets) > 0) {
-        warning(paste0("The following region sets keep fewer than 10 rows: ", paste(emptiedSets, collapse = ", "), "."), call. = FALSE)
+        warning("The following region sets keep fewer than 10 rows: ", paste(emptiedSets, collapse = ", "), ".", call. = FALSE)
       }
     }
 

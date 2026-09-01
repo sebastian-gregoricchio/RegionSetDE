@@ -90,8 +90,8 @@ checkNullCalibration <-
                               index = index, subset = subset, minCount = minCount, maxRows = maxRows)
 
     if (nrow(nullObject$counts) < 100) {
-      stop(paste0("Only ", nrow(nullObject$counts), " null rows reach ", minCount,
-                  " counts, which is too few to calibrate against."), call. = FALSE)
+      stop("Only ", nrow(nullObject$counts), " null rows reach ", minCount,
+           " counts, which is too few to calibrate against.", call. = FALSE)
     }
 
     #-------------------------------#
@@ -176,18 +176,18 @@ checkNullCalibration <-
     # Report                        #
     #-------------------------------#
     if (isTRUE(verbose)) {
-      message(paste0(calibration$n.rows, " null rows from '", source, "'",
+      message(calibration$n.rows, " null rows from '", source, "'",
                      if (isTRUE(usedHoldout)) {" (held out of the estimate)"} else {""}, ": ",
                      round(100 * rawProportion, 2), "% below p = ", pValue,
                      " (expected ", round(100 * pValue, 2), "%), inflation ", signif(calibration$inflation, 3),
-                     ", ", calibration$n.FDR, " below FDR = ", FDR, "."))
+                     ", ", calibration$n.FDR, " below FDR = ", FDR, ".")
 
       if (verdict == "too liberal") {
-        message(paste0("The dispersion of ", signif(fit@dispersion$common, 3), " is too low.",
-                       if (is.finite(suggestedDispersion)) {
-                         paste0(" Around ", signif(suggestedDispersion, 3), " (BCV ", signif(sqrt(suggestedDispersion), 2),
-                                ") would calibrate these rows.")
-                       } else {""}))
+        message("The dispersion of ", signif(fit@dispersion$common, 3), " is too low.",
+                if (is.finite(suggestedDispersion)) {
+                  paste0(" Around ", signif(suggestedDispersion, 3), " (BCV ", signif(sqrt(suggestedDispersion), 2),
+                         ") would calibrate these rows.")
+                } else {""})
       } else if (verdict == "too conservative") {
         message("The dispersion is higher than the null rows need, which costs power but not credibility.")
       } else {

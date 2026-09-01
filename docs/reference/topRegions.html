@@ -120,65 +120,83 @@
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># By default only the regions passing the thresholds come back</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id seqnames    start      end width    log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_02996    chr12 36842295 36843294  1000 -5.173846</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal     stat      p.value        FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.159079 96.04587 8.250221e-06 0.01563417        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        region.set    region.id tile.id seqnames    start      end width</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2      intergenic region_03590      NA    chr12 44174500 44175499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4        geneBody region_02435      NA    chr12 29881730 29882729  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5        geneBody region_02220      NA    chr12 27481625 27482624  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6      intergenic region_03406      NA    chr12 42124500 42125499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7      intergenic region_02700      NA    chr12 33474500 33475499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8        geneBody region_00572      NA    chr12  7295412  7296411  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  promoterNonCpG region_01472      NA    chr12 17981162 17982161  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10    promoterCpG region_01273      NA    chr12 15719347 15720346  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       log2FC average.signal     stat      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   3.180337       4.777653 26.92056 4.205306e-05 1.328176e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  -2.202950       5.128097 25.79674 6.712520e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># FDR = 1 ranks everything instead, which is what you want when power is low</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">10</span>, FDR <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        region.set    region.id seqnames    start      end width    log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  promoterNonCpG region_02996    chr12 36842295 36843294  1000 -5.173846</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2      intergenic region_03406    chr12 42124500 42125499  1000  3.175959</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3      intergenic region_03590    chr12 44174500 44175499  1000 -2.914299</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        geneBody region_00572    chr12  7295412  7296411  1000 -2.353311</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        geneBody region_02220    chr12 27481625 27482624  1000 -2.306593</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6      intergenic region_02700    chr12 33474500 33475499  1000 -2.222723</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  promoterNonCpG region_00212    chr12  2500829  2501828  1000 -3.158256</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8        geneBody region_02435    chr12 29881730 29882729  1000 -2.818275</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9      intergenic region_00294    chr12  3464500  3465499  1000  2.138963</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10    promoterCpG region_01273    chr12 15719347 15720346  1000 -1.760354</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    average.signal     stat      p.value        FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1        5.159079 96.04587 8.250221e-06 0.01563417        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        4.777653 52.01808 7.946510e-05 0.07016884        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        5.237329 61.14661 1.110852e-04 0.07016884        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        6.847950 47.47112 2.310899e-04 0.10947886        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        5.277404 41.74927 3.779726e-04 0.13531673        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6        5.128097 39.10818 4.284435e-04 0.13531673        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7        4.816977 35.94079 5.057763e-04 0.13591868        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8        5.406565 36.06544 5.737992e-04 0.13591868        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9        6.718718 33.13540 7.613198e-04 0.15267500        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10       5.933614 31.75165 8.083977e-04 0.15267500        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        region.set    region.id tile.id seqnames    start      end width</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2      intergenic region_03590      NA    chr12 44174500 44175499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4        geneBody region_02435      NA    chr12 29881730 29882729  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5        geneBody region_02220      NA    chr12 27481625 27482624  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6      intergenic region_03406      NA    chr12 42124500 42125499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7      intergenic region_02700      NA    chr12 33474500 33475499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8        geneBody region_00572      NA    chr12  7295412  7296411  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  promoterNonCpG region_01472      NA    chr12 17981162 17982161  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10    promoterCpG region_01273      NA    chr12 15719347 15720346  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       log2FC average.signal     stat      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   3.180337       4.777653 26.92056 4.205306e-05 1.328176e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  -2.202950       5.128097 25.79674 6.712520e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># One set at a time, ranked rather than filtered</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">5</span>, set <span class="op">=</span> <span class="st">"promoterCpG"</span>, FDR <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    region.set    region.id seqnames    start      end width    log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterCpG region_01273    chr12 15719347 15720346  1000 -1.760354</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 promoterCpG region_02452    chr12 30097777 30098776  1000  1.515813</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterCpG region_01859    chr12 22815633 22816632  1000  1.467524</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 promoterCpG region_00824    chr12 10369814 10370813  1000  1.634133</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 promoterCpG region_01335    chr12 16332641 16333640  1000 -1.002688</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal      stat      p.value       FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.933614 31.751650 0.0008083977 0.1526750        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.117243 14.539452 0.0068274904 0.4367964        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       5.016526 12.553539 0.0097115587 0.4367964        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4.658080  7.373375 0.0297804808 0.6279996        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       7.117925  6.973124 0.0340885637 0.6525033        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    region.set    region.id tile.id seqnames    start      end width    log2FC</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterCpG region_01273      NA    chr12 15719347 15720346  1000 -1.771521</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 promoterCpG region_02452      NA    chr12 30097777 30098776  1000  1.513446</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterCpG region_01859      NA    chr12 22815633 22816632  1000  1.445776</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 promoterCpG region_00836      NA    chr12 10545505 10546504  1000 -1.223234</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal      stat      p.value        FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.933614 21.009851 0.0002058661 0.03901163        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.117243 10.076467 0.0049984001 0.28702934        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3       5.016526  8.582683 0.0086069702 0.36371630        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4.658080  7.080136 0.0163032446 0.45433307        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.879394  6.508768 0.0207077166 0.49672308        null</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Sorting by effect size instead of significance</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">5</span>, FDR <span class="op">=</span> <span class="fl">1</span>, sortBy <span class="op">=</span> <span class="st">"log2FC"</span>, direction <span class="op">=</span> <span class="st">"down"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id seqnames    start      end width    log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_02996    chr12 36842295 36843294  1000 -5.173846</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2     intergenic region_01115    chr12 13844500 13845499  1000 -3.200633</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterNonCpG region_00212    chr12  2500829  2501828  1000 -3.158256</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       geneBody region_03415    chr12 42209041 42210040  1000 -3.049729</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5     intergenic region_03590    chr12 44174500 44175499  1000 -2.914299</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal      stat      p.value        FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.159079 96.045875 8.250221e-06 0.01563417        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       3.819372 13.191013 6.567060e-03 0.43679636        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       4.816977 35.940786 5.057763e-04 0.13591868        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       3.189783  8.825339 1.738335e-02 0.53131362        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.237329 61.146610 1.110852e-04 0.07016884        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id tile.id seqnames    start      end width</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3     intergenic region_01115      NA    chr12 13844500 13845499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       geneBody region_03415      NA    chr12 42209041 42210040  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5     intergenic region_03590      NA    chr12 44174500 44175499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal      stat      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079 84.136173 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -3.222630       4.816977 34.299774 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.154327       3.819372 15.362838 9.731331e-04 9.705722e-02        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -3.020137       3.189783  8.417927 8.828997e-03 3.637163e-01        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.887100       5.237329 43.045774 2.743053e-06 2.599042e-03        down</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
@@ -191,7 +209,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

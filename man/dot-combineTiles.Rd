@@ -7,6 +7,7 @@
 .combineTiles(
   tileTable,
   tileRanges,
+  extraColumns = character(0),
   method = "simes",
   lfcThreshold = 0,
   adjustMethod = "BH",
@@ -17,6 +18,8 @@
 \item{tileTable}{Data.frame with one row per tile, as returned by the engine specific test.}
 
 \item{tileRanges}{\code{GRanges} with the coordinates of the tiles.}
+
+\item{extraColumns}{Character vector with the annotation columns carried over from the tiles.}
 
 \item{method}{String with the combination method.}
 

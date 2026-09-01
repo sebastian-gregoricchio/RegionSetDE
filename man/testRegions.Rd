@@ -14,6 +14,7 @@ testRegions(
   log2FC = 0,
   adjustMethod = "BH",
   regionSets = NULL,
+  extraColumns = TRUE,
   carryCounts = TRUE,
   verbose = TRUE
 )
@@ -37,6 +38,8 @@ testRegions(
 
 \item{regionSets}{Character vector with the names of the region sets to keep in the output. Default: \code{NULL}, all of them.}
 
+\item{extraColumns}{Annotation carried by the regions that must be appended to the result, at the end of the table. Either \code{TRUE} for every column of the \code{rowData} beyond the ones the package writes itself, \code{FALSE} for none, or a character vector naming the ones wanted. Default: \code{TRUE}.}
+
 \item{carryCounts}{Logical value to indicate whether the counts must travel inside the result, so that \code{\link{plotRegion}} and \code{\link{plotTopHeatmap}} can draw the values without being handed the counts object again. Several contrasts run on one fit share the same copy in memory. Default: \code{TRUE}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
@@ -54,21 +57,31 @@ Two things follow from the combination step. The p-value of a tiled region is a 
 
 A design written as \code{~ condition} spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what \code{c("column", "groupA", "groupB")} avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as \code{~ condition} or \code{~ 0 + condition}. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.
 
+Whatever the regions were loaded with travels through to the result. A gene name, a peak score or any other column attached to the \code{rowData} comes out at the end of the table, which is what makes \code{topRegions()} readable and lets \code{plotVolcano(labelColumn = )} label the points with something other than an identifier. On a tiled object the value is read off the tile the combination reported, the same one the fold change comes from, so a row describes one place rather than an average over several.
+
 The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
 }
 \examples{
-fit <- loadExampleData("fit", verbose = FALSE)
+\dontrun{
+fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
 
-# The three-element form works whatever the reference level is
-results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
-results
+res <- testRegions(fit, contrast = "conditionCOMBO")
 
-head(resultsTable(results))
+# Two levels of a column, whichever of them the design took as reference
+res <- testRegions(fit, contrast = c("condition", "COMBO", "DMSO"))
 
-# Testing against a fold change threshold rather than against zero
-strictResults <- testRegions(fit, contrast = c("condition", "SHR", "BN"),
-                             lfcThreshold = 1, verbose = FALSE)
-strictResults
+# Difference between two coefficients of the design
+res <- testRegions(fit, contrast = "conditionCOMBO - conditionEPZ")
+
+# Several contrasts on the same fit
+resList <- testRegions(fit, contrast = list(combo = c("condition", "COMBO", "DMSO"),
+                                            epz = c("condition", "EPZ", "DMSO")))
+resList
+topRegions(resList, contrast = "combo")
+
+# Threshold inside the test rather than on the output
+resStrict <- testRegions(fit, contrast = "conditionCOMBO", lfcThreshold = 1)
+}
 
 }
 \seealso{

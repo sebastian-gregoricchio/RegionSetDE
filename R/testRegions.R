@@ -11,6 +11,7 @@
 #' @param log2FC Numeric value with the absolute log2 fold change cut-off used to fill the \code{diff.status} column. Default: \code{0}.
 #' @param adjustMethod String with the multiple testing correction, passed to \code{stats::p.adjust}. Default: \code{"BH"}.
 #' @param regionSets Character vector with the names of the region sets to keep in the output. Default: \code{NULL}, all of them.
+#' @param extraColumns Annotation carried by the regions that must be appended to the result, at the end of the table. Either \code{TRUE} for every column of the \code{rowData} beyond the ones the package writes itself, \code{FALSE} for none, or a character vector naming the ones wanted. Default: \code{TRUE}.
 #' @param carryCounts Logical value to indicate whether the counts must travel inside the result, so that \code{\link{plotRegion}} and \code{\link{plotTopHeatmap}} can draw the values without being handed the counts object again. Several contrasts run on one fit share the same copy in memory. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
@@ -22,21 +23,31 @@
 #'
 #' A design written as \code{~ condition} spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what \code{c("column", "groupA", "groupB")} avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as \code{~ condition} or \code{~ 0 + condition}. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.
 #'
+#' Whatever the regions were loaded with travels through to the result. A gene name, a peak score or any other column attached to the \code{rowData} comes out at the end of the table, which is what makes \code{topRegions()} readable and lets \code{plotVolcano(labelColumn = )} label the points with something other than an identifier. On a tiled object the value is read off the tile the combination reported, the same one the fold change comes from, so a row describes one place rather than an average over several.
+#'
 #' The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
 #'
 #' @examples
-#' fit <- loadExampleData("fit", verbose = FALSE)
+#' \dontrun{
+#' fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
 #'
-#' # The three-element form works whatever the reference level is
-#' results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
-#' results
+#' res <- testRegions(fit, contrast = "conditionCOMBO")
 #'
-#' head(resultsTable(results))
+#' # Two levels of a column, whichever of them the design took as reference
+#' res <- testRegions(fit, contrast = c("condition", "COMBO", "DMSO"))
 #'
-#' # Testing against a fold change threshold rather than against zero
-#' strictResults <- testRegions(fit, contrast = c("condition", "SHR", "BN"),
-#'                              lfcThreshold = 1, verbose = FALSE)
-#' strictResults
+#' # Difference between two coefficients of the design
+#' res <- testRegions(fit, contrast = "conditionCOMBO - conditionEPZ")
+#'
+#' # Several contrasts on the same fit
+#' resList <- testRegions(fit, contrast = list(combo = c("condition", "COMBO", "DMSO"),
+#'                                             epz = c("condition", "EPZ", "DMSO")))
+#' resList
+#' topRegions(resList, contrast = "combo")
+#'
+#' # Threshold inside the test rather than on the output
+#' resStrict <- testRegions(fit, contrast = "conditionCOMBO", lfcThreshold = 1)
+#' }
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -63,6 +74,7 @@ testRegions <-
            log2FC = 0,
            adjustMethod = "BH",
            regionSets = NULL,
+           extraColumns = TRUE,
            carryCounts = TRUE,
            verbose = TRUE) {
 
@@ -86,12 +98,12 @@ testRegions <-
         lapply(names(contrast),
                function(contrastName) {
                  if (isTRUE(verbose)) {
-                   message("--- ", contrastName, " ---")
+                   message(paste0("--- ", contrastName, " ---"))
                  }
                  return(testRegions(fit = fit, contrast = contrast[[contrastName]], combine = combine,
                                     combineMethod = combineMethod, lfcThreshold = lfcThreshold, FDR = FDR,
                                     log2FC = log2FC, adjustMethod = adjustMethod, regionSets = regionSets,
-                                    carryCounts = carryCounts, verbose = verbose))
+                                    extraColumns = extraColumns, carryCounts = carryCounts, verbose = verbose))
                })
 
       names(resultsList) <- names(contrast)
@@ -114,7 +126,7 @@ testRegions <-
                                        colData = SummarizedExperiment::colData(fit@counts))
 
     if (isTRUE(verbose)) {
-      message("Testing '", contrastObject$label, "' on ", nrow(fit@counts), " ", fit@counting.level, "s.")
+      message(paste0("Testing '", contrastObject$label, "' on ", nrow(fit@counts), " ", fit@counting.level, "s."))
 
       # The p-values are conditional on a number that was assumed rather than measured
       if (isTRUE(fit@dispersion$no.replicates)) {
@@ -147,6 +159,18 @@ testRegions <-
                               end = BiocGenerics::end(rowRangesObject),
                               width = BiocGenerics::width(rowRangesObject))
 
+    #-------------------------------#
+    # Annotation carried by the rows #
+    #-------------------------------#
+    extraTable <- .extraRowColumns(rowTable = rowTable,
+                                   extraColumns = extraColumns,
+                                   reserved = c(colnames(rawTable), .resultColumnNames()),
+                                   verbose = verbose)
+
+    if (ncol(extraTable) > 0) {
+      rawTable <- cbind(rawTable, extraTable)
+    }
+
     isTiled <- fit@counting.level == "tile"
 
     #-------------------------------#
@@ -155,6 +179,7 @@ testRegions <-
     if (isTiled & isTRUE(combine)) {
       combinedList <- .combineTiles(tileTable = rawTable,
                                     tileRanges = rowRangesObject,
+                                    extraColumns = colnames(extraTable),
                                     method = combineMethod,
                                     lfcThreshold = lfcThreshold,
                                     adjustMethod = adjustMethod,
@@ -189,7 +214,7 @@ testRegions <-
     if (!is.null(regionSets)) {
       absentSets <- setdiff(regionSets, unique(resultTable$region.set))
       if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+        stop(paste0("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), "."), call. = FALSE)
       }
 
       # The correction has already run over every row, subsetting here does not change the FDR of what is kept
@@ -202,10 +227,18 @@ testRegions <-
       }
     }
 
-    orderedColumns <- c("region.set", "region.id", "seqnames", "start", "end", "width",
-                        "log2FC", "average.signal", "stat", "p.value", "FDR", "diff.status")
-    resultTable <- resultTable[, c(intersect(orderedColumns, colnames(resultTable)),
-                                   setdiff(colnames(resultTable), c(orderedColumns, "region.key", "tile.id")))]
+    # The statistics first, then what the combination added, then whatever the regions came with
+    statisticColumns <- c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width",
+                          "log2FC", "average.signal", "stat", "p.value", "FDR", "diff.status")
+    combinationColumns <- c("n.tiles", "n.tiles.up", "n.tiles.down", "direction", "rep.tile.start", "rep.tile.end")
+
+    annotationColumns <- setdiff(colnames(resultTable),
+                                 c(statisticColumns, combinationColumns, "region.key"))
+
+    resultTable <- resultTable[, c(intersect(statisticColumns, colnames(resultTable)),
+                                   intersect(combinationColumns, colnames(resultTable)),
+                                   annotationColumns),
+                               drop = FALSE]
     rownames(resultTable) <- NULL
 
     #-------------------------------#
@@ -253,9 +286,9 @@ testRegions <-
 
     if (isTRUE(verbose)) {
       statusTable <- table(resultTable$diff.status)
-      message("Done. ", statusTable[["up"]], " up and ", statusTable[["down"]],
-              " down out of ", nrow(resultTable), " regions (FDR < ", FDR,
-              if (log2FC > 0) {paste0(", |log2FC| > ", log2FC)} else {""}, ").")
+      message(paste0("Done. ", statusTable[["up"]], " up and ", statusTable[["down"]],
+                     " down out of ", nrow(resultTable), " regions (FDR < ", FDR,
+                     if (log2FC > 0) {paste0(", |log2FC| > ", log2FC)} else {""}, ")."))
     }
 
     return(resultsObject)
@@ -292,7 +325,7 @@ testRegions <-
     #-------------------------------#
     if (is.numeric(contrast)) {
       if (length(contrast) != length(coefficientNames)) {
-        stop("The contrast vector must have one value per design column (", length(coefficientNames), ").", call. = FALSE)
+        stop(paste0("The contrast vector must have one value per design column (", length(coefficientNames), ")."), call. = FALSE)
       }
       contrastVector <- as.numeric(contrast)
       names(contrastVector) <- coefficientNames
@@ -318,15 +351,15 @@ testRegions <-
       columnName <- contrast[1]
 
       if (!(columnName %in% colnames(colTable))) {
-        stop("The column \'", columnName, "\' is absent from the colData. Available: ",
-             paste(colnames(colTable), collapse = ", "), ".", call. = FALSE)
+        stop(paste0("The column \'", columnName, "\' is absent from the colData. Available: ",
+                    paste(colnames(colTable), collapse = ", "), "."), call. = FALSE)
       }
 
       columnValues <- as.character(colTable[[columnName]])
       absentGroups <- setdiff(contrast[2:3], unique(columnValues))
       if (length(absentGroups) > 0) {
-        stop("The following levels are absent from \'", columnName, "\': ", paste(absentGroups, collapse = ", "),
-             ". Available: ", paste(unique(columnValues), collapse = ", "), ".", call. = FALSE)
+        stop(paste0("The following levels are absent from \'", columnName, "\': ", paste(absentGroups, collapse = ", "),
+                    ". Available: ", paste(unique(columnValues), collapse = ", "), "."), call. = FALSE)
       }
 
       firstRows <- which(columnValues == contrast[2])
@@ -339,8 +372,8 @@ testRegions <-
       names(contrastVector) <- coefficientNames
 
       if (all(contrastVector == 0)) {
-        stop("The design does not separate \'", contrast[2], "\' from \'", contrast[3],
-             "\', the two groups share the same coefficients.", call. = FALSE)
+        stop(paste0("The design does not separate \'", contrast[2], "\' from \'", contrast[3],
+                    "\', the two groups share the same coefficients."), call. = FALSE)
       }
 
       return(list(vector = contrastVector,
@@ -376,9 +409,9 @@ testRegions <-
     contrastMatrix <- try(limma::makeContrasts(contrasts = safeContrast, levels = safeNames), silent = TRUE)
 
     if (inherits(contrastMatrix, "try-error")) {
-      stop("The contrast \'", contrast, "\' could not be read. Available coefficients: ",
-           paste(coefficientNames, collapse = ", "), ".",
-           .contrastSuggestion(contrast = contrast, coefficientNames = coefficientNames, colData = colData), call. = FALSE)
+      stop(paste0("The contrast \'", contrast, "\' could not be read. Available coefficients: ",
+                  paste(coefficientNames, collapse = ", "), ".",
+                  .contrastSuggestion(contrast = contrast, coefficientNames = coefficientNames, colData = colData)), call. = FALSE)
     }
 
     contrastVector <- as.numeric(contrastMatrix[, 1])
@@ -705,6 +738,7 @@ testRegions <-
 #'
 #' @param tileTable Data.frame with one row per tile, as returned by the engine specific test.
 #' @param tileRanges \code{GRanges} with the coordinates of the tiles.
+#' @param extraColumns Character vector with the annotation columns carried over from the tiles.
 #' @param method String with the combination method.
 #' @param lfcThreshold Numeric value used to count the tiles moving in each direction.
 #' @param adjustMethod String with the multiple testing correction.
@@ -727,6 +761,7 @@ testRegions <-
 .combineTiles <-
   function(tileTable,
            tileRanges,
+           extraColumns = character(0),
            method = "simes",
            lfcThreshold = 0,
            adjustMethod = "BH",
@@ -781,11 +816,122 @@ testRegions <-
                               rep.tile.end = BiocGenerics::end(tileRanges)[representativeIndex],
                               stringsAsFactors = FALSE)
 
+    # The statistics come from the representative tile, so its annotation is the one that describes the row
+    if (length(extraColumns) > 0) {
+      resultTable <- cbind(resultTable, tileTable[representativeIndex, extraColumns, drop = FALSE])
+    }
+
     resultTable <- dplyr::mutate(resultTable, FDR = stats::p.adjust(.data$p.value, method = adjustMethod))
 
     if (isTRUE(verbose)) {
-      message(nrow(tileTable), " tiles combined into ", nrow(resultTable), " regions by ", method, ".")
+      message(paste0(nrow(tileTable), " tiles combined into ", nrow(resultTable), " regions by ", method, "."))
     }
 
     return(list(results = resultTable, regions = regionRanges))
+  } # END function
+
+
+
+
+#' @title .resultColumnNames
+#'
+#' @description Lists the column names \code{\link{testRegions}} writes itself, so that a column carried by the regions can be spotted before it overwrites one of them.
+#'
+#' @return A character vector.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.resultColumnNames <-
+  function() {
+
+    return(c("log2FC", "average.signal", "stat", "p.value", "FDR", "diff.status",
+             "n.tiles", "n.tiles.up", "n.tiles.down", "direction",
+             "rep.tile.start", "rep.tile.end"))
+  } # END function
+
+
+
+
+#' @title .extraRowColumns
+#'
+#' @description Picks the annotation columns of the \code{rowData} that must travel into a result, leaving out the ones the package writes itself and renaming any that would collide with a statistic.
+#'
+#' @param rowTable Data.frame with the \code{rowData} of the counts.
+#' @param extraColumns \code{TRUE} for every annotation column, \code{FALSE} for none, or a character vector naming the ones wanted.
+#' @param reserved Character vector with the names already spoken for.
+#' @param verbose Logical value to indicate whether the messages must be printed.
+#'
+#' @return A data.frame with one row per row of the counts, possibly with no column at all.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.extraRowColumns <-
+  function(rowTable,
+           extraColumns = TRUE,
+           reserved = character(0),
+           verbose = TRUE) {
+
+    emptyTable <- data.frame(row.names = seq_len(nrow(rowTable)))
+
+    if (isFALSE(extraColumns)) {
+      return(emptyTable)
+    }
+
+    #-------------------------------#
+    # Which columns                 #
+    #-------------------------------#
+    # These three are written by the counting and are already in the result under their own names
+    candidateColumns <- setdiff(colnames(rowTable), c("region.set", "region.id", "tile.id"))
+
+    if (is.character(extraColumns)) {
+      absentColumns <- setdiff(extraColumns, colnames(rowTable))
+      if (length(absentColumns) > 0) {
+        stop("The following columns are absent from the region annotation: ",
+             paste(absentColumns, collapse = ", "), ".", call. = FALSE)
+      }
+      candidateColumns <- intersect(extraColumns, candidateColumns)
+    }
+
+    if (length(candidateColumns) == 0) {
+      return(emptyTable)
+    }
+
+    #-------------------------------#
+    # What can be bound             #
+    #-------------------------------#
+    # A list column has no place in a flat table and would break the binding rather than the row
+    isAtomic <- vapply(rowTable[candidateColumns], is.atomic, logical(1))
+
+    if (any(!isAtomic) & isTRUE(verbose)) {
+      message("The following region columns are not atomic and have been left out: ",
+              paste(candidateColumns[!isAtomic], collapse = ", "), ".")
+    }
+
+    candidateColumns <- candidateColumns[isAtomic]
+
+    if (length(candidateColumns) == 0) {
+      return(emptyTable)
+    }
+
+    extraTable <- as.data.frame(rowTable[, candidateColumns, drop = FALSE], stringsAsFactors = FALSE)
+
+    #-------------------------------#
+    # Names already spoken for      #
+    #-------------------------------#
+    collidingColumns <- candidateColumns %in% reserved
+
+    if (any(collidingColumns)) {
+      colnames(extraTable)[collidingColumns] <- paste0(candidateColumns[collidingColumns], ".region")
+
+      if (isTRUE(verbose)) {
+        message("The following region columns share a name with a statistic and carry the suffix '.region': ",
+                paste(candidateColumns[collidingColumns], collapse = ", "), ".")
+      }
+    }
+
+    return(extraTable)
   } # END function

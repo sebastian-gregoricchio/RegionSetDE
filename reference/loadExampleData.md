@@ -107,16 +107,16 @@ counts
 fit <- loadExampleData("fit", verbose = FALSE)
 results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 topRegions(results, n = 5, FDR = 1)
-#>       region.set    region.id seqnames    start      end width    log2FC
-#> 1 promoterNonCpG region_02996    chr12 36842295 36843294  1000 -5.203835
-#> 2     intergenic region_03590    chr12 44174500 44175499  1000 -2.887100
-#> 3 promoterNonCpG region_00212    chr12  2500829  2501828  1000 -3.222630
-#> 4       geneBody region_02435    chr12 29881730 29882729  1000 -2.778908
-#> 5       geneBody region_02220    chr12 27481625 27482624  1000 -2.281658
-#>   average.signal     stat      p.value          FDR diff.status
-#> 1       5.159079 84.13617 1.148685e-08 2.176757e-05        down
-#> 2       5.237329 43.04577 2.743053e-06 2.599042e-03        down
-#> 3       4.816977 34.29977 1.370844e-05 6.573186e-03        down
-#> 4       5.406565 36.15528 1.387480e-05 6.573186e-03        down
-#> 5       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+#>       region.set    region.id tile.id seqnames    start      end width
+#> 1 promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000
+#> 2     intergenic region_03590      NA    chr12 44174500 44175499  1000
+#> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000
+#> 4       geneBody region_02435      NA    chr12 29881730 29882729  1000
+#> 5       geneBody region_02220      NA    chr12 27481625 27482624  1000
+#>      log2FC average.signal     stat      p.value          FDR diff.status
+#> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down
+#> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down
+#> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
+#> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
+#> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
 ```

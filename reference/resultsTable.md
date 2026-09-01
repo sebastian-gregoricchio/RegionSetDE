@@ -42,13 +42,13 @@ results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FA
 
 resultTable <- resultsTable(results)
 head(resultTable)
-#>       region.set    region.id seqnames  start    end width     log2FC
-#> 1 promoterNonCpG region_00012    chr12  26988  27987  1000 -0.4744875
-#> 2 promoterNonCpG region_00017    chr12  39449  40448  1000 -1.6911510
-#> 3 promoterNonCpG region_00019    chr12  44116  45115  1000  0.1328365
-#> 4 promoterNonCpG region_00020    chr12  46527  47526  1000  1.3000608
-#> 5 promoterNonCpG region_00026    chr12  89229  90228  1000 -0.0791789
-#> 6 promoterNonCpG region_00043    chr12 330751 331750  1000 -1.2370885
+#>       region.set    region.id tile.id seqnames  start    end width     log2FC
+#> 1 promoterNonCpG region_00012      NA    chr12  26988  27987  1000 -0.4744875
+#> 2 promoterNonCpG region_00017      NA    chr12  39449  40448  1000 -1.6911510
+#> 3 promoterNonCpG region_00019      NA    chr12  44116  45115  1000  0.1328365
+#> 4 promoterNonCpG region_00020      NA    chr12  46527  47526  1000  1.3000608
+#> 5 promoterNonCpG region_00026      NA    chr12  89229  90228  1000 -0.0791789
+#> 6 promoterNonCpG region_00043      NA    chr12 330751 331750  1000 -1.2370885
 #>   average.signal        stat   p.value       FDR diff.status
 #> 1       3.098695 0.166290413 0.6880013 0.9200864        null
 #> 2       3.141973 2.337588301 0.1429932 0.7997195        null

@@ -3,7 +3,7 @@ pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   RegionSetDE.vignette: RegionSetDE.vignette.html
-last_built: 2026-09-01T11:55Z
+last_built: 2026-09-01T23:27Z
 urls:
   reference: https://sebastian-gregoricchio.github.io/RegionSetDE/reference
   article: https://sebastian-gregoricchio.github.io/RegionSetDE/articles

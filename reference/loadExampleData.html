@@ -99,18 +99,18 @@
 <span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">loadExampleData</span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">5</span>, FDR <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id seqnames    start      end width    log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_02996    chr12 36842295 36843294  1000 -5.203835</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2     intergenic region_03590    chr12 44174500 44175499  1000 -2.887100</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterNonCpG region_00212    chr12  2500829  2501828  1000 -3.222630</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       geneBody region_02435    chr12 29881730 29882729  1000 -2.778908</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       geneBody region_02220    chr12 27481625 27482624  1000 -2.281658</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal     stat      p.value          FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id tile.id seqnames    start      end width</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2     intergenic region_03590      NA    chr12 44174500 44175499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       geneBody region_02435      NA    chr12 29881730 29882729  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5       geneBody region_02220      NA    chr12 27481625 27482624  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal     stat      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

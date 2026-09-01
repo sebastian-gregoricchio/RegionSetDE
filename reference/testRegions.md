@@ -19,6 +19,7 @@ testRegions(
   log2FC = 0,
   adjustMethod = "BH",
   regionSets = NULL,
+  extraColumns = TRUE,
   carryCounts = TRUE,
   verbose = TRUE
 )
@@ -90,6 +91,13 @@ testRegions(
   Character vector with the names of the region sets to keep in the
   output. Default: `NULL`, all of them.
 
+- extraColumns:
+
+  Annotation carried by the regions that must be appended to the result,
+  at the end of the table. Either `TRUE` for every column of the
+  `rowData` beyond the ones the package writes itself, `FALSE` for none,
+  or a character vector naming the ones wanted. Default: `TRUE`.
+
 - carryCounts:
 
   Logical value to indicate whether the counts must travel inside the
@@ -141,6 +149,16 @@ contrast whatever the reference is and whether the design was written as
 the averaging picks up their imbalance between the two groups, so it
 describes what it says only when the design is reasonably balanced.
 
+Whatever the regions were loaded with travels through to the result. A
+gene name, a peak score or any other column attached to the `rowData`
+comes out at the end of the table, which is what makes
+[`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
+readable and lets `plotVolcano(labelColumn = )` label the points with
+something other than an identifier. On a tiled object the value is read
+off the tile the combination reported, the same one the fold change
+comes from, so a row describes one place rather than an average over
+several.
+
 The `diff.status` column is a labelling convenience, not a claim. It is
 filled from `FDR` and `log2FC` and used by the plotting functions; the
 thresholds are stored in the object so that a figure can state them.
@@ -158,52 +176,24 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-fit <- loadExampleData("fit", verbose = FALSE)
+if (FALSE) { # \dontrun{
+fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
 
-# The three-element form works whatever the reference level is
-results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
-results
-#> An object of class 'RegionSetDE.results'
-#>   contrast        : condition: SHR vs BN 
-#>   engine          : edgeR 
-#>   regions         : 1895 
-#>   counts carried  : 4 samples
-#>   thresholds      : FDR < 0.05 | |log2FC| > 0 
-#>   changing regions:
-#>     promoterNonCpG: 1 up, 2 down
-#>     intergenic: 2 up, 3 down
-#>     geneBody: 0 up, 3 down
-#>     promoterCpG: 0 up, 1 down
+res <- testRegions(fit, contrast = "conditionCOMBO")
 
-head(resultsTable(results))
-#>       region.set    region.id seqnames  start    end width     log2FC
-#> 1 promoterNonCpG region_00012    chr12  26988  27987  1000 -0.4744875
-#> 2 promoterNonCpG region_00017    chr12  39449  40448  1000 -1.6911510
-#> 3 promoterNonCpG region_00019    chr12  44116  45115  1000  0.1328365
-#> 4 promoterNonCpG region_00020    chr12  46527  47526  1000  1.3000608
-#> 5 promoterNonCpG region_00026    chr12  89229  90228  1000 -0.0791789
-#> 6 promoterNonCpG region_00043    chr12 330751 331750  1000 -1.2370885
-#>   average.signal        stat   p.value       FDR diff.status
-#> 1       3.098695 0.166290413 0.6880013 0.9200864        null
-#> 2       3.141973 2.337588301 0.1429932 0.7997195        null
-#> 3       3.273341 0.010028735 0.9213104 0.9807286        null
-#> 4       3.490690 2.084865356 0.1637725 0.7997195        null
-#> 5       3.220877 0.007114484 0.9335959 0.9807286        null
-#> 6       3.411317 2.273415136 0.1472119 0.7997195        null
+# Two levels of a column, whichever of them the design took as reference
+res <- testRegions(fit, contrast = c("condition", "COMBO", "DMSO"))
 
-# Testing against a fold change threshold rather than against zero
-strictResults <- testRegions(fit, contrast = c("condition", "SHR", "BN"),
-                             lfcThreshold = 1, verbose = FALSE)
-strictResults
-#> An object of class 'RegionSetDE.results'
-#>   contrast        : condition: SHR vs BN 
-#>   engine          : edgeR 
-#>   regions         : 1895 
-#>   counts carried  : 4 samples
-#>   thresholds      : FDR < 0.05 | |log2FC| > 0 
-#>   changing regions:
-#>     promoterNonCpG: 0 up, 1 down
-#>     intergenic: 0 up, 1 down
-#>     geneBody: 0 up, 0 down
-#>     promoterCpG: 0 up, 0 down
+# Difference between two coefficients of the design
+res <- testRegions(fit, contrast = "conditionCOMBO - conditionEPZ")
+
+# Several contrasts on the same fit
+resList <- testRegions(fit, contrast = list(combo = c("condition", "COMBO", "DMSO"),
+                                            epz = c("condition", "EPZ", "DMSO")))
+resList
+topRegions(resList, contrast = "combo")
+
+# Threshold inside the test rather than on the output
+resStrict <- testRegions(fit, contrast = "conditionCOMBO", lfcThreshold = 1)
+} # }
 ```

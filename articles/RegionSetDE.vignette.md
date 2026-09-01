@@ -665,10 +665,10 @@ The results table comes out with
 resultTable <- resultsTable(results)
 
 head(resultTable, 3)
->       region.set    region.id seqnames start   end width     log2FC
-> 1 promoterNonCpG region_00012    chr12 26988 27987  1000 -0.4744875
-> 2 promoterNonCpG region_00017    chr12 39449 40448  1000 -1.6911510
-> 3 promoterNonCpG region_00019    chr12 44116 45115  1000  0.1328365
+>       region.set    region.id tile.id seqnames start   end width     log2FC
+> 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744875
+> 2 promoterNonCpG region_00017      NA    chr12 39449 40448  1000 -1.6911510
+> 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328365
 >   average.signal       stat   p.value       FDR diff.status
 > 1       3.098695 0.16629041 0.6880013 0.9200864        null
 > 2       3.141973 2.33758830 0.1429932 0.7997195        null
@@ -700,19 +700,19 @@ contrastName(results)
 > [1] "condition: SHR vs BN"
 
 head(resultRanges(results), 2)
-> GRanges object with 2 ranges and 8 metadata columns:
+> GRanges object with 2 ranges and 9 metadata columns:
 >                               seqnames      ranges strand |     region.set
 >                                  <Rle>   <IRanges>  <Rle> |    <character>
 >   promoterNonCpG|region_00012    chr12 26988-27987      * | promoterNonCpG
 >   promoterNonCpG|region_00017    chr12 39449-40448      * | promoterNonCpG
->                                  region.id    log2FC average.signal      stat
->                                <character> <numeric>      <numeric> <numeric>
->   promoterNonCpG|region_00012 region_00012 -0.474488        3.09870   0.16629
->   promoterNonCpG|region_00017 region_00017 -1.691151        3.14197   2.33759
->                                 p.value       FDR diff.status
->                               <numeric> <numeric>    <factor>
->   promoterNonCpG|region_00012  0.688001  0.920086        null
->   promoterNonCpG|region_00017  0.142993  0.799720        null
+>                                  region.id   tile.id    log2FC average.signal
+>                                <character> <integer> <numeric>      <numeric>
+>   promoterNonCpG|region_00012 region_00012      <NA> -0.474488        3.09870
+>   promoterNonCpG|region_00017 region_00017      <NA> -1.691151        3.14197
+>                                    stat   p.value       FDR diff.status
+>                               <numeric> <numeric> <numeric>    <factor>
+>   promoterNonCpG|region_00012   0.16629  0.688001  0.920086        null
+>   promoterNonCpG|region_00017   2.33759  0.142993  0.799720        null
 >   -------
 >   seqinfo: 1 sequence from rn4 genome
 
@@ -737,26 +737,26 @@ limited:
 
 ``` r
 topRegions(results, n = 5, FDR = 1)
->       region.set    region.id seqnames    start      end width    log2FC
-> 1 promoterNonCpG region_02996    chr12 36842295 36843294  1000 -5.203835
-> 2     intergenic region_03590    chr12 44174500 44175499  1000 -2.887100
-> 3 promoterNonCpG region_00212    chr12  2500829  2501828  1000 -3.222630
-> 4       geneBody region_02435    chr12 29881730 29882729  1000 -2.778908
-> 5       geneBody region_02220    chr12 27481625 27482624  1000 -2.281658
->   average.signal     stat      p.value          FDR diff.status
-> 1       5.159079 84.13617 1.148685e-08 2.176757e-05        down
-> 2       5.237329 43.04577 2.743053e-06 2.599042e-03        down
-> 3       4.816977 34.29977 1.370844e-05 6.573186e-03        down
-> 4       5.406565 36.15528 1.387480e-05 6.573186e-03        down
-> 5       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+>       region.set    region.id tile.id seqnames    start      end width
+> 1 promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000
+> 2     intergenic region_03590      NA    chr12 44174500 44175499  1000
+> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000
+> 4       geneBody region_02435      NA    chr12 29881730 29882729  1000
+> 5       geneBody region_02220      NA    chr12 27481625 27482624  1000
+>      log2FC average.signal     stat      p.value          FDR diff.status
+> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down
+> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down
+> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
+> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
+> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
 ```
 
 ``` r
 topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
->    region.set    region.id seqnames    start      end width    log2FC
-> 1 promoterCpG region_03747    chr12 46273309 46274308  1000  2.148719
-> 2 promoterCpG region_01273    chr12 15719347 15720346  1000 -1.771521
-> 3 promoterCpG region_00824    chr12 10369814 10370813  1000  1.635046
+>    region.set    region.id tile.id seqnames    start      end width    log2FC
+> 1 promoterCpG region_03747      NA    chr12 46273309 46274308  1000  2.148719
+> 2 promoterCpG region_01273      NA    chr12 15719347 15720346  1000 -1.771521
+> 3 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046
 >   average.signal      stat      p.value        FDR diff.status
 > 1       4.113765  4.520231 0.0472100147 0.66268873        null
 > 2       5.933614 21.009851 0.0002058661 0.03901163        down

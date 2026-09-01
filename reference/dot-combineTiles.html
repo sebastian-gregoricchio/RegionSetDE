@@ -46,6 +46,7 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.combineTiles</span><span class="op">(</span></span>
 <span>  <span class="va">tileTable</span>,</span>
 <span>  <span class="va">tileRanges</span>,</span>
+<span>  extraColumns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"simes"</span>,</span>
 <span>  lfcThreshold <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  adjustMethod <span class="op">=</span> <span class="st">"BH"</span>,</span>
@@ -63,6 +64,10 @@
 
 <dt id="arg-tileranges">tileRanges<a class="anchor" aria-label="anchor" href="#arg-tileranges"></a></dt>
 <dd><p><code>GRanges</code> with the coordinates of the tiles.</p></dd>
+
+
+<dt id="arg-extracolumns">extraColumns<a class="anchor" aria-label="anchor" href="#arg-extracolumns"></a></dt>
+<dd><p>Character vector with the annotation columns carried over from the tiles.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>

@@ -53,6 +53,7 @@
 <span>  log2FC <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  adjustMethod <span class="op">=</span> <span class="st">"BH"</span>,</span>
 <span>  regionSets <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  extraColumns <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  carryCounts <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -98,6 +99,10 @@
 <dd><p>Character vector with the names of the region sets to keep in the output. Default: <code>NULL</code>, all of them.</p></dd>
 
 
+<dt id="arg-extracolumns">extraColumns<a class="anchor" aria-label="anchor" href="#arg-extracolumns"></a></dt>
+<dd><p>Annotation carried by the regions that must be appended to the result, at the end of the table. Either <code>TRUE</code> for every column of the <code>rowData</code> beyond the ones the package writes itself, <code>FALSE</code> for none, or a character vector naming the ones wanted. Default: <code>TRUE</code>.</p></dd>
+
+
 <dt id="arg-carrycounts">carryCounts<a class="anchor" aria-label="anchor" href="#arg-carrycounts"></a></dt>
 <dd><p>Logical value to indicate whether the counts must travel inside the result, so that <code><a href="plotRegion.html">plotRegion</a></code> and <code><a href="plotTopHeatmap.html">plotTopHeatmap</a></code> can draw the values without being handed the counts object again. Several contrasts run on one fit share the same copy in memory. Default: <code>TRUE</code>.</p></dd>
 
@@ -115,6 +120,7 @@
     <p>The multiple testing correction is applied over all the rows of the object, across the region sets, and <code>regionSets</code> subsets the output afterwards. Correcting inside each set separately would make the FDR of a set depend on how many other sets were loaded, which is not a property anyone wants in a result.</p>
 <p>Two things follow from the combination step. The p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The <code>log2FC</code> reported for a combined region is the fold change of the most significant tile, not an average, which is the quantity that matches the p-value. The tile level table stays available in the <code>tiles</code> slot, and <code><a href="plotRegion.html">plotRegion</a></code> draws it.</p>
 <p>A design written as <code>~ condition</code> spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what <code>c("column", "groupA", "groupB")</code> avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as <code>~ condition</code> or <code>~ 0 + condition</code>. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.</p>
+<p>Whatever the regions were loaded with travels through to the result. A gene name, a peak score or any other column attached to the <code>rowData</code> comes out at the end of the table, which is what makes <code><a href="topRegions.html">topRegions()</a></code> readable and lets <code>plotVolcano(labelColumn = )</code> label the points with something other than an identifier. On a tiled object the value is read off the tile the combination reported, the same one the fold change comes from, so a row describes one place rather than an average over several.</p>
 <p>The <code>diff.status</code> column is a labelling convenience, not a claim. It is filled from <code>FDR</code> and <code>log2FC</code> and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.</p>
     </div>
     <div class="section level2">
@@ -128,54 +134,26 @@
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="fitRegions.html">fitRegions</a></span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span> <span class="va">replicate</span> <span class="op">+</span> <span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"edgeR"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># The three-element form works whatever the reference level is</span></span></span>
-<span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">results</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.results'</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   contrast        : condition: SHR vs BN </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   regions         : 1895 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   counts carried  : 4 samples</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   thresholds      : FDR &lt; 0.05 | |log2FC| &gt; 0 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   changing regions:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterNonCpG: 1 up, 2 down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     intergenic: 2 up, 3 down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     geneBody: 0 up, 3 down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterCpG: 0 up, 1 down</span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id seqnames  start    end width     log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_00012    chr12  26988  27987  1000 -0.4744875</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 promoterNonCpG region_00017    chr12  39449  40448  1000 -1.6911510</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterNonCpG region_00019    chr12  44116  45115  1000  0.1328365</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 promoterNonCpG region_00020    chr12  46527  47526  1000  1.3000608</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 promoterNonCpG region_00026    chr12  89229  90228  1000 -0.0791789</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 promoterNonCpG region_00043    chr12 330751 331750  1000 -1.2370885</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal        stat   p.value       FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       3.098695 0.166290413 0.6880013 0.9200864        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       3.141973 2.337588301 0.1429932 0.7997195        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       3.273341 0.010028735 0.9213104 0.9807286        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       3.490690 2.084865356 0.1637725 0.7997195        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       3.220877 0.007114484 0.9335959 0.9807286        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6       3.411317 2.273415136 0.1472119 0.7997195        null</span>
+<span class="r-in"><span><span class="co"># Two levels of a column, whichever of them the design took as reference</span></span></span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"COMBO"</span>, <span class="st">"DMSO"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Testing against a fold change threshold rather than against zero</span></span></span>
-<span class="r-in"><span><span class="va">strictResults</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                             lfcThreshold <span class="op">=</span> <span class="fl">1</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">strictResults</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.results'</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   contrast        : condition: SHR vs BN </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   regions         : 1895 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   counts carried  : 4 samples</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   thresholds      : FDR &lt; 0.05 | |log2FC| &gt; 0 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   changing regions:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterNonCpG: 0 up, 1 down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     intergenic: 0 up, 1 down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     geneBody: 0 up, 0 down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterCpG: 0 up, 0 down</span>
+<span class="r-in"><span><span class="co"># Difference between two coefficients of the design</span></span></span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO - conditionEPZ"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Several contrasts on the same fit</span></span></span>
+<span class="r-in"><span><span class="va">resList</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>combo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"COMBO"</span>, <span class="st">"DMSO"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                                            epz <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"EPZ"</span>, <span class="st">"DMSO"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">resList</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">resList</span>, contrast <span class="op">=</span> <span class="st">"combo"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Threshold inside the test rather than on the output</span></span></span>
+<span class="r-in"><span><span class="va">resStrict</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO"</span>, lfcThreshold <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

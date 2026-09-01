@@ -9,6 +9,7 @@ Combines the tile level statistics into one row per region, through
 .combineTiles(
   tileTable,
   tileRanges,
+  extraColumns = character(0),
   method = "simes",
   lfcThreshold = 0,
   adjustMethod = "BH",
@@ -26,6 +27,11 @@ Combines the tile level statistics into one row per region, through
 - tileRanges:
 
   `GRanges` with the coordinates of the tiles.
+
+- extraColumns:
+
+  Character vector with the annotation columns carried over from the
+  tiles.
 
 - method:
 

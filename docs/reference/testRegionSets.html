@@ -89,7 +89,7 @@
 
 
 <dt id="arg-interregioncor">interRegionCor<a class="anchor" aria-label="anchor" href="#arg-interregioncor"></a></dt>
-<dd><p>Numeric value with the correlation between the regions of a set, used to inflate the variance. Default: <code>NULL</code>, estimated from the residuals of each set, or held at 0.01 when the design leaves no residual to estimate it from.</p></dd>
+<dd><p>Numeric value with the correlation between regions, used to inflate the variance of both the set and the rows it is compared against. Default: <code>NULL</code>, estimated separately for each of the two from the residuals of the fit, or held at 0.01 when the design leaves no residual to estimate it from.</p></dd>
 
 
 <dt id="arg-useranks">useRanks<a class="anchor" aria-label="anchor" href="#arg-useranks"></a></dt>
@@ -125,7 +125,8 @@
     <p>The effect size, not the p-value, is the primary output here. A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which says nothing about whether the shift matters. The regions of a set are not independent either, since neighbouring elements inside the same domain move together, so the variance of the mean log2 fold change is inflated by the factor <code>1 + (n - 1) * rho</code>, with <code>rho</code> estimated from the residuals of the fit through <code><a href="https://rdrr.io/pkg/limma/man/camera.html" class="external-link">limma::interGeneCorrelation</a></code>. The confidence interval in the output carries that inflation; read it before reading the p-value.
 The two tests answer different questions and the pattern between them is informative. <code>camera</code> is competitive: it asks whether the regions of the set moved more than the regions they are compared against, and it is invariant to a scaling error affecting every region equally. <code>fry</code> is self-contained: it asks whether they moved away from zero at all, which a global shift in the mark, or a residual normalisation error, will satisfy for every set at once. When camera separates the sets and fry does not, the sets redistributed the signal between them; when fry is significant everywhere and camera nowhere, everything moved together and the normalisation deserves a second look before the biology does.
 The comparison universe comes from the fit, which built it once, and travels on into the result, so <code><a href="plotUniverseMatching.html">plotUniverseMatching</a></code> can check the matching afterwards without anything being kept on the side. Passing a <code>RegionSetDE.universe</code> object, or one of the two keywords, overrides it for this test alone.
-A fit with no replicates loses the self-contained test. <code>fry</code> builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value <code>limma</code> uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and <code>interRegionCor</code> is worth setting by hand from a replicated experiment on the same assay when one exists.
+The interval on <code>delta.log2FC</code> carries the correlation of both sides. The regions of the comparison are no less correlated than the regions of the set, so treating their mean as if it were known would leave the interval narrower than the data supports, by around a factor of the square root of two when the two sides are of similar size.</p>
+<p>A fit with no replicates loses the self-contained test. <code>fry</code> builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value <code>limma</code> uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and <code>interRegionCor</code> is worth setting by hand from a replicated experiment on the same assay when one exists.
 The competitive test runs through <code><a href="https://rdrr.io/pkg/limma/man/camera.html" class="external-link">limma::cameraPR</a></code> on the per-region statistics, which is what makes it work identically for the four engines. The self-contained test needs the values themselves and is computed on the log-CPM matrix of the fit; for <code>edgeR</code> and <code>DESeq2</code> that matrix is a transformation of the counts rather than the quantity the model was fitted on, so the two are close but not identical, and the competitive test is the one to lead with.</p>
     </div>
     <div class="section level2">
@@ -139,52 +140,18 @@ The competitive test runs through <code><a href="https://rdrr.io/pkg/limma/man/c
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="fitRegions.html">fitRegions</a></span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span> <span class="va">replicate</span> <span class="op">+</span> <span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"edgeR"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">setResults</span> <span class="op">&lt;-</span> <span class="fu">testRegionSets</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                             verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">setResults</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.setResults'</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   test            : set </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   contrast        : condition: SHR vs BN </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   methods         : camera, fry </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   universe        : otherSets (matched on width and abundance) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper camera.FDR</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterCpG       269     -0.8340      -0.9310   -1.870  0.00836      0.938</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        geneBody       909      0.2910       0.4070   -0.832  1.64000      0.938</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      intergenic       440      0.2650       0.2060   -1.140  1.55000      0.938</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  promoterNonCpG       277     -0.0209      -0.0787   -1.510  1.35000      0.938</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  fry.FDR</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     0.54</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     0.54</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     0.54</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     0.54</span>
+<span class="r-in"><span><span class="co"># The universe comes from the fit and travels into the result</span></span></span>
+<span class="r-in"><span><span class="va">setRes</span> <span class="op">&lt;-</span> <span class="fu">testRegionSets</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># The intergenic set is the control: it should not come out as responding</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">setResults</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set n.regions n.comparison mean.log2FC median.log2FC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    promoterCpG       269          314 -0.83367077    -0.9443600</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       geneBody       909          986  0.29148227     0.1692341</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3     intergenic       440         1354  0.26499294     0.1740960</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 promoterNonCpG       277         1378 -0.02089479    -0.1571407</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   mean.log2FC.comparison delta.log2FC   CI.lower    CI.upper inter.region.cor</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1             0.09704300  -0.93071378 -1.8697826 0.008355036        0.8583680</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2            -0.11505923   0.40654151 -0.8318836 1.644966633        0.2721337</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3             0.05862768   0.20636526 -1.1374078 1.550138278        0.2733108</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4             0.05781212  -0.07870691 -1.5089372 1.351523422        0.4433140</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   median.width camera.direction  camera.p fry.direction     fry.p camera.FDR</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1         1000             Down 0.3213638          Down 0.2686203  0.9384488</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2         1000               Up 0.5187249          Down 0.5401741  0.9384488</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3         1000               Up 0.7773973          Down 0.4717232  0.9384488</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4         1000             Down 0.9384488          Down 0.4613130  0.9384488</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     fry.FDR</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.5401741</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 0.5401741</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 0.5401741</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 0.5401741</span>
+<span class="r-in"><span><span class="fu"><a href="plotUniverseMatching.html">plotUniverseMatching</a></span><span class="op">(</span><span class="va">setRes</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="plotSetEffect.html">plotSetEffect</a></span><span class="op">(</span><span class="va">setRes</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Overriding it for one test</span></span></span>
+<span class="r-in"><span><span class="va">setRes</span> <span class="op">&lt;-</span> <span class="fu">testRegionSets</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO"</span>, universe <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

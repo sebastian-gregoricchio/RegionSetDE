@@ -8,7 +8,7 @@
 #' @param universe What each set is compared against in the competitive test. Default: \code{NULL}, the universe carried by the fit. A \code{RegionSetDE.universe} object, or the strings \code{"matched"} and \code{"all"}, override it and are built here.
 #' @param matchOn Character vector with the covariates the comparison rows are matched on, when one has to be built here. Default: \code{c("width", "abundance")}.
 #' @param universeRatio Numeric value with the number of comparison rows drawn per region of the set, when one has to be built here. Default: \code{5}.
-#' @param interRegionCor Numeric value with the correlation between the regions of a set, used to inflate the variance. Default: \code{NULL}, estimated from the residuals of each set, or held at 0.01 when the design leaves no residual to estimate it from.
+#' @param interRegionCor Numeric value with the correlation between regions, used to inflate the variance of both the set and the rows it is compared against. Default: \code{NULL}, estimated separately for each of the two from the residuals of the fit, or held at 0.01 when the design leaves no residual to estimate it from.
 #' @param useRanks Logical value to indicate whether \code{camera} must work on the ranks rather than on the statistics, which is more robust and less powerful. Default: \code{FALSE}.
 #' @param FDR Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.
 #' @param adjustMethod String with the multiple testing correction across the sets. Default: \code{"BH"}.
@@ -21,19 +21,24 @@
 #' @details The effect size, not the p-value, is the primary output here. A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which says nothing about whether the shift matters. The regions of a set are not independent either, since neighbouring elements inside the same domain move together, so the variance of the mean log2 fold change is inflated by the factor \code{1 + (n - 1) * rho}, with \code{rho} estimated from the residuals of the fit through \code{limma::interGeneCorrelation}. The confidence interval in the output carries that inflation; read it before reading the p-value.
 #' The two tests answer different questions and the pattern between them is informative. \code{camera} is competitive: it asks whether the regions of the set moved more than the regions they are compared against, and it is invariant to a scaling error affecting every region equally. \code{fry} is self-contained: it asks whether they moved away from zero at all, which a global shift in the mark, or a residual normalisation error, will satisfy for every set at once. When camera separates the sets and fry does not, the sets redistributed the signal between them; when fry is significant everywhere and camera nowhere, everything moved together and the normalisation deserves a second look before the biology does.
 #' The comparison universe comes from the fit, which built it once, and travels on into the result, so \code{\link{plotUniverseMatching}} can check the matching afterwards without anything being kept on the side. Passing a \code{RegionSetDE.universe} object, or one of the two keywords, overrides it for this test alone.
+#' The interval on \code{delta.log2FC} carries the correlation of both sides. The regions of the comparison are no less correlated than the regions of the set, so treating their mean as if it were known would leave the interval narrower than the data supports, by around a factor of the square root of two when the two sides are of similar size.
+#'
 #' A fit with no replicates loses the self-contained test. \code{fry} builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value \code{limma} uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and \code{interRegionCor} is worth setting by hand from a replicated experiment on the same assay when one exists.
 #' The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the four engines. The self-contained test needs the values themselves and is computed on the log-CPM matrix of the fit; for \code{edgeR} and \code{DESeq2} that matrix is a transformation of the counts rather than the quantity the model was fitted on, so the two are close but not identical, and the competitive test is the one to lead with.
 #'
 #' @examples
-#' fit <- loadExampleData("fit", verbose = FALSE)
+#' \dontrun{
+#' fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
 #'
-#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-#'                              verbose = FALSE)
-#' setResults
+#' # The universe comes from the fit and travels into the result
+#' setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
 #'
-#' # The intergenic set is the control: it should not come out as responding
-#' resultsTable(setResults)
+#' plotUniverseMatching(setRes)
+#' plotSetEffect(setRes)
 #'
+#' # Overriding it for one test
+#' setRes <- testRegionSets(fit, contrast = "conditionCOMBO", universe = "all")
+#' }
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -203,13 +208,22 @@ testRegionSets <-
                  interRegionCor
                }
 
+               # The comparison rows are as correlated as the set, and treating their mean as known
+               # would make the interval on the difference narrower than the data supports
+               universeCorrelation <- if (is.null(interRegionCor)) {
+                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design, index = backgroundIndex)
+               } else {
+                 interRegionCor
+               }
+
                #-------------------------------#
                # Effect size, with inflation   #
                #-------------------------------#
                effectSize <- .setEffectSize(logFC = regionStats$log2FC,
                                             setIndex = setIndex,
                                             backgroundIndex = backgroundIndex,
-                                            correlation = setCorrelation)
+                                            correlation = setCorrelation,
+                                            backgroundCorrelation = universeCorrelation)
 
                setRow <- data.frame(region.set = setName,
                                     n.regions = length(setIndex),
@@ -221,6 +235,7 @@ testRegionSets <-
                                     CI.lower = effectSize$ci.lower,
                                     CI.upper = effectSize$ci.upper,
                                     inter.region.cor = setCorrelation,
+                                    inter.region.cor.universe = universeCorrelation,
                                     median.width = stats::median(regionStats$width[setIndex]),
                                     stringsAsFactors = FALSE)
 
@@ -329,18 +344,17 @@ testRegionSets <-
 #' @return A \code{RegionSetDE.setResults} object with one row per pair of sets, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list.
 #'
 #' @details The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with a confidence interval carrying the variance inflation of both sets.
+#'
 #' A region that belongs to both sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Those regions are removed by default and the number removed is reported; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
 #'
 #' @examples
-#' fit <- loadExampleData("fit", verbose = FALSE)
+#' \dontrun{
+#' setContrast <- testSetContrast(fit, contrast = "conditionCOMBO",
+#'                                set1 = "enhancers", set2 = "tss")
 #'
-#' # Do the CpG island promoters respond differently from the intergenic control?
-#' setContrast <- testSetContrast(fit,
-#'                                contrast = c("condition", "SHR", "BN"),
-#'                                set1 = "promoterCpG",
-#'                                set2 = "intergenic",
-#'                                verbose = FALSE)
-#' setContrast
+#' # Every pair at once
+#' allPairs <- testSetContrast(fit, contrast = "conditionCOMBO")
+#' }
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -709,7 +723,7 @@ testSetContrast <-
 #' @param setIndex Integer vector with the rows of the set.
 #' @param backgroundIndex Integer vector with the rows of the background.
 #' @param correlation Numeric value with the correlation between the regions of the set.
-#' @param backgroundCorrelation Numeric value with the correlation between the regions of the background. Default: \code{0}.
+#' @param backgroundCorrelation Numeric value with the correlation between the regions of the background. Default: \code{NULL}, the same as the set, since a comparison drawn from the same object is correlated in the same way.
 #' @param level Numeric value with the confidence level. Default: \code{0.95}.
 #'
 #' @return A list with the means, the difference and the bounds of the interval.
@@ -725,8 +739,13 @@ testSetContrast <-
            setIndex,
            backgroundIndex,
            correlation,
-           backgroundCorrelation = 0,
+           backgroundCorrelation = NULL,
            level = 0.95) {
+
+    # Zero here would say the comparison mean is known exactly, which it never is
+    if (is.null(backgroundCorrelation)) {
+      backgroundCorrelation <- correlation
+    }
 
     setValues <- logFC[setIndex]
     backgroundValues <- logFC[backgroundIndex]

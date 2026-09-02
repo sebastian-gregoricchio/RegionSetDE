@@ -9,7 +9,7 @@
   setIndex,
   backgroundIndex,
   correlation,
-  backgroundCorrelation = 0,
+  backgroundCorrelation = NULL,
   level = 0.95
 )
 }
@@ -22,7 +22,7 @@
 
 \item{correlation}{Numeric value with the correlation between the regions of the set.}
 
-\item{backgroundCorrelation}{Numeric value with the correlation between the regions of the background. Default: \code{0}.}
+\item{backgroundCorrelation}{Numeric value with the correlation between the regions of the background. Default: \code{NULL}, the same as the set, since a comparison drawn from the same object is correlated in the same way.}
 
 \item{level}{Numeric value with the confidence level. Default: \code{0.95}.}
 }

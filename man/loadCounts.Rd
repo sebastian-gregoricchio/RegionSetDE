@@ -15,6 +15,8 @@ loadCounts(
   matchBy = "coordinates",
   startsAt = 1,
   tileWidth = NULL,
+  keepMetadata = TRUE,
+  regionId = NULL,
   partialTiles = TRUE,
   missingRegions = "stop",
   librarySizes = NULL,
@@ -43,6 +45,10 @@ loadCounts(
 
 \item{tileWidth}{Numeric value with the width of the tiles, to be set when the external matrix has been computed on tiles rather than on whole regions. Default: \code{NULL}.}
 
+\item{keepMetadata}{Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.}
+
+\item{regionId}{String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.}
+
 \item{partialTiles}{Logical value indicating whether the trailing shorter tile of each region has been kept. Default: \code{TRUE}.}
 
 \item{missingRegions}{String indicating what to do with the regions absent from the count table, one among \code{"stop"}, \code{"zero"} or \code{"drop"}. Default: \code{"stop"}.}
@@ -63,22 +69,17 @@ Imports a count matrix computed outside R, for instance by featureCounts, bedtoo
 The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
 }
 \examples{
-counts <- loadExampleData("counts", verbose = FALSE)
-regionRanges <- SummarizedExperiment::rowRanges(counts)
+\dontrun{
+counts <- loadCounts(regions,
+                     counts = "featureCounts/all_samples.txt",
+                     sampleMetadata = sampleSheet,
+                     librarySizes = c(2.3e7, 2.1e7, 1.9e7, 2.4e7))
 
-# A count table as it would come out of featureCounts or a coverage tool
-countTable <- data.frame(
-  seqnames = as.character(GenomicRanges::seqnames(regionRanges)),
-  start = GenomicRanges::start(regionRanges),
-  end = GenomicRanges::end(regionRanges),
-  SummarizedExperiment::assay(counts, "counts"),
-  check.names = FALSE)
-
-regions <- splitLoadRegions(regionRanges, splitBy = "region.set",
-                            genomeAssembly = "rn4", verbose = FALSE)
-
-reloaded <- loadCounts(regions, counts = countTable, verbose = FALSE)
-reloaded
+counts <- loadCounts(regions,
+                     counts = bedtoolsMatrix,
+                     startsAt = 0,
+                     missingRegions = "zero")
+}
 
 }
 \seealso{

@@ -6,6 +6,8 @@
 #' @param bigwigFiles Character vector with the paths of the bigWig files.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the bigWig file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bigwigFiles}. Default: \code{NULL}.
+#' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
+#' @param regionId String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
 #' @param tileWidth Numeric value with the width of the tiles, in base pairs. Default: \code{NULL}, one row per region.
 #' @param partialTiles Logical value: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
 #' @param summaryFunction String indicating how the per-base values are collapsed into a single value per region, one among \code{"sum"}, \code{"mean"}, \code{"max"} or \code{"min"}. Default: \code{"sum"}.
@@ -19,26 +21,11 @@
 #' @details A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the \code{library.size} column of the \code{colData} is left as \code{NA} and the total signal falling in the regions is reported in \code{total.signal} instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig, and the values are rounded by default because the count-based models expect integers. Files carrying an already normalised coverage will produce values that no longer follow a count distribution, which is worth keeping in mind at the testing step.
 #'
 #' @examples
-#' # rtracklayer ships a small bigWig, and the regions are taken from its own content
-#' bigwigFile <- file.path(system.file("tests", package = "rtracklayer"), "test.bw")
-#'
-#' # The UCSC library behind rtracklayer reads a Windows drive letter as a URL
-#' # protocol, so an absolute path to the packaged file cannot be opened there
-#' if (.Platform$OS.type != "windows") {
-#'
-#'   exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-#'   exampleRegions$setName <- "covered"
-#'
-#'   exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-#'                                   seqlevelsStyle = NULL, verbose = FALSE)
-#'
-#'   signal <- countBigwig(exampleSets,
-#'                         bigwigFiles = bigwigFile,
-#'                         sampleNames = "example",
-#'                         verbose = FALSE)
-#'
-#'   print(signal)
-#'   print(SummarizedExperiment::assay(signal, "counts"))
+#' \dontrun{
+#' counts <- countBigwig(regions,
+#'                       bigwigFiles = list.files("bigwig", pattern = "\\.bw$", full.names = TRUE),
+#'                       summaryFunction = "sum",
+#'                       nThreads = 4)
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -60,6 +47,8 @@ countBigwig <-
            sampleNames = NULL,
            sampleMetadata = NULL,
            tileWidth = NULL,
+           keepMetadata = TRUE,
+           regionId = NULL,
            partialTiles = TRUE,
            summaryFunction = "sum",
            missingAsZero = TRUE,
@@ -76,7 +65,7 @@ countBigwig <-
 
     missingFiles <- bigwigFiles[!file.exists(bigwigFiles)]
     if (length(missingFiles) > 0) {
-      stop("The following bigWig files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+      stop(paste0("The following bigWig files do not exist: ", paste(missingFiles, collapse = ", "), "."), call. = FALSE)
     }
 
     summaryFunction <- tolower(summaryFunction[1])
@@ -97,6 +86,8 @@ countBigwig <-
 
     allRegions <- .flattenRegionSets(regionSet = regionSet,
                                      tileWidth = tileWidth,
+                                     keepMetadata = keepMetadata,
+                                     regionId = regionId,
                                      partialTiles = partialTiles,
                                      verbose = verbose)
 
@@ -120,8 +111,8 @@ countBigwig <-
     # Read the files #
     #----------------#
     if (isTRUE(verbose)) {
-      message("Extracting the signal of ", length(bigwigFiles), " bigWig files over ", length(uniqueRegions), " unique regions (",
-              length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)...")
+      message(paste0("Extracting the signal of ", length(bigwigFiles), " bigWig files over ", length(uniqueRegions), " unique regions (",
+                     length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."))
     }
 
     signalList <-

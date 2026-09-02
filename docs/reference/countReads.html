@@ -49,6 +49,8 @@
 <span>  sampleNames <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sampleMetadata <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tileWidth <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  keepMetadata <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  regionId <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  partialTiles <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  pairedEnd <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  fragmentLength <span class="op">=</span> <span class="fl">150</span>,</span>
@@ -84,6 +86,14 @@
 
 <dt id="arg-tilewidth">tileWidth<a class="anchor" aria-label="anchor" href="#arg-tilewidth"></a></dt>
 <dd><p>Numeric value with the width of the tiles, in base pairs. Default: <code>NULL</code>, one row per region.</p></dd>
+
+
+<dt id="arg-keepmetadata">keepMetadata<a class="anchor" aria-label="anchor" href="#arg-keepmetadata"></a></dt>
+<dd><p>Logical value to indicate whether the metadata columns carried by the regions must be kept in the <code>rowData</code>, harmonised across the sets. Default: <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-regionid">regionId<a class="anchor" aria-label="anchor" href="#arg-regionid"></a></dt>
+<dd><p>String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: <code>NULL</code>, the names of the ranges, and their coordinates when they are unnamed.</p></dd>
 
 
 <dt id="arg-partialtiles">partialTiles<a class="anchor" aria-label="anchor" href="#arg-partialtiles"></a></dt>
@@ -147,43 +157,7 @@
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Rsamtools ships a small alignment file, enough to run the counting itself</span></span></span>
-<span class="r-in"><span><span class="va">bamFile</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"ex1.bam"</span>, package <span class="op">=</span> <span class="st">"Rsamtools"</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">exampleRegions</span> <span class="op">&lt;-</span> <span class="fu">GenomicRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/GenomicRanges/man/GRanges-class.html" class="external-link">GRanges</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  seqnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seq1"</span>, <span class="st">"seq2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  ranges <span class="op">=</span> <span class="fu">IRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/IRanges/man/IRanges-constructor.html" class="external-link">IRanges</a></span><span class="op">(</span>start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">500</span>, <span class="fl">1000</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>, width <span class="op">=</span> <span class="fl">300</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">exampleRegions</span><span class="op">$</span><span class="va">setName</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"firstSet"</span>, <span class="st">"secondSet"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">exampleSets</span> <span class="op">&lt;-</span> <span class="fu"><a href="splitLoadRegions.html">splitLoadRegions</a></span><span class="op">(</span><span class="va">exampleRegions</span>, splitBy <span class="op">=</span> <span class="st">"setName"</span>,</span></span>
-<span class="r-in"><span>                                seqlevelsStyle <span class="op">=</span> <span class="cn">NULL</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">exampleSets</span>,</span></span>
-<span class="r-in"><span>                     bamFiles <span class="op">=</span> <span class="va">bamFile</span>,</span></span>
-<span class="r-in"><span>                     sampleNames <span class="op">=</span> <span class="st">"example"</span>,</span></span>
-<span class="r-in"><span>                     verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">counts</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> class: RegionSetDE.counts </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> dim: 6 1 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> metadata(1): signal.type</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> assays(1): counts</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> rownames(6): firstSet|seq1:1-300 firstSet|seq1:500-799 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   secondSet|seq2:500-799 secondSet|seq2:1000-1299</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> rowData names(3): region.set region.id tile.id</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> colnames(1): example</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> colData names(4): sample bam.file paired.end library.size</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="fu">SummarizedExperiment</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">assay</a></span><span class="op">(</span><span class="va">counts</span>, <span class="st">"counts"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                          example</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:1-300          113</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:500-799        260</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:1000-1299      277</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> secondSet|seq2:1-300         177</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> secondSet|seq2:500-799       323</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> secondSet|seq2:1000-1299     327</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>,</span></span>
 <span class="r-in"><span>                     bamFiles <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="st">"bam"</span>, pattern <span class="op">=</span> <span class="st">"\\.bam$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>                     sampleMetadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>sample <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ctrl1"</span>, <span class="st">"ctrl2"</span>, <span class="st">"treat1"</span>, <span class="st">"treat2"</span><span class="op">)</span>,</span></span>
@@ -193,7 +167,6 @@
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">countsTiled</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>, bamFiles <span class="op">=</span> <span class="va">bamPaths</span>, tileWidth <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-<span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

@@ -11,6 +11,8 @@
 #' @param idColumn String or numeric position of the column holding the region identifiers. Used only when \code{matchBy = "id"}. Default: \code{NULL}, the row names are used.
 #' @param matchBy String indicating how the rows of \code{counts} are assigned to the regions, either \code{"coordinates"} or \code{"id"}. Default: \code{"coordinates"}.
 #' @param startsAt Numeric value with the coordinate system of the count table, \code{1} for 1-based tables such as featureCounts, \code{0} for BED-like tables. Default: \code{1}.
+#' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
+#' @param regionId String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
 #' @param tileWidth Numeric value with the width of the tiles, to be set when the external matrix has been computed on tiles rather than on whole regions. Default: \code{NULL}.
 #' @param partialTiles Logical value indicating whether the trailing shorter tile of each region has been kept. Default: \code{TRUE}.
 #' @param missingRegions String indicating what to do with the regions absent from the count table, one among \code{"stop"}, \code{"zero"} or \code{"drop"}. Default: \code{"stop"}.
@@ -23,22 +25,17 @@
 #' @details The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
 #'
 #' @examples
-#' counts <- loadExampleData("counts", verbose = FALSE)
-#' regionRanges <- SummarizedExperiment::rowRanges(counts)
+#' \dontrun{
+#' counts <- loadCounts(regions,
+#'                      counts = "featureCounts/all_samples.txt",
+#'                      sampleMetadata = sampleSheet,
+#'                      librarySizes = c(2.3e7, 2.1e7, 1.9e7, 2.4e7))
 #'
-#' # A count table as it would come out of featureCounts or a coverage tool
-#' countTable <- data.frame(
-#'   seqnames = as.character(GenomicRanges::seqnames(regionRanges)),
-#'   start = GenomicRanges::start(regionRanges),
-#'   end = GenomicRanges::end(regionRanges),
-#'   SummarizedExperiment::assay(counts, "counts"),
-#'   check.names = FALSE)
-#'
-#' regions <- splitLoadRegions(regionRanges, splitBy = "region.set",
-#'                             genomeAssembly = "rn4", verbose = FALSE)
-#'
-#' reloaded <- loadCounts(regions, counts = countTable, verbose = FALSE)
-#' reloaded
+#' counts <- loadCounts(regions,
+#'                      counts = bedtoolsMatrix,
+#'                      startsAt = 0,
+#'                      missingRegions = "zero")
+#' }
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -63,6 +60,8 @@ loadCounts <-
            matchBy = "coordinates",
            startsAt = 1,
            tileWidth = NULL,
+           keepMetadata = TRUE,
+           regionId = NULL,
            partialTiles = TRUE,
            missingRegions = "stop",
            librarySizes = NULL,
@@ -92,7 +91,7 @@ loadCounts <-
     #------------------------#
     if (is.character(counts) & length(counts) == 1) {
       if (!file.exists(counts)) {
-        stop("The file '", counts, "' does not exist.", call. = FALSE)
+        stop(paste0("The file '", counts, "' does not exist."), call. = FALSE)
       }
       countTable <- utils::read.delim(file = counts, header = header, comment.char = "#", check.names = FALSE, stringsAsFactors = FALSE)
     } else if (is.matrix(counts)) {
@@ -126,7 +125,7 @@ loadCounts <-
 
     absentColumns <- setdiff(countColumns, colnames(countTable))
     if (length(absentColumns) > 0) {
-      stop("The following columns are missing from the count table: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
+      stop(paste0("The following columns are missing from the count table: ", paste(absentColumns, collapse = ", "), "."), call. = FALSE)
     }
 
     #-------------------------------#
@@ -134,6 +133,8 @@ loadCounts <-
     #-------------------------------#
     allRegions <- .flattenRegionSets(regionSet = regionSet,
                                      tileWidth = tileWidth,
+                                     keepMetadata = keepMetadata,
+                                     regionId = regionId,
                                      partialTiles = partialTiles,
                                      verbose = verbose)
 
@@ -182,12 +183,12 @@ loadCounts <-
 
     if (unmatchedRegions > 0) {
       if (missingRegions == "stop") {
-        stop(unmatchedRegions, " regions out of ", length(allRegions), " have no matching row in the count table. ",
-             "Check the 'startsAt' parameter, or set 'missingRegions' to 'zero' or 'drop'.", call. = FALSE)
+        stop(paste0(unmatchedRegions, " regions out of ", length(allRegions), " have no matching row in the count table. ",
+                    "Check the 'startsAt' parameter, or set 'missingRegions' to 'zero' or 'drop'."), call. = FALSE)
       }
       if (isTRUE(verbose)) {
-        message(unmatchedRegions, " regions have no matching row in the count table and have been ",
-                ifelse(missingRegions == "drop", "removed.", "set to zero."))
+        message(paste0(unmatchedRegions, " regions have no matching row in the count table and have been ",
+                       ifelse(missingRegions == "drop", "removed.", "set to zero.")))
       }
     }
 
@@ -242,7 +243,7 @@ loadCounts <-
                                      metadataList = list(signal.type = "external"))
 
     if (isTRUE(verbose)) {
-      message("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples.")
+      message(paste0("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples."))
     }
 
     return(countsObject)

@@ -6,6 +6,8 @@
 #' @param bamFiles Character vector with the paths of the BAM files. Each file must be indexed.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bamFiles}. Default: \code{NULL}.
+#' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
+#' @param regionId String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
 #' @param tileWidth Numeric value with the width of the tiles, in base pairs. Default: \code{NULL}, one row per region.
 #' @param partialTiles Logical value: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
 #' @param pairedEnd Logical value, one logical value per BAM file, or the string \code{"auto"} to read the layout from the files themselves. Default: \code{"auto"}.
@@ -27,26 +29,6 @@
 #' Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.
 #'
 #' @examples
-#' # Rsamtools ships a small alignment file, enough to run the counting itself
-#' bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
-#'
-#' exampleRegions <- GenomicRanges::GRanges(
-#'   seqnames = rep(c("seq1", "seq2"), each = 3),
-#'   ranges = IRanges::IRanges(start = rep(c(1, 500, 1000), 2), width = 300))
-#'
-#' exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 3)
-#'
-#' exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-#'                                 seqlevelsStyle = NULL, verbose = FALSE)
-#'
-#' counts <- countReads(exampleSets,
-#'                      bamFiles = bamFile,
-#'                      sampleNames = "example",
-#'                      verbose = FALSE)
-#' counts
-#'
-#' SummarizedExperiment::assay(counts, "counts")
-#'
 #' \dontrun{
 #' counts <- countReads(regions,
 #'                      bamFiles = list.files("bam", pattern = "\\.bam$", full.names = TRUE),
@@ -57,7 +39,6 @@
 #'
 #' countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
 #' }
-#'
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -81,6 +62,8 @@ countReads <-
            sampleNames = NULL,
            sampleMetadata = NULL,
            tileWidth = NULL,
+           keepMetadata = TRUE,
+           regionId = NULL,
            partialTiles = TRUE,
            pairedEnd = "auto",
            fragmentLength = 150,
@@ -101,7 +84,7 @@ countReads <-
 
     missingFiles <- bamFiles[!file.exists(bamFiles)]
     if (length(missingFiles) > 0) {
-      stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+      stop(paste0("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), "."), call. = FALSE)
     }
 
     # Counting without an index would read each file from the beginning for every region
@@ -115,7 +98,7 @@ countReads <-
              logical(1))
 
     if (any(!hasIndex)) {
-      stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
+      stop(paste0("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), "."), call. = FALSE)
     }
 
     if (!is.numeric(fragmentLength) | fragmentLength[1] < 1) {
@@ -150,6 +133,8 @@ countReads <-
 
     allRegions <- .flattenRegionSets(regionSet = regionSet,
                                      tileWidth = tileWidth,
+                                     keepMetadata = keepMetadata,
+                                     regionId = regionId,
                                      partialTiles = partialTiles,
                                      verbose = verbose)
 
@@ -173,13 +158,13 @@ countReads <-
     # Read the files #
     #----------------#
     if (isTRUE(verbose)) {
-      message("Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
-              length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)...")
+      message(paste0("Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
+                     length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."))
     }
 
     if (isTRUE(verbose) & length(unique(pairedEnd)) > 1) {
-      message("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd),
-              " single-end samples, counted in two separate passes.")
+      message(paste0("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd),
+                     " single-end samples, counted in two separate passes."))
     }
 
     countMatrix <- matrix(0, nrow = length(uniqueRegions), ncol = length(bamFiles))
@@ -233,8 +218,8 @@ countReads <-
                                metadataList = list(signal.type = "reads"))
 
     if (isTRUE(verbose)) {
-      message("Done. Library sizes: ",
-              paste0(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million reads.")
+      message(paste0("Done. Library sizes: ",
+                     paste0(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million reads."))
     }
 
     return(counts)

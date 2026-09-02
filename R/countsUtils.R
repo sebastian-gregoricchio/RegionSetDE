@@ -85,7 +85,7 @@
       lostRegions <- dplyr::n_distinct(tileTable$region.key) - dplyr::n_distinct(keptTiles$region.key)
 
       if (lostRegions > 0 & isTRUE(verbose)) {
-        warning(lostRegions, " regions are narrower than 'tileWidth' and have been removed together with their partial tiles.", call. = FALSE)
+        warning(paste0(lostRegions, " regions are narrower than 'tileWidth' and have been removed together with their partial tiles."), call. = FALSE)
       }
 
       tiles <- tiles[BiocGenerics::width(tiles) == tileWidth]
@@ -99,14 +99,16 @@
 
 #' @title .flattenRegionSets
 #'
-#' @description Turns a collection of region sets into a single \code{GRanges}, one element per row of the future counts matrix. The set name and the region identifier are stored in the metadata columns, and the regions are optionally cut into tiles.
+#' @description Turns a collection of region sets into a single \code{GRanges}, one element per row of the future counts matrix. The set name and the region identifier are stored in the metadata columns, whatever else the regions carried is harmonised across the sets and kept alongside them, and the regions are optionally cut into tiles.
 #'
 #' @param regionSet \code{RegionSetDE} object, \code{GRangesList} or named list of \code{GRanges}.
 #' @param tileWidth Numeric value with the width of the tiles. Default: \code{NULL}, one row per region.
+#' @param keepMetadata Logical value to indicate whether the metadata columns of the regions must be carried over. Default: \code{TRUE}.
+#' @param regionId String with the name of a metadata column holding the region identifiers. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
 #' @param partialTiles Logical value indicating whether the trailing shorter tile must be kept. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A named \code{GRanges} with the \code{region.set}, \code{region.id} and \code{tile.id} metadata columns.
+#' @return A named \code{GRanges} with the \code{region.set}, \code{region.id} and \code{tile.id} metadata columns, followed by whatever the regions carried.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -121,6 +123,8 @@
   function(regionSet,
            tileWidth = NULL,
            partialTiles = TRUE,
+           keepMetadata = TRUE,
+           regionId = NULL,
            verbose = TRUE) {
 
     #------------------------------#
@@ -144,21 +148,22 @@
 
     #--------------------------------#
     # Stack the sets, one after the  #
-    # other, dropping their metadata #
+    # other, harmonising what they   #
+    # carry                          #
     #--------------------------------#
-    # Sets loaded from different files rarely share the same metadata columns, and only the identifiers are needed downstream
+    # Sets loaded from different files rarely share the same columns, and the stacking needs them to
+    annotationPlan <- .metadataPlan(regionList = regionList, keepMetadata = keepMetadata, verbose = verbose)
+
     flatList <-
       lapply(names(regionList),
              function(setName) {
                gr <- regionList[[setName]]
-               regionId <- names(gr)
 
-               # Coordinates are the fallback identifier when the regions are unnamed
-               if (is.null(regionId)) {
-                 regionId <- paste0(as.character(GenomeInfoDb::seqnames(gr)), ":", BiocGenerics::start(gr), "-", BiocGenerics::end(gr))
-               }
+               identifiers <- .regionIdentifiers(gr = gr, regionId = regionId, setName = setName)
+               annotationTable <- .alignMetadata(gr = gr, plan = annotationPlan)
 
-               S4Vectors::mcols(gr) <- S4Vectors::DataFrame(region.set = setName, region.id = regionId)
+               S4Vectors::mcols(gr) <- cbind(S4Vectors::DataFrame(region.set = setName, region.id = identifiers),
+                                             annotationTable)
                names(gr) <- NULL
                return(gr)
              })
@@ -175,6 +180,12 @@
       S4Vectors::mcols(allRegions)$tile.id <- NA_integer_
       names(allRegions) <- paste0(S4Vectors::mcols(allRegions)$region.set, "|", S4Vectors::mcols(allRegions)$region.id)
     }
+
+    # The three identifiers first, the annotation of the regions behind them
+    identifierColumns <- c("region.set", "region.id", "tile.id")
+    S4Vectors::mcols(allRegions) <- S4Vectors::mcols(allRegions)[, c(identifierColumns,
+                                                                     setdiff(colnames(S4Vectors::mcols(allRegions)), identifierColumns)),
+                                                                 drop = FALSE]
 
     # The row names index the object from here on, a collision would silently mix up two regions
     if (any(duplicated(names(allRegions)))) {
@@ -235,7 +246,7 @@
         # Joining on the sample name tolerates a metadata table in a different order
         absentSamples <- setdiff(sampleTable$sample, sampleMetadata$sample)
         if (length(absentSamples) > 0) {
-          stop("The following samples are missing from 'sampleMetadata': ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+          stop(paste0("The following samples are missing from 'sampleMetadata': ", paste(absentSamples, collapse = ", "), "."), call. = FALSE)
         }
         sampleTable <- dplyr::left_join(sampleTable, sampleMetadata, by = "sample")
       } else {
@@ -343,16 +354,16 @@
     }
 
     if (length(intersect(renamedSeqlevels, targetSeqlevels)) == 0) {
-      stop("The chromosome names of ", ifelse(is.null(fileName), "the signal file", paste0("'", basename(fileName), "'")),
-           " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
-           " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
+      stop(paste0("The chromosome names of ", ifelse(is.null(fileName), "the signal file", paste0("'", basename(fileName), "'")),
+                  " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
+                  " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), "."), call. = FALSE)
     }
 
     GenomeInfoDb::seqlevels(x) <- renamedSeqlevels
 
     if (isTRUE(verbose)) {
-      message("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels, 2), collapse = ", "),
-              " to ", paste(utils::head(renamedSeqlevels, 2), collapse = ", "), " to match the signal files.")
+      message(paste0("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels, 2), collapse = ", "),
+                     " to ", paste(utils::head(renamedSeqlevels, 2), collapse = ", "), " to match the signal files."))
     }
 
     return(x)
@@ -410,4 +421,216 @@
                         seqlevels.style = provenance$seqlevels.style,
                         filtering.log = provenance$filtering.log,
                         parameters = c(provenance$parameters, newParameters)))
+  } # END function
+
+
+
+
+#' @title .metadataPlan
+#'
+#' @description Works out which metadata columns of a collection of region sets can be stacked into one table, and in which type, so that sets loaded from different files can be put one after the other.
+#'
+#' @param regionList Named list of \code{GRanges}.
+#' @param keepMetadata Logical value to indicate whether the metadata must be carried over at all.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
+#'
+#' @return A list with, for every column kept, the name it takes in the output and the type it is stored as.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom S4Vectors mcols
+#'
+#' @keywords internal
+
+.metadataPlan <-
+  function(regionList,
+           keepMetadata = TRUE,
+           verbose = TRUE) {
+
+    if (isFALSE(keepMetadata)) {
+      return(list())
+    }
+
+    identifierColumns <- c("region.set", "region.id", "tile.id")
+
+    #-------------------------------#
+    # What every set carries        #
+    #-------------------------------#
+    columnClasses <- list()
+    droppedColumns <- character(0)
+
+    for (setName in names(regionList)) {
+      setMetadata <- S4Vectors::mcols(regionList[[setName]])
+
+      if (is.null(setMetadata) | ncol(setMetadata) == 0) {
+        next
+      }
+
+      for (columnName in colnames(setMetadata)) {
+        # A list column cannot be stacked into a flat table and would break the binding rather than the row
+        if (!is.atomic(setMetadata[[columnName]])) {
+          droppedColumns <- unique(c(droppedColumns, columnName))
+          next
+        }
+
+        columnClasses[[columnName]] <- unique(c(columnClasses[[columnName]], class(setMetadata[[columnName]])[1]))
+      }
+    }
+
+    if (length(droppedColumns) > 0 & isTRUE(verbose)) {
+      message("The following region columns are not atomic and have been left out: ",
+              paste(droppedColumns, collapse = ", "), ".")
+    }
+
+    if (length(columnClasses) == 0) {
+      return(list())
+    }
+
+    #-------------------------------#
+    # One name and one type each    #
+    #-------------------------------#
+    plan <- list()
+    renamedColumns <- character(0)
+    coercedColumns <- character(0)
+
+    for (columnName in names(columnClasses)) {
+      outputName <- columnName
+
+      # The package writes these three itself, so a column of the same name has to step aside
+      if (columnName %in% identifierColumns) {
+        outputName <- paste0(columnName, ".original")
+        renamedColumns <- c(renamedColumns, columnName)
+      }
+
+      # One set calling a column a number and another calling it a word leaves character as the only common ground
+      outputClass <- columnClasses[[columnName]]
+      if (length(outputClass) > 1) {
+        outputClass <- "character"
+        coercedColumns <- c(coercedColumns, columnName)
+      }
+
+      plan[[columnName]] <- list(name = outputName, class = outputClass)
+    }
+
+    if (isTRUE(verbose)) {
+      if (length(renamedColumns) > 0) {
+        message("The following region columns share a name with an identifier and carry the suffix '.original': ",
+                paste(renamedColumns, collapse = ", "), ".")
+      }
+      if (length(coercedColumns) > 0) {
+        message("The following region columns hold different types across the sets and have been read as text: ",
+                paste(coercedColumns, collapse = ", "), ".")
+      }
+    }
+
+    return(plan)
+  } # END function
+
+
+
+
+#' @title .alignMetadata
+#'
+#' @description Builds the metadata table of one region set in the shape every set has to share, filling with \code{NA} the columns that set does not carry.
+#'
+#' @param gr \code{GRanges} of one region set.
+#' @param plan List returned by \code{.metadataPlan}.
+#'
+#' @return A \code{DataFrame} with one row per region and one column per entry of the plan.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom S4Vectors mcols DataFrame
+#'
+#' @keywords internal
+
+.alignMetadata <-
+  function(gr,
+           plan) {
+
+    if (length(plan) == 0) {
+      return(S4Vectors::DataFrame(row.names = seq_along(gr)))
+    }
+
+    setMetadata <- S4Vectors::mcols(gr)
+
+    columnList <-
+      lapply(names(plan),
+             function(columnName) {
+               targetClass <- plan[[columnName]]$class
+
+               # A set that never had this column contributes a column of the right type full of NA
+               if (is.null(setMetadata) || !(columnName %in% colnames(setMetadata))) {
+                 return(as.vector(rep(NA, length(gr)), mode = targetClass))
+               }
+
+               columnValues <- setMetadata[[columnName]]
+
+               if (!identical(class(columnValues)[1], targetClass)) {
+                 columnValues <- as.vector(columnValues, mode = targetClass)
+               }
+
+               return(columnValues)
+             })
+
+    names(columnList) <- vapply(plan, function(x) {x$name}, character(1))
+
+    return(S4Vectors::DataFrame(columnList, row.names = NULL, check.names = FALSE))
+  } # END function
+
+
+
+
+#' @title .regionIdentifiers
+#'
+#' @description Returns the identifier of every region of a set: the names of the ranges, a metadata column when one is asked for, or the coordinates when there is nothing else.
+#'
+#' @param gr \code{GRanges} of one region set.
+#' @param regionId String with the name of a metadata column, or \code{NULL}.
+#' @param setName String with the name of the set, used in the messages.
+#'
+#' @return A character vector with one identifier per region.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom S4Vectors mcols
+#' @importFrom GenomeInfoDb seqnames
+#' @importFrom BiocGenerics start end
+#'
+#' @keywords internal
+
+.regionIdentifiers <-
+  function(gr,
+           regionId = NULL,
+           setName = "") {
+
+    coordinateId <- paste0(as.character(GenomeInfoDb::seqnames(gr)), ":",
+                           BiocGenerics::start(gr), "-", BiocGenerics::end(gr))
+
+    #-------------------------------#
+    # A column asked for by name    #
+    #-------------------------------#
+    if (!is.null(regionId)) {
+      setMetadata <- S4Vectors::mcols(gr)
+
+      if (is.null(setMetadata) || !(regionId %in% colnames(setMetadata))) {
+        stop("The column '", regionId, "' is absent from the set '", setName, "'.", call. = FALSE)
+      }
+
+      identifiers <- as.character(setMetadata[[regionId]])
+
+      # The identifier indexes the object from here on, and two regions sharing one would be mixed up
+      if (any(is.na(identifiers)) | any(duplicated(identifiers))) {
+        stop("The column '", regionId, "' does not hold a unique identifier for every region of the set '",
+             setName, "'.", call. = FALSE)
+      }
+
+      return(identifiers)
+    }
+
+    if (is.null(names(gr))) {
+      return(coordinateId)
+    }
+
+    return(names(gr))
   } # END function

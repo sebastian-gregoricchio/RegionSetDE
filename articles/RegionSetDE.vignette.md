@@ -850,10 +850,10 @@ setResults
 >   universe        : otherSets (matched on width and abundance) 
 > 
 >      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper camera.FDR
->     promoterCpG       269     -0.8340      -0.9310   -1.870  0.00836      0.938
->        geneBody       909      0.2910       0.4070   -0.832  1.64000      0.938
->      intergenic       440      0.2650       0.2060   -1.140  1.55000      0.938
->  promoterNonCpG       277     -0.0209      -0.0787   -1.510  1.35000      0.938
+>     promoterCpG       269     -0.8340      -0.9310    -2.55    0.686      0.938
+>        geneBody       909      0.2910       0.4070    -1.57    2.390      0.938
+>      intergenic       440      0.2650       0.2060    -1.76    2.170      0.938
+>  promoterNonCpG       277     -0.0209      -0.0787    -2.07    1.910      0.938
 >  fry.FDR
 >     0.54
 >     0.54
@@ -870,21 +870,21 @@ setTable
 > 2       geneBody       909          986  0.29148227     0.1692341
 > 3     intergenic       440         1354  0.26499294     0.1740960
 > 4 promoterNonCpG       277         1378 -0.02089479    -0.1571407
->   mean.log2FC.comparison delta.log2FC   CI.lower    CI.upper inter.region.cor
-> 1             0.09704300  -0.93071378 -1.8697826 0.008355036        0.8583680
-> 2            -0.11505923   0.40654151 -0.8318836 1.644966633        0.2721337
-> 3             0.05862768   0.20636526 -1.1374078 1.550138278        0.2733108
-> 4             0.05781212  -0.07870691 -1.5089372 1.351523422        0.4433140
->   median.width camera.direction  camera.p fry.direction     fry.p camera.FDR
-> 1         1000             Down 0.3213638          Down 0.2686203  0.9384488
-> 2         1000               Up 0.5187249          Down 0.5401741  0.9384488
-> 3         1000               Up 0.7773973          Down 0.4717232  0.9384488
-> 4         1000             Down 0.9384488          Down 0.4613130  0.9384488
->     fry.FDR
-> 1 0.5401741
-> 2 0.5401741
-> 3 0.5401741
-> 4 0.5401741
+>   mean.log2FC.comparison delta.log2FC  CI.lower  CI.upper inter.region.cor
+> 1             0.09704300  -0.93071378 -2.547867 0.6864395        0.8583680
+> 2            -0.11505923   0.40654151 -1.574041 2.3871240        0.2721337
+> 3             0.05862768   0.20636526 -1.761069 2.1737990        0.2733108
+> 4             0.05781212  -0.07870691 -2.067061 1.9096471        0.4433140
+>   inter.region.cor.universe median.width camera.direction  camera.p
+> 1                 0.3775802         1000             Down 0.3213638
+> 2                 0.4530172         1000               Up 0.5187249
+> 3                 0.3815880         1000               Up 0.7773973
+> 4                 0.3504707         1000             Down 0.9384488
+>   fry.direction     fry.p camera.FDR   fry.FDR
+> 1          Down 0.2686203  0.9384488 0.5401741
+> 2          Down 0.5401741  0.9384488 0.5401741
+> 3          Down 0.4717232  0.9384488 0.5401741
+> 4          Down 0.4613130  0.9384488 0.5401741
 ```
 
 |                   Column | Meaning                                         |
@@ -1364,15 +1364,20 @@ resultsTable(singleSetResults)
 > 3 promoterNonCpG       371         1855  0.13289085    0.04333004
 > 4     intergenic       776         1813  0.04786937    0.04333004
 >   mean.log2FC.comparison delta.log2FC   CI.lower   CI.upper inter.region.cor
-> 1            0.287725959  -0.63347365 -0.9135196 -0.3534277             0.01
-> 2           -0.005591536   0.20582471 -0.2896100  0.7012594             0.01
-> 3            0.071712042   0.06117881 -0.4362074  0.5585651             0.01
-> 4            0.108141759  -0.06027239 -0.6190566  0.4985118             0.01
->   median.width camera.direction     camera.p   camera.FDR
-> 1         1000             Down 1.650640e-12 6.602561e-12
-> 2         1000               Up 7.329599e-02 1.465920e-01
-> 3         1000               Up 4.546972e-01 5.513550e-01
-> 4         1000               Up 5.513550e-01 5.513550e-01
+> 1            0.287725959  -0.63347365 -1.1543354 -0.1126119             0.01
+> 2           -0.005591536   0.20582471 -0.4605448  0.8721942             0.01
+> 3            0.071712042   0.06117881 -0.6135756  0.7359332             0.01
+> 4            0.108141759  -0.06027239 -0.7616854  0.6411406             0.01
+>   inter.region.cor.universe median.width camera.direction     camera.p
+> 1                      0.01         1000             Down 1.650640e-12
+> 2                      0.01         1000               Up 7.329599e-02
+> 3                      0.01         1000               Up 4.546972e-01
+> 4                      0.01         1000               Up 5.513550e-01
+>     camera.FDR
+> 1 6.602561e-12
+> 2 1.465920e-01
+> 3 5.513550e-01
+> 4 5.513550e-01
 ```
 
   
@@ -1600,7 +1605,7 @@ sessionInfo()
 >  [15] pkgconfig_2.0.3             crayon_1.5.3               
 >  [17] fastmap_1.2.0               XVector_0.52.0             
 >  [19] labeling_0.4.3              Rsamtools_2.28.0           
->  [21] rmarkdown_2.31              markdown_2.0               
+>  [21] rmarkdown_2.32              markdown_2.0               
 >  [23] UCSC.utils_1.8.0            ragg_1.5.2                 
 >  [25] xfun_0.60                   cachem_1.1.0               
 >  [27] cigarillo_1.2.1             litedown_0.11              
@@ -1631,7 +1636,7 @@ sessionInfo()
 >  [77] BiocIO_1.22.0               locfit_1.5-9.12            
 >  [79] GenomicAlignments_1.48.0    fs_2.1.0                   
 >  [81] XML_3.99-0.24               grid_4.6.1                 
->  [83] colorspace_2.1-3            edgeR_4.10.3               
+>  [83] colorspace_2.1-3            edgeR_4.10.4               
 >  [85] nlme_3.1-169                restfulr_0.0.17            
 >  [87] cli_3.6.6                   textshaping_1.0.5          
 >  [89] S4Arrays_1.12.0             viridisLite_0.4.3          
@@ -1641,6 +1646,6 @@ sessionInfo()
 >  [97] rjson_0.2.23                htmlwidgets_1.6.4          
 >  [99] farver_2.1.2                htmltools_0.5.9            
 > [101] pkgdown_2.2.1               lifecycle_1.0.5            
-> [103] httr_1.4.8                  GlobalOptions_0.1.4        
+> [103] httr_1.4.9                  GlobalOptions_0.1.4        
 > [105] statmod_1.5.2               gridtext_0.1.6
 ```

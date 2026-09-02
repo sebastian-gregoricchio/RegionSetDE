@@ -95,11 +95,13 @@ test of
 on the first of them, which is exactly a comparison of the first set
 against the second. The effect size is the difference between the two
 mean log2 fold changes, with a confidence interval carrying the variance
-inflation of both sets. A region that belongs to both sets carries the
-same reads into both sides of the comparison and pulls the difference
-towards zero. Those regions are removed by default and the number
-removed is reported; `sharedRegions = "stop"` refuses to run instead,
-which is the safer setting when the overlap is unexpected.
+inflation of both sets.
+
+A region that belongs to both sets carries the same reads into both
+sides of the comparison and pulls the difference towards zero. Those
+regions are removed by default and the number removed is reported;
+`sharedRegions = "stop"` refuses to run instead, which is the safer
+setting when the overlap is unexpected.
 
 ## See also
 
@@ -113,22 +115,11 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-fit <- loadExampleData("fit", verbose = FALSE)
+if (FALSE) { # \dontrun{
+setContrast <- testSetContrast(fit, contrast = "conditionCOMBO",
+                               set1 = "enhancers", set2 = "tss")
 
-# Do the CpG island promoters respond differently from the intergenic control?
-setContrast <- testSetContrast(fit,
-                               contrast = c("condition", "SHR", "BN"),
-                               set1 = "promoterCpG",
-                               set2 = "intergenic",
-                               verbose = FALSE)
-setContrast
-#> An object of class 'RegionSetDE.setResults'
-#>   test            : setContrast 
-#>   contrast        : condition: SHR vs BN 
-#>   engine          : edgeR 
-#>   methods         : camera 
-#>   universe        : pairedSet  
-#> 
-#>        set.1      set.2 delta.log2FC CI.lower CI.upper camera.FDR
-#>  promoterCpG intergenic         -1.1    -2.73    0.535      0.316
+# Every pair at once
+allPairs <- testSetContrast(fit, contrast = "conditionCOMBO")
+} # }
 ```

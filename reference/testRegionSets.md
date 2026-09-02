@@ -65,10 +65,11 @@ testRegionSets(
 
 - interRegionCor:
 
-  Numeric value with the correlation between the regions of a set, used
-  to inflate the variance. Default: `NULL`, estimated from the residuals
-  of each set, or held at 0.01 when the design leaves no residual to
-  estimate it from.
+  Numeric value with the correlation between regions, used to inflate
+  the variance of both the set and the rows it is compared against.
+  Default: `NULL`, estimated separately for each of the two from the
+  residuals of the fit, or held at 0.01 when the design leaves no
+  residual to estimate it from.
 
 - useRanks:
 
@@ -136,17 +137,24 @@ which built it once, and travels on into the result, so
 [`plotUniverseMatching`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md)
 can check the matching afterwards without anything being kept on the
 side. Passing a `RegionSetDE.universe` object, or one of the two
-keywords, overrides it for this test alone. A fit with no replicates
-loses the self-contained test. `fry` builds a linear model inside each
-set and needs a residual to measure it against, which a design with one
-sample per level does not have, so it is dropped with a message and only
-the competitive test runs. The correlation between regions goes the same
-way: it is estimated from the residuals of the fit, and without them it
-falls back to 0.01, the value `limma` uses when nothing better is
-available. That number sets how much the confidence interval is widened,
-so on such a fit the interval is as assumed as the dispersion is, and
-`interRegionCor` is worth setting by hand from a replicated experiment
-on the same assay when one exists. The competitive test runs through
+keywords, overrides it for this test alone. The interval on
+`delta.log2FC` carries the correlation of both sides. The regions of the
+comparison are no less correlated than the regions of the set, so
+treating their mean as if it were known would leave the interval
+narrower than the data supports, by around a factor of the square root
+of two when the two sides are of similar size.
+
+A fit with no replicates loses the self-contained test. `fry` builds a
+linear model inside each set and needs a residual to measure it against,
+which a design with one sample per level does not have, so it is dropped
+with a message and only the competitive test runs. The correlation
+between regions goes the same way: it is estimated from the residuals of
+the fit, and without them it falls back to 0.01, the value `limma` uses
+when nothing better is available. That number sets how much the
+confidence interval is widened, so on such a fit the interval is as
+assumed as the dispersion is, and `interRegionCor` is worth setting by
+hand from a replicated experiment on the same assay when one exists. The
+competitive test runs through
 [`limma::cameraPR`](https://rdrr.io/pkg/limma/man/camera.html) on the
 per-region statistics, which is what makes it work identically for the
 four engines. The self-contained test needs the values themselves and is
@@ -169,50 +177,16 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-fit <- loadExampleData("fit", verbose = FALSE)
+if (FALSE) { # \dontrun{
+fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
 
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-                             verbose = FALSE)
-setResults
-#> An object of class 'RegionSetDE.setResults'
-#>   test            : set 
-#>   contrast        : condition: SHR vs BN 
-#>   engine          : edgeR 
-#>   methods         : camera, fry 
-#>   universe        : otherSets (matched on width and abundance) 
-#> 
-#>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper camera.FDR
-#>     promoterCpG       269     -0.8340      -0.9310   -1.870  0.00836      0.938
-#>        geneBody       909      0.2910       0.4070   -0.832  1.64000      0.938
-#>      intergenic       440      0.2650       0.2060   -1.140  1.55000      0.938
-#>  promoterNonCpG       277     -0.0209      -0.0787   -1.510  1.35000      0.938
-#>  fry.FDR
-#>     0.54
-#>     0.54
-#>     0.54
-#>     0.54
+# The universe comes from the fit and travels into the result
+setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
 
-# The intergenic set is the control: it should not come out as responding
-resultsTable(setResults)
-#>       region.set n.regions n.comparison mean.log2FC median.log2FC
-#> 1    promoterCpG       269          314 -0.83367077    -0.9443600
-#> 2       geneBody       909          986  0.29148227     0.1692341
-#> 3     intergenic       440         1354  0.26499294     0.1740960
-#> 4 promoterNonCpG       277         1378 -0.02089479    -0.1571407
-#>   mean.log2FC.comparison delta.log2FC   CI.lower    CI.upper inter.region.cor
-#> 1             0.09704300  -0.93071378 -1.8697826 0.008355036        0.8583680
-#> 2            -0.11505923   0.40654151 -0.8318836 1.644966633        0.2721337
-#> 3             0.05862768   0.20636526 -1.1374078 1.550138278        0.2733108
-#> 4             0.05781212  -0.07870691 -1.5089372 1.351523422        0.4433140
-#>   median.width camera.direction  camera.p fry.direction     fry.p camera.FDR
-#> 1         1000             Down 0.3213638          Down 0.2686203  0.9384488
-#> 2         1000               Up 0.5187249          Down 0.5401741  0.9384488
-#> 3         1000               Up 0.7773973          Down 0.4717232  0.9384488
-#> 4         1000             Down 0.9384488          Down 0.4613130  0.9384488
-#>     fry.FDR
-#> 1 0.5401741
-#> 2 0.5401741
-#> 3 0.5401741
-#> 4 0.5401741
+plotUniverseMatching(setRes)
+plotSetEffect(setRes)
 
+# Overriding it for one test
+setRes <- testRegionSets(fit, contrast = "conditionCOMBO", universe = "all")
+} # }
 ```

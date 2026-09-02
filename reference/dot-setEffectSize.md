@@ -12,7 +12,7 @@ between the regions.
   setIndex,
   backgroundIndex,
   correlation,
-  backgroundCorrelation = 0,
+  backgroundCorrelation = NULL,
   level = 0.95
 )
 ```
@@ -38,7 +38,8 @@ between the regions.
 - backgroundCorrelation:
 
   Numeric value with the correlation between the regions of the
-  background. Default: `0`.
+  background. Default: `NULL`, the same as the set, since a comparison
+  drawn from the same object is correlated in the same way.
 
 - level:
 

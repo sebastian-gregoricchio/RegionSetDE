@@ -84,7 +84,7 @@ countReads <-
 
     missingFiles <- bamFiles[!file.exists(bamFiles)]
     if (length(missingFiles) > 0) {
-      stop(paste0("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), "."), call. = FALSE)
+      stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
     }
 
     # Counting without an index would read each file from the beginning for every region
@@ -98,7 +98,7 @@ countReads <-
              logical(1))
 
     if (any(!hasIndex)) {
-      stop(paste0("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), "."), call. = FALSE)
+      stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
     }
 
     if (!is.numeric(fragmentLength) | fragmentLength[1] < 1) {
@@ -158,13 +158,13 @@ countReads <-
     # Read the files #
     #----------------#
     if (isTRUE(verbose)) {
-      message(paste0("Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
-                     length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."))
+      message("Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
+              length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)...")
     }
 
     if (isTRUE(verbose) & length(unique(pairedEnd)) > 1) {
-      message(paste0("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd),
-                     " single-end samples, counted in two separate passes."))
+      message("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd),
+              " single-end samples, counted in two separate passes.")
     }
 
     countMatrix <- matrix(0, nrow = length(uniqueRegions), ncol = length(bamFiles))
@@ -218,8 +218,8 @@ countReads <-
                                metadataList = list(signal.type = "reads"))
 
     if (isTRUE(verbose)) {
-      message(paste0("Done. Library sizes: ",
-                     paste0(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million reads."))
+      message("Done. Library sizes: ",
+              paste0(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million reads.")
     }
 
     return(counts)

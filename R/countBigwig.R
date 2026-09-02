@@ -65,7 +65,7 @@ countBigwig <-
 
     missingFiles <- bigwigFiles[!file.exists(bigwigFiles)]
     if (length(missingFiles) > 0) {
-      stop(paste0("The following bigWig files do not exist: ", paste(missingFiles, collapse = ", "), "."), call. = FALSE)
+      stop("The following bigWig files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
     }
 
     summaryFunction <- tolower(summaryFunction[1])
@@ -111,8 +111,8 @@ countBigwig <-
     # Read the files #
     #----------------#
     if (isTRUE(verbose)) {
-      message(paste0("Extracting the signal of ", length(bigwigFiles), " bigWig files over ", length(uniqueRegions), " unique regions (",
-                     length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."))
+      message("Extracting the signal of ", length(bigwigFiles), " bigWig files over ", length(uniqueRegions), " unique regions (",
+              length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)...")
     }
 
     signalList <-

@@ -85,7 +85,7 @@
       lostRegions <- dplyr::n_distinct(tileTable$region.key) - dplyr::n_distinct(keptTiles$region.key)
 
       if (lostRegions > 0 & isTRUE(verbose)) {
-        warning(paste0(lostRegions, " regions are narrower than 'tileWidth' and have been removed together with their partial tiles."), call. = FALSE)
+        warning(lostRegions, " regions are narrower than 'tileWidth' and have been removed together with their partial tiles.", call. = FALSE)
       }
 
       tiles <- tiles[BiocGenerics::width(tiles) == tileWidth]
@@ -246,7 +246,7 @@
         # Joining on the sample name tolerates a metadata table in a different order
         absentSamples <- setdiff(sampleTable$sample, sampleMetadata$sample)
         if (length(absentSamples) > 0) {
-          stop(paste0("The following samples are missing from 'sampleMetadata': ", paste(absentSamples, collapse = ", "), "."), call. = FALSE)
+          stop("The following samples are missing from 'sampleMetadata': ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
         }
         sampleTable <- dplyr::left_join(sampleTable, sampleMetadata, by = "sample")
       } else {
@@ -354,16 +354,16 @@
     }
 
     if (length(intersect(renamedSeqlevels, targetSeqlevels)) == 0) {
-      stop(paste0("The chromosome names of ", ifelse(is.null(fileName), "the signal file", paste0("'", basename(fileName), "'")),
-                  " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
-                  " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), "."), call. = FALSE)
+      stop("The chromosome names of ", ifelse(is.null(fileName), "the signal file", paste0("'", basename(fileName), "'")),
+           " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
+           " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
     }
 
     GenomeInfoDb::seqlevels(x) <- renamedSeqlevels
 
     if (isTRUE(verbose)) {
-      message(paste0("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels, 2), collapse = ", "),
-                     " to ", paste(utils::head(renamedSeqlevels, 2), collapse = ", "), " to match the signal files."))
+      message("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels, 2), collapse = ", "),
+              " to ", paste(utils::head(renamedSeqlevels, 2), collapse = ", "), " to match the signal files.")
     }
 
     return(x)

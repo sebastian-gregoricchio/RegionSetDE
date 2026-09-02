@@ -15,6 +15,8 @@ countBigwig(
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
+  keepMetadata = TRUE,
+  regionId = NULL,
   partialTiles = TRUE,
   summaryFunction = "sum",
   missingAsZero = TRUE,
@@ -51,6 +53,19 @@ countBigwig(
 
   Numeric value with the width of the tiles, in base pairs. Default:
   `NULL`, one row per region.
+
+- keepMetadata:
+
+  Logical value to indicate whether the metadata columns carried by the
+  regions must be kept in the `rowData`, harmonised across the sets.
+  Default: `TRUE`.
+
+- regionId:
+
+  String with the name of a metadata column holding the region
+  identifiers, for instance a gene name. It must hold a different value
+  for every region of every set. Default: `NULL`, the names of the
+  ranges, and their coordinates when they are unnamed.
 
 - partialTiles:
 
@@ -113,36 +128,10 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-# rtracklayer ships a small bigWig, and the regions are taken from its own content
-bigwigFile <- file.path(system.file("tests", package = "rtracklayer"), "test.bw")
-
-# The UCSC library behind rtracklayer reads a Windows drive letter as a URL
-# protocol, so an absolute path to the packaged file cannot be opened there
-if (.Platform$OS.type != "windows") {
-
-  exampleRegions <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-  exampleRegions$setName <- "covered"
-
-  exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                  seqlevelsStyle = NULL, verbose = FALSE)
-
-  signal <- countBigwig(exampleSets,
-                        bigwigFiles = bigwigFile,
-                        sampleNames = "example",
-                        verbose = FALSE)
-
-  print(signal)
-  print(SummarizedExperiment::assay(signal, "counts"))
-}
-#> class: RegionSetDE.counts 
-#> dim: 2 1 
-#> metadata(1): signal.type
-#> assays(1): counts
-#> rownames(2): covered|chr2:1-1500 covered|chr19:1501-2700
-#> rowData names(3): region.set region.id tile.id
-#> colnames(1): example
-#> colData names(4): sample bigwig.file library.size total.signal
-#>                         example
-#> covered|chr2:1-1500        -750
-#> covered|chr19:1501-2700     750
+if (FALSE) { # \dontrun{
+counts <- countBigwig(regions,
+                      bigwigFiles = list.files("bigwig", pattern = "\\.bw$", full.names = TRUE),
+                      summaryFunction = "sum",
+                      nThreads = 4)
+} # }
 ```

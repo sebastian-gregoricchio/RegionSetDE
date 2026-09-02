@@ -15,6 +15,8 @@ countReads(
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
+  keepMetadata = TRUE,
+  regionId = NULL,
   partialTiles = TRUE,
   pairedEnd = "auto",
   fragmentLength = 150,
@@ -56,6 +58,19 @@ countReads(
 
   Numeric value with the width of the tiles, in base pairs. Default:
   `NULL`, one row per region.
+
+- keepMetadata:
+
+  Logical value to indicate whether the metadata columns carried by the
+  regions must be kept in the `rowData`, harmonised across the sets.
+  Default: `TRUE`.
+
+- regionId:
+
+  String with the name of a metadata column holding the region
+  identifiers, for instance a gene name. It must hold a different value
+  for every region of every set. Default: `NULL`, the names of the
+  ranges, and their coordinates when they are unnamed.
 
 - partialTiles:
 
@@ -149,42 +164,6 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-# Rsamtools ships a small alignment file, enough to run the counting itself
-bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
-
-exampleRegions <- GenomicRanges::GRanges(
-  seqnames = rep(c("seq1", "seq2"), each = 3),
-  ranges = IRanges::IRanges(start = rep(c(1, 500, 1000), 2), width = 300))
-
-exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 3)
-
-exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                seqlevelsStyle = NULL, verbose = FALSE)
-
-counts <- countReads(exampleSets,
-                     bamFiles = bamFile,
-                     sampleNames = "example",
-                     verbose = FALSE)
-counts
-#> class: RegionSetDE.counts 
-#> dim: 6 1 
-#> metadata(1): signal.type
-#> assays(1): counts
-#> rownames(6): firstSet|seq1:1-300 firstSet|seq1:500-799 ...
-#>   secondSet|seq2:500-799 secondSet|seq2:1000-1299
-#> rowData names(3): region.set region.id tile.id
-#> colnames(1): example
-#> colData names(4): sample bam.file paired.end library.size
-
-SummarizedExperiment::assay(counts, "counts")
-#>                          example
-#> firstSet|seq1:1-300          113
-#> firstSet|seq1:500-799        260
-#> firstSet|seq1:1000-1299      277
-#> secondSet|seq2:1-300         177
-#> secondSet|seq2:500-799       323
-#> secondSet|seq2:1000-1299     327
-
 if (FALSE) { # \dontrun{
 counts <- countReads(regions,
                      bamFiles = list.files("bam", pattern = "\\.bam$", full.names = TRUE),
@@ -195,5 +174,4 @@ counts <- countReads(regions,
 
 countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
 } # }
-
 ```

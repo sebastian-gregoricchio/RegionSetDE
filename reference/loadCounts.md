@@ -20,6 +20,8 @@ loadCounts(
   matchBy = "coordinates",
   startsAt = 1,
   tileWidth = NULL,
+  keepMetadata = TRUE,
+  regionId = NULL,
   partialTiles = TRUE,
   missingRegions = "stop",
   librarySizes = NULL,
@@ -88,6 +90,19 @@ loadCounts(
   matrix has been computed on tiles rather than on whole regions.
   Default: `NULL`.
 
+- keepMetadata:
+
+  Logical value to indicate whether the metadata columns carried by the
+  regions must be kept in the `rowData`, harmonised across the sets.
+  Default: `TRUE`.
+
+- regionId:
+
+  String with the name of a metadata column holding the region
+  identifiers, for instance a gene name. It must hold a different value
+  for every region of every set. Default: `NULL`, the names of the
+  ranges, and their coordinates when they are unnamed.
+
 - partialTiles:
 
   Logical value indicating whether the trailing shorter tile of each
@@ -141,33 +156,15 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-counts <- loadExampleData("counts", verbose = FALSE)
-regionRanges <- SummarizedExperiment::rowRanges(counts)
+if (FALSE) { # \dontrun{
+counts <- loadCounts(regions,
+                     counts = "featureCounts/all_samples.txt",
+                     sampleMetadata = sampleSheet,
+                     librarySizes = c(2.3e7, 2.1e7, 1.9e7, 2.4e7))
 
-# A count table as it would come out of featureCounts or a coverage tool
-countTable <- data.frame(
-  seqnames = as.character(GenomicRanges::seqnames(regionRanges)),
-  start = GenomicRanges::start(regionRanges),
-  end = GenomicRanges::end(regionRanges),
-  SummarizedExperiment::assay(counts, "counts"),
-  check.names = FALSE)
-
-regions <- splitLoadRegions(regionRanges, splitBy = "region.set",
-                            genomeAssembly = "rn4", verbose = FALSE)
-
-reloaded <- loadCounts(regions, counts = countTable, verbose = FALSE)
-reloaded
-#> class: RegionSetDE.counts 
-#> dim: 3224 4 
-#> metadata(1): signal.type
-#> assays(1): counts
-#> rownames(3224): promoterNonCpG|promoterNonCpG|region_00002
-#>   promoterNonCpG|promoterNonCpG|region_00003 ...
-#>   promoterCpG|promoterCpG|region_03797
-#>   promoterCpG|promoterCpG|region_03798
-#> rowData names(3): region.set region.id tile.id
-#> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
-#>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
-#>   lv-H3K4me3-SHR-male-bio3-tech1
-#> colData names(3): sample source.column library.size
+counts <- loadCounts(regions,
+                     counts = bedtoolsMatrix,
+                     startsAt = 0,
+                     missingRegions = "zero")
+} # }
 ```

@@ -582,7 +582,7 @@ setMethod(f = "show",
 
             if (nrow(object@results) > 0) {
               shownColumns <- intersect(c("region.set", "set.1", "set.2", "n.regions", "mean.log2FC",
-                                          "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR", "fry.FDR"),
+                                          "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR", "fry.FDR", "inter.region.cor.universe"),
                                         colnames(object@results))
               printTable <- object@results[, shownColumns, drop = FALSE]
               numericColumns <- vapply(printTable, is.numeric, logical(1))

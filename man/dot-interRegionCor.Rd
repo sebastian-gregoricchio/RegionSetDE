@@ -4,7 +4,7 @@
 \alias{.interRegionCor}
 \title{.interRegionCor}
 \usage{
-.interRegionCor(expressionMatrix, design, index)
+.interRegionCor(expressionMatrix, design, index, label = "the set")
 }
 \arguments{
 \item{expressionMatrix}{Numeric matrix of log2 values.}
@@ -12,12 +12,17 @@
 \item{design}{Design matrix.}
 
 \item{index}{Integer vector with the rows of the set.}
+
+\item{label}{String naming what is being estimated, used in the warning. Default: \code{"the set"}.}
 }
 \value{
 A numeric value.
 }
 \description{
 Estimates the correlation between the regions of a set, from the residuals of the design.
+}
+\details{
+When the design leaves fewer than two residual degrees of freedom there is nothing to estimate a correlation from, and the value falls back to the 0.01 that \code{limma} uses in the same situation. That fallback is loud rather than silent, because the difference between 0.01 and a measured 0.4 is a fortyfold change in every variance, and a design that gains a coefficient can cross that line without anything else about the analysis appearing to change.
 }
 \author{
 Sebastian Gregoricchio

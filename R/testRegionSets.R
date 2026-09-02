@@ -134,11 +134,14 @@ testRegionSets <-
       }
     }
 
+    # Not gated on 'verbose': 0.01 against a measured value of 0.4 is a fortyfold change in every
+    # variance, and a design that gains a coefficient can cross this line with nothing else looking different
     if (is.null(interRegionCor) & residualDegrees < 2) {
       interRegionCor <- 0.01
-      if (isTRUE(verbose)) {
-        message("The correlation between regions cannot be estimated from this design, it is held at 0.01. Set 'interRegionCor' to use a value of your own.")
-      }
+      warning("The correlation between regions cannot be estimated with ", residualDegrees,
+              " residual degrees of freedom, and is held at 0.01. Every confidence interval and p-value ",
+              "below rests on that number. Set 'interRegionCor' from a replicated experiment on the same ",
+              "assay, and state the value in the methods.", call. = FALSE)
     }
 
     #-------------------------------#
@@ -203,7 +206,8 @@ testRegionSets <-
                # Correlation between regions   #
                #-------------------------------#
                setCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design, index = setIndex)
+                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
+                                 index = setIndex, label = setName)
                } else {
                  interRegionCor
                }
@@ -211,7 +215,9 @@ testRegionSets <-
                # The comparison rows are as correlated as the set, and treating their mean as known
                # would make the interval on the difference narrower than the data supports
                universeCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design, index = backgroundIndex)
+                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
+                                 index = backgroundIndex,
+                                 label = paste0("the universe of ", setName))
                } else {
                  interRegionCor
                }
@@ -422,9 +428,8 @@ testSetContrast <-
 
     if (is.null(interRegionCor) & (nrow(fit@design) - ncol(fit@design)) < 2) {
       interRegionCor <- 0.01
-      if (isTRUE(verbose)) {
-        message("The correlation between regions cannot be estimated from this design, it is held at 0.01.")
-      }
+      warning("The correlation between regions cannot be estimated from this design, and is held at 0.01. ",
+              "Every confidence interval and p-value below rests on that number.", call. = FALSE)
     }
 
     contrastObject <- .resolveContrast(contrast = contrast,
@@ -494,11 +499,13 @@ testSetContrast <-
                # Correlation and effect size   #
                #-------------------------------#
                firstCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design, index = firstIndex)
+                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
+                                 index = firstIndex, label = pairTable$set.1[i])
                } else {interRegionCor}
 
                secondCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design, index = secondIndex)
+                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
+                                 index = secondIndex, label = pairTable$set.2[i])
                } else {interRegionCor}
 
                effectSize <- .setEffectSize(logFC = regionStats$log2FC,
@@ -674,21 +681,37 @@ testSetContrast <-
 #' @param expressionMatrix Numeric matrix of log2 values.
 #' @param design Design matrix.
 #' @param index Integer vector with the rows of the set.
+#' @param label String naming what is being estimated, used in the warning. Default: \code{"the set"}.
 #'
 #' @return A numeric value.
+#'
+#' @details When the design leaves fewer than two residual degrees of freedom there is nothing to estimate a correlation from, and the value falls back to the 0.01 that \code{limma} uses in the same situation. That fallback is loud rather than silent, because the difference between 0.01 and a measured 0.4 is a fortyfold change in every variance, and a design that gains a coefficient can cross that line without anything else about the analysis appearing to change.
 #'
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom limma interGeneCorrelation
+#' @importFrom stats var
 #'
 #' @keywords internal
 
 .interRegionCor <-
   function(expressionMatrix,
            design,
-           index) {
+           index,
+           label = "the set") {
 
-    if (length(index) < 3 | (nrow(design) - ncol(design)) < 2) {
+    residualDegrees <- nrow(design) - ncol(design)
+
+    # Below two residual degrees of freedom limma cannot separate the shared variation from the noise
+    if (residualDegrees < 2) {
+      warning("The correlation between regions cannot be estimated with ", residualDegrees,
+              " residual degrees of freedom, and is held at 0.01.", call. = FALSE)
+      return(0.01)
+    }
+
+    if (length(index) < 3) {
+      warning("Fewer than 3 rows in ", label, ", the correlation between regions is held at 0.01, ",
+              "which leaves that set effectively uninflated.", call. = FALSE)
       return(0.01)
     }
 
@@ -699,12 +722,16 @@ testSetContrast <-
     setMatrix <- setMatrix[is.finite(rowVariance) & rowVariance > 0, , drop = FALSE]
 
     if (nrow(setMatrix) < 3) {
+      warning("Fewer than 3 rows of ", label, " vary at all, the correlation between regions is held at 0.01.",
+              call. = FALSE)
       return(0.01)
     }
 
     correlationValue <- try(limma::interGeneCorrelation(y = setMatrix, design = design)$correlation, silent = TRUE)
 
     if (inherits(correlationValue, "try-error") | !is.finite(correlationValue)) {
+      warning("The correlation between the regions of ", label, " could not be computed, and is held at 0.01.",
+              call. = FALSE)
       return(0.01)
     }
 

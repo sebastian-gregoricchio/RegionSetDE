@@ -20,7 +20,8 @@ countBigwig(
   partialTiles = TRUE,
   summaryFunction = "sum",
   missingAsZero = TRUE,
-  roundValues = TRUE,
+  countLike = FALSE,
+  roundValues = FALSE,
   nThreads = 1,
   verbose = TRUE
 )
@@ -85,10 +86,17 @@ countBigwig(
   bigWig must be treated as zeros rather than as missing values.
   Default: `TRUE`.
 
+- countLike:
+
+  Logical value with which you assert that the bigWig holds count-like
+  values, meaning raw, unnormalised coverage that a count model may
+  legitimately be applied to. Default: `FALSE`.
+
 - roundValues:
 
   Logical value indicating whether the summarised values must be rounded
-  to integers. Default: `TRUE`.
+  to integers. Rounding is a formatting step and does not turn coverage
+  into counts. Default: `FALSE`.
 
 - nThreads:
 
@@ -102,7 +110,11 @@ countBigwig(
 ## Value
 
 A `RegionSetDE.counts` object with one row per region, or per tile, and
-one column per sample.
+one column per sample. The `signal.type` entry of the metadata is set to
+`"bigwig"` and `count.like` to whatever was declared through
+`countLike`, which is what
+[`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
+reads to decide which engines it will run.
 
 ## Details
 
@@ -110,11 +122,29 @@ A bigWig holds coverage, not reads, so the library sizes cannot be
 recovered from it: the `library.size` column of the `colData` is left as
 `NA` and the total signal falling in the regions is reported in
 `total.signal` instead. Normalisation factors must therefore be supplied
-externally, or estimated from a background bigWig, and the values are
-rounded by default because the count-based models expect integers. Files
-carrying an already normalised coverage will produce values that no
-longer follow a count distribution, which is worth keeping in mind at
-the testing step.
+externally, or estimated from a background bigWig.
+
+Coverage is not a count and rounding it does not make it one. A value of
+12.72 becomes 13 and looks like a count, but the negative binomial
+likelihood that `edgeR` and `DESeq2` are built on describes the number
+of fragments falling in an interval, and a rounded coverage value is not
+that number. The gap is widest for files carrying an already normalised
+signal, CPM, RPKM, RPGC, fold enrichment over input, where the values
+have been divided by a factor that the count model then has no way of
+knowing about. It does not close entirely even for raw coverage:
+coverage summed over an interval weights every fragment by how many of
+its bases fall inside, so it is over-dispersed relative to the fragment
+count it stands in for.
+
+The object therefore records where its values came from, and
+[`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
+refuses the count engines on it unless `countLike` says otherwise. The
+engine to reach for on bigWig input is `"limma"`, which models the log2
+signal directly and asks nothing of the values that they cannot supply.
+Setting `countLike = TRUE` is an assertion about the files, not a
+setting: it says these are raw, unnormalised coverage tracks and the
+count model is close enough for the purpose, and it should be stated in
+the methods when it is used.
 
 ## See also
 

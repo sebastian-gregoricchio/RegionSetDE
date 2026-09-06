@@ -37,6 +37,64 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.1" id="regionsetde-0991">RegionSetDE 0.99.1<a class="anchor" aria-label="anchor" href="#regionsetde-0991"></a></h2>
+<p>Statistical and interpretive corrections, from a review of the set-level inference. Three of these change what the output means rather than how it is computed, so a result produced with 0.99.0 should be re-read against them.</p>
+<div class="section level3">
+<h3 id="set-level-effect-sizes-0-99-1">Set-level effect sizes<a class="anchor" aria-label="anchor" href="#set-level-effect-sizes-0-99-1"></a></h3>
+<ul><li>
+<code><a href="../reference/testRegionSets.html">testRegionSets()</a></code> and <code><a href="../reference/testSetContrast.html">testSetContrast()</a></code> gain <code>effectMethod</code>. With the default <code>"sample"</code> the confidence interval is built from one set score per library, the mean signal over the set minus the mean signal over its comparison, run through the design of the experiment. The replication behind the interval is now the biological samples.</li>
+<li>The interval of 0.99.0 is still reported, under <code>heterogeneity.CI.lower</code> and <code>heterogeneity.CI.upper</code>, and named for what it measures: how far the effect varies between the loci of a set, conditional on the libraries at hand. It was documented as a confidence interval on the set effect, which it is not, since its sampling units are genomic loci.</li>
+<li>
+<code>sample.delta.log2FC</code>, its standard error, degrees of freedom, p-value and adjusted p-value are reported alongside.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="interpretation-of-camera-and-fry-0-99-1">Interpretation of camera and fry<a class="anchor" aria-label="anchor" href="#interpretation-of-camera-and-fry-0-99-1"></a></h3>
+<ul><li>The reading of a significant competitive test with a non-significant self-contained one as redistribution has been removed from the manual, the vignette and the README. Failing to reject a self-contained null is not evidence that the absolute change is zero, and unequal power between the two tests produces the same pattern. The four outcomes are now described as evidence rather than as mechanism.</li>
+<li>A redistribution claim belongs to <code><a href="../reference/testSetContrast.html">testSetContrast()</a></code>, which compares two sets directly. The documentation points there.</li>
+<li>Also stated: a centring normalisation removes a genuinely global shift before <code>fry</code> ever sees the data, so the self-contained test is not where to look for one.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="what-normalisation-can-and-cannot-decide-0-99-1">What normalisation can and cannot decide<a class="anchor" aria-label="anchor" href="#what-normalisation-can-and-cannot-decide-0-99-1"></a></h3>
+<ul><li>The claim that <code><a href="../reference/plotNormComparison.html">plotNormComparison()</a></code> and <code><a href="../reference/plotSetMA.html">plotSetMA()</a></code> say whether a global shift is technical or biological has been dropped. The two are not separable from endogenous data alone. Those plots answer whether the conclusions are sensitive to the normalisation assumption, which is what they are now documented as answering.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="no-replicate-analysis-0-99-1">No-replicate analysis<a class="anchor" aria-label="anchor" href="#no-replicate-analysis-0-99-1"></a></h3>
+<ul><li>The “no replicates needed” heading is gone. <code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code> measures how two libraries differ over rows assumed not to respond, which is not the biological variability that was never sampled, and the documentation says so.</li>
+<li>
+<code><a href="../reference/normalizeCounts.html">normalizeCounts()</a></code> gains <code>backgroundHoldout</code>, which keeps a fraction of the background bins out of the estimation of the scaling factors. <code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code> picks up that split rather than drawing its own, so the calibration rows sit outside the whole preprocessing chain.</li>
+<li>The returned list gains <code>holdout.type</code>, distinguishing rows held out of the dispersion alone from rows held out of both steps.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="counts-and-coverage-0-99-1">Counts and coverage<a class="anchor" aria-label="anchor" href="#counts-and-coverage-0-99-1"></a></h3>
+<ul><li>
+<code><a href="../reference/fitRegions.html">fitRegions()</a></code> gains the <code>"limma"</code> engine, limma-trend on the log2 signal, for values that are not counts.</li>
+<li>
+<code><a href="../reference/countBigwig.html">countBigwig()</a></code> gains <code>countLike</code> and no longer rounds by default. Rounding coverage to integers does not make it a fragment count, and the negative binomial and voom engines now refuse an object built from bigWig files unless <code>countLike</code> was declared or <code>assumeCountLike</code> overrides it in <code><a href="../reference/fitRegions.html">fitRegions()</a></code>.</li>
+<li>
+<code><a href="../reference/loadCounts.html">loadCounts()</a></code> gains the same <code>countLike</code>, for external matrices holding coverage rather than counts.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="tiles-0-99-1">Tiles<a class="anchor" aria-label="anchor" href="#tiles-0-99-1"></a></h3>
+<ul><li>
+<code><a href="../reference/countReads.html">countReads()</a></code>, <code><a href="../reference/countBigwig.html">countBigwig()</a></code> and <code><a href="../reference/loadCounts.html">loadCounts()</a></code> mark a tiled object as tiled. They previously stored <code>counting.level = "region"</code> whatever <code>tileWidth</code> was, so <code><a href="../reference/testRegions.html">testRegions()</a></code> never recombined the tiles of a region and the tile-level output path could not be reached.</li>
+<li>
+<code><a href="../reference/testRegionSets.html">testRegionSets()</a></code> gains <code>tileHandling</code>, collapsing the tiles of a region into one row before the set is assembled. Without it a 40 kb region counted at 1 kb weighs forty times a 1 kb one, which makes the set effect an average over base pairs rather than over regions.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="overlapping-sets-0-99-1">Overlapping sets<a class="anchor" aria-label="anchor" href="#overlapping-sets-0-99-1"></a></h3>
+<ul><li>
+<code><a href="../reference/testRegionSets.html">testRegionSets()</a></code> gains <code>overlapPolicy</code>, and <code><a href="../reference/testSetContrast.html">testSetContrast()</a></code> now detects shared regions through <code><a href="https://rdrr.io/pkg/IRanges/man/findOverlaps-methods.html" class="external-link">IRanges::findOverlaps</a></code> rather than through region identifiers. Two sets can cover the same chromatin without sharing an identifier, and the shared reads pull the difference between them towards zero.</li>
+<li>The number of overlapping comparison rows is reported in <code>n.comparison.overlapping</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="the-comparison-universe-0-99-1">The comparison universe<a class="anchor" aria-label="anchor" href="#the-comparison-universe-0-99-1"></a></h3>
+<ul><li>
+<code><a href="../reference/makeSetUniverse.html">makeSetUniverse()</a></code>, <code><a href="../reference/fitRegions.html">fitRegions()</a></code> and <code><a href="../reference/testRegionSets.html">testRegionSets()</a></code> gain <code>universeSets</code>, naming the sets the comparison rows are drawn from.</li>
+<li>
+<code>RegionSetDE.universe</code> gains the <code>comparison.sets</code> slot and prints it. A competitive p-value is relative to the sets that happen to be loaded, and that is now recorded with the result instead of having to be reconstructed.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.0" id="regionsetde-0990">RegionSetDE 0.99.0<a class="anchor" aria-label="anchor" href="#regionsetde-0990"></a></h2>
 <p>First version.</p>
 <div class="section level3">

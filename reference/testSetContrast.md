@@ -15,6 +15,7 @@ testSetContrast(
   contrast,
   set1 = NULL,
   set2 = NULL,
+  effectMethod = "sample",
   interRegionCor = NULL,
   useRanks = FALSE,
   sharedRegions = "drop",
@@ -47,6 +48,11 @@ testSetContrast(
   Character vector with the name, or names, of the second region set.
   Default: `NULL`.
 
+- effectMethod:
+
+  String with what the confidence interval on the difference is computed
+  from, either `"sample"` or `"region"`. Default: `"sample"`.
+
 - interRegionCor:
 
   Numeric value with the correlation between the regions of a set.
@@ -59,8 +65,8 @@ testSetContrast(
 
 - sharedRegions:
 
-  String with what to do with the regions belonging to both sets, either
-  `"drop"` or `"stop"`. Default: `"drop"`.
+  String with what to do with the regions the two sets share in the
+  genome, either `"drop"` or `"stop"`. Default: `"drop"`.
 
 - FDR:
 
@@ -94,14 +100,25 @@ test of
 [`testRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
 on the first of them, which is exactly a comparison of the first set
 against the second. The effect size is the difference between the two
-mean log2 fold changes, with a confidence interval carrying the variance
-inflation of both sets.
+mean log2 fold changes, with the interval selected by `effectMethod`
+beside it and the region-heterogeneity one always reported next to it.
 
-A region that belongs to both sets carries the same reads into both
-sides of the comparison and pulls the difference towards zero. Those
-regions are removed by default and the number removed is reported;
-`sharedRegions = "stop"` refuses to run instead, which is the safer
-setting when the overlap is unexpected.
+This is the function for the redistribution question. A set gaining what
+another set lost is a claim about two sets, and it is the one claim a
+global normalisation error cannot manufacture, since a scaling factor
+that is wrong for one set is wrong for the other in the same way. Asking
+it through the pattern of a competitive and a self-contained test on a
+single set does not work, because failing to reject a self-contained
+null is not evidence that the absolute change was zero.
+
+A region shared by the two sets carries the same reads into both sides
+of the comparison and pulls the difference towards zero. Sharing is
+measured on the genome and not on the identifiers: chr1:1000-2000 in one
+set and chr1:1500-2500 in the other are half the same chromatin even
+though neither region identifier appears twice. Overlapping regions are
+removed from both sides by default and the number removed is reported in
+`n.shared.dropped`; `sharedRegions = "stop"` refuses to run instead,
+which is the safer setting when the overlap is unexpected.
 
 ## See also
 

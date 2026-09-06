@@ -20,8 +20,8 @@ CpG island promoters in this mutant?* is a question about a set, and
 answering it by counting how many members of the set crossed an FDR
 threshold conflates the size of the effect with the power to detect it.
 Here the set is the unit of the test, and the effect size comes with a
-confidence interval that accounts for regions inside a set not being
-independent of one another.
+confidence interval built on the biological samples, which is where the
+replication of the experiment lives.
 
 Because no peak calling happens anywhere in the pipeline, the region
 definitions come from you and stay fixed across conditions. Nothing is
@@ -42,18 +42,27 @@ visible instead of being absorbed into a new set of peak boundaries.
   for whole sets, and
   [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
   for the difference between two sets.
-- **Effect sizes before p-values.** Set-level results carry a confidence
-  interval inflated for the correlation between neighbouring regions, so
-  a tiny shift over 30,000 promoters is not mistaken for a finding.
+- **Effect sizes before p-values.** Set-level results carry two
+  intervals side by side: a confidence interval on the condition effect,
+  computed from one set score per library and the design of the
+  experiment, and a region-heterogeneity interval describing how much
+  the effect varies from locus to locus. A tiny shift over 30,000
+  promoters is not mistaken for a finding, and 30,000 regions are never
+  mistaken for replicates.
 - **Normalisation you can defend.** Scaling factors from background
   bins, from the regions themselves, or supplied from a spike-in or
   greenlist, with
   [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
   to show how far the choice moves the samples before anything is fitted
   on it.
-- **Four engines.** `edgeR`, `limma-voom`,
+- **Five engines.** `edgeR`, `limma-voom`,
   [`variancePartition::dream`](http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.md)
-  for random effects, and `DESeq2`.
+  for random effects, `DESeq2`, and `limma`-trend for signal that is not
+  count data.
+- **Counts and coverage kept apart.** An object built from bigWig files
+  says so, and the negative binomial engines refuse it unless you assert
+  that the coverage is count-like. Rounding coverage to integers does
+  not make it counts, so it is not treated as if it did.
 - **Calibration you can check.**
   [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   runs the contrast on rows known to be null and shows whether the
@@ -61,11 +70,16 @@ visible instead of being absorbed into a new set of peak boundaries.
 - **Tiled counting.** Regions can be split into fixed-width tiles, so a
   change confined to part of a wide domain is not diluted across the
   whole of it.
-- **No replicates needed.** One library per condition is testable: the
-  dispersion is estimated from rows assumed not to respond, half of them
-  held back so
+- **Exploratory no-replicate mode.** One library per condition can be
+  analysed: the dispersion is estimated from rows assumed not to
+  respond, half of them held back so
   [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
-  can check the assumption rather than confirm it.
+  can check the assumption rather than confirm it, and
+  `normalizeCounts(backgroundHoldout = )` keeps those rows out of the
+  normalisation as well. What this measures is how two libraries differ,
+  not how two animals or two donors would. It is conditional on the
+  null-region assumption and it is not a substitute for biological
+  replication.
 
   
 
@@ -173,6 +187,10 @@ fit <- fitRegions(counts, design = ~ condition, engine = "edgeR")
 results    <- testRegions(fit,     contrast = c("condition", "treated", "control"))
 setResults <- testRegionSets(fit,  contrast = c("condition", "treated", "control"))
 
+# Does one class respond differently from another, which is the redistribution question
+setContrast <- testSetContrast(fit, contrast = c("condition", "treated", "control"),
+                               set1 = "promoters", set2 = "enhancers")
+
 topRegions(results, n = 20)
 resultsTable(setResults)
 ```
@@ -198,12 +216,48 @@ plotVolcano(results)
 | Which individual regions changed? | [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md), then [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md) |
 | Did this class of regions respond as a class? | [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md) |
 | Did the effect differ between two classes? | [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md) |
-| Did the mark redistribute rather than change globally? | [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md), competitive test significant and self-contained not |
-| Is a global shift technical or biological? | [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md), [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md) |
+| Did one class gain what another lost? | [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md), which is where a redistribution claim belongs |
+| Are my conclusions sensitive to the normalisation assumption? | [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md), [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md) |
 | Are my p-values trustworthy? | [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md) |
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md), then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 | Where inside the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) |
+| More than what, exactly? | `makeSetUniverse(universeSets = )`, then [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
+
+  
+
+## Three things the output does not say
+
+Worth reading once before the first result is interpreted.
+
+**A competitive test is significant *relative to the other loaded
+sets*.** The comparison universe is drawn from the sets in the object,
+so the answer changes when the object does. Load two sets and they are
+being compared to each other. Load four that respond alike and none of
+them stands out, which is a fact about the comparison rather than about
+the chromatin. `makeSetUniverse(universeSets = )` fixes the pool
+explicitly, and the sets that formed it are printed with the universe.
+
+**A non-significant self-contained test is not evidence that nothing
+changed.** `camera` significant with `fry` not significant means there
+is evidence of a difference relative to the comparison and the absolute
+claim is unresolved, not that the absolute change is zero. Different
+power alone produces that pattern. For a redistribution claim, use
+[`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md);
+for a claim that something did *not* change, an equivalence test against
+a bounded near-zero interval is what the argument needs.
+
+**Whether a global shift is technical or biological cannot be decided
+from endogenous data.** A mark genuinely 1.5x higher everywhere and an
+IP that worked 1.5x better look the same in the reads.
+`normalizeCounts(method = "background")` assumes the background bins are
+invariant enough to carry the technical scaling, which is a reasonable
+assumption and still an assumption.
+[`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
+shows how far the conclusions move when it is changed, which is a
+different and answerable question. Deciding the original one needs an
+external anchor: spike-in chromatin, spike-in cells, calibrated input,
+or loci validated as invariant.
 
   
 

@@ -52,6 +52,7 @@
 <span>  useRegionSets <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  minCount <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  referenceSample <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  backgroundHoldout <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  normalizedAssay <span class="op">=</span> <span class="st">"norm.counts"</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -93,6 +94,10 @@
 <dd><p>String or numeric position of the sample used as reference by the <code>"TMM"</code> and <code>"TMMwsp"</code> methods. Default: <code>NULL</code>, chosen by edgeR.</p></dd>
 
 
+<dt id="arg-backgroundholdout">backgroundHoldout<a class="anchor" aria-label="anchor" href="#arg-backgroundholdout"></a></dt>
+<dd><p>Numeric value between 0 and 1 with the fraction of the background bins kept out of the estimation of the factors, so that <code><a href="estimateNullDispersion.html">estimateNullDispersion</a></code> and <code><a href="checkNullCalibration.html">checkNullCalibration</a></code> can work on bins the normalisation has never seen. Only for <code>method = "background"</code>. Default: <code>0</code>, every bin is used.</p></dd>
+
+
 <dt id="arg-normalizedassay">normalizedAssay<a class="anchor" aria-label="anchor" href="#arg-normalizedassay"></a></dt>
 <dd><p>String with the name given to the normalised assay. Default: <code>"norm.counts"</code>.</p></dd>
 
@@ -103,12 +108,13 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>The input <code>RegionSetDE.counts</code> object with three additions: the <code>norm.factor</code> and <code>scaling.factor</code> columns in the <code>colData</code>, the normalised values in the assay named after <code>normalizedAssay</code>, and, for the <code>"loess"</code> method, the log offsets in the <code>offset</code> assay.</p>
+    <p>The input <code>RegionSetDE.counts</code> object with three additions: the <code>norm.factor</code> and <code>scaling.factor</code> columns in the <code>colData</code>, the normalised values in the assay named after <code>normalizedAssay</code>, and, for the <code>"loess"</code> method, the log offsets in the <code>offset</code> assay. With <code>backgroundHoldout</code> above zero the positions of the held-out bins are stored in the <code>background.holdout</code> entry of the metadata.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The raw counts are never overwritten, the normalisation only adds an assay and the factors beside it, so that the testing functions can keep working on the counts and their offsets.</p>
 <p>Whatever the method, <code>scaling.factor</code> always holds a divisor: the normalised values are the raw counts divided by it, and a sample sequenced more deeply than the others therefore gets a factor above one. This is the convention of the size factors of DESeq2 and the opposite of the scale factors written by <code>bamCoverage</code> or by the spike-in pipelines, which are meant to multiply the signal. Factors coming from those tools must be declared with <code>factorType = "multiplication"</code> and are inverted on the way in. The factors are centred so that their mean is one, which keeps the normalised values on the scale of the raw counts instead of collapsing them to fractions.</p>
+<p>A calibration check is only worth as much as the independence behind it. The background bins serve twice, once here to estimate the factors and once in <code><a href="estimateNullDispersion.html">estimateNullDispersion</a></code> to estimate the dispersion, and a bin used in both has contributed to the model it is later asked to test. Splitting the bins here, through <code>backgroundHoldout</code>, keeps a fraction of them out of the factors, and <code><a href="estimateNullDispersion.html">estimateNullDispersion</a></code> then picks up exactly that split rather than making its own. The held-out bins are outside the whole preprocessing chain, which is the version of the check that means what it appears to mean. Without it the check still works, but on bins that are holdouts of the dispersion alone.</p>
 <p>The choice of the method matters more than usual on region sets. <code>"TMM"</code> and <code>"RLE"</code> assume that most of the regions do not change, which is reasonable for a catalogue of thousands of peaks but not for a handful of hand-picked ones, and not for a mark that is globally redistributed by the treatment. <code>"background"</code> sidesteps that assumption by estimating the factors on the genome wide bins, where the signal of the experiment is diluted, and is the safest option when a global shift is expected. <code>"spikeIn"</code> relies on the exogenous genome alone and ignores the regions altogether. <code>"loess"</code> corrects a bias that changes with the abundance, which no single factor per sample can describe, so it returns a matrix of offsets rather than a vector and leaves <code>scaling.factor</code> empty.</p>
     </div>
     <div class="section level2">

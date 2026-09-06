@@ -5,7 +5,7 @@ Runs the moderated t test on a `limma` fit.
 ## Usage
 
 ``` r
-.testVoom(fit, contrastVector, lfcThreshold = 0)
+.testVoom(fit, contrastVector, lfcThreshold = 0, trend = FALSE)
 ```
 
 ## Arguments

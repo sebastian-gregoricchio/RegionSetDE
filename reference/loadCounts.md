@@ -24,6 +24,7 @@ loadCounts(
   regionId = NULL,
   partialTiles = TRUE,
   missingRegions = "stop",
+  countLike = TRUE,
   librarySizes = NULL,
   header = TRUE,
   verbose = TRUE
@@ -113,6 +114,12 @@ loadCounts(
   String indicating what to do with the regions absent from the count
   table, one among `"stop"`, `"zero"` or `"drop"`. Default: `"stop"`.
 
+- countLike:
+
+  Logical value with which you assert that the imported values are
+  counts, meaning raw fragment or read numbers rather than a normalised
+  signal. Default: `TRUE`.
+
 - librarySizes:
 
   Numeric vector with the library size of each sample, in the same order
@@ -143,6 +150,13 @@ When the sequencing depth is known it should be passed through
 estimated elsewhere. Rows of the count table that match no region are
 ignored, which makes it safe to import a genome wide matrix and keep
 only the sets of interest.
+
+What the table holds decides what may be fitted on it. A `featureCounts`
+or `bedtools multicov` matrix holds fragment counts and the default is
+right for it. A `deeptools multiBigwigSummary` matrix holds coverage,
+often already normalised, and `countLike = FALSE` should be set so that
+[`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
+steers it to the `"limma"` engine instead of a negative binomial one.
 
 ## See also
 

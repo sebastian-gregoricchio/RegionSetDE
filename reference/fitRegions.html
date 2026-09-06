@@ -53,12 +53,14 @@
 <span>  assay <span class="op">=</span> <span class="st">"counts"</span>,</span>
 <span>  useOffsets <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dispersion <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  assumeCountLike <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  nullSource <span class="op">=</span> <span class="st">"background"</span>,</span>
 <span>  nullRegionSets <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  robust <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  universe <span class="op">=</span> <span class="st">"matched"</span>,</span>
 <span>  matchOn <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"width"</span>, <span class="st">"abundance"</span><span class="op">)</span>,</span>
 <span>  universeRatio <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  universeSets <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -77,7 +79,7 @@
 
 
 <dt id="arg-engine">engine<a class="anchor" aria-label="anchor" href="#arg-engine"></a></dt>
-<dd><p>String with the model to fit, one of <code>"edgeR"</code> (quasi-likelihood negative binomial), <code>"voom"</code> (limma on log-CPM with precision weights), <code>"dream"</code> (limma with random effects) and <code>"deseq2"</code> (negative binomial Wald test). Default: <code>"edgeR"</code>.</p></dd>
+<dd><p>String with the model to fit, one of <code>"edgeR"</code> (quasi-likelihood negative binomial), <code>"voom"</code> (limma on log-CPM with precision weights), <code>"dream"</code> (limma with random effects), <code>"deseq2"</code> (negative binomial Wald test) and <code>"limma"</code> (limma-trend on the log2 signal, for values that are not counts). Default: <code>"edgeR"</code>.</p></dd>
 
 
 <dt id="arg-samples">samples<a class="anchor" aria-label="anchor" href="#arg-samples"></a></dt>
@@ -104,6 +106,10 @@
 <dd><p>Dispersion to fit with instead of taking it from the residual variation, which is what a design with no replicates needs. A numeric value, the list returned by <code><a href="estimateNullDispersion.html">estimateNullDispersion</a></code>, or one of the strings <code>"background"</code> and <code>"regionSet"</code>, which run that function here. Only for <code>engine = "edgeR"</code>. Default: <code>NULL</code>, from the residual variation when there is any and from <code>nullSource</code> when there is none.</p></dd>
 
 
+<dt id="arg-assumecountlike">assumeCountLike<a class="anchor" aria-label="anchor" href="#arg-assumecountlike"></a></dt>
+<dd><p>Logical value overriding what the object says about its own values, so that a count engine can be run on a signal declared as continuous. Default: <code>FALSE</code>.</p></dd>
+
+
 <dt id="arg-nullsource">nullSource<a class="anchor" aria-label="anchor" href="#arg-nullsource"></a></dt>
 <dd><p>String with where the null rows come from when a dispersion has to be estimated, either <code>"background"</code> or <code>"regionSet"</code>. Default: <code>"background"</code>.</p></dd>
 
@@ -128,6 +134,10 @@
 <dd><p>Numeric value with the number of comparison rows drawn per region of the set. Default: <code>5</code>.</p></dd>
 
 
+<dt id="arg-universesets">universeSets<a class="anchor" aria-label="anchor" href="#arg-universesets"></a></dt>
+<dd><p>Character vector with the names of the sets the comparison rows are drawn from, which is what the competitive p-values will be relative to. Default: <code>NULL</code>, every set other than the one being tested.</p></dd>
+
+
 <dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
 <dd><p><code>BiocParallelParam</code> object passed to the <code>"dream"</code> engine. Default: <code>NULL</code>, sequential.</p></dd>
 
@@ -145,7 +155,8 @@
     <p>Only one assay type belongs in a model. Marks, antibodies and assays differ in dispersion, in dynamic range and in what their scaling factors mean, so a fit that pools them borrows information between rows that describe unrelated experiments. Split the object with <code><a href="splitSamples.html">splitSamples</a></code> and normalise each piece on its own before coming here.
 Offsets are read from the object rather than recomputed. When <code><a href="normalizeCounts.html">normalizeCounts</a></code> produced a matrix of log offsets, in the <code>offset</code> assay, that matrix is used; otherwise the per-sample <code>scaling.factor</code> is expanded into one. In both cases <code><a href="https://rdrr.io/pkg/edgeR/man/scaleOffset.html" class="external-link">edgeR::scaleOffset</a></code> puts the offsets back on the scale of the library sizes, which leaves the coefficients readable as log2 fold changes and keeps the fitted values on the scale of the raw counts. Running without offsets is possible and is almost never what you want: the library sizes alone assume that the depth is the only difference between the samples.
 A design with one sample per condition has no residual degree of freedom, so nothing in the data says how much two libraries differ for reasons unrelated to the treatment. In that case the number is taken from rows assumed not to respond, through <code><a href="estimateNullDispersion.html">estimateNullDispersion</a></code>, and the fit switches from the quasi-likelihood F test to a likelihood ratio test with the dispersion held fixed. It happens here rather than being asked for, since the alternative is a fit that cannot be produced at all, but it is announced when it does: the result is conditional on that number, and <code><a href="checkNullCalibration.html">checkNullCalibration</a></code> is what turns the assumption into something checkable. <code>edgeR</code>'s own guidance, when no null rows exist either, is to pick a BCV by experience, around 0.4 for human samples, 0.1 for genetically identical model organisms and 0.01 for technical replicates, and to read the output as descriptive.
-The engines answer slightly different questions. <code>"edgeR"</code> is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. <code>"voom"</code> is faster on large objects and more flexible on the design, and it is the only one of the four that can absorb a repeated-measures structure through <code>block</code> without spending a coefficient on it. <code>"dream"</code> extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. <code>"deseq2"</code> is included for comparison and for the shrunken fold changes; on a few thousand regions it agrees with edgeR almost everywhere.
+The engines answer slightly different questions. <code>"edgeR"</code> is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. <code>"voom"</code> is faster on large objects and more flexible on the design, and it is the one that can absorb a repeated-measures structure through <code>block</code> without spending a coefficient on it. <code>"dream"</code> extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. <code>"deseq2"</code> is included for comparison and for the shrunken fold changes; on a few thousand regions it agrees with edgeR almost everywhere.
+Four of the five are count models and the fifth is not, which is the distinction that decides the choice on bigWig input. <code>edgeR</code>, <code>DESeq2</code>, <code>voom</code> and <code>dream</code> all describe the number of fragments falling in an interval: the first two through a negative binomial likelihood, the other two through a mean-variance trend estimated on the count scale. Coverage read out of a bigWig is not that number, and rounding it to an integer does not make it one. <code>"limma"</code> models the log2 signal with an abundance trend on the residual variance and asks nothing of the values beyond their being continuous, which is what an already normalised track can supply. An object counted from BAM files may use any of the five; one built by <code><a href="countBigwig.html">countBigwig</a></code> is refused by the count engines unless it was declared <code>countLike</code>, or unless <code>assumeCountLike</code> overrides it here.
 The comparison universe of the set level tests is built here rather than there, because it depends on the rows and not on the contrast: one fit, one universe, however many contrasts are run on it afterwards. An object holding a single region set has nothing to compare that set against, and in that case the universe comes out empty with a message; the per-region analysis is unaffected.
 Low-count rows are not removed here. Filter them with <code><a href="filterRegions.html">filterRegions</a></code> first, or the dispersion trend is fitted on rows that carry no information.</p>
     </div>

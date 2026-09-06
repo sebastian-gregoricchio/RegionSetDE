@@ -68,8 +68,10 @@ estimateNullDispersion(
   Numeric value between 0 and 1 with the fraction of the null rows left
   out of the estimate, so that
   [`checkNullCalibration`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
-  has rows the dispersion has not already been fitted to. Default:
-  `0.5`.
+  has rows the dispersion has not already been fitted to. Ignored when
+  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+  has already split the background bins, whose split is reused instead.
+  Default: `0.5`.
 
 - subset:
 
@@ -84,8 +86,9 @@ estimateNullDispersion(
 ## Value
 
 A list with the `dispersion`, its square root as `bcv`, the `source`,
-the number of rows it was computed on, the samples used, and
-`holdout.index`, the rows kept aside for the calibration check.
+the number of rows it was computed on, the samples used,
+`holdout.index`, the rows kept aside for the calibration check, and
+`holdout.type`, saying which steps those rows were kept out of.
 
 ## Details
 
@@ -107,13 +110,33 @@ in the data is the unsafe one: picking rows for their small fold change
 and then measuring the spread of those fold changes gives a dispersion
 biased towards zero, and p-values that follow it down.
 
-A plausible number is not a replicate. Everything downstream stays
-conditional on this estimate being right, which is why
+A plausible number is not a replicate, and the distinction is not a
+technicality. What this estimate measures is how much the two observed
+libraries differ from each other over rows assumed not to respond. What
+a replicated experiment measures is how much two animals, two donors or
+two cultures differ. The second contains the first and is usually
+several times larger, and no amount of null rows recovers it, because
+the variation that was never sampled is not in the data at all.
+Everything downstream is conditional on the assumption that the
+variability of the null rows stands in for the variability that was not
+observed, which is why
 [`checkNullCalibration`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
 exists and why it should be run before any of the output is believed.
+Treat the result as exploratory and say in the methods that it rests on
+this estimate.
+
 Checking the estimate against the rows it was fitted to would say
 nothing, so half the null rows are held out by default and travel back
-in `holdout.index` for that check to use.
+in `holdout.index` for that check to use. How much that holdout is worth
+depends on what came before it. Held out here alone, the rows are
+independent of the dispersion but not of the normalisation, since the
+background bins have already been through
+[`csaw::normFactors`](https://rdrr.io/pkg/csaw/man/normFactors.html) in
+[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md):
+they are dispersion holdouts and `holdout.type` says so. Splitting the
+bins earlier, with `normalizeCounts(backgroundHoldout = )`, keeps the
+same rows out of both steps, and that split is picked up here rather
+than a second one being drawn on top of it.
 
 ## See also
 
@@ -188,6 +211,9 @@ nullDispersion
 #> [541] 1538 1540 1542 1544 1546 1548 1550 1552 1554 1556 1558 1561 1563 1565 1567
 #> [556] 1569 1571 1573 1575 1577
 #> 
+#> $holdout.type
+#> [1] "dispersion"
+#> 
 #> $samples
 #> [1] "lv-H3K4me3-BN-female-bio1-tech1" "lv-H3K4me3-BN-male-bio2-tech1"  
 #> [3] "lv-H3K4me3-SHR-male-bio2-tech1"  "lv-H3K4me3-SHR-male-bio3-tech1" 
@@ -219,6 +245,9 @@ fromRegions
 #> [61]  947  963  981  985  990 1009 1018 1020 1030 1038 1047 1059 1073 1104 1110
 #> [76] 1129 1168 1178 1184 1195 1199 1227 1229 1240 1242 1253 1258 1261 1282 1291
 #> [91] 1300 1330
+#> 
+#> $holdout.type
+#> [1] "dispersion"
 #> 
 #> $samples
 #> [1] "lv-H3K4me3-BN-female-bio1-tech1" "lv-H3K4me3-BN-male-bio2-tech1"  

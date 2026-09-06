@@ -19,6 +19,7 @@ normalizeCounts(
   useRegionSets = NULL,
   minCount = 1,
   referenceSample = NULL,
+  backgroundHoldout = 0,
   normalizedAssay = "norm.counts",
   verbose = TRUE
 )
@@ -77,6 +78,16 @@ normalizeCounts(
   String or numeric position of the sample used as reference by the
   `"TMM"` and `"TMMwsp"` methods. Default: `NULL`, chosen by edgeR.
 
+- backgroundHoldout:
+
+  Numeric value between 0 and 1 with the fraction of the background bins
+  kept out of the estimation of the factors, so that
+  [`estimateNullDispersion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
+  and
+  [`checkNullCalibration`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
+  can work on bins the normalisation has never seen. Only for
+  `method = "background"`. Default: `0`, every bin is used.
+
 - normalizedAssay:
 
   String with the name given to the normalised assay. Default:
@@ -92,7 +103,9 @@ normalizeCounts(
 The input `RegionSetDE.counts` object with three additions: the
 `norm.factor` and `scaling.factor` columns in the `colData`, the
 normalised values in the assay named after `normalizedAssay`, and, for
-the `"loess"` method, the log offsets in the `offset` assay.
+the `"loess"` method, the log offsets in the `offset` assay. With
+`backgroundHoldout` above zero the positions of the held-out bins are
+stored in the `background.holdout` entry of the metadata.
 
 ## Details
 
@@ -110,6 +123,20 @@ must be declared with `factorType = "multiplication"` and are inverted
 on the way in. The factors are centred so that their mean is one, which
 keeps the normalised values on the scale of the raw counts instead of
 collapsing them to fractions.
+
+A calibration check is only worth as much as the independence behind it.
+The background bins serve twice, once here to estimate the factors and
+once in
+[`estimateNullDispersion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
+to estimate the dispersion, and a bin used in both has contributed to
+the model it is later asked to test. Splitting the bins here, through
+`backgroundHoldout`, keeps a fraction of them out of the factors, and
+[`estimateNullDispersion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
+then picks up exactly that split rather than making its own. The
+held-out bins are outside the whole preprocessing chain, which is the
+version of the check that means what it appears to mean. Without it the
+check still works, but on bins that are holdouts of the dispersion
+alone.
 
 The choice of the method matters more than usual on region sets. `"TMM"`
 and `"RLE"` assume that most of the regions do not change, which is

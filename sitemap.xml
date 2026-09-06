@@ -31,6 +31,8 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-buildDesign.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-buildSampleTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-checkDispersion.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-collapseTileMatrix.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-collapseTileStats.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-combineTiles.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-contrastColour.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-contrastGroups.html</loc></url>
@@ -45,6 +47,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-fitDESeq2.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-fitDream.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-fitEdgeR.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-fitLimma.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-fitOffsets.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-fitVoom.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-flattenParameters.html</loc></url>
@@ -53,6 +56,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-interRegionCor.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-lightenColour.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-locateRegion.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-logSignalMatrix.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-makeParallelParam.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-matchSeqlevels.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-matchStrata.html</loc></url>
@@ -61,6 +65,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-nullMatrix.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-nullTest.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-orderSampleValues.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-overlappingRows.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-panelSets.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-pickResults.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-prepareResultTable.html</loc></url>
@@ -78,12 +83,14 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-resolveUniverse.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-resultColumnNames.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-resultsTheme.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-sampleSetEffect.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-sampleTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-setAnnotation.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-setEffectSize.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-setStatistics.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-setUniverseOf.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-signalBrackets.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-statsRanges.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-suggestDispersion.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-testDESeq2.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-testDream.html</loc></url>

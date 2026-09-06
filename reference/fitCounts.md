@@ -34,7 +34,7 @@ fit <- loadExampleData("fit", verbose = FALSE)
 fitCounts(fit)
 #> class: RegionSetDE.counts 
 #> dim: 1895 4 
-#> metadata(3): signal.type background normalization
+#> metadata(4): signal.type background background.holdout normalization
 #> assays(2): counts norm.counts
 #> rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 #>   ... promoterCpG|region_03797 promoterCpG|region_03798

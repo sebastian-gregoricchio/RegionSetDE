@@ -16,6 +16,7 @@ given rather than an object.
   matchOn = c("width", "abundance"),
   universeRatio = 5,
   regionSets = NULL,
+  universeSets = NULL,
   soft = FALSE,
   verbose = TRUE
 )
@@ -44,6 +45,11 @@ given rather than an object.
 - regionSets:
 
   Character vector with the sets being tested, or `NULL`.
+
+- universeSets:
+
+  Character vector with the sets the comparison rows are drawn from, or
+  `NULL`.
 
 - soft:
 

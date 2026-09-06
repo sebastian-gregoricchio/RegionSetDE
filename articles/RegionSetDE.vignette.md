@@ -19,8 +19,9 @@ CpG island promoters in this mutant?* is a question about a set, and
 answering it by counting how many members of the set reached an FDR
 threshold conflates the size of the effect with the power to detect it.
 Here the set is the unit of the test, and the effect size on the set
-comes with a confidence interval that accounts for regions inside a set
-not being independent of one another.
+comes with a confidence interval built on the biological samples,
+alongside a second interval describing how much the effect varies
+between the regions inside the set.
 
 Because no peak calling happens anywhere in the pipeline, the region
 definitions come from you and stay fixed across conditions. Nothing is
@@ -444,10 +445,26 @@ plotNormComparison(loadExampleData("counts", verbose = FALSE))
 ![](RegionSetDE.vignette_files/figure-html/plot_norm_comparison-1.png)
 
 When the methods agree, the choice does not matter and any of them will
-do. When they disagree, they are disagreeing about whether a global
-shift is technical or biological, and no amount of statistics downstream
-will resolve that. This is the moment to decide it, using what you know
-about the experiment.
+do. When they disagree, each is making a different assumption about what
+in the data is invariant, and the results downstream will differ
+accordingly.
+
+It is worth being clear about what this plot can and cannot settle. It
+cannot tell you whether a global shift is technical or biological,
+because nothing in endogenous sequencing data can: H3K27ac genuinely
+1.5x higher everywhere and an immunoprecipitation that worked 1.5x
+better produce the same reads. `method = "background"` assumes the
+background bins are invariant enough to carry the technical scaling,
+which is a reasonable assumption for most experiments and is still an
+assumption rather than a measurement. Deciding the question needs an
+external anchor: spike-in chromatin, spike-in cells, a calibrated input,
+or loci independently validated as invariant.
+
+What the plot does answer is whether it matters. If the sets separate
+the same way under background, TMM and spike-in normalisation, the
+conclusion does not rest on the assumption. If they do not, the
+assumption is doing the work and belongs in the methods section rather
+than in a default.
 
 [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md)
 asks the same question set by set, which catches the case where one
@@ -572,7 +589,7 @@ Two accessors avoid reaching into the slots:
 fitCounts(fit)
 > class: RegionSetDE.counts 
 > dim: 1895 4 
-> metadata(3): signal.type background normalization
+> metadata(4): signal.type background background.holdout normalization
 > assays(2): counts norm.counts
 > rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 >   ... promoterCpG|region_03797 promoterCpG|region_03798
@@ -719,7 +736,7 @@ head(resultRanges(results), 2)
 resultCounts(results)
 > class: RegionSetDE.counts 
 > dim: 1895 4 
-> metadata(3): signal.type background normalization
+> metadata(4): signal.type background background.holdout normalization
 > assays(2): counts norm.counts
 > rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 >   ... promoterCpG|region_03797 promoterCpG|region_03798
@@ -849,54 +866,68 @@ setResults
 >   methods         : camera, fry 
 >   universe        : otherSets (matched on width and abundance) 
 > 
->      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper camera.FDR
->     promoterCpG       269     -0.8340      -0.9310    -2.55    0.686      0.938
->        geneBody       909      0.2910       0.4070    -1.57    2.390      0.938
->      intergenic       440      0.2650       0.2060    -1.76    2.170      0.938
->  promoterNonCpG       277     -0.0209      -0.0787    -2.07    1.910      0.938
->  fry.FDR inter.region.cor.universe
->     0.54                     0.378
->     0.54                     0.453
->     0.54                     0.382
->     0.54                     0.350
+>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper CI.type
+>     promoterCpG       269     -0.8340      -0.9310   -1.930    0.561  sample
+>        geneBody       909      0.2910       0.4070   -0.333    0.919  sample
+>      intergenic       440      0.2650       0.2060   -0.171    0.367  sample
+>  promoterNonCpG       277     -0.0209      -0.0787   -0.263    0.251  sample
+>  camera.FDR fry.FDR inter.region.cor.universe
+>       0.938    0.54                     0.378
+>       0.938    0.54                     0.453
+>       0.938    0.54                     0.382
+>       0.938    0.54                     0.350
 ```
 
 ``` r
 setTable <- resultsTable(setResults)
 
 setTable
->       region.set n.regions n.comparison mean.log2FC median.log2FC
-> 1    promoterCpG       269          314 -0.83367077    -0.9443600
-> 2       geneBody       909          986  0.29148227     0.1692341
-> 3     intergenic       440         1354  0.26499294     0.1740960
-> 4 promoterNonCpG       277         1378 -0.02089479    -0.1571407
->   mean.log2FC.comparison delta.log2FC  CI.lower  CI.upper inter.region.cor
-> 1             0.09704300  -0.93071378 -2.547867 0.6864395        0.8583680
-> 2            -0.11505923   0.40654151 -1.574041 2.3871240        0.2721337
-> 3             0.05862768   0.20636526 -1.761069 2.1737990        0.2733108
-> 4             0.05781212  -0.07870691 -2.067061 1.9096471        0.4433140
->   inter.region.cor.universe median.width camera.direction  camera.p
-> 1                 0.3775802         1000             Down 0.3213638
-> 2                 0.4530172         1000               Up 0.5187249
-> 3                 0.3815880         1000               Up 0.7773973
-> 4                 0.3504707         1000             Down 0.9384488
->   fry.direction     fry.p camera.FDR   fry.FDR
-> 1          Down 0.2686203  0.9384488 0.5401741
-> 2          Down 0.5401741  0.9384488 0.5401741
-> 3          Down 0.4717232  0.9384488 0.5401741
-> 4          Down 0.4613130  0.9384488 0.5401741
+>       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC
+> 1    promoterCpG       269          314                        0 -0.83367077
+> 2       geneBody       909          986                        0  0.29148227
+> 3     intergenic       440         1354                        0  0.26499294
+> 4 promoterNonCpG       277         1378                        0 -0.02089479
+>   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower  CI.upper
+> 1    -0.9443600             0.09704300  -0.93071378 -1.9314597 0.5607824
+> 2     0.1692341            -0.11505923   0.40654151 -0.3328615 0.9187083
+> 3     0.1740960             0.05862768   0.20636526 -0.1710428 0.3668162
+> 4    -0.1571407             0.05781212  -0.07870691 -0.2633465 0.2509689
+>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
+> 1  sample              -2.547867              0.6864395        0.8583680
+> 2  sample              -1.574041              2.3871240        0.2721337
+> 3  sample              -1.761069              2.1737990        0.2733108
+> 4  sample              -2.067061              1.9096471        0.4433140
+>   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE
+> 1                 0.3775802         1000        -0.685338676      0.28961692
+> 2                 0.4530172         1000         0.292923395      0.14544165
+> 3                 0.3815880         1000         0.097886686      0.06250318
+> 4                 0.3504707         1000        -0.006188815      0.05976724
+>   sample.delta.df sample.delta.p camera.direction  camera.p fry.direction
+> 1               2      0.1416115             Down 0.3213638          Down
+> 2               2      0.1816079               Up 0.5187249          Down
+> 3               2      0.2578184               Up 0.7773973          Down
+> 4               2      0.9269756             Down 0.9384488          Down
+>       fry.p camera.FDR   fry.FDR sample.delta.FDR
+> 1 0.2686203  0.9384488 0.5401741        0.3437579
+> 2 0.5401741  0.9384488 0.5401741        0.3437579
+> 3 0.4717232  0.9384488 0.5401741        0.3437579
+> 4 0.4613130  0.9384488 0.5401741        0.9269756
 ```
 
-|                   Column | Meaning                                         |
-|-------------------------:|:------------------------------------------------|
-|             *region.set* | the set                                         |
-|              *n.regions* | how many of its regions survived filtering      |
-|            *mean.log2FC* | mean fold change of the set                     |
-| *mean.log2FC.comparison* | mean fold change of the comparison rows         |
-|           *delta.log2FC* | the difference between the two, the effect size |
-|   *CI.lower*, *CI.upper* | confidence interval on `delta.log2FC`           |
-|             *camera.FDR* | competitive test, adjusted                      |
-|                *fry.FDR* | self-contained test, adjusted                   |
+| Column | Meaning |
+|---:|:---|
+| *region.set* | the set |
+| *n.regions* | how many of its regions survived filtering |
+| *mean.log2FC* | mean fold change of the set |
+| *mean.log2FC.comparison* | mean fold change of the comparison rows |
+| *delta.log2FC* | the difference between the two, the effect size |
+| *CI.lower*, *CI.upper* | interval selected by `effectMethod`, sample-based by default |
+| *CI.type* | which of the two intervals the columns above hold |
+| *heterogeneity.CI.lower/upper* | spread of the effect between the loci of the set |
+| *sample.delta.log2FC* | the same effect estimated from one score per library |
+| *n.comparison.overlapping* | comparison rows overlapping the set in the genome |
+| *camera.FDR* | competitive test, adjusted |
+| *fry.FDR* | self-contained test, adjusted |
 
   
 
@@ -905,33 +936,77 @@ setTable
 **Read the effect size before the p-value.** A set of 30,000 promoters
 tested as if its regions were independent returns a p-value below
 anything a computer will print for a mean shift of 0.05 log2, which
-tells you nothing about whether the shift matters. Regions inside a set
-are not independent either, since neighbouring elements in the same
-domain move together, so the variance of the mean is inflated by
-`1 + (n - 1) * rho`, with `rho` estimated from the residuals of the fit.
-The confidence interval carries that inflation. It is the number to look
-at first.
+tells you nothing about whether the shift matters.
 
-**The pattern between the two tests is itself informative.** `camera` is
-competitive: it asks whether the set moved more than the regions it is
-compared against, and it is invariant to a scaling error affecting
-everything equally. `fry` is self-contained: it asks whether the set
-moved away from zero at all, which a global shift in the mark, or a
-leftover normalisation error, will satisfy for every set at once.
+**Two intervals, answering two questions.** The default `CI.lower` and
+`CI.upper` come from `effectMethod = "sample"`. One number is computed
+per library, the mean signal over the set minus the mean signal over its
+comparison, and those numbers are run through the design of the
+experiment. The replication is the biological samples, which is where it
+comes from in the experiment: four libraries give an interval as wide as
+four libraries support, whether the set holds twenty regions or thirty
+thousand.
+
+The `heterogeneity.CI` columns hold the other one: the mean of the
+per-region fold changes, with its variance inflated by
+`1 + (n - 1) * rho` for the correlation between neighbouring loci. It
+describes how consistently the regions of the set respond, conditional
+on these libraries, and it is worth reading. It is not a confidence
+interval on a condition effect, because its sampling units are genomic
+loci, and adding loci does not add biological replication. Quote the
+sample interval as the result and the heterogeneity interval as a
+description of the set.
+
+**The two tests answer different questions.** `camera` is competitive:
+it asks whether the set moved more than the regions it is compared
+against, and it is invariant to a scaling error affecting everything
+equally. `fry` is self-contained: it asks whether the set moved away
+from zero at all.
 
 | camera | fry | Reading |
 |:---|:---|:---|
-| significant | significant | the set moved, and it moved more than its comparison. The clean result. |
-| significant | not | the sets redistributed signal between them, with little net change overall |
-| not | significant | everything moved together. Revisit the normalisation before the biology. |
-| not | not | no detectable set-level effect |
+| significant | significant | evidence the set moved, and that it moved more than its comparison |
+| significant | not | evidence of a difference relative to the comparison; the absolute claim is unresolved |
+| not | significant | evidence the set moved, none that it moved differently from its comparison |
+| not | not | neither test found evidence, which is not evidence of no effect |
+
+The second row used to be read here as redistribution. It does not
+support that reading. Failing to reject a self-contained null is not
+evidence that the absolute change is zero, and the two tests do not have
+the same power against the same alternatives, so the pattern arises
+whenever `fry` is the weaker of the two. A redistribution claim is a
+claim about two sets, one gaining what the other lost, and
+[`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
+is where it belongs. A claim that a set did *not* change needs an
+equivalence test against a bounded near-zero interval, which a
+non-significant `fry` is not.
+
+One more thing the self-contained test cannot do: detect a genuinely
+global shift. Every centring normalisation, background and TMM included,
+removes exactly that before the test sees the data. If the question is
+whether the mark changed in absolute terms, the answer has to come from
+a spike-in.
 
 The competitive test is the one to lead with. It runs on the per-region
 statistics through
 [`limma::cameraPR`](https://rdrr.io/pkg/limma/man/camera.html), which
-makes it behave identically across all four engines, whereas the
+makes it behave identically across the engines, whereas the
 self-contained test is computed on the log-CPM matrix and is therefore a
 transformation away from what `edgeR` and `DESeq2` actually fitted.
+
+**“More” means more than the sets you loaded.** The comparison universe
+is drawn from the other region sets in the object, so a competitive
+p-value is relative to those and not to the genome. With two sets
+loaded, the test compares them to each other. With four sets that
+respond alike, each is being asked whether it stands out against three
+sets behaving as it does, and adjusted p-values clustered near one is
+what that looks like: a property of the comparison, not a finding.
+`makeSetUniverse(universeSets = )`, or the same argument on
+[`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
+and
+[`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md),
+fixes the pool explicitly, and the sets forming it are printed with the
+universe object.
 
 In the table above no set reaches significance, which is the honest
 outcome for four libraries on one chromosome. The informative part is
@@ -997,8 +1072,8 @@ setContrast
 >   methods         : camera 
 >   universe        : pairedSet  
 > 
->        set.1      set.2 delta.log2FC CI.lower CI.upper camera.FDR
->  promoterCpG intergenic         -1.1    -2.73    0.535      0.316
+>        set.1      set.2 delta.log2FC CI.lower CI.upper CI.type camera.FDR
+>  promoterCpG intergenic         -1.1     -2.2    0.746  sample      0.316
 ```
 
 Use this whenever the hypothesis is comparative. Comparing two `camera`
@@ -1016,7 +1091,23 @@ you think it is, and both can be checked directly rather than assumed.
 
 [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
 estimates the dispersion from rows that should carry no effect, which is
-what makes an analysis with no replicates possible at all:
+what makes an exploratory analysis without replicates possible at all.
+What it measures is how much these two libraries differ over rows
+assumed not to respond. What a replicated experiment measures is how
+much two animals, two donors or two cultures differ, which is a larger
+quantity that contains the first, and no amount of null rows recovers
+it: variability that was never sampled is not in the data. Read the
+output as conditional on that assumption and say so in the methods.
+
+By default half the null rows are held back for the calibration check.
+Those rows are independent of the dispersion but not of the
+normalisation, since the background bins have already been through
+[`csaw::normFactors()`](https://rdrr.io/pkg/csaw/man/normFactors.html);
+`holdout.type` reports which. Passing
+`normalizeCounts(backgroundHoldout = 0.5)` splits the bins earlier and
+keeps the same rows out of both steps, and
+[`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
+then picks up that split rather than drawing a second one on top of it:
 
 ``` r
 nullDispersion <-
@@ -1078,6 +1169,9 @@ nullDispersion
 > [526] 1505 1507 1509 1511 1513 1515 1519 1521 1523 1525 1528 1530 1532 1534 1536
 > [541] 1538 1540 1542 1544 1546 1548 1550 1552 1554 1556 1558 1561 1563 1565 1567
 > [556] 1569 1571 1573 1575 1577
+> 
+> $holdout.type
+> [1] "dispersion"
 > 
 > $samples
 > [1] "lv-H3K4me3-BN-female-bio1-tech1" "lv-H3K4me3-BN-male-bio2-tech1"  
@@ -1358,16 +1452,21 @@ singleSetResults <- testRegionSets(singleFit,
                                    verbose = FALSE)
 
 resultsTable(singleSetResults)
->       region.set n.regions n.comparison mean.log2FC median.log2FC
-> 1    promoterCpG       273          322 -0.34574769   -0.35028835
-> 2       geneBody      1178         1420  0.20023317    0.04587859
-> 3 promoterNonCpG       371         1855  0.13289085    0.04333004
-> 4     intergenic       776         1813  0.04786937    0.04333004
->   mean.log2FC.comparison delta.log2FC   CI.lower   CI.upper inter.region.cor
-> 1            0.287725959  -0.63347365 -1.1543354 -0.1126119             0.01
-> 2           -0.005591536   0.20582471 -0.4605448  0.8721942             0.01
-> 3            0.071712042   0.06117881 -0.6135756  0.7359332             0.01
-> 4            0.108141759  -0.06027239 -0.7616854  0.6411406             0.01
+>       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC
+> 1    promoterCpG       273          322                        0 -0.34574769
+> 2       geneBody      1178         1420                        0  0.20023317
+> 3 promoterNonCpG       371         1855                        0  0.13289085
+> 4     intergenic       776         1813                        0  0.04786937
+>   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower   CI.upper
+> 1   -0.35028835            0.287725959  -0.63347365 -1.1543354 -0.1126119
+> 2    0.04587859           -0.005591536   0.20582471 -0.4605448  0.8721942
+> 3    0.04333004            0.071712042   0.06117881 -0.6135756  0.7359332
+> 4    0.04333004            0.108141759  -0.06027239 -0.7616854  0.6411406
+>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
+> 1  region             -1.1543354             -0.1126119             0.01
+> 2  region             -0.4605448              0.8721942             0.01
+> 3  region             -0.6135756              0.7359332             0.01
+> 4  region             -0.7616854              0.6411406             0.01
 >   inter.region.cor.universe median.width camera.direction     camera.p
 > 1                      0.01         1000             Down 1.650640e-12
 > 2                      0.01         1000               Up 7.329599e-02
@@ -1542,8 +1641,8 @@ be reproduced and one that can only be repeated.
 | Which individual regions changed? | [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md) | `FDR` and `log2FC`, through [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md) |
 | Did this class of regions respond as a class? | [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md) | `delta.log2FC` and its interval, then `camera.FDR` |
 | Did the effect differ between two classes? | [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md) | the contrast between the two sets |
-| Did the mark redistribute rather than change globally? | [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md) | camera significant, fry not |
-| Is a global shift technical or biological? | [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md), [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md) | how far the methods disagree |
+| Did one class gain what another lost? | [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md) | `delta.log2FC` between the two sets |
+| Are my conclusions sensitive to the normalisation? | [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md), [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md) | how far the methods disagree |
 | Are my p-values trustworthy? | [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md) | flatness of the histogram |
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md) | dispersion from the background, then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) | overlap of the two distributions |
@@ -1552,12 +1651,15 @@ be reproduced and one that can only be repeated.
 
   
 
-Two habits are worth adopting from the start. Include a set you expect
+Three habits are worth adopting from the start. Include a set you expect
 not to move, and check that it does not; the intergenic set in this
 vignette costs nothing and would have caught a normalisation problem
-immediately. And decide the normalisation question deliberately rather
-than by default, because in chromatin data it is a biological decision
-wearing technical clothing, and no test downstream can undo it.
+immediately. Decide the normalisation deliberately rather than by
+default, and state the assumption, because no test downstream can undo
+it and no test downstream can validate it either. And say what the
+competitive comparison was against, since a set that stands out against
+three others is a different claim from one that stands out against a
+genome-wide catalogue.
 
   
 
@@ -1627,7 +1729,7 @@ sessionInfo()
 >  [59] withr_3.0.3                 S7_0.2.2                   
 >  [61] csaw_1.46.0                 evaluate_1.0.5             
 >  [63] desc_1.4.3                  xml2_1.6.0                 
->  [65] circlize_0.4.18             Biostrings_2.80.1          
+>  [65] circlize_0.4.18             Biostrings_2.80.2          
 >  [67] pillar_1.11.1               BiocManager_1.30.27        
 >  [69] MatrixGenerics_1.24.0       foreach_1.5.2              
 >  [71] RCurl_1.98-1.20             commonmark_2.0.0           

@@ -19,12 +19,14 @@ fitRegions(
   assay = "counts",
   useOffsets = TRUE,
   dispersion = NULL,
+  assumeCountLike = FALSE,
   nullSource = "background",
   nullRegionSets = NULL,
   robust = TRUE,
   universe = "matched",
   matchOn = c("width", "abundance"),
   universeRatio = 5,
+  universeSets = NULL,
   BPPARAM = NULL,
   verbose = TRUE
 )
@@ -49,8 +51,9 @@ fitRegions(
 
   String with the model to fit, one of `"edgeR"` (quasi-likelihood
   negative binomial), `"voom"` (limma on log-CPM with precision
-  weights), `"dream"` (limma with random effects) and `"deseq2"`
-  (negative binomial Wald test). Default: `"edgeR"`.
+  weights), `"dream"` (limma with random effects), `"deseq2"` (negative
+  binomial Wald test) and `"limma"` (limma-trend on the log2 signal, for
+  values that are not counts). Default: `"edgeR"`.
 
 - samples:
 
@@ -91,6 +94,12 @@ fitRegions(
   residual variation when there is any and from `nullSource` when there
   is none.
 
+- assumeCountLike:
+
+  Logical value overriding what the object says about its own values, so
+  that a count engine can be run on a signal declared as continuous.
+  Default: `FALSE`.
+
 - nullSource:
 
   String with where the null rows come from when a dispersion has to be
@@ -127,6 +136,12 @@ fitRegions(
 
   Numeric value with the number of comparison rows drawn per region of
   the set. Default: `5`.
+
+- universeSets:
+
+  Character vector with the names of the sets the comparison rows are
+  drawn from, which is what the competitive p-values will be relative
+  to. Default: `NULL`, every set other than the one being tested.
 
 - BPPARAM:
 
@@ -180,19 +195,32 @@ output as descriptive. The engines answer slightly different questions.
 `"edgeR"` is the default and the safest with few replicates, since the
 quasi-likelihood F test carries the uncertainty of the dispersion
 estimate into the p-value. `"voom"` is faster on large objects and more
-flexible on the design, and it is the only one of the four that can
-absorb a repeated-measures structure through `block` without spending a
+flexible on the design, and it is the one that can absorb a
+repeated-measures structure through `block` without spending a
 coefficient on it. `"dream"` extends the same machinery to explicit
 random effects, which is what a design with several samples per donor
 asks for. `"deseq2"` is included for comparison and for the shrunken
 fold changes; on a few thousand regions it agrees with edgeR almost
-everywhere. The comparison universe of the set level tests is built here
-rather than there, because it depends on the rows and not on the
-contrast: one fit, one universe, however many contrasts are run on it
-afterwards. An object holding a single region set has nothing to compare
-that set against, and in that case the universe comes out empty with a
-message; the per-region analysis is unaffected. Low-count rows are not
-removed here. Filter them with
+everywhere. Four of the five are count models and the fifth is not,
+which is the distinction that decides the choice on bigWig input.
+`edgeR`, `DESeq2`, `voom` and `dream` all describe the number of
+fragments falling in an interval: the first two through a negative
+binomial likelihood, the other two through a mean-variance trend
+estimated on the count scale. Coverage read out of a bigWig is not that
+number, and rounding it to an integer does not make it one. `"limma"`
+models the log2 signal with an abundance trend on the residual variance
+and asks nothing of the values beyond their being continuous, which is
+what an already normalised track can supply. An object counted from BAM
+files may use any of the five; one built by
+[`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
+is refused by the count engines unless it was declared `countLike`, or
+unless `assumeCountLike` overrides it here. The comparison universe of
+the set level tests is built here rather than there, because it depends
+on the rows and not on the contrast: one fit, one universe, however many
+contrasts are run on it afterwards. An object holding a single region
+set has nothing to compare that set against, and in that case the
+universe comes out empty with a message; the per-region analysis is
+unaffected. Low-count rows are not removed here. Filter them with
 [`filterRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filterRegions.md)
 first, or the dispersion trend is fitted on rows that carry no
 information.

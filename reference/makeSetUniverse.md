@@ -23,6 +23,7 @@ makeSetUniverse(
   ratio = 5,
   strata = 5,
   regionSets = NULL,
+  universeSets = NULL,
   index = NULL,
   verbose = TRUE
 )
@@ -60,6 +61,12 @@ makeSetUniverse(
   Character vector with the names of the sets to build a universe for.
   Default: `NULL`, all of them.
 
+- universeSets:
+
+  Character vector with the names of the sets the comparison rows are
+  drawn from. Default: `NULL`, every set other than the one being
+  tested.
+
 - index:
 
   List with one vector of row positions per set, holding the comparison
@@ -84,6 +91,21 @@ differently from the others it was loaded alongside. That is usually the
 interesting claim when the sets were chosen to be compared with each
 other, and it is the only claim available when the object holds nothing
 else.
+
+It is also a claim that changes when the object changes, and that is
+worth stating in the methods rather than leaving implicit. With two sets
+loaded, the competitive test compares them to each other and nothing
+else. With four sets that respond in much the same way, each of them is
+being asked whether it stands out against three sets behaving like it
+does, and the honest answer is usually that it does not: four adjusted
+p-values sitting at the same value near one is what that situation looks
+like, and it is a property of the comparison rather than a finding about
+the biology. `universeSets` fixes the comparison pool explicitly, which
+is what to reach for when one of the loaded sets was included for a
+different reason than the others, or when a large neutral catalogue is
+available to compare everything against. The sets that ended up forming
+the pool are recorded in the `comparison.sets` slot of the result and
+printed by its `show` method.
 
 Matching on width and abundance is what keeps the answer from being
 about the intervals rather than the biology. A set of 40 kb domains has
@@ -136,6 +158,7 @@ universe
 #> An object of class 'RegionSetDE.universe'
 #>   type            : otherSets 
 #>   matched on      : width, abundance 
+#>   compared against: promoterNonCpG, intergenic, geneBody, promoterCpG 
 #>   sets            : 4 
 #> 
 #>      region.set n.regions n.comparison median.width median.width.comparison

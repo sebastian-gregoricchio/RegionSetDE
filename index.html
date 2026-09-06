@@ -61,7 +61,7 @@
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
 <p>The concept behind <code>RegionSetDE</code> (<em>Region Set Differential Enrichment</em>) is to ask whether chromatin signal changes over regions that you define, rather than over regions that a peak caller happens to find. Regions are grouped into named sets of arbitrary width and number, such as promoter classes, enhancer catalogues, chromatin states or motif-derived binding sites, and a single model fit is then tested at two levels: one region at a time, and one whole set at a time.</p>
-<p>The second level is the reason the package exists. A great deal of chromatin biology is phrased as a question about a class of elements rather than about individual loci. <em>Does H3K4me3 redistribute away from CpG island promoters in this mutant?</em> is a question about a set, and answering it by counting how many members of the set crossed an FDR threshold conflates the size of the effect with the power to detect it. Here the set is the unit of the test, and the effect size comes with a confidence interval that accounts for regions inside a set not being independent of one another.</p>
+<p>The second level is the reason the package exists. A great deal of chromatin biology is phrased as a question about a class of elements rather than about individual loci. <em>Does H3K4me3 redistribute away from CpG island promoters in this mutant?</em> is a question about a set, and answering it by counting how many members of the set crossed an FDR threshold conflates the size of the effect with the power to detect it. Here the set is the unit of the test, and the effect size comes with a confidence interval built on the biological samples, which is where the replication of the experiment lives.</p>
 <p>Because no peak calling happens anywhere in the pipeline, the region definitions come from you and stay fixed across conditions. Nothing is redefined when the signal moves, which is what makes a redistribution visible instead of being absorbed into a new set of peak boundaries.</p>
 <p><br></p>
 <div class="section level3">
@@ -73,17 +73,19 @@
 <li>
 <strong>Two levels of testing from one fit.</strong> <code><a href="reference/testRegions.html">testRegions()</a></code> for individual regions, <code><a href="reference/testRegionSets.html">testRegionSets()</a></code> for whole sets, and <code><a href="reference/testSetContrast.html">testSetContrast()</a></code> for the difference between two sets.</li>
 <li>
-<strong>Effect sizes before p-values.</strong> Set-level results carry a confidence interval inflated for the correlation between neighbouring regions, so a tiny shift over 30,000 promoters is not mistaken for a finding.</li>
+<strong>Effect sizes before p-values.</strong> Set-level results carry two intervals side by side: a confidence interval on the condition effect, computed from one set score per library and the design of the experiment, and a region-heterogeneity interval describing how much the effect varies from locus to locus. A tiny shift over 30,000 promoters is not mistaken for a finding, and 30,000 regions are never mistaken for replicates.</li>
 <li>
 <strong>Normalisation you can defend.</strong> Scaling factors from background bins, from the regions themselves, or supplied from a spike-in or greenlist, with <code><a href="reference/plotNormComparison.html">plotNormComparison()</a></code> to show how far the choice moves the samples before anything is fitted on it.</li>
 <li>
-<strong>Four engines.</strong> <code>edgeR</code>, <code>limma-voom</code>, <code><a href="http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.html" class="external-link">variancePartition::dream</a></code> for random effects, and <code>DESeq2</code>.</li>
+<strong>Five engines.</strong> <code>edgeR</code>, <code>limma-voom</code>, <code><a href="http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.html" class="external-link">variancePartition::dream</a></code> for random effects, <code>DESeq2</code>, and <code>limma</code>-trend for signal that is not count data.</li>
+<li>
+<strong>Counts and coverage kept apart.</strong> An object built from bigWig files says so, and the negative binomial engines refuse it unless you assert that the coverage is count-like. Rounding coverage to integers does not make it counts, so it is not treated as if it did.</li>
 <li>
 <strong>Calibration you can check.</strong> <code><a href="reference/checkNullCalibration.html">checkNullCalibration()</a></code> runs the contrast on rows known to be null and shows whether the p-values come out uniform.</li>
 <li>
 <strong>Tiled counting.</strong> Regions can be split into fixed-width tiles, so a change confined to part of a wide domain is not diluted across the whole of it.</li>
 <li>
-<strong>No replicates needed.</strong> One library per condition is testable: the dispersion is estimated from rows assumed not to respond, half of them held back so <code><a href="reference/checkNullCalibration.html">checkNullCalibration()</a></code> can check the assumption rather than confirm it.</li>
+<strong>Exploratory no-replicate mode.</strong> One library per condition can be analysed: the dispersion is estimated from rows assumed not to respond, half of them held back so <code><a href="reference/checkNullCalibration.html">checkNullCalibration()</a></code> can check the assumption rather than confirm it, and <code>normalizeCounts(backgroundHoldout = )</code> keeps those rows out of the normalisation as well. What this measures is how two libraries differ, not how two animals or two donors would. It is conditional on the null-region assumption and it is not a substitute for biological replication.</li>
 </ul>
 <p><br></p>
 </div>
@@ -184,6 +186,10 @@
 <span><span class="va">results</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>,     contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"treated"</span>, <span class="st">"control"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">setResults</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/testRegionSets.html">testRegionSets</a></span><span class="op">(</span><span class="va">fit</span>,  contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"treated"</span>, <span class="st">"control"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Does one class respond differently from another, which is the redistribution question</span></span>
+<span><span class="va">setContrast</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/testSetContrast.html">testSetContrast</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"treated"</span>, <span class="st">"control"</span><span class="op">)</span>,</span>
+<span>                               set1 <span class="op">=</span> <span class="st">"promoters"</span>, set2 <span class="op">=</span> <span class="st">"enhancers"</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu"><a href="reference/topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">setResults</span><span class="op">)</span></span></code></pre></div>
 <p>Every object in the package ships with a worked example, so the whole pipeline can be run without any data of your own:</p>
@@ -223,12 +229,12 @@
 <td align="left"><code><a href="reference/testSetContrast.html">testSetContrast()</a></code></td>
 </tr>
 <tr>
-<td align="left">Did the mark redistribute rather than change globally?</td>
+<td align="left">Did one class gain what another lost?</td>
 <td align="left">
-<code><a href="reference/testRegionSets.html">testRegionSets()</a></code>, competitive test significant and self-contained not</td>
+<code><a href="reference/testSetContrast.html">testSetContrast()</a></code>, which is where a redistribution claim belongs</td>
 </tr>
 <tr>
-<td align="left">Is a global shift technical or biological?</td>
+<td align="left">Are my conclusions sensitive to the normalisation assumption?</td>
 <td align="left">
 <code><a href="reference/plotNormComparison.html">plotNormComparison()</a></code>, <code><a href="reference/plotSetMA.html">plotSetMA()</a></code>
 </td>
@@ -253,8 +259,23 @@
 <code>countReads(tileWidth = )</code>, then <code><a href="reference/plotRegion.html">plotRegion()</a></code>
 </td>
 </tr>
+<tr>
+<td align="left">More than what, exactly?</td>
+<td align="left">
+<code>makeSetUniverse(universeSets = )</code>, then <code><a href="reference/plotUniverseMatching.html">plotUniverseMatching()</a></code>
+</td>
+</tr>
 </tbody>
 </table>
+<p><br></p>
+</div>
+<div class="section level2">
+<h2 id="three-things-the-output-does-not-say">Three things the output does not say<a class="anchor" aria-label="anchor" href="#three-things-the-output-does-not-say"></a>
+</h2>
+<p>Worth reading once before the first result is interpreted.</p>
+<p><strong>A competitive test is significant <em>relative to the other loaded sets</em>.</strong> The comparison universe is drawn from the sets in the object, so the answer changes when the object does. Load two sets and they are being compared to each other. Load four that respond alike and none of them stands out, which is a fact about the comparison rather than about the chromatin. <code>makeSetUniverse(universeSets = )</code> fixes the pool explicitly, and the sets that formed it are printed with the universe.</p>
+<p><strong>A non-significant self-contained test is not evidence that nothing changed.</strong> <code>camera</code> significant with <code>fry</code> not significant means there is evidence of a difference relative to the comparison and the absolute claim is unresolved, not that the absolute change is zero. Different power alone produces that pattern. For a redistribution claim, use <code><a href="reference/testSetContrast.html">testSetContrast()</a></code>; for a claim that something did <em>not</em> change, an equivalence test against a bounded near-zero interval is what the argument needs.</p>
+<p><strong>Whether a global shift is technical or biological cannot be decided from endogenous data.</strong> A mark genuinely 1.5x higher everywhere and an IP that worked 1.5x better look the same in the reads. <code>normalizeCounts(method = "background")</code> assumes the background bins are invariant enough to carry the technical scaling, which is a reasonable assumption and still an assumption. <code><a href="reference/plotNormComparison.html">plotNormComparison()</a></code> shows how far the conclusions move when it is changed, which is a different and answerable question. Deciding the original one needs an external anchor: spike-in chromatin, spike-in cells, calibrated input, or loci validated as invariant.</p>
 <p><br></p>
 </div>
 <div class="section level2">

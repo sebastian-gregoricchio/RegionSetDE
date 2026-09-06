@@ -90,7 +90,7 @@
 
 
 <dt id="arg-holdout">holdout<a class="anchor" aria-label="anchor" href="#arg-holdout"></a></dt>
-<dd><p>Numeric value between 0 and 1 with the fraction of the null rows left out of the estimate, so that <code><a href="checkNullCalibration.html">checkNullCalibration</a></code> has rows the dispersion has not already been fitted to. Default: <code>0.5</code>.</p></dd>
+<dd><p>Numeric value between 0 and 1 with the fraction of the null rows left out of the estimate, so that <code><a href="checkNullCalibration.html">checkNullCalibration</a></code> has rows the dispersion has not already been fitted to. Ignored when <code><a href="normalizeCounts.html">normalizeCounts</a></code> has already split the background bins, whose split is reused instead. Default: <code>0.5</code>.</p></dd>
 
 
 <dt id="arg-subset">subset<a class="anchor" aria-label="anchor" href="#arg-subset"></a></dt>
@@ -103,13 +103,14 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with the <code>dispersion</code>, its square root as <code>bcv</code>, the <code>source</code>, the number of rows it was computed on, the samples used, and <code>holdout.index</code>, the rows kept aside for the calibration check.</p>
+    <p>A list with the <code>dispersion</code>, its square root as <code>bcv</code>, the <code>source</code>, the number of rows it was computed on, the samples used, <code>holdout.index</code>, the rows kept aside for the calibration check, and <code>holdout.type</code>, saying which steps those rows were kept out of.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Without replicates nothing in the data measures how much two libraries differ for reasons that have nothing to do with the treatment, and every engine either refuses to fit or invents an answer. The way out is to assume that some rows do not respond, and to read the variation across those rows as the variation that would be seen between replicates. The estimate is a common dispersion fitted under an intercept-only model, which is exactly what <code>edgeR</code> recommends for an experiment with no replication, with the housekeeping genes replaced here by the background bins.</p>
 <p>That assumption is the whole estimate, so it is worth being deliberate about it. Background bins are the safest choice, since a treatment that changed the genome-wide average would have broken the normalisation long before it reached this point. A region set chosen because it looked flat in the data is the unsafe one: picking rows for their small fold change and then measuring the spread of those fold changes gives a dispersion biased towards zero, and p-values that follow it down.</p>
-<p>A plausible number is not a replicate. Everything downstream stays conditional on this estimate being right, which is why <code><a href="checkNullCalibration.html">checkNullCalibration</a></code> exists and why it should be run before any of the output is believed. Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in <code>holdout.index</code> for that check to use.</p>
+<p>A plausible number is not a replicate, and the distinction is not a technicality. What this estimate measures is how much the two observed libraries differ from each other over rows assumed not to respond. What a replicated experiment measures is how much two animals, two donors or two cultures differ. The second contains the first and is usually several times larger, and no amount of null rows recovers it, because the variation that was never sampled is not in the data at all. Everything downstream is conditional on the assumption that the variability of the null rows stands in for the variability that was not observed, which is why <code><a href="checkNullCalibration.html">checkNullCalibration</a></code> exists and why it should be run before any of the output is believed. Treat the result as exploratory and say in the methods that it rests on this estimate.</p>
+<p>Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in <code>holdout.index</code> for that check to use. How much that holdout is worth depends on what came before it. Held out here alone, the rows are independent of the dispersion but not of the normalisation, since the background bins have already been through <code><a href="https://rdrr.io/pkg/csaw/man/normFactors.html" class="external-link">csaw::normFactors</a></code> in <code><a href="normalizeCounts.html">normalizeCounts</a></code>: they are dispersion holdouts and <code>holdout.type</code> says so. Splitting the bins earlier, with <code>normalizeCounts(backgroundHoldout = )</code>, keeps the same rows out of both steps, and that split is picked up here rather than a second one being drawn on top of it.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -182,6 +183,9 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> [541] 1538 1540 1542 1544 1546 1548 1550 1552 1554 1556 1558 1561 1563 1565 1567</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [556] 1569 1571 1573 1575 1577</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $holdout.type</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "dispersion"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $samples</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "lv-H3K4me3-BN-female-bio1-tech1" "lv-H3K4me3-BN-male-bio2-tech1"  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [3] "lv-H3K4me3-SHR-male-bio2-tech1"  "lv-H3K4me3-SHR-male-bio3-tech1" </span>
@@ -213,6 +217,9 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> [61]  947  963  981  985  990 1009 1018 1020 1030 1038 1047 1059 1073 1104 1110</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [76] 1129 1168 1178 1184 1195 1199 1227 1229 1240 1242 1253 1258 1261 1282 1291</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [91] 1300 1330</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $holdout.type</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "dispersion"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $samples</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "lv-H3K4me3-BN-female-bio1-tech1" "lv-H3K4me3-BN-male-bio2-tech1"  </span>

@@ -40,8 +40,8 @@ sets.
 
 - countingLevel:
 
-  String indicating whether the rows are regions or sets. Default:
-  `"region"`.
+  String indicating whether the rows are regions (`"region"`) or tiles
+  of a region (`"tile"`). Default: `"region"`.
 
 - newParameters:
 

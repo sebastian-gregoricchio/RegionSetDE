@@ -12,6 +12,7 @@ by the fit, or one built here when the caller asked for something else.
   matchOn = c("width", "abundance"),
   universeRatio = 5,
   regionSets = NULL,
+  universeSets = NULL,
   verbose = TRUE
 )
 ```
@@ -40,6 +41,11 @@ by the fit, or one built here when the caller asked for something else.
 - regionSets:
 
   Character vector with the sets being tested, or `NULL`.
+
+- universeSets:
+
+  Character vector with the sets the comparison rows are drawn from, or
+  `NULL`.
 
 - verbose:
 

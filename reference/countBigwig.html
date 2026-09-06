@@ -54,7 +54,8 @@
 <span>  partialTiles <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  summaryFunction <span class="op">=</span> <span class="st">"sum"</span>,</span>
 <span>  missingAsZero <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  roundValues <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  countLike <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  roundValues <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -104,8 +105,12 @@
 <dd><p>Logical value indicating whether the positions not covered by the bigWig must be treated as zeros rather than as missing values. Default: <code>TRUE</code>.</p></dd>
 
 
+<dt id="arg-countlike">countLike<a class="anchor" aria-label="anchor" href="#arg-countlike"></a></dt>
+<dd><p>Logical value with which you assert that the bigWig holds count-like values, meaning raw, unnormalised coverage that a count model may legitimately be applied to. Default: <code>FALSE</code>.</p></dd>
+
+
 <dt id="arg-roundvalues">roundValues<a class="anchor" aria-label="anchor" href="#arg-roundvalues"></a></dt>
-<dd><p>Logical value indicating whether the summarised values must be rounded to integers. Default: <code>TRUE</code>.</p></dd>
+<dd><p>Logical value indicating whether the summarised values must be rounded to integers. Rounding is a formatting step and does not turn coverage into counts. Default: <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
@@ -118,11 +123,13 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>RegionSetDE.counts</code> object with one row per region, or per tile, and one column per sample.</p>
+    <p>A <code>RegionSetDE.counts</code> object with one row per region, or per tile, and one column per sample. The <code>signal.type</code> entry of the metadata is set to <code>"bigwig"</code> and <code>count.like</code> to whatever was declared through <code>countLike</code>, which is what <code><a href="fitRegions.html">fitRegions</a></code> reads to decide which engines it will run.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the <code>library.size</code> column of the <code>colData</code> is left as <code>NA</code> and the total signal falling in the regions is reported in <code>total.signal</code> instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig, and the values are rounded by default because the count-based models expect integers. Files carrying an already normalised coverage will produce values that no longer follow a count distribution, which is worth keeping in mind at the testing step.</p>
+    <p>A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the <code>library.size</code> column of the <code>colData</code> is left as <code>NA</code> and the total signal falling in the regions is reported in <code>total.signal</code> instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig.</p>
+<p>Coverage is not a count and rounding it does not make it one. A value of 12.72 becomes 13 and looks like a count, but the negative binomial likelihood that <code>edgeR</code> and <code>DESeq2</code> are built on describes the number of fragments falling in an interval, and a rounded coverage value is not that number. The gap is widest for files carrying an already normalised signal, CPM, RPKM, RPGC, fold enrichment over input, where the values have been divided by a factor that the count model then has no way of knowing about. It does not close entirely even for raw coverage: coverage summed over an interval weights every fragment by how many of its bases fall inside, so it is over-dispersed relative to the fragment count it stands in for.</p>
+<p>The object therefore records where its values came from, and <code><a href="fitRegions.html">fitRegions</a></code> refuses the count engines on it unless <code>countLike</code> says otherwise. The engine to reach for on bigWig input is <code>"limma"</code>, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting <code>countLike = TRUE</code> is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

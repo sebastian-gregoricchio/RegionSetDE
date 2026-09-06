@@ -10,8 +10,10 @@ provenance slots.
 
 - `counting.level`:
 
-  String indicating whether the rows correspond to the single regions
-  (`"region"`) or to the whole sets (`"set"`).
+  String indicating whether the rows are regions (`"region"`) or tiles
+  of a region (`"tile"`). It is the same vocabulary the
+  `RegionSetDE.fit` and `RegionSetDE.results` classes use, since the
+  value travels from here into both of them.
 
 ## Author
 

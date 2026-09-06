@@ -32,14 +32,14 @@ estimateNullDispersion(
 
 \item{maxRows}{Numeric value with the number of null rows kept, drawn deterministically when there are more. Default: \code{50000}.}
 
-\item{holdout}{Numeric value between 0 and 1 with the fraction of the null rows left out of the estimate, so that \code{\link{checkNullCalibration}} has rows the dispersion has not already been fitted to. Default: \code{0.5}.}
+\item{holdout}{Numeric value between 0 and 1 with the fraction of the null rows left out of the estimate, so that \code{\link{checkNullCalibration}} has rows the dispersion has not already been fitted to. Ignored when \code{\link{normalizeCounts}} has already split the background bins, whose split is reused instead. Default: \code{0.5}.}
 
 \item{subset}{Integer vector restricting the null rows to a subset of the ones \code{source} selects. Default: \code{NULL}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A list with the \code{dispersion}, its square root as \code{bcv}, the \code{source}, the number of rows it was computed on, the samples used, and \code{holdout.index}, the rows kept aside for the calibration check.
+A list with the \code{dispersion}, its square root as \code{bcv}, the \code{source}, the number of rows it was computed on, the samples used, \code{holdout.index}, the rows kept aside for the calibration check, and \code{holdout.type}, saying which steps those rows were kept out of.
 }
 \description{
 Estimates the biological variation between samples from a collection of rows assumed not to respond to the contrast, so that a design with no replicates has a dispersion to be tested against. The rows are usually the background bins, which cover the genome and should carry no treatment effect, but any region set believed to be invariant works the same way.
@@ -49,7 +49,9 @@ Without replicates nothing in the data measures how much two libraries differ fo
 
 That assumption is the whole estimate, so it is worth being deliberate about it. Background bins are the safest choice, since a treatment that changed the genome-wide average would have broken the normalisation long before it reached this point. A region set chosen because it looked flat in the data is the unsafe one: picking rows for their small fold change and then measuring the spread of those fold changes gives a dispersion biased towards zero, and p-values that follow it down.
 
-A plausible number is not a replicate. Everything downstream stays conditional on this estimate being right, which is why \code{\link{checkNullCalibration}} exists and why it should be run before any of the output is believed. Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in \code{holdout.index} for that check to use.
+A plausible number is not a replicate, and the distinction is not a technicality. What this estimate measures is how much the two observed libraries differ from each other over rows assumed not to respond. What a replicated experiment measures is how much two animals, two donors or two cultures differ. The second contains the first and is usually several times larger, and no amount of null rows recovers it, because the variation that was never sampled is not in the data at all. Everything downstream is conditional on the assumption that the variability of the null rows stands in for the variability that was not observed, which is why \code{\link{checkNullCalibration}} exists and why it should be run before any of the output is believed. Treat the result as exploratory and say in the methods that it rests on this estimate.
+
+Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in \code{holdout.index} for that check to use. How much that holdout is worth depends on what came before it. Held out here alone, the rows are independent of the dispersion but not of the normalisation, since the background bins have already been through \code{csaw::normFactors} in \code{\link{normalizeCounts}}: they are dispersion holdouts and \code{holdout.type} says so. Splitting the bins earlier, with \code{normalizeCounts(backgroundHoldout = )}, keeps the same rows out of both steps, and that split is picked up here rather than a second one being drawn on top of it.
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)

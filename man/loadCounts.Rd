@@ -19,6 +19,7 @@ loadCounts(
   regionId = NULL,
   partialTiles = TRUE,
   missingRegions = "stop",
+  countLike = TRUE,
   librarySizes = NULL,
   header = TRUE,
   verbose = TRUE
@@ -53,6 +54,8 @@ loadCounts(
 
 \item{missingRegions}{String indicating what to do with the regions absent from the count table, one among \code{"stop"}, \code{"zero"} or \code{"drop"}. Default: \code{"stop"}.}
 
+\item{countLike}{Logical value with which you assert that the imported values are counts, meaning raw fragment or read numbers rather than a normalised signal. Default: \code{TRUE}.}
+
 \item{librarySizes}{Numeric vector with the library size of each sample, in the same order as the count columns. Default: \code{NULL}, the column sums of the imported table are used.}
 
 \item{header}{Logical value indicating whether the file carries a header line. Ignored when \code{counts} is not a file path. Default: \code{TRUE}.}
@@ -67,6 +70,8 @@ Imports a count matrix computed outside R, for instance by featureCounts, bedtoo
 }
 \details{
 The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
+
+What the table holds decides what may be fitted on it. A \code{featureCounts} or \code{bedtools multicov} matrix holds fragment counts and the default is right for it. A \code{deeptools multiBigwigSummary} matrix holds coverage, often already normalised, and \code{countLike = FALSE} should be set so that \code{\link{fitRegions}} steers it to the \code{"limma"} engine instead of a negative binomial one.
 }
 \examples{
 \dontrun{

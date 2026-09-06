@@ -41,7 +41,7 @@ library(ggplot2)
 
 *RegionSetDE* (*Region* *Set* *D*ifferential *E*nrichment) asks whether chromatin signal changes over regions that you define, rather than over regions that a peak caller happens to find. The regions are grouped into named sets of arbitrary width and number, such as promoter classes, enhancer catalogues, chromatin states, or motif-derived binding sites, and the same model fit is then tested at two levels: one region at a time, and one whole set at a time.
 
-The second level is the reason the package exists. A great deal of chromatin biology is phrased as a question about a class of elements rather than about individual loci. *Does H3K4me3 redistribute away from CpG island promoters in this mutant?* is a question about a set, and answering it by counting how many members of the set reached an FDR threshold conflates the size of the effect with the power to detect it. Here the set is the unit of the test, and the effect size on the set comes with a confidence interval that accounts for regions inside a set not being independent of one another.
+The second level is the reason the package exists. A great deal of chromatin biology is phrased as a question about a class of elements rather than about individual loci. *Does H3K4me3 redistribute away from CpG island promoters in this mutant?* is a question about a set, and answering it by counting how many members of the set reached an FDR threshold conflates the size of the effect with the power to detect it. Here the set is the unit of the test, and the effect size on the set comes with a confidence interval built on the biological samples, alongside a second interval describing how much the effect varies between the regions inside the set.
 
 Because no peak calling happens anywhere in the pipeline, the region definitions come from you and stay fixed across conditions. Nothing is redefined when the signal moves, which is what makes a redistribution visible instead of being absorbed into a new set of peak boundaries.
 
@@ -274,7 +274,11 @@ Before committing, it is worth seeing how much the choice actually moves the sam
 plotNormComparison(loadExampleData("counts", verbose = FALSE))
 ```
 
-When the methods agree, the choice does not matter and any of them will do. When they disagree, they are disagreeing about whether a global shift is technical or biological, and no amount of statistics downstream will resolve that. This is the moment to decide it, using what you know about the experiment.
+When the methods agree, the choice does not matter and any of them will do. When they disagree, each is making a different assumption about what in the data is invariant, and the results downstream will differ accordingly.
+
+It is worth being clear about what this plot can and cannot settle. It cannot tell you whether a global shift is technical or biological, because nothing in endogenous sequencing data can: H3K27ac genuinely 1.5x higher everywhere and an immunoprecipitation that worked 1.5x better produce the same reads. `method = "background"` assumes the background bins are invariant enough to carry the technical scaling, which is a reasonable assumption for most experiments and is still an assumption rather than a measurement. Deciding the question needs an external anchor: spike-in chromatin, spike-in cells, a calibrated input, or loci independently validated as invariant.
+
+What the plot does answer is whether it matters. If the sets separate the same way under background, TMM and spike-in normalisation, the conclusion does not rest on the assumption. If they do not, the assumption is doing the work and belongs in the methods section rather than in a default.
 
 `plotSetMA()` asks the same question set by set, which catches the case where one class of regions carries a shift the others do not.
 
@@ -502,7 +506,11 @@ setTable
 | *mean.log2FC*              | mean fold change of the set |
 | *mean.log2FC.comparison*   | mean fold change of the comparison rows |
 | *delta.log2FC*             | the difference between the two, the effect size |
-| *CI.lower*, *CI.upper*     | confidence interval on `delta.log2FC` |
+| *CI.lower*, *CI.upper*     | interval selected by `effectMethod`, sample-based by default |
+| *CI.type*                  | which of the two intervals the columns above hold |
+| *heterogeneity.CI.lower/upper* | spread of the effect between the loci of the set |
+| *sample.delta.log2FC*      | the same effect estimated from one score per library |
+| *n.comparison.overlapping* | comparison rows overlapping the set in the genome |
 | *camera.FDR*               | competitive test, adjusted |
 | *fry.FDR*                  | self-contained test, adjusted |
 
@@ -510,18 +518,28 @@ setTable
 
 ## Reading the output {#set_interpretation}
 
-**Read the effect size before the p-value.** A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which tells you nothing about whether the shift matters. Regions inside a set are not independent either, since neighbouring elements in the same domain move together, so the variance of the mean is inflated by `1 + (n - 1) * rho`, with `rho` estimated from the residuals of the fit. The confidence interval carries that inflation. It is the number to look at first.
+**Read the effect size before the p-value.** A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which tells you nothing about whether the shift matters.
 
-**The pattern between the two tests is itself informative.** `camera` is competitive: it asks whether the set moved more than the regions it is compared against, and it is invariant to a scaling error affecting everything equally. `fry` is self-contained: it asks whether the set moved away from zero at all, which a global shift in the mark, or a leftover normalisation error, will satisfy for every set at once.
+**Two intervals, answering two questions.** The default `CI.lower` and `CI.upper` come from `effectMethod = "sample"`. One number is computed per library, the mean signal over the set minus the mean signal over its comparison, and those numbers are run through the design of the experiment. The replication is the biological samples, which is where it comes from in the experiment: four libraries give an interval as wide as four libraries support, whether the set holds twenty regions or thirty thousand.
+
+The `heterogeneity.CI` columns hold the other one: the mean of the per-region fold changes, with its variance inflated by `1 + (n - 1) * rho` for the correlation between neighbouring loci. It describes how consistently the regions of the set respond, conditional on these libraries, and it is worth reading. It is not a confidence interval on a condition effect, because its sampling units are genomic loci, and adding loci does not add biological replication. Quote the sample interval as the result and the heterogeneity interval as a description of the set.
+
+**The two tests answer different questions.** `camera` is competitive: it asks whether the set moved more than the regions it is compared against, and it is invariant to a scaling error affecting everything equally. `fry` is self-contained: it asks whether the set moved away from zero at all.
 
 | camera | fry | Reading |
 | :----- | :-- | :------ |
-| significant | significant | the set moved, and it moved more than its comparison. The clean result. |
-| significant | not | the sets redistributed signal between them, with little net change overall |
-| not | significant | everything moved together. Revisit the normalisation before the biology. |
-| not | not | no detectable set-level effect |
+| significant | significant | evidence the set moved, and that it moved more than its comparison |
+| significant | not | evidence of a difference relative to the comparison; the absolute claim is unresolved |
+| not | significant | evidence the set moved, none that it moved differently from its comparison |
+| not | not | neither test found evidence, which is not evidence of no effect |
 
-The competitive test is the one to lead with. It runs on the per-region statistics through `limma::cameraPR`, which makes it behave identically across all four engines, whereas the self-contained test is computed on the log-CPM matrix and is therefore a transformation away from what `edgeR` and `DESeq2` actually fitted.
+The second row used to be read here as redistribution. It does not support that reading. Failing to reject a self-contained null is not evidence that the absolute change is zero, and the two tests do not have the same power against the same alternatives, so the pattern arises whenever `fry` is the weaker of the two. A redistribution claim is a claim about two sets, one gaining what the other lost, and `testSetContrast()` is where it belongs. A claim that a set did *not* change needs an equivalence test against a bounded near-zero interval, which a non-significant `fry` is not.
+
+One more thing the self-contained test cannot do: detect a genuinely global shift. Every centring normalisation, background and TMM included, removes exactly that before the test sees the data. If the question is whether the mark changed in absolute terms, the answer has to come from a spike-in.
+
+The competitive test is the one to lead with. It runs on the per-region statistics through `limma::cameraPR`, which makes it behave identically across the engines, whereas the self-contained test is computed on the log-CPM matrix and is therefore a transformation away from what `edgeR` and `DESeq2` actually fitted.
+
+**"More" means more than the sets you loaded.** The comparison universe is drawn from the other region sets in the object, so a competitive p-value is relative to those and not to the genome. With two sets loaded, the test compares them to each other. With four sets that respond alike, each is being asked whether it stands out against three sets behaving as it does, and adjusted p-values clustered near one is what that looks like: a property of the comparison, not a finding. `makeSetUniverse(universeSets = )`, or the same argument on `fitRegions()` and `testRegionSets()`, fixes the pool explicitly, and the sets forming it are printed with the universe object.
 
 In the table above no set reaches significance, which is the honest outcome for four libraries on one chromosome. The informative part is `promoterCpG`: a `delta.log2FC` around -0.9 with an interval that only just includes zero, in the direction H3K4me3 biology would predict, and in the one set where a promoter effect belongs. The intergenic control sits near zero, as it should.
 
@@ -569,7 +587,9 @@ Use this whenever the hypothesis is comparative. Comparing two `camera` p-values
 
 A set-level result rests on the dispersion and on the null being where you think it is, and both can be checked directly rather than assumed.
 
-`estimateNullDispersion()` estimates the dispersion from rows that should carry no effect, which is what makes an analysis with no replicates possible at all:
+`estimateNullDispersion()` estimates the dispersion from rows that should carry no effect, which is what makes an exploratory analysis without replicates possible at all. What it measures is how much these two libraries differ over rows assumed not to respond. What a replicated experiment measures is how much two animals, two donors or two cultures differ, which is a larger quantity that contains the first, and no amount of null rows recovers it: variability that was never sampled is not in the data. Read the output as conditional on that assumption and say so in the methods.
+
+By default half the null rows are held back for the calibration check. Those rows are independent of the dispersion but not of the normalisation, since the background bins have already been through `csaw::normFactors()`; `holdout.type` reports which. Passing `normalizeCounts(backgroundHoldout = 0.5)` splits the bins earlier and keeps the same rows out of both steps, and `estimateNullDispersion()` then picks up that split rather than drawing a second one on top of it:
 
 ```{r null_dispersion}
 nullDispersion <-
@@ -862,8 +882,8 @@ unlink(outputDirectory, recursive = TRUE)
 | Which individual regions changed? | `testRegions()` | `FDR` and `log2FC`, through `topRegions()` |
 | Did this class of regions respond as a class? | `testRegionSets()` | `delta.log2FC` and its interval, then `camera.FDR` |
 | Did the effect differ between two classes? | `testSetContrast()` | the contrast between the two sets |
-| Did the mark redistribute rather than change globally? | `testRegionSets()` | camera significant, fry not |
-| Is a global shift technical or biological? | `plotNormComparison()`, `plotSetMA()` | how far the methods disagree |
+| Did one class gain what another lost? | `testSetContrast()` | `delta.log2FC` between the two sets |
+| Are my conclusions sensitive to the normalisation? | `plotNormComparison()`, `plotSetMA()` | how far the methods disagree |
 | Are my p-values trustworthy? | `checkNullCalibration()` | flatness of the histogram |
 | Can I test without replicates? | `estimateNullDispersion()` | dispersion from the background, then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | `plotUniverseMatching()` | overlap of the two distributions |
@@ -872,7 +892,7 @@ unlink(outputDirectory, recursive = TRUE)
 
 <br>
 
-Two habits are worth adopting from the start. Include a set you expect not to move, and check that it does not; the intergenic set in this vignette costs nothing and would have caught a normalisation problem immediately. And decide the normalisation question deliberately rather than by default, because in chromatin data it is a biological decision wearing technical clothing, and no test downstream can undo it.
+Three habits are worth adopting from the start. Include a set you expect not to move, and check that it does not; the intergenic set in this vignette costs nothing and would have caught a normalisation problem immediately. Decide the normalisation deliberately rather than by default, and state the assumption, because no test downstream can undo it and no test downstream can validate it either. And say what the competitive comparison was against, since a set that stands out against three others is a different claim from one that stands out against a genome-wide catalogue.
 
 <br>
 

@@ -4,19 +4,21 @@
 #'
 #' @param counts \code{RegionSetDE.counts} object.
 #' @param design Formula evaluated on the \code{colData}, e.g. \code{~ replicate + condition}, the same formula written as a string, e.g. \code{"~ replicate + condition"}, or a design matrix with one row per sample. For the \code{"dream"} engine the formula must be given as a formula or a string and may contain random terms, e.g. \code{~ condition + (1|donor)}.
-#' @param engine String with the model to fit, one of \code{"edgeR"} (quasi-likelihood negative binomial), \code{"voom"} (limma on log-CPM with precision weights), \code{"dream"} (limma with random effects) and \code{"deseq2"} (negative binomial Wald test). Default: \code{"edgeR"}.
+#' @param engine String with the model to fit, one of \code{"edgeR"} (quasi-likelihood negative binomial), \code{"voom"} (limma on log-CPM with precision weights), \code{"dream"} (limma with random effects), \code{"deseq2"} (negative binomial Wald test) and \code{"limma"} (limma-trend on the log2 signal, for values that are not counts). Default: \code{"edgeR"}.
 #' @param samples Character vector with the names of the samples to keep, or conditions already applied with \code{\link{selectSamples}}. Default: \code{NULL}, all the samples.
 #' @param block String with the name of a \code{colData} column holding a blocking variable whose effect is estimated as a correlation rather than as a coefficient. Only for \code{engine = "voom"}. Default: \code{NULL}.
 #' @param random Formula with the random terms, e.g. \code{~ (1|donor)}, appended to \code{design}. Only for \code{engine = "dream"}. Default: \code{NULL}.
 #' @param assay String with the name of the assay holding the values to model. Default: \code{"counts"}.
 #' @param useOffsets Logical value to indicate whether the normalisation stored in the object must enter the model as offsets. Default: \code{TRUE}.
 #' @param dispersion Dispersion to fit with instead of taking it from the residual variation, which is what a design with no replicates needs. A numeric value, the list returned by \code{\link{estimateNullDispersion}}, or one of the strings \code{"background"} and \code{"regionSet"}, which run that function here. Only for \code{engine = "edgeR"}. Default: \code{NULL}, from the residual variation when there is any and from \code{nullSource} when there is none.
+#' @param assumeCountLike Logical value overriding what the object says about its own values, so that a count engine can be run on a signal declared as continuous. Default: \code{FALSE}.
 #' @param nullSource String with where the null rows come from when a dispersion has to be estimated, either \code{"background"} or \code{"regionSet"}. Default: \code{"background"}.
 #' @param nullRegionSets Character vector with the names of the sets used as null rows. Only for \code{nullSource = "regionSet"}. Default: \code{NULL}.
 #' @param robust Logical value to indicate whether the dispersion, or the prior variance, must be estimated robustly against outlier regions. Default: \code{TRUE}.
 #' @param universe What every region set will be compared against at the set level. Either the string \code{"matched"}, which builds a universe matched on \code{matchOn} through \code{\link{makeSetUniverse}}, the string \code{"all"}, which takes every other row as it is, \code{NULL} to build none, or a \code{RegionSetDE.universe} object. Default: \code{"matched"}.
 #' @param matchOn Character vector with the covariates the comparison rows are matched on, among \code{"width"} and \code{"abundance"}. Default: \code{c("width", "abundance")}.
 #' @param universeRatio Numeric value with the number of comparison rows drawn per region of the set. Default: \code{5}.
+#' @param universeSets Character vector with the names of the sets the comparison rows are drawn from, which is what the competitive p-values will be relative to. Default: \code{NULL}, every set other than the one being tested.
 #' @param BPPARAM \code{BiocParallelParam} object passed to the \code{"dream"} engine. Default: \code{NULL}, sequential.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
@@ -25,7 +27,8 @@
 #' @details Only one assay type belongs in a model. Marks, antibodies and assays differ in dispersion, in dynamic range and in what their scaling factors mean, so a fit that pools them borrows information between rows that describe unrelated experiments. Split the object with \code{\link{splitSamples}} and normalise each piece on its own before coming here.
 #' Offsets are read from the object rather than recomputed. When \code{\link{normalizeCounts}} produced a matrix of log offsets, in the \code{offset} assay, that matrix is used; otherwise the per-sample \code{scaling.factor} is expanded into one. In both cases \code{edgeR::scaleOffset} puts the offsets back on the scale of the library sizes, which leaves the coefficients readable as log2 fold changes and keeps the fitted values on the scale of the raw counts. Running without offsets is possible and is almost never what you want: the library sizes alone assume that the depth is the only difference between the samples.
 #' A design with one sample per condition has no residual degree of freedom, so nothing in the data says how much two libraries differ for reasons unrelated to the treatment. In that case the number is taken from rows assumed not to respond, through \code{\link{estimateNullDispersion}}, and the fit switches from the quasi-likelihood F test to a likelihood ratio test with the dispersion held fixed. It happens here rather than being asked for, since the alternative is a fit that cannot be produced at all, but it is announced when it does: the result is conditional on that number, and \code{\link{checkNullCalibration}} is what turns the assumption into something checkable. \code{edgeR}'s own guidance, when no null rows exist either, is to pick a BCV by experience, around 0.4 for human samples, 0.1 for genetically identical model organisms and 0.01 for technical replicates, and to read the output as descriptive.
-#' The engines answer slightly different questions. \code{"edgeR"} is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. \code{"voom"} is faster on large objects and more flexible on the design, and it is the only one of the four that can absorb a repeated-measures structure through \code{block} without spending a coefficient on it. \code{"dream"} extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. \code{"deseq2"} is included for comparison and for the shrunken fold changes; on a few thousand regions it agrees with edgeR almost everywhere.
+#' The engines answer slightly different questions. \code{"edgeR"} is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. \code{"voom"} is faster on large objects and more flexible on the design, and it is the one that can absorb a repeated-measures structure through \code{block} without spending a coefficient on it. \code{"dream"} extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. \code{"deseq2"} is included for comparison and for the shrunken fold changes; on a few thousand regions it agrees with edgeR almost everywhere.
+#' Four of the five are count models and the fifth is not, which is the distinction that decides the choice on bigWig input. \code{edgeR}, \code{DESeq2}, \code{voom} and \code{dream} all describe the number of fragments falling in an interval: the first two through a negative binomial likelihood, the other two through a mean-variance trend estimated on the count scale. Coverage read out of a bigWig is not that number, and rounding it to an integer does not make it one. \code{"limma"} models the log2 signal with an abundance trend on the residual variance and asks nothing of the values beyond their being continuous, which is what an already normalised track can supply. An object counted from BAM files may use any of the five; one built by \code{\link{countBigwig}} is refused by the count engines unless it was declared \code{countLike}, or unless \code{assumeCountLike} overrides it here.
 #' The comparison universe of the set level tests is built here rather than there, because it depends on the rows and not on the contrast: one fit, one universe, however many contrasts are run on it afterwards. An object holding a single region set has nothing to compare that set against, and in that case the universe comes out empty with a message; the per-region analysis is unaffected.
 #' Low-count rows are not removed here. Filter them with \code{\link{filterRegions}} first, or the dispersion trend is fitted on rows that carry no information.
 #'
@@ -68,12 +71,14 @@ fitRegions <-
            assay = "counts",
            useOffsets = TRUE,
            dispersion = NULL,
+           assumeCountLike = FALSE,
            nullSource = "background",
            nullRegionSets = NULL,
            robust = TRUE,
            universe = "matched",
            matchOn = c("width", "abundance"),
            universeRatio = 5,
+           universeSets = NULL,
            BPPARAM = NULL,
            verbose = TRUE) {
 
@@ -85,18 +90,19 @@ fitRegions <-
     }
 
     engine <- tolower(as.character(engine[1]))
-    if (!(engine %in% c("edger", "voom", "dream", "deseq2"))) {
-      stop("The 'engine' parameter must be one of 'edgeR', 'voom', 'dream', 'deseq2'.", call. = FALSE)
+    if (!(engine %in% c("edger", "voom", "dream", "deseq2", "limma"))) {
+      stop("The 'engine' parameter must be one of 'edgeR', 'voom', 'dream', 'deseq2', 'limma'.", call. = FALSE)
     }
-    engine <- c("edger" = "edgeR", "voom" = "voom", "dream" = "dream", "deseq2" = "deseq2")[[engine]]
+    engine <- c("edger" = "edgeR", "voom" = "voom", "dream" = "dream", "deseq2" = "deseq2", "limma" = "limma")[[engine]]
 
-    enginePackage <- c("edgeR" = "edgeR", "voom" = "limma", "dream" = "variancePartition", "deseq2" = "DESeq2")[[engine]]
+    enginePackage <- c("edgeR" = "edgeR", "voom" = "limma", "dream" = "variancePartition",
+                       "deseq2" = "DESeq2", "limma" = "limma")[[engine]]
     if (!requireNamespace(enginePackage, quietly = TRUE)) {
       stop("The '", enginePackage, "' package is needed for the '", engine, "' engine.", call. = FALSE)
     }
 
-    if (!is.null(block) & engine != "voom") {
-      stop("The 'block' parameter applies to the 'voom' engine only, add the variable to the design for the other engines.", call. = FALSE)
+    if (!is.null(block) & !(engine %in% c("voom", "limma"))) {
+      stop("The 'block' parameter applies to the 'voom' and 'limma' engines only, add the variable to the design for the other engines.", call. = FALSE)
     }
 
     if (!is.null(random) & engine != "dream") {
@@ -165,8 +171,31 @@ fitRegions <-
 
     offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = verbose)
 
+    #-------------------------------#
+    # Counts, or something else     #
+    #-------------------------------#
+    countEngines <- c("edgeR", "voom", "dream", "deseq2")
+    signalType <- S4Vectors::metadata(counts)$signal.type
+    countLikeFlag <- S4Vectors::metadata(counts)$count.like
+
+    # Objects built before the flag was recorded: alignments are counts, anything else has to say so
+    if (is.null(countLikeFlag)) {
+      countLikeFlag <- is.null(signalType) | identical(signalType, "reads")
+    }
+
+    countLike <- isTRUE(countLikeFlag) | isTRUE(assumeCountLike)
+
+    # Rounding coverage produces integers, which is not the same thing as producing counts, and every
+    # count engine here reads its input as a number of fragments whether or not that is what it holds
+    if (engine %in% countEngines & !is.null(signalType) & !countLike) {
+      stop("The values in this object were not declared as counts (signal.type '", signalType, "'), and the '",
+           engine, "' engine models a fragment count. Fit them with engine = 'limma', which models the log2 ",
+           "signal directly, or set 'assumeCountLike = TRUE' to state that the values are raw coverage and ",
+           "that the count model is an approximation you are willing to make.", call. = FALSE)
+    }
+
     # A negative binomial likelihood is defined on integers, a normalised assay silently breaks it
-    if (engine %in% c("edgeR", "dream", "deseq2", "voom") & any(abs(countMatrix - round(countMatrix)) > 1e-8)) {
+    if (engine %in% countEngines & any(abs(countMatrix - round(countMatrix)) > 1e-8)) {
       if (engine == "deseq2") {
         stop("The 'deseq2' engine needs integer counts, use the raw 'counts' assay and let the offsets carry the normalisation.", call. = FALSE)
       }
@@ -185,10 +214,14 @@ fitRegions <-
                       "dream" = .fitDream(countMatrix = countMatrix, designMatrix = designMatrix, designFormula = designFormula,
                                           librarySizes = librarySizes, offsetMatrix = offsetMatrix, colTable = colTable, BPPARAM = BPPARAM),
                       "deseq2" = .fitDESeq2(countMatrix = countMatrix, designMatrix = designMatrix, offsetMatrix = offsetMatrix,
-                                            librarySizes = librarySizes, colTable = colTable, verbose = verbose))
+                                            librarySizes = librarySizes, colTable = colTable, verbose = verbose),
+                      "limma" = .fitLimma(countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
+                                          offsetMatrix = offsetMatrix, colTable = colTable, block = block,
+                                          robust = robust, verbose = verbose))
 
     fitList$dispersion$source <- dispersionObject$source
     fitList$dispersion$holdout.index <- dispersionObject$holdout.index
+    fitList$dispersion$holdout.type <- dispersionObject$holdout.type
 
     #-------------------------------#
     # Universe of the set level     #
@@ -198,6 +231,7 @@ fitRegions <-
                                        universe = universe,
                                        matchOn = matchOn,
                                        universeRatio = universeRatio,
+                                       universeSets = universeSets,
                                        soft = TRUE,
                                        verbose = verbose)
 
@@ -227,6 +261,7 @@ fitRegions <-
                                                            random = random,
                                                            assay = assay,
                                                            useOffsets = useOffsets,
+                                                           assumeCountLike = assumeCountLike,
                                                            dispersion = dispersion,
                                                            dispersion.source = dispersionObject$source,
                                                            robust = robust,
@@ -542,6 +577,118 @@ fitRegions <-
 
 
 
+#' @title .logSignalMatrix
+#'
+#' @description Puts a matrix of values on a log2 scale comparable across samples, dividing out the offsets when there are any and the library sizes otherwise.
+#'
+#' @param countMatrix Numeric matrix with the values.
+#' @param librarySizes Numeric vector with the library size of each sample.
+#' @param offsetMatrix Numeric matrix of log offsets, or \code{NULL}.
+#' @param priorCount Numeric value added before the logarithm, damping the variance of the low rows. Default: \code{2}.
+#'
+#' @return A numeric matrix of log2 values on a per-million scale.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.logSignalMatrix <-
+  function(countMatrix,
+           librarySizes,
+           offsetMatrix = NULL,
+           priorCount = 2) {
+
+    if (is.null(offsetMatrix)) {
+      offsetMatrix <- matrix(data = rep(log(librarySizes), each = nrow(countMatrix)),
+                             nrow = nrow(countMatrix), ncol = ncol(countMatrix))
+    } else {
+      # Centring on the row puts the offsets back on the scale of the library sizes, so the values stay readable
+      offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(librarySizes))
+    }
+
+    logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
+    dimnames(logMatrix) <- dimnames(countMatrix)
+
+    return(logMatrix)
+  } # END function
+
+
+
+
+#' @title .fitLimma
+#'
+#' @description Fits the \code{limma} model on the log2 signal, with the residual variance trended on abundance, for values that are not counts.
+#'
+#' @param countMatrix Numeric matrix with the values.
+#' @param designMatrix Design matrix.
+#' @param librarySizes Numeric vector with the library size of each sample.
+#' @param offsetMatrix Numeric matrix of log offsets, or \code{NULL}.
+#' @param colTable Data.frame with the sample annotation.
+#' @param block String naming a \code{colData} column holding a blocking variable, or \code{NULL}. Default: \code{NULL}.
+#' @param robust Logical value to indicate whether the prior variance must be estimated robustly. Default: \code{TRUE}.
+#' @param priorCount Numeric value added before the logarithm. Default: \code{2}.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
+#'
+#' @return A list with the fit, the blocking information and the median residual standard deviation.
+#'
+#' @details Where \code{voom} estimates a weight per observation from a mean-variance trend fitted on the count scale, this fits the trend on the residual variance itself and applies no weights. Nothing about the values then has to be a fragment count, which is what makes it the engine for coverage, for an externally normalised matrix, or for anything else that arrives already on a continuous scale.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom limma lmFit duplicateCorrelation
+#' @importFrom stats median
+#'
+#' @keywords internal
+
+.fitLimma <-
+  function(countMatrix,
+           designMatrix,
+           librarySizes,
+           offsetMatrix,
+           colTable,
+           block = NULL,
+           robust = TRUE,
+           priorCount = 2,
+           verbose = TRUE) {
+
+    logMatrix <- .logSignalMatrix(countMatrix = countMatrix,
+                                  librarySizes = librarySizes,
+                                  offsetMatrix = offsetMatrix,
+                                  priorCount = priorCount)
+
+    #-------------------------------#
+    # Blocked, or not               #
+    #-------------------------------#
+    if (is.null(block)) {
+      linearFit <- limma::lmFit(object = logMatrix, design = designMatrix)
+      blockingInfo <- list()
+
+    } else {
+      if (!(block %in% colnames(colTable))) {
+        stop("The column '", block, "' is absent from the colData.", call. = FALSE)
+      }
+      blockVector <- colTable[[block]]
+
+      consensusCorrelation <- limma::duplicateCorrelation(object = logMatrix, design = designMatrix, block = blockVector)$consensus.correlation
+
+      if (isTRUE(verbose)) {
+        message("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), ".")
+      }
+
+      linearFit <- limma::lmFit(object = logMatrix, design = designMatrix,
+                                block = blockVector, correlation = consensusCorrelation)
+      blockingInfo <- list(block = block, correlation = consensusCorrelation)
+    }
+
+    # The trend on the residual variance replaces the observation weights voom would have supplied
+    return(list(fit = list(object = linearFit, voom = list(E = logMatrix), robust = robust, trend = TRUE),
+                blocking = blockingInfo,
+                dispersion = list(sigma.median = stats::median(linearFit$sigma, na.rm = TRUE))))
+  } # END function
+
+
+
+
 #' @title .fitDream
 #'
 #' @description Fits the mixed model of \code{variancePartition}, with precision weights estimated under the same formula.
@@ -728,6 +875,7 @@ fitRegions <-
                                          source = if (is.null(dispersion$source)) {"supplied"} else {dispersion$source},
                                          engine = engine)
       dispersionList$holdout.index <- dispersion$holdout.index
+      dispersionList$holdout.type <- if (is.null(dispersion$holdout.type)) {"none"} else {dispersion$holdout.type}
       return(dispersionList)
     }
 
@@ -745,8 +893,8 @@ fitRegions <-
     #-------------------------------#
     # Nothing to estimate it from   #
     #-------------------------------#
-    if (residualDegrees >= 1 | engine == "dream") {
-      return(list(dispersion = NULL, source = "residual", holdout.index = integer(0)))
+    if (residualDegrees >= 1 | engine %in% c("dream", "limma")) {
+      return(list(dispersion = NULL, source = "residual", holdout.index = integer(0), holdout.type = "none"))
     }
 
     if (engine != "edgeR") {
@@ -772,7 +920,8 @@ fitRegions <-
 
     return(list(dispersion = nullDispersion$dispersion,
                 source = nullSource,
-                holdout.index = nullDispersion$holdout.index))
+                holdout.index = nullDispersion$holdout.index,
+                holdout.type = nullDispersion$holdout.type))
   } # END function
 
 

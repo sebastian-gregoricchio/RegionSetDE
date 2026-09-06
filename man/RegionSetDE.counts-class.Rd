@@ -10,7 +10,7 @@ S4 class storing the read counts computed over a collection of region sets. It e
 \section{Slots}{
 
 \describe{
-\item{\code{counting.level}}{String indicating whether the rows correspond to the single regions (\code{"region"}) or to the whole sets (\code{"set"}).}
+\item{\code{counting.level}}{String indicating whether the rows are regions (\code{"region"}) or tiles of a region (\code{"tile"}). It is the same vocabulary the \code{RegionSetDE.fit} and \code{RegionSetDE.results} classes use, since the value travels from here into both of them.}
 }}
 
 \author{

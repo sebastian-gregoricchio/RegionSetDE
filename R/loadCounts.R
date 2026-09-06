@@ -16,6 +16,7 @@
 #' @param tileWidth Numeric value with the width of the tiles, to be set when the external matrix has been computed on tiles rather than on whole regions. Default: \code{NULL}.
 #' @param partialTiles Logical value indicating whether the trailing shorter tile of each region has been kept. Default: \code{TRUE}.
 #' @param missingRegions String indicating what to do with the regions absent from the count table, one among \code{"stop"}, \code{"zero"} or \code{"drop"}. Default: \code{"stop"}.
+#' @param countLike Logical value with which you assert that the imported values are counts, meaning raw fragment or read numbers rather than a normalised signal. Default: \code{TRUE}.
 #' @param librarySizes Numeric vector with the library size of each sample, in the same order as the count columns. Default: \code{NULL}, the column sums of the imported table are used.
 #' @param header Logical value indicating whether the file carries a header line. Ignored when \code{counts} is not a file path. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
@@ -23,6 +24,8 @@
 #' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample.
 #'
 #' @details The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
+#'
+#' What the table holds decides what may be fitted on it. A \code{featureCounts} or \code{bedtools multicov} matrix holds fragment counts and the default is right for it. A \code{deeptools multiBigwigSummary} matrix holds coverage, often already normalised, and \code{countLike = FALSE} should be set so that \code{\link{fitRegions}} steers it to the \code{"limma"} engine instead of a negative binomial one.
 #'
 #' @examples
 #' \dontrun{
@@ -64,6 +67,7 @@ loadCounts <-
            regionId = NULL,
            partialTiles = TRUE,
            missingRegions = "stop",
+           countLike = TRUE,
            librarySizes = NULL,
            header = TRUE,
            verbose = TRUE) {
@@ -232,15 +236,16 @@ loadCounts <-
                                             tileWidth = tileWidth,
                                             partialTiles = partialTiles,
                                             missingRegions = missingRegions,
+                                            countLike = countLike,
                                             librarySizes.supplied = !is.null(librarySizes)))
 
     countsObject <- .newCountsObject(countMatrix = countMatrix,
                                      regions = allRegions,
                                      sampleTable = sampleTable,
                                      provenance = .provenanceSlots(regionSet),
-                                     countingLevel = "region",
+                                     countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
                                      newParameters = newParameters,
-                                     metadataList = list(signal.type = "external"))
+                                     metadataList = list(signal.type = "external", count.like = countLike))
 
     if (isTRUE(verbose)) {
       message("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples.")

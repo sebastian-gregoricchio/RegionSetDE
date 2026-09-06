@@ -23,7 +23,7 @@
 
 \item{provenance}{List returned by \code{.provenanceSlots}.}
 
-\item{countingLevel}{String indicating whether the rows are regions or sets. Default: \code{"region"}.}
+\item{countingLevel}{String indicating whether the rows are regions (\code{"region"}) or tiles of a region (\code{"tile"}). Default: \code{"region"}.}
 
 \item{newParameters}{List with the arguments of the calling function, appended to the stored parameters.}
 

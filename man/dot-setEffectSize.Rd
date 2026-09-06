@@ -30,7 +30,12 @@
 A list with the means, the difference and the bounds of the interval.
 }
 \description{
-Computes the mean log2 fold change of a set, the difference with its background, and a confidence interval inflated for the correlation between the regions.
+Computes the mean log2 fold change of a set, the difference with its background, and a region-heterogeneity interval inflated for the correlation between the regions.
+}
+\details{
+The sampling units here are the genomic loci, so the interval describes how much the effect varies from one region of the set to another. It is not a confidence interval on a condition effect, whatever the number of regions: the biological replication of the experiment lives in the samples, and \code{.sampleSetEffect} is where that interval comes from. The two are reported side by side and \code{effectMethod} decides which one \code{\link{testRegionSets}} labels as the confidence interval.
+
+Growing the set does not shrink this interval away. With \code{rho} held constant, \code{sd^2 / n * (1 + (n - 1) * rho)} tends to \code{sd^2 * rho} as the set grows, so the width flattens out at a floor set by the correlation rather than falling towards zero. What the inflation does not fix is that \code{sd} is the spread of estimated fold changes, which carries the estimation error of each region along with the genuine variation between them.
 }
 \author{
 Sebastian Gregoricchio

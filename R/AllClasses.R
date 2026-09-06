@@ -65,7 +65,7 @@ setClass(Class = "RegionSetDE",
 #'
 #' @description S4 class storing the read counts computed over a collection of region sets. It extends \code{RangedSummarizedExperiment}, therefore \code{assay}, \code{colData}, \code{rowRanges} and the subsetting operators behave as usual, while the filters applied upstream remain accessible in the inherited provenance slots.
 #'
-#' @slot counting.level String indicating whether the rows correspond to the single regions (\code{"region"}) or to the whole sets (\code{"set"}).
+#' @slot counting.level String indicating whether the rows are regions (\code{"region"}) or tiles of a region (\code{"tile"}). It is the same vocabulary the \code{RegionSetDE.fit} and \code{RegionSetDE.results} classes use, since the value travels from here into both of them.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -124,8 +124,8 @@ setValidity(Class = "RegionSetDE.counts",
                 issues <- c(issues, "The rowData must contain a 'region.set' column.")
               }
 
-              if (!(object@counting.level %in% c("region", "set"))) {
-                issues <- c(issues, "The 'counting.level' slot must be either 'region' or 'set'.")
+              if (!(object@counting.level %in% c("region", "tile"))) {
+                issues <- c(issues, "The 'counting.level' slot must be either 'region' or 'tile'.")
               }
 
               if (length(issues) > 0) {return(issues)} else {return(TRUE)}
@@ -188,6 +188,7 @@ setMethod(f = "show",
 #' @slot index List with one element per region set, each a vector of row positions forming its universe.
 #' @slot type String with the way the universe was built, one of \code{"otherSets"} and \code{"supplied"}.
 #' @slot matching Character vector with the covariates the comparison rows were matched on.
+#' @slot comparison.sets Character vector with the names of the region sets the comparison rows were drawn from. A competitive p-value is relative to these and to nothing else, so they are stored beside the result rather than left to be reconstructed.
 #' @slot diagnostics Data.frame with, for every set, the median width and abundance of the set and of the rows it is compared against.
 #' @slot n.rows Numeric value with the number of rows of the object the positions refer to.
 #'
@@ -204,11 +205,13 @@ setClass(Class = "RegionSetDE.universe",
          representation = representation(index = "list",
                                          type = "character",
                                          matching = "character",
+                                         comparison.sets = "character",
                                          diagnostics = "data.frame",
                                          n.rows = "numeric"),
          prototype = prototype(index = list(),
                                type = NA_character_,
                                matching = character(0),
+                               comparison.sets = character(0),
                                diagnostics = data.frame(),
                                n.rows = 0))
 
@@ -256,6 +259,7 @@ setMethod(f = "show",
             cat("An object of class 'RegionSetDE.universe'\n")
             cat("  type            :", object@type, "\n")
             cat("  matched on      :", if (length(object@matching) == 0) {"nothing"} else {paste(object@matching, collapse = ", ")}, "\n")
+            cat("  compared against:", if (length(object@comparison.sets) == 0) {"not recorded"} else {paste(object@comparison.sets, collapse = ", ")}, "\n")
             cat("  sets            :", length(object@index), "\n")
 
             if (nrow(object@diagnostics) > 0) {
@@ -370,7 +374,7 @@ setValidity(Class = "RegionSetDE.fit",
             method = function(object) {
               issues <- character(0)
 
-              if (!(object@engine %in% c("edgeR", "voom", "dream", "deseq2"))) {
+              if (!(object@engine %in% c("edgeR", "voom", "dream", "deseq2", "limma"))) {
                 issues <- c(issues, "The 'engine' slot must be one of edgeR, voom, dream, deseq2.")
               }
 
@@ -582,7 +586,8 @@ setMethod(f = "show",
 
             if (nrow(object@results) > 0) {
               shownColumns <- intersect(c("region.set", "set.1", "set.2", "n.regions", "mean.log2FC",
-                                          "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR", "fry.FDR", "inter.region.cor.universe"),
+                                          "delta.log2FC", "CI.lower", "CI.upper", "CI.type",
+                                          "camera.FDR", "fry.FDR", "inter.region.cor.universe"),
                                         colnames(object@results))
               printTable <- object@results[, shownColumns, drop = FALSE]
               numericColumns <- vapply(printTable, is.numeric, logical(1))

@@ -380,7 +380,7 @@
 #' @param regions \code{GRanges} used to compute the counts, in the same order as the matrix rows.
 #' @param sampleTable Data.frame with the sample annotation, in the same order as the matrix columns.
 #' @param provenance List returned by \code{.provenanceSlots}.
-#' @param countingLevel String indicating whether the rows are regions or sets. Default: \code{"region"}.
+#' @param countingLevel String indicating whether the rows are regions (\code{"region"}) or tiles of a region (\code{"tile"}). Default: \code{"region"}.
 #' @param newParameters List with the arguments of the calling function, appended to the stored parameters.
 #' @param metadataList List stored in the \code{metadata} of the object. Default: \code{list()}.
 #'

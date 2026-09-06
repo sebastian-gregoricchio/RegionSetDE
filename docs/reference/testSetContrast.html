@@ -48,6 +48,7 @@
 <span>  <span class="va">contrast</span>,</span>
 <span>  set1 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  set2 <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  effectMethod <span class="op">=</span> <span class="st">"sample"</span>,</span>
 <span>  interRegionCor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  useRanks <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  sharedRegions <span class="op">=</span> <span class="st">"drop"</span>,</span>
@@ -78,6 +79,10 @@
 <dd><p>Character vector with the name, or names, of the second region set. Default: <code>NULL</code>.</p></dd>
 
 
+<dt id="arg-effectmethod">effectMethod<a class="anchor" aria-label="anchor" href="#arg-effectmethod"></a></dt>
+<dd><p>String with what the confidence interval on the difference is computed from, either <code>"sample"</code> or <code>"region"</code>. Default: <code>"sample"</code>.</p></dd>
+
+
 <dt id="arg-interregioncor">interRegionCor<a class="anchor" aria-label="anchor" href="#arg-interregioncor"></a></dt>
 <dd><p>Numeric value with the correlation between the regions of a set. Default: <code>NULL</code>, estimated from the residuals.</p></dd>
 
@@ -87,7 +92,7 @@
 
 
 <dt id="arg-sharedregions">sharedRegions<a class="anchor" aria-label="anchor" href="#arg-sharedregions"></a></dt>
-<dd><p>String with what to do with the regions belonging to both sets, either <code>"drop"</code> or <code>"stop"</code>. Default: <code>"drop"</code>.</p></dd>
+<dd><p>String with what to do with the regions the two sets share in the genome, either <code>"drop"</code> or <code>"stop"</code>. Default: <code>"drop"</code>.</p></dd>
 
 
 <dt id="arg-fdr">FDR<a class="anchor" aria-label="anchor" href="#arg-fdr"></a></dt>
@@ -112,8 +117,9 @@
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The test restricts the universe to the two sets and runs the competitive test of <code><a href="testRegionSets.html">testRegionSets</a></code> on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with a confidence interval carrying the variance inflation of both sets.</p>
-<p>A region that belongs to both sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Those regions are removed by default and the number removed is reported; <code>sharedRegions = "stop"</code> refuses to run instead, which is the safer setting when the overlap is unexpected.</p>
+    <p>The test restricts the universe to the two sets and runs the competitive test of <code><a href="testRegionSets.html">testRegionSets</a></code> on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with the interval selected by <code>effectMethod</code> beside it and the region-heterogeneity one always reported next to it.</p>
+<p>This is the function for the redistribution question. A set gaining what another set lost is a claim about two sets, and it is the one claim a global normalisation error cannot manufacture, since a scaling factor that is wrong for one set is wrong for the other in the same way. Asking it through the pattern of a competitive and a self-contained test on a single set does not work, because failing to reject a self-contained null is not evidence that the absolute change was zero.</p>
+<p>A region shared by the two sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Sharing is measured on the genome and not on the identifiers: chr1:1000-2000 in one set and chr1:1500-2500 in the other are half the same chromatin even though neither region identifier appears twice. Overlapping regions are removed from both sides by default and the number removed is reported in <code>n.shared.dropped</code>; <code>sharedRegions = "stop"</code> refuses to run instead, which is the safer setting when the overlap is unexpected.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

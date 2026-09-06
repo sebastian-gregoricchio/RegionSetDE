@@ -209,13 +209,15 @@ countReads <-
                                             removeDuplicates = removeDuplicates,
                                             restrictChromosomes = restrictChromosomes))
 
+    # A tiled object has to say so it is tiled, otherwise testRegions treats every tile as a region
+    # and the combination step that puts the tiles back together never runs
     counts <- .newCountsObject(countMatrix = countMatrix,
                                regions = allRegions,
                                sampleTable = sampleTable,
                                provenance = .provenanceSlots(regionSet),
-                               countingLevel = "region",
+                               countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
                                newParameters = newParameters,
-                               metadataList = list(signal.type = "reads"))
+                               metadataList = list(signal.type = "reads", count.like = TRUE))
 
     if (isTRUE(verbose)) {
       message("Done. Library sizes: ",

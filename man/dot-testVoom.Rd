@@ -4,7 +4,7 @@
 \alias{.testVoom}
 \title{.testVoom}
 \usage{
-.testVoom(fit, contrastVector, lfcThreshold = 0)
+.testVoom(fit, contrastVector, lfcThreshold = 0, trend = FALSE)
 }
 \arguments{
 \item{fit}{\code{RegionSetDE.fit} object.}

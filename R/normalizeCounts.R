@@ -10,14 +10,17 @@
 #' @param useRegionSets Character vector with the names of the region sets used to estimate the factors. Default: \code{NULL}, all of them.
 #' @param minCount Numeric value with the minimum total count required for a region to take part in the estimation. Default: \code{1}.
 #' @param referenceSample String or numeric position of the sample used as reference by the \code{"TMM"} and \code{"TMMwsp"} methods. Default: \code{NULL}, chosen by edgeR.
+#' @param backgroundHoldout Numeric value between 0 and 1 with the fraction of the background bins kept out of the estimation of the factors, so that \code{\link{estimateNullDispersion}} and \code{\link{checkNullCalibration}} can work on bins the normalisation has never seen. Only for \code{method = "background"}. Default: \code{0}, every bin is used.
 #' @param normalizedAssay String with the name given to the normalised assay. Default: \code{"norm.counts"}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return The input \code{RegionSetDE.counts} object with three additions: the \code{norm.factor} and \code{scaling.factor} columns in the \code{colData}, the normalised values in the assay named after \code{normalizedAssay}, and, for the \code{"loess"} method, the log offsets in the \code{offset} assay.
+#' @return The input \code{RegionSetDE.counts} object with three additions: the \code{norm.factor} and \code{scaling.factor} columns in the \code{colData}, the normalised values in the assay named after \code{normalizedAssay}, and, for the \code{"loess"} method, the log offsets in the \code{offset} assay. With \code{backgroundHoldout} above zero the positions of the held-out bins are stored in the \code{background.holdout} entry of the metadata.
 #'
 #' @details The raw counts are never overwritten, the normalisation only adds an assay and the factors beside it, so that the testing functions can keep working on the counts and their offsets.
 #'
 #' Whatever the method, \code{scaling.factor} always holds a divisor: the normalised values are the raw counts divided by it, and a sample sequenced more deeply than the others therefore gets a factor above one. This is the convention of the size factors of DESeq2 and the opposite of the scale factors written by \code{bamCoverage} or by the spike-in pipelines, which are meant to multiply the signal. Factors coming from those tools must be declared with \code{factorType = "multiplication"} and are inverted on the way in. The factors are centred so that their mean is one, which keeps the normalised values on the scale of the raw counts instead of collapsing them to fractions.
+#'
+#' A calibration check is only worth as much as the independence behind it. The background bins serve twice, once here to estimate the factors and once in \code{\link{estimateNullDispersion}} to estimate the dispersion, and a bin used in both has contributed to the model it is later asked to test. Splitting the bins here, through \code{backgroundHoldout}, keeps a fraction of them out of the factors, and \code{\link{estimateNullDispersion}} then picks up exactly that split rather than making its own. The held-out bins are outside the whole preprocessing chain, which is the version of the check that means what it appears to mean. Without it the check still works, but on bins that are holdouts of the dispersion alone.
 #'
 #' The choice of the method matters more than usual on region sets. \code{"TMM"} and \code{"RLE"} assume that most of the regions do not change, which is reasonable for a catalogue of thousands of peaks but not for a handful of hand-picked ones, and not for a mark that is globally redistributed by the treatment. \code{"background"} sidesteps that assumption by estimating the factors on the genome wide bins, where the signal of the experiment is diluted, and is the safest option when a global shift is expected. \code{"spikeIn"} relies on the exogenous genome alone and ignores the regions altogether. \code{"loess"} corrects a bias that changes with the abundance, which no single factor per sample can describe, so it returns a matrix of offsets rather than a vector and leaves \code{scaling.factor} empty.
 #'
@@ -60,6 +63,7 @@ normalizeCounts <-
            useRegionSets = NULL,
            minCount = 1,
            referenceSample = NULL,
+           backgroundHoldout = 0,
            normalizedAssay = "norm.counts",
            verbose = TRUE) {
 
@@ -91,6 +95,15 @@ normalizeCounts <-
 
     if (is.null(spikeInCounts) & method == "spikeIn") {
       stop("The 'spikeIn' method requires the 'spikeInCounts' parameter.", call. = FALSE)
+    }
+
+    if (!is.numeric(backgroundHoldout) | backgroundHoldout[1] < 0 | backgroundHoldout[1] >= 1) {
+      stop("The 'backgroundHoldout' parameter must lie between 0 and 1, and leave something to estimate from.", call. = FALSE)
+    }
+    backgroundHoldout <- backgroundHoldout[1]
+
+    if (backgroundHoldout > 0 & method != "background") {
+      stop("The 'backgroundHoldout' parameter applies to the 'background' method only.", call. = FALSE)
     }
 
     countMatrix <- SummarizedExperiment::assay(counts, "counts")
@@ -178,9 +191,25 @@ normalizeCounts <-
         stop("No background bin is stored in the object, run 'countBackground' before normalising with this method.", call. = FALSE)
       }
 
+      # Bins put aside here never reach the factors, which is what makes them usable as a calibration check later
+      holdoutBins <- integer(0)
+      estimationBins <- seq_len(nrow(backgroundBins))
+
+      if (backgroundHoldout > 0) {
+        estimationBins <- .thinIndex(n = nrow(backgroundBins),
+                                     maxPoints = ceiling(nrow(backgroundBins) * (1 - backgroundHoldout)))
+        holdoutBins <- setdiff(seq_len(nrow(backgroundBins)), estimationBins)
+
+        if (length(estimationBins) < 100) {
+          stop("Only ", length(estimationBins), " background bins are left to estimate the factors from, lower 'backgroundHoldout'.", call. = FALSE)
+        }
+      }
+
       # The bins carry mostly noise, the factors they give describe the depth rather than the biology of the regions
-      normFactorVector <- as.numeric(csaw::normFactors(object = backgroundBins, se.out = FALSE))
+      normFactorVector <- as.numeric(csaw::normFactors(object = backgroundBins[estimationBins, ], se.out = FALSE))
       scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
+
+      S4Vectors::metadata(counts)$background.holdout <- holdoutBins
 
     } else {
       # A bias that changes along the abundance needs one value per region and per sample, not one per sample
@@ -220,6 +249,7 @@ normalizeCounts <-
                                                        useRegionSets = useRegionSets,
                                                        minCount = minCount,
                                                        referenceSample = referenceSample,
+                                                       backgroundHoldout = backgroundHoldout,
                                                        n.regions.used = nrow(estimationRows))))
 
     if (isTRUE(verbose)) {
@@ -228,6 +258,11 @@ normalizeCounts <-
       } else {
         message("Done. The counts have been divided by the scaling factors (",
                 paste(round(range(scalingFactorVector), 3), collapse = " - "), ").")
+
+        if (method == "background" & backgroundHoldout > 0) {
+          message(length(S4Vectors::metadata(counts)$background.holdout),
+                  " background bins were kept out of the estimation and are available to estimateNullDispersion.")
+        }
       }
     }
 

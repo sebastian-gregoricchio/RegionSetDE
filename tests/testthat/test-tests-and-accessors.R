@@ -73,12 +73,18 @@ test_that("testRegionSets returns one row per region set", {
 })
 
 
-test_that("the set level confidence intervals bracket the effect", {
+test_that("each set level interval brackets the effect it belongs to", {
 
   setTable <- resultsTable(exampleSetResults())
 
-  expect_true(all(setTable$CI.lower <= setTable$delta.log2FC + 1e-8))
-  expect_true(all(setTable$CI.upper >= setTable$delta.log2FC - 1e-8))
+  # The region interval is always reported and sits around the mean of the per-region fold changes
+  expect_true(all(setTable$heterogeneity.CI.lower <= setTable$delta.log2FC + 1e-8))
+  expect_true(all(setTable$heterogeneity.CI.upper >= setTable$delta.log2FC - 1e-8))
+
+  # The reported one sits around the estimate its own method produced
+  expect_true(all(setTable$CI.lower <= setTable$sample.delta.log2FC + 1e-8))
+  expect_true(all(setTable$CI.upper >= setTable$sample.delta.log2FC - 1e-8))
+  expect_true(all(setTable$CI.type == "sample"))
 })
 
 

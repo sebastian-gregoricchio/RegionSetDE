@@ -9,6 +9,7 @@ testSetContrast(
   contrast,
   set1 = NULL,
   set2 = NULL,
+  effectMethod = "sample",
   interRegionCor = NULL,
   useRanks = FALSE,
   sharedRegions = "drop",
@@ -27,11 +28,13 @@ testSetContrast(
 
 \item{set2}{Character vector with the name, or names, of the second region set. Default: \code{NULL}.}
 
+\item{effectMethod}{String with what the confidence interval on the difference is computed from, either \code{"sample"} or \code{"region"}. Default: \code{"sample"}.}
+
 \item{interRegionCor}{Numeric value with the correlation between the regions of a set. Default: \code{NULL}, estimated from the residuals.}
 
 \item{useRanks}{Logical value to indicate whether the test must work on the ranks rather than on the statistics. Default: \code{FALSE}.}
 
-\item{sharedRegions}{String with what to do with the regions belonging to both sets, either \code{"drop"} or \code{"stop"}. Default: \code{"drop"}.}
+\item{sharedRegions}{String with what to do with the regions the two sets share in the genome, either \code{"drop"} or \code{"stop"}. Default: \code{"drop"}.}
 
 \item{FDR}{Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.}
 
@@ -48,9 +51,11 @@ A \code{RegionSetDE.setResults} object with one row per pair of sets, or a \code
 Asks whether a contrast affects one region set differently from another. This is the comparison behind questions of the kind "does the treatment reduce the mark more at Polycomb promoters than at active enhancers", and it is the one claim that a global normalisation error cannot manufacture, since a scaling factor that is wrong for one set is wrong for the other in the same way.
 }
 \details{
-The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with a confidence interval carrying the variance inflation of both sets.
+The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with the interval selected by \code{effectMethod} beside it and the region-heterogeneity one always reported next to it.
 
-A region that belongs to both sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Those regions are removed by default and the number removed is reported; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
+This is the function for the redistribution question. A set gaining what another set lost is a claim about two sets, and it is the one claim a global normalisation error cannot manufacture, since a scaling factor that is wrong for one set is wrong for the other in the same way. Asking it through the pattern of a competitive and a self-contained test on a single set does not work, because failing to reject a self-contained null is not evidence that the absolute change was zero.
+
+A region shared by the two sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Sharing is measured on the genome and not on the identifiers: chr1:1000-2000 in one set and chr1:1500-2500 in the other are half the same chromatin even though neither region identifier appears twice. Overlapping regions are removed from both sides by default and the number removed is reported in \code{n.shared.dropped}; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
 }
 \examples{
 \dontrun{

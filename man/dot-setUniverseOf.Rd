@@ -10,6 +10,7 @@
   matchOn = c("width", "abundance"),
   universeRatio = 5,
   regionSets = NULL,
+  universeSets = NULL,
   verbose = TRUE
 )
 }
@@ -23,6 +24,8 @@
 \item{universeRatio}{Numeric value with the number of comparison rows drawn per region of the set.}
 
 \item{regionSets}{Character vector with the sets being tested, or \code{NULL}.}
+
+\item{universeSets}{Character vector with the sets the comparison rows are drawn from, or \code{NULL}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed.}
 }

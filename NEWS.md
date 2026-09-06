@@ -1,3 +1,43 @@
+# RegionSetDE 0.99.1
+
+Statistical and interpretive corrections, from a review of the set-level inference. Three of these change what the output means rather than how it is computed, so a result produced with 0.99.0 should be re-read against them.
+
+## Set-level effect sizes
+* `testRegionSets()` and `testSetContrast()` gain `effectMethod`. With the default `"sample"` the confidence interval is built from one set score per library, the mean signal over the set minus the mean signal over its comparison, run through the design of the experiment. The replication behind the interval is now the biological samples.
+* The interval of 0.99.0 is still reported, under `heterogeneity.CI.lower` and `heterogeneity.CI.upper`, and named for what it measures: how far the effect varies between the loci of a set, conditional on the libraries at hand. It was documented as a confidence interval on the set effect, which it is not, since its sampling units are genomic loci.
+* `sample.delta.log2FC`, its standard error, degrees of freedom, p-value and adjusted p-value are reported alongside.
+
+## Interpretation of camera and fry
+* The reading of a significant competitive test with a non-significant self-contained one as redistribution has been removed from the manual, the vignette and the README. Failing to reject a self-contained null is not evidence that the absolute change is zero, and unequal power between the two tests produces the same pattern. The four outcomes are now described as evidence rather than as mechanism.
+* A redistribution claim belongs to `testSetContrast()`, which compares two sets directly. The documentation points there.
+* Also stated: a centring normalisation removes a genuinely global shift before `fry` ever sees the data, so the self-contained test is not where to look for one.
+
+## What normalisation can and cannot decide
+* The claim that `plotNormComparison()` and `plotSetMA()` say whether a global shift is technical or biological has been dropped. The two are not separable from endogenous data alone. Those plots answer whether the conclusions are sensitive to the normalisation assumption, which is what they are now documented as answering.
+
+## No-replicate analysis
+* The "no replicates needed" heading is gone. `estimateNullDispersion()` measures how two libraries differ over rows assumed not to respond, which is not the biological variability that was never sampled, and the documentation says so.
+* `normalizeCounts()` gains `backgroundHoldout`, which keeps a fraction of the background bins out of the estimation of the scaling factors. `estimateNullDispersion()` picks up that split rather than drawing its own, so the calibration rows sit outside the whole preprocessing chain.
+* The returned list gains `holdout.type`, distinguishing rows held out of the dispersion alone from rows held out of both steps.
+
+## Counts and coverage
+* `fitRegions()` gains the `"limma"` engine, limma-trend on the log2 signal, for values that are not counts.
+* `countBigwig()` gains `countLike` and no longer rounds by default. Rounding coverage to integers does not make it a fragment count, and the negative binomial and voom engines now refuse an object built from bigWig files unless `countLike` was declared or `assumeCountLike` overrides it in `fitRegions()`.
+* `loadCounts()` gains the same `countLike`, for external matrices holding coverage rather than counts.
+
+## Tiles
+* `countReads()`, `countBigwig()` and `loadCounts()` mark a tiled object as tiled. They previously stored `counting.level = "region"` whatever `tileWidth` was, so `testRegions()` never recombined the tiles of a region and the tile-level output path could not be reached.
+* `testRegionSets()` gains `tileHandling`, collapsing the tiles of a region into one row before the set is assembled. Without it a 40 kb region counted at 1 kb weighs forty times a 1 kb one, which makes the set effect an average over base pairs rather than over regions.
+
+## Overlapping sets
+* `testRegionSets()` gains `overlapPolicy`, and `testSetContrast()` now detects shared regions through `IRanges::findOverlaps` rather than through region identifiers. Two sets can cover the same chromatin without sharing an identifier, and the shared reads pull the difference between them towards zero.
+* The number of overlapping comparison rows is reported in `n.comparison.overlapping`.
+
+## The comparison universe
+* `makeSetUniverse()`, `fitRegions()` and `testRegionSets()` gain `universeSets`, naming the sets the comparison rows are drawn from.
+* `RegionSetDE.universe` gains the `comparison.sets` slot and prints it. A competitive p-value is relative to the sets that happen to be loaded, and that is now recorded with the result instead of having to be reconstructed.
+
+
 # RegionSetDE 0.99.0
 First version.
 

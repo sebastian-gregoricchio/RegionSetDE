@@ -14,12 +14,14 @@ fitRegions(
   assay = "counts",
   useOffsets = TRUE,
   dispersion = NULL,
+  assumeCountLike = FALSE,
   nullSource = "background",
   nullRegionSets = NULL,
   robust = TRUE,
   universe = "matched",
   matchOn = c("width", "abundance"),
   universeRatio = 5,
+  universeSets = NULL,
   BPPARAM = NULL,
   verbose = TRUE
 )
@@ -29,7 +31,7 @@ fitRegions(
 
 \item{design}{Formula evaluated on the \code{colData}, e.g. \code{~ replicate + condition}, the same formula written as a string, e.g. \code{"~ replicate + condition"}, or a design matrix with one row per sample. For the \code{"dream"} engine the formula must be given as a formula or a string and may contain random terms, e.g. \code{~ condition + (1|donor)}.}
 
-\item{engine}{String with the model to fit, one of \code{"edgeR"} (quasi-likelihood negative binomial), \code{"voom"} (limma on log-CPM with precision weights), \code{"dream"} (limma with random effects) and \code{"deseq2"} (negative binomial Wald test). Default: \code{"edgeR"}.}
+\item{engine}{String with the model to fit, one of \code{"edgeR"} (quasi-likelihood negative binomial), \code{"voom"} (limma on log-CPM with precision weights), \code{"dream"} (limma with random effects), \code{"deseq2"} (negative binomial Wald test) and \code{"limma"} (limma-trend on the log2 signal, for values that are not counts). Default: \code{"edgeR"}.}
 
 \item{samples}{Character vector with the names of the samples to keep, or conditions already applied with \code{\link{selectSamples}}. Default: \code{NULL}, all the samples.}
 
@@ -43,6 +45,8 @@ fitRegions(
 
 \item{dispersion}{Dispersion to fit with instead of taking it from the residual variation, which is what a design with no replicates needs. A numeric value, the list returned by \code{\link{estimateNullDispersion}}, or one of the strings \code{"background"} and \code{"regionSet"}, which run that function here. Only for \code{engine = "edgeR"}. Default: \code{NULL}, from the residual variation when there is any and from \code{nullSource} when there is none.}
 
+\item{assumeCountLike}{Logical value overriding what the object says about its own values, so that a count engine can be run on a signal declared as continuous. Default: \code{FALSE}.}
+
 \item{nullSource}{String with where the null rows come from when a dispersion has to be estimated, either \code{"background"} or \code{"regionSet"}. Default: \code{"background"}.}
 
 \item{nullRegionSets}{Character vector with the names of the sets used as null rows. Only for \code{nullSource = "regionSet"}. Default: \code{NULL}.}
@@ -54,6 +58,8 @@ fitRegions(
 \item{matchOn}{Character vector with the covariates the comparison rows are matched on, among \code{"width"} and \code{"abundance"}. Default: \code{c("width", "abundance")}.}
 
 \item{universeRatio}{Numeric value with the number of comparison rows drawn per region of the set. Default: \code{5}.}
+
+\item{universeSets}{Character vector with the names of the sets the comparison rows are drawn from, which is what the competitive p-values will be relative to. Default: \code{NULL}, every set other than the one being tested.}
 
 \item{BPPARAM}{\code{BiocParallelParam} object passed to the \code{"dream"} engine. Default: \code{NULL}, sequential.}
 
@@ -69,7 +75,8 @@ Fits a linear model on the counts of a \code{RegionSetDE.counts} object, one mod
 Only one assay type belongs in a model. Marks, antibodies and assays differ in dispersion, in dynamic range and in what their scaling factors mean, so a fit that pools them borrows information between rows that describe unrelated experiments. Split the object with \code{\link{splitSamples}} and normalise each piece on its own before coming here.
 Offsets are read from the object rather than recomputed. When \code{\link{normalizeCounts}} produced a matrix of log offsets, in the \code{offset} assay, that matrix is used; otherwise the per-sample \code{scaling.factor} is expanded into one. In both cases \code{edgeR::scaleOffset} puts the offsets back on the scale of the library sizes, which leaves the coefficients readable as log2 fold changes and keeps the fitted values on the scale of the raw counts. Running without offsets is possible and is almost never what you want: the library sizes alone assume that the depth is the only difference between the samples.
 A design with one sample per condition has no residual degree of freedom, so nothing in the data says how much two libraries differ for reasons unrelated to the treatment. In that case the number is taken from rows assumed not to respond, through \code{\link{estimateNullDispersion}}, and the fit switches from the quasi-likelihood F test to a likelihood ratio test with the dispersion held fixed. It happens here rather than being asked for, since the alternative is a fit that cannot be produced at all, but it is announced when it does: the result is conditional on that number, and \code{\link{checkNullCalibration}} is what turns the assumption into something checkable. \code{edgeR}'s own guidance, when no null rows exist either, is to pick a BCV by experience, around 0.4 for human samples, 0.1 for genetically identical model organisms and 0.01 for technical replicates, and to read the output as descriptive.
-The engines answer slightly different questions. \code{"edgeR"} is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. \code{"voom"} is faster on large objects and more flexible on the design, and it is the only one of the four that can absorb a repeated-measures structure through \code{block} without spending a coefficient on it. \code{"dream"} extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. \code{"deseq2"} is included for comparison and for the shrunken fold changes; on a few thousand regions it agrees with edgeR almost everywhere.
+The engines answer slightly different questions. \code{"edgeR"} is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. \code{"voom"} is faster on large objects and more flexible on the design, and it is the one that can absorb a repeated-measures structure through \code{block} without spending a coefficient on it. \code{"dream"} extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. \code{"deseq2"} is included for comparison and for the shrunken fold changes; on a few thousand regions it agrees with edgeR almost everywhere.
+Four of the five are count models and the fifth is not, which is the distinction that decides the choice on bigWig input. \code{edgeR}, \code{DESeq2}, \code{voom} and \code{dream} all describe the number of fragments falling in an interval: the first two through a negative binomial likelihood, the other two through a mean-variance trend estimated on the count scale. Coverage read out of a bigWig is not that number, and rounding it to an integer does not make it one. \code{"limma"} models the log2 signal with an abundance trend on the residual variance and asks nothing of the values beyond their being continuous, which is what an already normalised track can supply. An object counted from BAM files may use any of the five; one built by \code{\link{countBigwig}} is refused by the count engines unless it was declared \code{countLike}, or unless \code{assumeCountLike} overrides it here.
 The comparison universe of the set level tests is built here rather than there, because it depends on the rows and not on the contrast: one fit, one universe, however many contrasts are run on it afterwards. An object holding a single region set has nothing to compare that set against, and in that case the universe comes out empty with a message; the per-region analysis is unaffected.
 Low-count rows are not removed here. Filter them with \code{\link{filterRegions}} first, or the dispersion trend is fitted on rows that carry no information.
 }

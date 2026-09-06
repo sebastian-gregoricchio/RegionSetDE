@@ -140,6 +140,7 @@ testRegions <-
     rawTable <- switch(fit@engine,
                        "edgeR" = .testEdgeR(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold),
                        "voom" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold),
+                       "limma" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold, trend = TRUE),
                        "dream" = .testDream(fit = fit, contrastObject = contrastObject, lfcThreshold = lfcThreshold, verbose = verbose),
                        "deseq2" = .testDESeq2(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold))
 
@@ -608,15 +609,17 @@ testRegions <-
 .testVoom <-
   function(fit,
            contrastVector,
-           lfcThreshold = 0) {
+           lfcThreshold = 0,
+           trend = FALSE) {
 
     contrastFit <- limma::contrasts.fit(fit = fit@fit$object, contrasts = contrastVector)
 
+    # voom carries its mean-variance relationship in the weights, limma-trend carries it here instead
     if (lfcThreshold > 0) {
-      contrastFit <- limma::treat(fit = contrastFit, lfc = lfcThreshold, robust = isTRUE(fit@fit$robust))
+      contrastFit <- limma::treat(fit = contrastFit, lfc = lfcThreshold, robust = isTRUE(fit@fit$robust), trend = trend)
       topTable <- limma::topTreat(fit = contrastFit, number = Inf, sort.by = "none", adjust.method = "none")
     } else {
-      contrastFit <- limma::eBayes(fit = contrastFit, robust = isTRUE(fit@fit$robust))
+      contrastFit <- limma::eBayes(fit = contrastFit, robust = isTRUE(fit@fit$robust), trend = trend)
       topTable <- limma::topTable(fit = contrastFit, number = Inf, sort.by = "none", adjust.method = "none")
     }
 

@@ -19,6 +19,8 @@ The universe answers the question "more than what". A competitive test asks whet
 
 \item{\code{matching}}{Character vector with the covariates the comparison rows were matched on.}
 
+\item{\code{comparison.sets}}{Character vector with the names of the region sets the comparison rows were drawn from. A competitive p-value is relative to these and to nothing else, so they are stored beside the result rather than left to be reconstructed.}
+
 \item{\code{diagnostics}}{Data.frame with, for every set, the median width and abundance of the set and of the rows it is compared against.}
 
 \item{\code{n.rows}}{Numeric value with the number of rows of the object the positions refer to.}

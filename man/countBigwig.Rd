@@ -15,7 +15,8 @@ countBigwig(
   partialTiles = TRUE,
   summaryFunction = "sum",
   missingAsZero = TRUE,
-  roundValues = TRUE,
+  countLike = FALSE,
+  roundValues = FALSE,
   nThreads = 1,
   verbose = TRUE
 )
@@ -41,20 +42,26 @@ countBigwig(
 
 \item{missingAsZero}{Logical value indicating whether the positions not covered by the bigWig must be treated as zeros rather than as missing values. Default: \code{TRUE}.}
 
-\item{roundValues}{Logical value indicating whether the summarised values must be rounded to integers. Default: \code{TRUE}.}
+\item{countLike}{Logical value with which you assert that the bigWig holds count-like values, meaning raw, unnormalised coverage that a count model may legitimately be applied to. Default: \code{FALSE}.}
+
+\item{roundValues}{Logical value indicating whether the summarised values must be rounded to integers. Rounding is a formatting step and does not turn coverage into counts. Default: \code{FALSE}.}
 
 \item{nThreads}{Number of threads used to process the files in parallel. Default: \code{1}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample.
+A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The \code{signal.type} entry of the metadata is set to \code{"bigwig"} and \code{count.like} to whatever was declared through \code{countLike}, which is what \code{\link{fitRegions}} reads to decide which engines it will run.
 }
 \description{
 Summarises the signal of a group of bigWig files over the regions of a \code{RegionSetDE} object. Useful when the BAM files are not available, or when the coverage has been produced by an external pipeline. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.
 }
 \details{
-A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the \code{library.size} column of the \code{colData} is left as \code{NA} and the total signal falling in the regions is reported in \code{total.signal} instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig, and the values are rounded by default because the count-based models expect integers. Files carrying an already normalised coverage will produce values that no longer follow a count distribution, which is worth keeping in mind at the testing step.
+A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the \code{library.size} column of the \code{colData} is left as \code{NA} and the total signal falling in the regions is reported in \code{total.signal} instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig.
+
+Coverage is not a count and rounding it does not make it one. A value of 12.72 becomes 13 and looks like a count, but the negative binomial likelihood that \code{edgeR} and \code{DESeq2} are built on describes the number of fragments falling in an interval, and a rounded coverage value is not that number. The gap is widest for files carrying an already normalised signal, CPM, RPKM, RPGC, fold enrichment over input, where the values have been divided by a factor that the count model then has no way of knowing about. It does not close entirely even for raw coverage: coverage summed over an interval weights every fragment by how many of its bases fall inside, so it is over-dispersed relative to the fragment count it stands in for.
+
+The object therefore records where its values came from, and \code{\link{fitRegions}} refuses the count engines on it unless \code{countLike} says otherwise. The engine to reach for on bigWig input is \code{"limma"}, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting \code{countLike = TRUE} is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.
 }
 \examples{
 \dontrun{

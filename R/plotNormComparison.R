@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title plotNormComparison
 #'
 #' @description Compares the scaling factors that different normalisation methods give for the same object, without modifying it. The factors already stored in the object, whether estimated or supplied by hand, are shown alongside the others so that a manual set of factors can be checked against the automatic ones.

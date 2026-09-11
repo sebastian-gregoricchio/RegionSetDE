@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title plotVolcano
 #'
 #' @description Draws the log2 fold change of a contrast against the significance, one panel per region set, with the number of changing regions written in the top corners of each panel.

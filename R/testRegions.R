@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title testRegions
 #'
 #' @description Tests a contrast on a \code{RegionSetDE.fit} object and returns one row per region. When the counts were tiled, every tile is tested on its own and the p-values are then combined back to the region, so that the region stays the unit of inference even though the signal was measured at a finer scale.

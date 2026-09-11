@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title plotSetEffect
 #'
 #' @description Draws the effect size of every region set with its confidence interval, which is the figure the set level conclusion should rest on. The interval carries the inflation for the correlation between the regions, so a set of thirty thousand promoters does not come out looking thirty thousand times more certain than a set of two hundred enhancers.

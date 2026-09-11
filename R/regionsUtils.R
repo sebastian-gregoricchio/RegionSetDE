@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title renameBedColumns
 #'
 #' @description Assigns the standard BED column names to the first columns of a data.frame, leaving the remaining ones untouched. Useful to convert a headerless table, read with generic \code{V1}, \code{V2}, \code{V3} names, into a data.frame ready for \code{GenomicRanges::makeGRangesFromDataFrame}.

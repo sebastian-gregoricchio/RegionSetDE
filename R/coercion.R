@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title asDGEList
 #'
 #' @description Turns a \code{RegionSetDE.counts} object into a \code{DGEList}, with the normalisation stored in the object carried across as offsets and the region annotation kept in the \code{genes} slot.

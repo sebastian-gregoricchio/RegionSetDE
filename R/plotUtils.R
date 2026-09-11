@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title .thinIndex
 #'
 #' @description Returns the positions of a regularly spaced subset of a vector, used to keep the point clouds drawable. The thinning is deterministic, so the same object always gives the same picture.

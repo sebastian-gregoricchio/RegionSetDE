@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title .filterRegionSets
 #'
 #' @description Internal worker shared by \code{applyBlacklist} and \code{applyWhitelist}. Filters each region set against a reference set of regions, either discarding or retaining the regions that overlap it.

@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title plotRegionPCA
 #'
 #' @description Places the samples on the first principal components of the region signal, which is the fastest way to see whether the conditions separate, whether the replicates pair, and whether either of those is really the sequencing depth in disguise.

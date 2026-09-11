@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title splitLoadRegions
 #'
 #' @description Imports a collection of genomic regions stored in a single object or file and splits them into individual region sets according to the values of one of its columns. The regions can be provided as a \code{GRanges}, a data.frame or the path to a BED-like/tabular file. All the arguments controlling the import are passed to \code{\link{loadRegions}}.

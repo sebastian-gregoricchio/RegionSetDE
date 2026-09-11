@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title scoreRegionSets
 #'
 #' @description Computes one signal score per region set per library, without a contrast, so that the sets can be compared to each other in an experiment holding a single condition. The score is the summarised signal over the regions of a set divided by a reference measured in the same library, and the sets are then compared library by library, which puts the replication in the libraries rather than in the regions. It answers whether one set carries more signal than another. It does not answer whether that difference comes from the factor or from what the sets are made of.

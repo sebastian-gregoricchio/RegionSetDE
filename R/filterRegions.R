@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title filterRegions
 #'
 #' @description Removes the rows of a \code{RegionSetDE.counts} object that carry too little signal to say anything about a contrast. The decision is taken on the average abundance alone, never on the variance or on a fold change, so that the rows kept are independent of the comparison that will be run on them afterwards.

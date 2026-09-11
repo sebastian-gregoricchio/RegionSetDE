@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title checkNullCalibration
 #'
 #' @description Runs the contrast of a fit on rows that should not respond to it, and reports how many of them come out significant anyway. On a design with no replicates this is the only empirical check there is on the dispersion that was supplied, and it should be run before any of the results are believed.

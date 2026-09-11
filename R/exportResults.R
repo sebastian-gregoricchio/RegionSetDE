@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title exportResults
 #'
 #' @description Writes a result to disk: the table as a compressed TSV, the coordinates as a BED that a genome browser will colour by direction, and every parameter the analysis was run with as a flat file next to them.

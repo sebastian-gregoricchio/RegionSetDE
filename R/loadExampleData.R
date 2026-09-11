@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 ## Session cache for the derived objects. The fit is rebuilt from the packaged
 ## counts rather than shipped, so it is worth computing only once per session.
 .exampleCache <- new.env(parent = emptyenv())

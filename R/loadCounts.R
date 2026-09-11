@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title loadCounts
 #'
 #' @description Imports a count matrix computed outside R, for instance by featureCounts, bedtools multicov or deeptools multiBigwigSummary, and attaches it to the regions of a \code{RegionSetDE} object. The rows of the matrix are matched to the regions either by coordinates or by identifier.

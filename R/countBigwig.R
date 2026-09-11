@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title countBigwig
 #'
 #' @description Summarises the signal of a group of bigWig files over the regions of a \code{RegionSetDE} object. Useful when the BAM files are not available, or when the coverage has been produced by an external pipeline. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.

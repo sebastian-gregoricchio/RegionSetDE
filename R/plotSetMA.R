@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title plotSetMA
 #'
 #' @description Draws the log ratio of two groups of samples against their average abundance, with the regions of a set highlighted over the others. A set whose cloud sits away from zero while the rest stays on it is the picture the package is built to produce, and seeing it before any test tells whether the normalisation has already decided the answer.

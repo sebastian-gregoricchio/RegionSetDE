@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title topRegions
 #'
 #' @description Returns the regions that respond most strongly to a contrast, optionally restricted to one region set or to one direction.

@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title testRegionSets
 #'
 #' @description Asks whether a region set responds to a contrast as a whole. Two questions are answered side by side: whether the regions of the set move away from zero, which is a self-contained claim, and whether they move more than the regions they are compared against, which is a competitive one. Both are computed from the per-region statistics of the same fit, so they never disagree with \code{\link{testRegions}} on the design, the offsets or the dispersion.

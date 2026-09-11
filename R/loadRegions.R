@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title loadRegions
 #'
 #' @description Imports a collection of genomic regions provided as BED-like files and/or GRanges objects and returns them as a single \code{RegionSetDE} object. Files, ranges and data.frames can be mixed within the same list.

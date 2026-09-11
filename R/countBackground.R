@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title countBackground
 #'
 #' @description Counts the reads falling in large genome wide bins, which provide the background distribution used to estimate composition-aware normalisation factors. The bins overlapping the counted regions are removed by default, so that the normalisation is not driven by the signal under study. The result is stored in the metadata of the counts object, where the normalisation step retrieves it.

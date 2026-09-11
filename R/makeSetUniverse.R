@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title makeSetUniverse
 #'
 #' @description Builds, for every region set, the universe of its competitive test: the set itself together with the rows it will be compared against. The comparison rows come from the other sets of the object, or from an index of your own, and they can be matched to each set on width and on baseline abundance so that the comparison is not driven by the sets simply being made of different kinds of intervals.

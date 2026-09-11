@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title .provenanceSlots
 #'
 #' @description Collects the provenance slots of a \code{RegionSetDE} object. Regions arriving as a plain \code{GRangesList} carry no history, so the empty defaults are returned instead.

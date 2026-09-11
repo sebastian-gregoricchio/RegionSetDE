@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title fitRegions
 #'
 #' @description Fits a linear model on the counts of a \code{RegionSetDE.counts} object, one model per row. The row is the region, or the tile when the counts were tiled, and the model is the same one that the set level tests will read later, so the two levels never disagree on the design, on the offsets or on the dispersion.

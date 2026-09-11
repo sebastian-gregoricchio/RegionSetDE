@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title plotTopHeatmap
 #'
 #' @description Draws the signal of the regions responding most strongly to a contrast, as a heatmap with one block of rows per region set. The values come from the counts carried by the result, the samples are annotated from the \code{colData}, and the log2 fold change of every region is drawn next to it.

@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title estimateNullDispersion
 #'
 #' @description Estimates the biological variation between samples from a collection of rows assumed not to respond to the contrast, so that a design with no replicates has a dispersion to be tested against. The rows are usually the background bins, which cover the genome and should carry no treatment effect, but any region set believed to be invariant works the same way.

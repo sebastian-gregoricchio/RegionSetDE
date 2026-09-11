@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title selectSamples
 #'
 #' @description Restricts a \code{RegionSetDE.counts} object to a subset of its samples. The conditions are written as they would be in \code{dplyr::filter} and are evaluated on the \code{colData}, so any column of the sample metadata can be used. The regions are left untouched, only the columns change.

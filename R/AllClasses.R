@@ -1,3 +1,6 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
+
 #' @importClassesFrom GenomicRanges GRanges GRangesList
 #' @importClassesFrom SummarizedExperiment RangedSummarizedExperiment
 #' @importFrom methods setClassUnion

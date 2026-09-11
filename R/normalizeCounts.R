@@ -1,3 +1,5 @@
+# Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
+
 #' @title normalizeCounts
 #'
 #' @description Estimates the scaling factors of a \code{RegionSetDE.counts} object and stores them together with a normalised assay. The factors can be computed from the counts themselves, from the background bins collected by \code{\link{countBackground}}, from a spike-in, or supplied by the user.

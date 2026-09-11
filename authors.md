@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/sebastian-gregoricchio/RegionSetDE/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/sebastian-gregoricchio/RegionSetDE/blob/devel-tools/DESCRIPTION)
 
 Gregoricchio S (2026). *RegionSetDE: Differential analysis of chromatin
 signal over user-defined genomic region sets, without peak calling*. R

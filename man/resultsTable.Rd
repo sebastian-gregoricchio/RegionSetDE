@@ -6,6 +6,7 @@
 \alias{resultsTable,RegionSetDE.setResults-method}
 \alias{resultsTable,RegionSetDE.resultsList-method}
 \alias{resultsTable,RegionSetDE.setResultsList-method}
+\alias{resultsTable,RegionSetDE.setScores-method}
 \title{resultsTable}
 \usage{
 resultsTable(results)
@@ -17,6 +18,8 @@ resultsTable(results)
 \S4method{resultsTable}{RegionSetDE.resultsList}(results)
 
 \S4method{resultsTable}{RegionSetDE.setResultsList}(results)
+
+\S4method{resultsTable}{RegionSetDE.setScores}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object.}

@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>*RegionSetDE*: differential chromatin signal over user-defined region sets • RegionSetDE</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="*RegionSetDE*: differential chromatin signal over user-defined region sets">
 </head>
@@ -64,7 +64,7 @@ Gregoricchio, Ph.D.</h4>
 Netherlands<br><a class="author_email" href="mailto:#"></a><a href="mailto:s.gregoricchio@nki.nl" class="email">s.gregoricchio@nki.nl</a>
       </address>
                   
-            <h4 data-toc-skip class="date">Last update: 06<sup>th</sup>
+            <h4 data-toc-skip class="date">Last update: 11<sup>th</sup>
 September, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/blob/HEAD/vignettes/RegionSetDE.vignette.Rmd" class="external-link"><code>vignettes/RegionSetDE.vignette.Rmd</code></a></small>
@@ -681,7 +681,7 @@ here</td>
 <div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">fitCounts</span>(fit)</span>
 <span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a><span class="sc">&gt;</span> class<span class="sc">:</span> RegionSetDE.counts </span>
 <span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a><span class="sc">&gt;</span> dim<span class="sc">:</span> <span class="dv">1895</span> <span class="dv">4</span> </span>
-<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">3</span>)<span class="sc">:</span> signal.type background normalization</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">4</span>)<span class="sc">:</span> signal.type background background.holdout normalization</span>
 <span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">assays</span>(<span class="dv">2</span>)<span class="sc">:</span> counts norm.counts</span>
 <span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">rownames</span>(<span class="dv">1895</span>)<span class="sc">:</span> promoterNonCpG<span class="sc">|</span>region_00012 promoterNonCpG<span class="sc">|</span>region_00017</span>
 <span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a><span class="sc">&gt;</span>   ... promoterCpG<span class="sc">|</span>region_03797 promoterCpG<span class="sc">|</span>region_03798</span>
@@ -850,7 +850,7 @@ a property anyone wants in a result.</p>
 <span id="cb26-21"><a href="#cb26-21" tabindex="-1"></a><span class="fu">resultCounts</span>(results)</span>
 <span id="cb26-22"><a href="#cb26-22" tabindex="-1"></a><span class="sc">&gt;</span> class<span class="sc">:</span> RegionSetDE.counts </span>
 <span id="cb26-23"><a href="#cb26-23" tabindex="-1"></a><span class="sc">&gt;</span> dim<span class="sc">:</span> <span class="dv">1895</span> <span class="dv">4</span> </span>
-<span id="cb26-24"><a href="#cb26-24" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">3</span>)<span class="sc">:</span> signal.type background normalization</span>
+<span id="cb26-24"><a href="#cb26-24" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">4</span>)<span class="sc">:</span> signal.type background background.holdout normalization</span>
 <span id="cb26-25"><a href="#cb26-25" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">assays</span>(<span class="dv">2</span>)<span class="sc">:</span> counts norm.counts</span>
 <span id="cb26-26"><a href="#cb26-26" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">rownames</span>(<span class="dv">1895</span>)<span class="sc">:</span> promoterNonCpG<span class="sc">|</span>region_00012 promoterNonCpG<span class="sc">|</span>region_00017</span>
 <span id="cb26-27"><a href="#cb26-27" tabindex="-1"></a><span class="sc">&gt;</span>   ... promoterCpG<span class="sc">|</span>region_03797 promoterCpG<span class="sc">|</span>region_03798</span>
@@ -948,39 +948,49 @@ runs two tests that answer genuinely different questions.</p>
 <span id="cb34-11"><a href="#cb34-11" tabindex="-1"></a><span class="sc">&gt;</span>   methods         <span class="sc">:</span> camera, fry </span>
 <span id="cb34-12"><a href="#cb34-12" tabindex="-1"></a><span class="sc">&gt;</span>   universe        <span class="sc">:</span> <span class="fu">otherSets</span> (matched on width and abundance) </span>
 <span id="cb34-13"><a href="#cb34-13" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb34-14"><a href="#cb34-14" tabindex="-1"></a><span class="er">&gt;</span>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper camera.FDR</span>
-<span id="cb34-15"><a href="#cb34-15" tabindex="-1"></a><span class="sc">&gt;</span>     promoterCpG       <span class="dv">269</span>     <span class="sc">-</span><span class="fl">0.8340</span>      <span class="sc">-</span><span class="fl">0.9310</span>    <span class="sc">-</span><span class="fl">2.55</span>    <span class="fl">0.686</span>      <span class="fl">0.938</span></span>
-<span id="cb34-16"><a href="#cb34-16" tabindex="-1"></a><span class="sc">&gt;</span>        geneBody       <span class="dv">909</span>      <span class="fl">0.2910</span>       <span class="fl">0.4070</span>    <span class="sc">-</span><span class="fl">1.57</span>    <span class="fl">2.390</span>      <span class="fl">0.938</span></span>
-<span id="cb34-17"><a href="#cb34-17" tabindex="-1"></a><span class="sc">&gt;</span>      intergenic       <span class="dv">440</span>      <span class="fl">0.2650</span>       <span class="fl">0.2060</span>    <span class="sc">-</span><span class="fl">1.76</span>    <span class="fl">2.170</span>      <span class="fl">0.938</span></span>
-<span id="cb34-18"><a href="#cb34-18" tabindex="-1"></a><span class="sc">&gt;</span>  promoterNonCpG       <span class="dv">277</span>     <span class="sc">-</span><span class="fl">0.0209</span>      <span class="sc">-</span><span class="fl">0.0787</span>    <span class="sc">-</span><span class="fl">2.07</span>    <span class="fl">1.910</span>      <span class="fl">0.938</span></span>
-<span id="cb34-19"><a href="#cb34-19" tabindex="-1"></a><span class="sc">&gt;</span>  fry.FDR inter.region.cor.universe</span>
-<span id="cb34-20"><a href="#cb34-20" tabindex="-1"></a><span class="sc">&gt;</span>     <span class="fl">0.54</span>                     <span class="fl">0.378</span></span>
-<span id="cb34-21"><a href="#cb34-21" tabindex="-1"></a><span class="sc">&gt;</span>     <span class="fl">0.54</span>                     <span class="fl">0.453</span></span>
-<span id="cb34-22"><a href="#cb34-22" tabindex="-1"></a><span class="sc">&gt;</span>     <span class="fl">0.54</span>                     <span class="fl">0.382</span></span>
-<span id="cb34-23"><a href="#cb34-23" tabindex="-1"></a><span class="sc">&gt;</span>     <span class="fl">0.54</span>                     <span class="fl">0.350</span></span></code></pre></div>
+<span id="cb34-14"><a href="#cb34-14" tabindex="-1"></a><span class="er">&gt;</span>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper CI.type</span>
+<span id="cb34-15"><a href="#cb34-15" tabindex="-1"></a><span class="sc">&gt;</span>     promoterCpG       <span class="dv">269</span>     <span class="sc">-</span><span class="fl">0.8340</span>      <span class="sc">-</span><span class="fl">0.9310</span>   <span class="sc">-</span><span class="fl">1.930</span>    <span class="fl">0.561</span>  sample</span>
+<span id="cb34-16"><a href="#cb34-16" tabindex="-1"></a><span class="sc">&gt;</span>        geneBody       <span class="dv">909</span>      <span class="fl">0.2910</span>       <span class="fl">0.4070</span>   <span class="sc">-</span><span class="fl">0.333</span>    <span class="fl">0.919</span>  sample</span>
+<span id="cb34-17"><a href="#cb34-17" tabindex="-1"></a><span class="sc">&gt;</span>      intergenic       <span class="dv">440</span>      <span class="fl">0.2650</span>       <span class="fl">0.2060</span>   <span class="sc">-</span><span class="fl">0.171</span>    <span class="fl">0.367</span>  sample</span>
+<span id="cb34-18"><a href="#cb34-18" tabindex="-1"></a><span class="sc">&gt;</span>  promoterNonCpG       <span class="dv">277</span>     <span class="sc">-</span><span class="fl">0.0209</span>      <span class="sc">-</span><span class="fl">0.0787</span>   <span class="sc">-</span><span class="fl">0.263</span>    <span class="fl">0.251</span>  sample</span>
+<span id="cb34-19"><a href="#cb34-19" tabindex="-1"></a><span class="sc">&gt;</span>  camera.FDR fry.FDR inter.region.cor.universe</span>
+<span id="cb34-20"><a href="#cb34-20" tabindex="-1"></a><span class="sc">&gt;</span>       <span class="fl">0.938</span>    <span class="fl">0.54</span>                     <span class="fl">0.378</span></span>
+<span id="cb34-21"><a href="#cb34-21" tabindex="-1"></a><span class="sc">&gt;</span>       <span class="fl">0.938</span>    <span class="fl">0.54</span>                     <span class="fl">0.453</span></span>
+<span id="cb34-22"><a href="#cb34-22" tabindex="-1"></a><span class="sc">&gt;</span>       <span class="fl">0.938</span>    <span class="fl">0.54</span>                     <span class="fl">0.382</span></span>
+<span id="cb34-23"><a href="#cb34-23" tabindex="-1"></a><span class="sc">&gt;</span>       <span class="fl">0.938</span>    <span class="fl">0.54</span>                     <span class="fl">0.350</span></span></code></pre></div>
 <div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" tabindex="-1"></a>setTable <span class="ot">&lt;-</span> <span class="fu">resultsTable</span>(setResults)</span>
 <span id="cb35-2"><a href="#cb35-2" tabindex="-1"></a></span>
 <span id="cb35-3"><a href="#cb35-3" tabindex="-1"></a>setTable</span>
-<span id="cb35-4"><a href="#cb35-4" tabindex="-1"></a><span class="sc">&gt;</span>       region.set n.regions n.comparison mean.log2FC median.log2FC</span>
-<span id="cb35-5"><a href="#cb35-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>    promoterCpG       <span class="dv">269</span>          <span class="dv">314</span> <span class="sc">-</span><span class="fl">0.83367077</span>    <span class="sc">-</span><span class="fl">0.9443600</span></span>
-<span id="cb35-6"><a href="#cb35-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>       geneBody       <span class="dv">909</span>          <span class="dv">986</span>  <span class="fl">0.29148227</span>     <span class="fl">0.1692341</span></span>
-<span id="cb35-7"><a href="#cb35-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>     intergenic       <span class="dv">440</span>         <span class="dv">1354</span>  <span class="fl">0.26499294</span>     <span class="fl">0.1740960</span></span>
-<span id="cb35-8"><a href="#cb35-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> promoterNonCpG       <span class="dv">277</span>         <span class="dv">1378</span> <span class="sc">-</span><span class="fl">0.02089479</span>    <span class="sc">-</span><span class="fl">0.1571407</span></span>
-<span id="cb35-9"><a href="#cb35-9" tabindex="-1"></a><span class="sc">&gt;</span>   mean.log2FC.comparison delta.log2FC  CI.lower  CI.upper inter.region.cor</span>
-<span id="cb35-10"><a href="#cb35-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>             <span class="fl">0.09704300</span>  <span class="sc">-</span><span class="fl">0.93071378</span> <span class="sc">-</span><span class="fl">2.547867</span> <span class="fl">0.6864395</span>        <span class="fl">0.8583680</span></span>
-<span id="cb35-11"><a href="#cb35-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>            <span class="sc">-</span><span class="fl">0.11505923</span>   <span class="fl">0.40654151</span> <span class="sc">-</span><span class="fl">1.574041</span> <span class="fl">2.3871240</span>        <span class="fl">0.2721337</span></span>
-<span id="cb35-12"><a href="#cb35-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>             <span class="fl">0.05862768</span>   <span class="fl">0.20636526</span> <span class="sc">-</span><span class="fl">1.761069</span> <span class="fl">2.1737990</span>        <span class="fl">0.2733108</span></span>
-<span id="cb35-13"><a href="#cb35-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>             <span class="fl">0.05781212</span>  <span class="sc">-</span><span class="fl">0.07870691</span> <span class="sc">-</span><span class="fl">2.067061</span> <span class="fl">1.9096471</span>        <span class="fl">0.4433140</span></span>
-<span id="cb35-14"><a href="#cb35-14" tabindex="-1"></a><span class="sc">&gt;</span>   inter.region.cor.universe median.width camera.direction  camera.p</span>
-<span id="cb35-15"><a href="#cb35-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                 <span class="fl">0.3775802</span>         <span class="dv">1000</span>             Down <span class="fl">0.3213638</span></span>
-<span id="cb35-16"><a href="#cb35-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                 <span class="fl">0.4530172</span>         <span class="dv">1000</span>               Up <span class="fl">0.5187249</span></span>
-<span id="cb35-17"><a href="#cb35-17" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>                 <span class="fl">0.3815880</span>         <span class="dv">1000</span>               Up <span class="fl">0.7773973</span></span>
-<span id="cb35-18"><a href="#cb35-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>                 <span class="fl">0.3504707</span>         <span class="dv">1000</span>             Down <span class="fl">0.9384488</span></span>
-<span id="cb35-19"><a href="#cb35-19" tabindex="-1"></a><span class="sc">&gt;</span>   fry.direction     fry.p camera.FDR   fry.FDR</span>
-<span id="cb35-20"><a href="#cb35-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>          Down <span class="fl">0.2686203</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span></span>
-<span id="cb35-21"><a href="#cb35-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>          Down <span class="fl">0.5401741</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span></span>
-<span id="cb35-22"><a href="#cb35-22" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>          Down <span class="fl">0.4717232</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span></span>
-<span id="cb35-23"><a href="#cb35-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>          Down <span class="fl">0.4613130</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span></span></code></pre></div>
+<span id="cb35-4"><a href="#cb35-4" tabindex="-1"></a><span class="sc">&gt;</span>       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC</span>
+<span id="cb35-5"><a href="#cb35-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>    promoterCpG       <span class="dv">269</span>          <span class="dv">314</span>                        <span class="dv">0</span> <span class="sc">-</span><span class="fl">0.83367077</span></span>
+<span id="cb35-6"><a href="#cb35-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>       geneBody       <span class="dv">909</span>          <span class="dv">986</span>                        <span class="dv">0</span>  <span class="fl">0.29148227</span></span>
+<span id="cb35-7"><a href="#cb35-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>     intergenic       <span class="dv">440</span>         <span class="dv">1354</span>                        <span class="dv">0</span>  <span class="fl">0.26499294</span></span>
+<span id="cb35-8"><a href="#cb35-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> promoterNonCpG       <span class="dv">277</span>         <span class="dv">1378</span>                        <span class="dv">0</span> <span class="sc">-</span><span class="fl">0.02089479</span></span>
+<span id="cb35-9"><a href="#cb35-9" tabindex="-1"></a><span class="sc">&gt;</span>   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower  CI.upper</span>
+<span id="cb35-10"><a href="#cb35-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>    <span class="sc">-</span><span class="fl">0.9443600</span>             <span class="fl">0.09704300</span>  <span class="sc">-</span><span class="fl">0.93071378</span> <span class="sc">-</span><span class="fl">1.9314597</span> <span class="fl">0.5607824</span></span>
+<span id="cb35-11"><a href="#cb35-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>     <span class="fl">0.1692341</span>            <span class="sc">-</span><span class="fl">0.11505923</span>   <span class="fl">0.40654151</span> <span class="sc">-</span><span class="fl">0.3328615</span> <span class="fl">0.9187083</span></span>
+<span id="cb35-12"><a href="#cb35-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>     <span class="fl">0.1740960</span>             <span class="fl">0.05862768</span>   <span class="fl">0.20636526</span> <span class="sc">-</span><span class="fl">0.1710428</span> <span class="fl">0.3668162</span></span>
+<span id="cb35-13"><a href="#cb35-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>    <span class="sc">-</span><span class="fl">0.1571407</span>             <span class="fl">0.05781212</span>  <span class="sc">-</span><span class="fl">0.07870691</span> <span class="sc">-</span><span class="fl">0.2633465</span> <span class="fl">0.2509689</span></span>
+<span id="cb35-14"><a href="#cb35-14" tabindex="-1"></a><span class="sc">&gt;</span>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor</span>
+<span id="cb35-15"><a href="#cb35-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>  sample              <span class="sc">-</span><span class="fl">2.547867</span>              <span class="fl">0.6864395</span>        <span class="fl">0.8583680</span></span>
+<span id="cb35-16"><a href="#cb35-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>  sample              <span class="sc">-</span><span class="fl">1.574041</span>              <span class="fl">2.3871240</span>        <span class="fl">0.2721337</span></span>
+<span id="cb35-17"><a href="#cb35-17" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>  sample              <span class="sc">-</span><span class="fl">1.761069</span>              <span class="fl">2.1737990</span>        <span class="fl">0.2733108</span></span>
+<span id="cb35-18"><a href="#cb35-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>  sample              <span class="sc">-</span><span class="fl">2.067061</span>              <span class="fl">1.9096471</span>        <span class="fl">0.4433140</span></span>
+<span id="cb35-19"><a href="#cb35-19" tabindex="-1"></a><span class="sc">&gt;</span>   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE</span>
+<span id="cb35-20"><a href="#cb35-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                 <span class="fl">0.3775802</span>         <span class="dv">1000</span>        <span class="sc">-</span><span class="fl">0.685338676</span>      <span class="fl">0.28961692</span></span>
+<span id="cb35-21"><a href="#cb35-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                 <span class="fl">0.4530172</span>         <span class="dv">1000</span>         <span class="fl">0.292923395</span>      <span class="fl">0.14544165</span></span>
+<span id="cb35-22"><a href="#cb35-22" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>                 <span class="fl">0.3815880</span>         <span class="dv">1000</span>         <span class="fl">0.097886686</span>      <span class="fl">0.06250318</span></span>
+<span id="cb35-23"><a href="#cb35-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>                 <span class="fl">0.3504707</span>         <span class="dv">1000</span>        <span class="sc">-</span><span class="fl">0.006188815</span>      <span class="fl">0.05976724</span></span>
+<span id="cb35-24"><a href="#cb35-24" tabindex="-1"></a><span class="sc">&gt;</span>   sample.delta.df sample.delta.p camera.direction  camera.p fry.direction</span>
+<span id="cb35-25"><a href="#cb35-25" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>               <span class="dv">2</span>      <span class="fl">0.1416115</span>             Down <span class="fl">0.3213638</span>          Down</span>
+<span id="cb35-26"><a href="#cb35-26" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>               <span class="dv">2</span>      <span class="fl">0.1816079</span>               Up <span class="fl">0.5187249</span>          Down</span>
+<span id="cb35-27"><a href="#cb35-27" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>               <span class="dv">2</span>      <span class="fl">0.2578184</span>               Up <span class="fl">0.7773973</span>          Down</span>
+<span id="cb35-28"><a href="#cb35-28" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>               <span class="dv">2</span>      <span class="fl">0.9269756</span>             Down <span class="fl">0.9384488</span>          Down</span>
+<span id="cb35-29"><a href="#cb35-29" tabindex="-1"></a><span class="sc">&gt;</span>       fry.p camera.FDR   fry.FDR sample.delta.FDR</span>
+<span id="cb35-30"><a href="#cb35-30" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">0.2686203</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span>        <span class="fl">0.3437579</span></span>
+<span id="cb35-31"><a href="#cb35-31" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">0.5401741</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span>        <span class="fl">0.3437579</span></span>
+<span id="cb35-32"><a href="#cb35-32" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">0.4717232</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span>        <span class="fl">0.3437579</span></span>
+<span id="cb35-33"><a href="#cb35-33" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> <span class="fl">0.4613130</span>  <span class="fl">0.9384488</span> <span class="fl">0.5401741</span>        <span class="fl">0.9269756</span></span></code></pre></div>
 <table class="table">
 <colgroup>
 <col width="70%">
@@ -1194,12 +1204,95 @@ it.</p>
 <span id="cb39-12"><a href="#cb39-12" tabindex="-1"></a><span class="sc">&gt;</span>   methods         <span class="sc">:</span> camera </span>
 <span id="cb39-13"><a href="#cb39-13" tabindex="-1"></a><span class="sc">&gt;</span>   universe        <span class="sc">:</span> pairedSet  </span>
 <span id="cb39-14"><a href="#cb39-14" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb39-15"><a href="#cb39-15" tabindex="-1"></a><span class="er">&gt;</span>        set<span class="fl">.1</span>      set<span class="fl">.2</span> delta.log2FC CI.lower CI.upper camera.FDR</span>
-<span id="cb39-16"><a href="#cb39-16" tabindex="-1"></a><span class="sc">&gt;</span>  promoterCpG intergenic         <span class="sc">-</span><span class="fl">1.1</span>    <span class="sc">-</span><span class="fl">2.73</span>    <span class="fl">0.535</span>      <span class="fl">0.316</span></span></code></pre></div>
+<span id="cb39-15"><a href="#cb39-15" tabindex="-1"></a><span class="er">&gt;</span>        set<span class="fl">.1</span>      set<span class="fl">.2</span> delta.log2FC CI.lower CI.upper CI.type camera.FDR</span>
+<span id="cb39-16"><a href="#cb39-16" tabindex="-1"></a><span class="sc">&gt;</span>  promoterCpG intergenic         <span class="sc">-</span><span class="fl">1.1</span>     <span class="sc">-</span><span class="fl">2.2</span>    <span class="fl">0.746</span>  sample      <span class="fl">0.316</span></span></code></pre></div>
 <p>Use this whenever the hypothesis is comparative. Comparing two
 <code>camera</code> p-values by eye is not the same test, and it is
 wrong in the usual way: a difference in significance is not a
 significant difference.</p>
+<p><br></p>
+</div>
+<div class="section level3">
+<h3 id="set_scores">When there is no contrast at all<a class="anchor" aria-label="anchor" href="#set_scores"></a>
+</h3>
+<p>Everything above runs on a contrast. An experiment with three
+replicates of one factor and no second condition has none, so
+<code><a href="../reference/testSetContrast.html">testSetContrast()</a></code> has nothing to compare, and the question
+there is a different one: <em>does one set carry more of the factor than
+another?</em> That is what <code><a href="../reference/scoreRegionSets.html">scoreRegionSets()</a></code> answers.</p>
+<p>The score of a set is its summarised signal divided by a reference
+measured in the same library, by default the background bins. It is a
+ratio taken inside one library, so the depth and the scaling factors
+cancel before the score exists. The raw counts are therefore what it
+reads, and no choice of normalisation can move the result.</p>
+<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" tabindex="-1"></a>setScores <span class="ot">&lt;-</span> <span class="fu">scoreRegionSets</span>(<span class="fu">loadExampleData</span>(<span class="st">"counts"</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>),</span>
+<span id="cb40-2"><a href="#cb40-2" tabindex="-1"></a>                             <span class="at">reference =</span> <span class="st">"background"</span>,</span>
+<span id="cb40-3"><a href="#cb40-3" tabindex="-1"></a>                             <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb40-4"><a href="#cb40-4" tabindex="-1"></a></span>
+<span id="cb40-5"><a href="#cb40-5" tabindex="-1"></a>setScores</span>
+<span id="cb40-6"><a href="#cb40-6" tabindex="-1"></a><span class="sc">&gt;</span> An object of class <span class="st">'RegionSetDE.setScores'</span></span>
+<span id="cb40-7"><a href="#cb40-7" tabindex="-1"></a><span class="sc">&gt;</span>   region sets     <span class="sc">:</span> geneBody, intergenic, promoterCpG, promoterNonCpG </span>
+<span id="cb40-8"><a href="#cb40-8" tabindex="-1"></a><span class="sc">&gt;</span>   libraries       <span class="sc">:</span> <span class="dv">4</span> </span>
+<span id="cb40-9"><a href="#cb40-9" tabindex="-1"></a><span class="sc">&gt;</span>   reference       <span class="sc">:</span> background </span>
+<span id="cb40-10"><a href="#cb40-10" tabindex="-1"></a><span class="sc">&gt;</span>   signal          <span class="sc">:</span> mean of <span class="st">'counts'</span> per base pair </span>
+<span id="cb40-11"><a href="#cb40-11" tabindex="-1"></a><span class="sc">&gt;</span>   comparisons     <span class="sc">:</span> <span class="dv">6</span> </span>
+<span id="cb40-12"><a href="#cb40-12" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb40-13"><a href="#cb40-13" tabindex="-1"></a><span class="er">&gt;</span>        set<span class="fl">.1</span>          set<span class="fl">.2</span> n.libraries mean.delta.score CI.lower CI.upper</span>
+<span id="cb40-14"><a href="#cb40-14" tabindex="-1"></a><span class="sc">&gt;</span>  promoterCpG promoterNonCpG           <span class="dv">4</span>            <span class="fl">3.180</span>    <span class="fl">2.880</span>    <span class="fl">3.480</span></span>
+<span id="cb40-15"><a href="#cb40-15" tabindex="-1"></a><span class="sc">&gt;</span>   intergenic    promoterCpG           <span class="dv">4</span>           <span class="sc">-</span><span class="fl">5.890</span>   <span class="sc">-</span><span class="fl">6.740</span>   <span class="sc">-</span><span class="fl">5.040</span></span>
+<span id="cb40-16"><a href="#cb40-16" tabindex="-1"></a><span class="sc">&gt;</span>     geneBody    promoterCpG           <span class="dv">4</span>           <span class="sc">-</span><span class="fl">5.360</span>   <span class="sc">-</span><span class="fl">6.380</span>   <span class="sc">-</span><span class="fl">4.330</span></span>
+<span id="cb40-17"><a href="#cb40-17" tabindex="-1"></a><span class="sc">&gt;</span>   intergenic promoterNonCpG           <span class="dv">4</span>           <span class="sc">-</span><span class="fl">2.710</span>   <span class="sc">-</span><span class="fl">3.290</span>   <span class="sc">-</span><span class="fl">2.130</span></span>
+<span id="cb40-18"><a href="#cb40-18" tabindex="-1"></a><span class="sc">&gt;</span>     geneBody promoterNonCpG           <span class="dv">4</span>           <span class="sc">-</span><span class="fl">2.180</span>   <span class="sc">-</span><span class="fl">2.920</span>   <span class="sc">-</span><span class="fl">1.430</span></span>
+<span id="cb40-19"><a href="#cb40-19" tabindex="-1"></a><span class="sc">&gt;</span>     geneBody     intergenic           <span class="dv">4</span>            <span class="fl">0.532</span>    <span class="fl">0.348</span>    <span class="fl">0.716</span></span>
+<span id="cb40-20"><a href="#cb40-20" tabindex="-1"></a><span class="sc">&gt;</span>   p.value      FDR</span>
+<span id="cb40-21"><a href="#cb40-21" tabindex="-1"></a><span class="sc">&gt;</span>  <span class="fl">5.51e-05</span> <span class="fl">0.000331</span></span>
+<span id="cb40-22"><a href="#cb40-22" tabindex="-1"></a><span class="sc">&gt;</span>  <span class="fl">2.04e-04</span> <span class="fl">0.000613</span></span>
+<span id="cb40-23"><a href="#cb40-23" tabindex="-1"></a><span class="sc">&gt;</span>  <span class="fl">4.68e-04</span> <span class="fl">0.000937</span></span>
+<span id="cb40-24"><a href="#cb40-24" tabindex="-1"></a><span class="sc">&gt;</span>  <span class="fl">6.59e-04</span> <span class="fl">0.000989</span></span>
+<span id="cb40-25"><a href="#cb40-25" tabindex="-1"></a><span class="sc">&gt;</span>  <span class="fl">2.60e-03</span> <span class="fl">0.002720</span></span>
+<span id="cb40-26"><a href="#cb40-26" tabindex="-1"></a><span class="sc">&gt;</span>  <span class="fl">2.72e-03</span> <span class="fl">0.002720</span></span>
+<span id="cb40-27"><a href="#cb40-27" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb40-28"><a href="#cb40-28" tabindex="-1"></a><span class="er">&gt;</span> The libraries are the replication, the composition of the sets is not controlled for.</span></code></pre></div>
+<p><code><a href="../reference/resultsTable.html">resultsTable()</a></code> returns the comparisons and
+<code><a href="../reference/scoreTable.html">scoreTable()</a></code> the per-library numbers behind them:</p>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">scoreTable</span>(setScores))</span>
+<span id="cb41-2"><a href="#cb41-2" tabindex="-1"></a><span class="sc">&gt;</span>                            sample region.set n.regions  set.signal</span>
+<span id="cb41-3"><a href="#cb41-3" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>female<span class="sc">-</span>bio1<span class="sc">-</span>tech1   geneBody      <span class="dv">1370</span> <span class="fl">0.006523358</span></span>
+<span id="cb41-4"><a href="#cb41-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>   lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1   geneBody      <span class="dv">1370</span> <span class="fl">0.007104380</span></span>
+<span id="cb41-5"><a href="#cb41-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>  lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1   geneBody      <span class="dv">1370</span> <span class="fl">0.006563504</span></span>
+<span id="cb41-6"><a href="#cb41-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>  lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio3<span class="sc">-</span>tech1   geneBody      <span class="dv">1370</span> <span class="fl">0.019312409</span></span>
+<span id="cb41-7"><a href="#cb41-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>female<span class="sc">-</span>bio1<span class="sc">-</span>tech1 intergenic      <span class="dv">1112</span> <span class="fl">0.004901978</span></span>
+<span id="cb41-8"><a href="#cb41-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>   lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1 intergenic      <span class="dv">1112</span> <span class="fl">0.005135791</span></span>
+<span id="cb41-9"><a href="#cb41-9" tabindex="-1"></a><span class="sc">&gt;</span>   reference.signal       score</span>
+<span id="cb41-10"><a href="#cb41-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>      <span class="fl">0.005052627</span>  <span class="fl">0.36858114</span></span>
+<span id="cb41-11"><a href="#cb41-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>      <span class="fl">0.005285830</span>  <span class="fl">0.42657861</span></span>
+<span id="cb41-12"><a href="#cb41-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>      <span class="fl">0.004592457</span>  <span class="fl">0.51519989</span></span>
+<span id="cb41-13"><a href="#cb41-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>      <span class="fl">0.012350258</span>  <span class="fl">0.64498698</span></span>
+<span id="cb41-14"><a href="#cb41-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>      <span class="fl">0.005052627</span> <span class="sc">-</span><span class="fl">0.04366946</span></span>
+<span id="cb41-15"><a href="#cb41-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>      <span class="fl">0.005285830</span> <span class="sc">-</span><span class="fl">0.04154346</span></span></code></pre></div>
+<p>The difference between two sets is taken library by library, so the
+reference cancels a second time and what gets tested is the log ratio
+between the two sets. Neither the reference nor the normalisation enters
+it. The libraries do: four of them here, three in most experiments, and
+an interval built on two or three degrees of freedom is wide. That width
+is what three replicates support, and a narrower one would have come
+from treating the regions as replicates.</p>
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plotSetSignal.html">plotSetSignal</a></span><span class="op">(</span><span class="va">setScores</span>, groupBy <span class="op">=</span> <span class="st">"condition"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="RegionSetDE.vignette_files/figure-html/plot_set_scores-1.png" class="r-plt" alt="" width="672" style="display: block; margin: auto;"></p>
+<p>The lines join the points of each library across the sets, because
+the comparison is paired and a figure drawing the sets as independent
+clouds would be showing a test other than the one on the bracket.</p>
+<p>Read the output as a statement about signal and not yet as one about
+the factor. Region sets differ in width, mappability, GC content and
+accessibility, and those differences produce coverage in a library where
+nothing is bound, reproducibly, across every replicate, in the same way
+real binding does. <code>perBasepair = TRUE</code> removes the width
+term and leaves the others standing. Putting the composition of the sets
+next to the scores is what turns the observation into a claim. An input,
+an IgG or a spike-in removes the need to argue it: the score becomes an
+enrichment, and where one exists the comparison belongs in
+<code><a href="../reference/testSetContrast.html">testSetContrast()</a></code> instead.</p>
 <p><br></p>
 <hr>
 </div>
@@ -1228,73 +1321,76 @@ which. Passing <code>normalizeCounts(backgroundHoldout = 0.5)</code>
 splits the bins earlier and keeps the same rows out of both steps, and
 <code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code> then picks up that split rather
 than drawing a second one on top of it:</p>
-<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" tabindex="-1"></a>nullDispersion <span class="ot">&lt;-</span></span>
-<span id="cb40-2"><a href="#cb40-2" tabindex="-1"></a>  <span class="fu">estimateNullDispersion</span>(<span class="fu">loadExampleData</span>(<span class="st">"counts"</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb40-3"><a href="#cb40-3" tabindex="-1"></a>                           <span class="fu">normalizeCounts</span>(<span class="at">method =</span> <span class="st">"background"</span>,</span>
-<span id="cb40-4"><a href="#cb40-4" tabindex="-1"></a>                                           <span class="at">verbose =</span> <span class="cn">FALSE</span>),</span>
-<span id="cb40-5"><a href="#cb40-5" tabindex="-1"></a>                         <span class="at">source =</span> <span class="st">"background"</span>,</span>
-<span id="cb40-6"><a href="#cb40-6" tabindex="-1"></a>                         <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb40-7"><a href="#cb40-7" tabindex="-1"></a></span>
-<span id="cb40-8"><a href="#cb40-8" tabindex="-1"></a>nullDispersion</span>
-<span id="cb40-9"><a href="#cb40-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="er">$</span>dispersion</span>
-<span id="cb40-10"><a href="#cb40-10" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.06820971</span></span>
-<span id="cb40-11"><a href="#cb40-11" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb40-12"><a href="#cb40-12" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>bcv</span>
-<span id="cb40-13"><a href="#cb40-13" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.2611699</span></span>
-<span id="cb40-14"><a href="#cb40-14" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb40-15"><a href="#cb40-15" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>source</span>
-<span id="cb40-16"><a href="#cb40-16" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"background"</span></span>
-<span id="cb40-17"><a href="#cb40-17" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb40-18"><a href="#cb40-18" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>n.rows</span>
-<span id="cb40-19"><a href="#cb40-19" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">560</span></span>
-<span id="cb40-20"><a href="#cb40-20" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb40-21"><a href="#cb40-21" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>holdout.index</span>
-<span id="cb40-22"><a href="#cb40-22" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">1</span>]   <span class="dv">11</span>   <span class="dv">27</span>   <span class="dv">31</span>   <span class="dv">37</span>   <span class="dv">46</span>   <span class="dv">48</span>   <span class="dv">53</span>   <span class="dv">55</span>   <span class="dv">66</span>   <span class="dv">87</span>   <span class="dv">90</span>   <span class="dv">92</span>   <span class="dv">94</span>   <span class="dv">97</span>   <span class="dv">99</span></span>
-<span id="cb40-23"><a href="#cb40-23" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">16</span>]  <span class="dv">104</span>  <span class="dv">106</span>  <span class="dv">108</span>  <span class="dv">111</span>  <span class="dv">113</span>  <span class="dv">115</span>  <span class="dv">117</span>  <span class="dv">119</span>  <span class="dv">121</span>  <span class="dv">123</span>  <span class="dv">125</span>  <span class="dv">127</span>  <span class="dv">131</span>  <span class="dv">133</span>  <span class="dv">135</span></span>
-<span id="cb40-24"><a href="#cb40-24" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">31</span>]  <span class="dv">137</span>  <span class="dv">139</span>  <span class="dv">141</span>  <span class="dv">143</span>  <span class="dv">145</span>  <span class="dv">163</span>  <span class="dv">165</span>  <span class="dv">167</span>  <span class="dv">169</span>  <span class="dv">171</span>  <span class="dv">173</span>  <span class="dv">175</span>  <span class="dv">177</span>  <span class="dv">180</span>  <span class="dv">183</span></span>
-<span id="cb40-25"><a href="#cb40-25" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">46</span>]  <span class="dv">185</span>  <span class="dv">187</span>  <span class="dv">190</span>  <span class="dv">195</span>  <span class="dv">198</span>  <span class="dv">200</span>  <span class="dv">203</span>  <span class="dv">207</span>  <span class="dv">209</span>  <span class="dv">211</span>  <span class="dv">213</span>  <span class="dv">215</span>  <span class="dv">217</span>  <span class="dv">219</span>  <span class="dv">222</span></span>
-<span id="cb40-26"><a href="#cb40-26" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">61</span>]  <span class="dv">224</span>  <span class="dv">226</span>  <span class="dv">228</span>  <span class="dv">230</span>  <span class="dv">233</span>  <span class="dv">235</span>  <span class="dv">237</span>  <span class="dv">239</span>  <span class="dv">241</span>  <span class="dv">243</span>  <span class="dv">245</span>  <span class="dv">247</span>  <span class="dv">249</span>  <span class="dv">251</span>  <span class="dv">253</span></span>
-<span id="cb40-27"><a href="#cb40-27" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">76</span>]  <span class="dv">255</span>  <span class="dv">258</span>  <span class="dv">261</span>  <span class="dv">263</span>  <span class="dv">265</span>  <span class="dv">267</span>  <span class="dv">269</span>  <span class="dv">271</span>  <span class="dv">273</span>  <span class="dv">275</span>  <span class="dv">277</span>  <span class="dv">279</span>  <span class="dv">281</span>  <span class="dv">283</span>  <span class="dv">285</span></span>
-<span id="cb40-28"><a href="#cb40-28" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">91</span>]  <span class="dv">287</span>  <span class="dv">290</span>  <span class="dv">292</span>  <span class="dv">294</span>  <span class="dv">296</span>  <span class="dv">299</span>  <span class="dv">302</span>  <span class="dv">304</span>  <span class="dv">306</span>  <span class="dv">308</span>  <span class="dv">311</span>  <span class="dv">318</span>  <span class="dv">320</span>  <span class="dv">322</span>  <span class="dv">330</span></span>
-<span id="cb40-29"><a href="#cb40-29" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">106</span>]  <span class="dv">332</span>  <span class="dv">334</span>  <span class="dv">336</span>  <span class="dv">338</span>  <span class="dv">340</span>  <span class="dv">343</span>  <span class="dv">346</span>  <span class="dv">348</span>  <span class="dv">355</span>  <span class="dv">357</span>  <span class="dv">361</span>  <span class="dv">363</span>  <span class="dv">365</span>  <span class="dv">367</span>  <span class="dv">369</span></span>
-<span id="cb40-30"><a href="#cb40-30" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">121</span>]  <span class="dv">372</span>  <span class="dv">375</span>  <span class="dv">377</span>  <span class="dv">379</span>  <span class="dv">381</span>  <span class="dv">383</span>  <span class="dv">386</span>  <span class="dv">389</span>  <span class="dv">392</span>  <span class="dv">395</span>  <span class="dv">397</span>  <span class="dv">400</span>  <span class="dv">402</span>  <span class="dv">404</span>  <span class="dv">408</span></span>
-<span id="cb40-31"><a href="#cb40-31" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">136</span>]  <span class="dv">410</span>  <span class="dv">412</span>  <span class="dv">414</span>  <span class="dv">416</span>  <span class="dv">419</span>  <span class="dv">421</span>  <span class="dv">423</span>  <span class="dv">425</span>  <span class="dv">427</span>  <span class="dv">429</span>  <span class="dv">431</span>  <span class="dv">433</span>  <span class="dv">439</span>  <span class="dv">442</span>  <span class="dv">447</span></span>
-<span id="cb40-32"><a href="#cb40-32" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">151</span>]  <span class="dv">451</span>  <span class="dv">455</span>  <span class="dv">457</span>  <span class="dv">459</span>  <span class="dv">461</span>  <span class="dv">463</span>  <span class="dv">465</span>  <span class="dv">467</span>  <span class="dv">470</span>  <span class="dv">472</span>  <span class="dv">474</span>  <span class="dv">477</span>  <span class="dv">481</span>  <span class="dv">483</span>  <span class="dv">486</span></span>
-<span id="cb40-33"><a href="#cb40-33" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">166</span>]  <span class="dv">488</span>  <span class="dv">490</span>  <span class="dv">492</span>  <span class="dv">494</span>  <span class="dv">496</span>  <span class="dv">498</span>  <span class="dv">500</span>  <span class="dv">502</span>  <span class="dv">504</span>  <span class="dv">506</span>  <span class="dv">508</span>  <span class="dv">510</span>  <span class="dv">512</span>  <span class="dv">514</span>  <span class="dv">516</span></span>
-<span id="cb40-34"><a href="#cb40-34" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">181</span>]  <span class="dv">518</span>  <span class="dv">520</span>  <span class="dv">522</span>  <span class="dv">524</span>  <span class="dv">526</span>  <span class="dv">528</span>  <span class="dv">530</span>  <span class="dv">532</span>  <span class="dv">535</span>  <span class="dv">537</span>  <span class="dv">540</span>  <span class="dv">542</span>  <span class="dv">544</span>  <span class="dv">546</span>  <span class="dv">548</span></span>
-<span id="cb40-35"><a href="#cb40-35" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">196</span>]  <span class="dv">550</span>  <span class="dv">553</span>  <span class="dv">555</span>  <span class="dv">557</span>  <span class="dv">559</span>  <span class="dv">561</span>  <span class="dv">565</span>  <span class="dv">567</span>  <span class="dv">569</span>  <span class="dv">571</span>  <span class="dv">580</span>  <span class="dv">583</span>  <span class="dv">592</span>  <span class="dv">601</span>  <span class="dv">604</span></span>
-<span id="cb40-36"><a href="#cb40-36" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">211</span>]  <span class="dv">606</span>  <span class="dv">609</span>  <span class="dv">615</span>  <span class="dv">617</span>  <span class="dv">620</span>  <span class="dv">662</span>  <span class="dv">664</span>  <span class="dv">666</span>  <span class="dv">668</span>  <span class="dv">670</span>  <span class="dv">685</span>  <span class="dv">687</span>  <span class="dv">689</span>  <span class="dv">691</span>  <span class="dv">693</span></span>
-<span id="cb40-37"><a href="#cb40-37" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">226</span>]  <span class="dv">696</span>  <span class="dv">699</span>  <span class="dv">702</span>  <span class="dv">704</span>  <span class="dv">706</span>  <span class="dv">708</span>  <span class="dv">710</span>  <span class="dv">712</span>  <span class="dv">714</span>  <span class="dv">716</span>  <span class="dv">718</span>  <span class="dv">720</span>  <span class="dv">722</span>  <span class="dv">724</span>  <span class="dv">726</span></span>
-<span id="cb40-38"><a href="#cb40-38" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">241</span>]  <span class="dv">728</span>  <span class="dv">730</span>  <span class="dv">733</span>  <span class="dv">735</span>  <span class="dv">737</span>  <span class="dv">739</span>  <span class="dv">741</span>  <span class="dv">743</span>  <span class="dv">745</span>  <span class="dv">747</span>  <span class="dv">750</span>  <span class="dv">754</span>  <span class="dv">756</span>  <span class="dv">758</span>  <span class="dv">760</span></span>
-<span id="cb40-39"><a href="#cb40-39" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">256</span>]  <span class="dv">762</span>  <span class="dv">764</span>  <span class="dv">766</span>  <span class="dv">768</span>  <span class="dv">770</span>  <span class="dv">772</span>  <span class="dv">774</span>  <span class="dv">777</span>  <span class="dv">779</span>  <span class="dv">781</span>  <span class="dv">789</span>  <span class="dv">791</span>  <span class="dv">793</span>  <span class="dv">797</span>  <span class="dv">804</span></span>
-<span id="cb40-40"><a href="#cb40-40" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">271</span>]  <span class="dv">807</span>  <span class="dv">811</span>  <span class="dv">813</span>  <span class="dv">816</span>  <span class="dv">818</span>  <span class="dv">821</span>  <span class="dv">825</span>  <span class="dv">827</span>  <span class="dv">829</span>  <span class="dv">831</span>  <span class="dv">832</span>  <span class="dv">834</span>  <span class="dv">840</span>  <span class="dv">842</span>  <span class="dv">844</span></span>
-<span id="cb40-41"><a href="#cb40-41" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">286</span>]  <span class="dv">846</span>  <span class="dv">848</span>  <span class="dv">850</span>  <span class="dv">852</span>  <span class="dv">854</span>  <span class="dv">856</span>  <span class="dv">858</span>  <span class="dv">862</span>  <span class="dv">864</span>  <span class="dv">866</span>  <span class="dv">868</span>  <span class="dv">871</span>  <span class="dv">874</span>  <span class="dv">877</span>  <span class="dv">885</span></span>
-<span id="cb40-42"><a href="#cb40-42" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">301</span>]  <span class="dv">894</span>  <span class="dv">899</span>  <span class="dv">903</span>  <span class="dv">905</span>  <span class="dv">907</span>  <span class="dv">909</span>  <span class="dv">911</span>  <span class="dv">913</span>  <span class="dv">915</span>  <span class="dv">917</span>  <span class="dv">919</span>  <span class="dv">921</span>  <span class="dv">923</span>  <span class="dv">925</span>  <span class="dv">928</span></span>
-<span id="cb40-43"><a href="#cb40-43" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">316</span>]  <span class="dv">930</span>  <span class="dv">934</span>  <span class="dv">936</span>  <span class="dv">938</span>  <span class="dv">940</span>  <span class="dv">942</span>  <span class="dv">946</span>  <span class="dv">950</span>  <span class="dv">952</span>  <span class="dv">954</span>  <span class="dv">956</span>  <span class="dv">958</span>  <span class="dv">960</span>  <span class="dv">962</span>  <span class="dv">964</span></span>
-<span id="cb40-44"><a href="#cb40-44" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">331</span>]  <span class="dv">968</span>  <span class="dv">971</span>  <span class="dv">974</span>  <span class="dv">978</span>  <span class="dv">981</span>  <span class="dv">990</span>  <span class="dv">997</span>  <span class="dv">999</span> <span class="dv">1001</span> <span class="dv">1005</span> <span class="dv">1025</span> <span class="dv">1028</span> <span class="dv">1035</span> <span class="dv">1043</span> <span class="dv">1049</span></span>
-<span id="cb40-45"><a href="#cb40-45" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">346</span>] <span class="dv">1061</span> <span class="dv">1067</span> <span class="dv">1086</span> <span class="dv">1088</span> <span class="dv">1090</span> <span class="dv">1092</span> <span class="dv">1094</span> <span class="dv">1096</span> <span class="dv">1098</span> <span class="dv">1100</span> <span class="dv">1102</span> <span class="dv">1104</span> <span class="dv">1106</span> <span class="dv">1108</span> <span class="dv">1110</span></span>
-<span id="cb40-46"><a href="#cb40-46" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">361</span>] <span class="dv">1112</span> <span class="dv">1114</span> <span class="dv">1116</span> <span class="dv">1118</span> <span class="dv">1120</span> <span class="dv">1122</span> <span class="dv">1124</span> <span class="dv">1126</span> <span class="dv">1128</span> <span class="dv">1130</span> <span class="dv">1132</span> <span class="dv">1134</span> <span class="dv">1136</span> <span class="dv">1138</span> <span class="dv">1141</span></span>
-<span id="cb40-47"><a href="#cb40-47" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">376</span>] <span class="dv">1143</span> <span class="dv">1145</span> <span class="dv">1147</span> <span class="dv">1149</span> <span class="dv">1151</span> <span class="dv">1153</span> <span class="dv">1155</span> <span class="dv">1157</span> <span class="dv">1159</span> <span class="dv">1161</span> <span class="dv">1163</span> <span class="dv">1165</span> <span class="dv">1167</span> <span class="dv">1169</span> <span class="dv">1171</span></span>
-<span id="cb40-48"><a href="#cb40-48" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">391</span>] <span class="dv">1173</span> <span class="dv">1175</span> <span class="dv">1177</span> <span class="dv">1179</span> <span class="dv">1181</span> <span class="dv">1183</span> <span class="dv">1185</span> <span class="dv">1187</span> <span class="dv">1189</span> <span class="dv">1191</span> <span class="dv">1193</span> <span class="dv">1195</span> <span class="dv">1197</span> <span class="dv">1199</span> <span class="dv">1201</span></span>
-<span id="cb40-49"><a href="#cb40-49" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">406</span>] <span class="dv">1203</span> <span class="dv">1205</span> <span class="dv">1207</span> <span class="dv">1209</span> <span class="dv">1211</span> <span class="dv">1213</span> <span class="dv">1215</span> <span class="dv">1217</span> <span class="dv">1219</span> <span class="dv">1221</span> <span class="dv">1223</span> <span class="dv">1225</span> <span class="dv">1227</span> <span class="dv">1230</span> <span class="dv">1232</span></span>
-<span id="cb40-50"><a href="#cb40-50" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">421</span>] <span class="dv">1234</span> <span class="dv">1237</span> <span class="dv">1239</span> <span class="dv">1242</span> <span class="dv">1244</span> <span class="dv">1252</span> <span class="dv">1255</span> <span class="dv">1257</span> <span class="dv">1259</span> <span class="dv">1262</span> <span class="dv">1264</span> <span class="dv">1266</span> <span class="dv">1270</span> <span class="dv">1272</span> <span class="dv">1274</span></span>
-<span id="cb40-51"><a href="#cb40-51" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">436</span>] <span class="dv">1276</span> <span class="dv">1278</span> <span class="dv">1280</span> <span class="dv">1282</span> <span class="dv">1284</span> <span class="dv">1288</span> <span class="dv">1291</span> <span class="dv">1293</span> <span class="dv">1296</span> <span class="dv">1298</span> <span class="dv">1300</span> <span class="dv">1303</span> <span class="dv">1305</span> <span class="dv">1307</span> <span class="dv">1309</span></span>
-<span id="cb40-52"><a href="#cb40-52" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">451</span>] <span class="dv">1312</span> <span class="dv">1314</span> <span class="dv">1316</span> <span class="dv">1319</span> <span class="dv">1322</span> <span class="dv">1324</span> <span class="dv">1326</span> <span class="dv">1328</span> <span class="dv">1330</span> <span class="dv">1334</span> <span class="dv">1336</span> <span class="dv">1338</span> <span class="dv">1340</span> <span class="dv">1343</span> <span class="dv">1346</span></span>
-<span id="cb40-53"><a href="#cb40-53" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">466</span>] <span class="dv">1354</span> <span class="dv">1356</span> <span class="dv">1358</span> <span class="dv">1360</span> <span class="dv">1363</span> <span class="dv">1365</span> <span class="dv">1367</span> <span class="dv">1369</span> <span class="dv">1371</span> <span class="dv">1374</span> <span class="dv">1381</span> <span class="dv">1387</span> <span class="dv">1391</span> <span class="dv">1395</span> <span class="dv">1397</span></span>
-<span id="cb40-54"><a href="#cb40-54" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">481</span>] <span class="dv">1399</span> <span class="dv">1401</span> <span class="dv">1403</span> <span class="dv">1405</span> <span class="dv">1409</span> <span class="dv">1415</span> <span class="dv">1418</span> <span class="dv">1420</span> <span class="dv">1422</span> <span class="dv">1424</span> <span class="dv">1429</span> <span class="dv">1431</span> <span class="dv">1433</span> <span class="dv">1435</span> <span class="dv">1437</span></span>
-<span id="cb40-55"><a href="#cb40-55" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">496</span>] <span class="dv">1439</span> <span class="dv">1441</span> <span class="dv">1443</span> <span class="dv">1445</span> <span class="dv">1447</span> <span class="dv">1449</span> <span class="dv">1451</span> <span class="dv">1453</span> <span class="dv">1455</span> <span class="dv">1457</span> <span class="dv">1459</span> <span class="dv">1461</span> <span class="dv">1463</span> <span class="dv">1465</span> <span class="dv">1467</span></span>
-<span id="cb40-56"><a href="#cb40-56" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">511</span>] <span class="dv">1469</span> <span class="dv">1471</span> <span class="dv">1473</span> <span class="dv">1475</span> <span class="dv">1477</span> <span class="dv">1479</span> <span class="dv">1481</span> <span class="dv">1483</span> <span class="dv">1485</span> <span class="dv">1487</span> <span class="dv">1489</span> <span class="dv">1491</span> <span class="dv">1494</span> <span class="dv">1496</span> <span class="dv">1503</span></span>
-<span id="cb40-57"><a href="#cb40-57" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">526</span>] <span class="dv">1505</span> <span class="dv">1507</span> <span class="dv">1509</span> <span class="dv">1511</span> <span class="dv">1513</span> <span class="dv">1515</span> <span class="dv">1519</span> <span class="dv">1521</span> <span class="dv">1523</span> <span class="dv">1525</span> <span class="dv">1528</span> <span class="dv">1530</span> <span class="dv">1532</span> <span class="dv">1534</span> <span class="dv">1536</span></span>
-<span id="cb40-58"><a href="#cb40-58" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">541</span>] <span class="dv">1538</span> <span class="dv">1540</span> <span class="dv">1542</span> <span class="dv">1544</span> <span class="dv">1546</span> <span class="dv">1548</span> <span class="dv">1550</span> <span class="dv">1552</span> <span class="dv">1554</span> <span class="dv">1556</span> <span class="dv">1558</span> <span class="dv">1561</span> <span class="dv">1563</span> <span class="dv">1565</span> <span class="dv">1567</span></span>
-<span id="cb40-59"><a href="#cb40-59" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">556</span>] <span class="dv">1569</span> <span class="dv">1571</span> <span class="dv">1573</span> <span class="dv">1575</span> <span class="dv">1577</span></span>
-<span id="cb40-60"><a href="#cb40-60" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb40-61"><a href="#cb40-61" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>samples</span>
-<span id="cb40-62"><a href="#cb40-62" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"lv-H3K4me3-BN-female-bio1-tech1"</span> <span class="st">"lv-H3K4me3-BN-male-bio2-tech1"</span>  </span>
-<span id="cb40-63"><a href="#cb40-63" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">3</span>] <span class="st">"lv-H3K4me3-SHR-male-bio2-tech1"</span>  <span class="st">"lv-H3K4me3-SHR-male-bio3-tech1"</span></span></code></pre></div>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" tabindex="-1"></a>nullDispersion <span class="ot">&lt;-</span></span>
+<span id="cb43-2"><a href="#cb43-2" tabindex="-1"></a>  <span class="fu">estimateNullDispersion</span>(<span class="fu">loadExampleData</span>(<span class="st">"counts"</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb43-3"><a href="#cb43-3" tabindex="-1"></a>                           <span class="fu">normalizeCounts</span>(<span class="at">method =</span> <span class="st">"background"</span>,</span>
+<span id="cb43-4"><a href="#cb43-4" tabindex="-1"></a>                                           <span class="at">verbose =</span> <span class="cn">FALSE</span>),</span>
+<span id="cb43-5"><a href="#cb43-5" tabindex="-1"></a>                         <span class="at">source =</span> <span class="st">"background"</span>,</span>
+<span id="cb43-6"><a href="#cb43-6" tabindex="-1"></a>                         <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb43-7"><a href="#cb43-7" tabindex="-1"></a></span>
+<span id="cb43-8"><a href="#cb43-8" tabindex="-1"></a>nullDispersion</span>
+<span id="cb43-9"><a href="#cb43-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="er">$</span>dispersion</span>
+<span id="cb43-10"><a href="#cb43-10" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.06820971</span></span>
+<span id="cb43-11"><a href="#cb43-11" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb43-12"><a href="#cb43-12" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>bcv</span>
+<span id="cb43-13"><a href="#cb43-13" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.2611699</span></span>
+<span id="cb43-14"><a href="#cb43-14" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb43-15"><a href="#cb43-15" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>source</span>
+<span id="cb43-16"><a href="#cb43-16" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"background"</span></span>
+<span id="cb43-17"><a href="#cb43-17" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb43-18"><a href="#cb43-18" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>n.rows</span>
+<span id="cb43-19"><a href="#cb43-19" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">560</span></span>
+<span id="cb43-20"><a href="#cb43-20" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb43-21"><a href="#cb43-21" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>holdout.index</span>
+<span id="cb43-22"><a href="#cb43-22" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">1</span>]   <span class="dv">11</span>   <span class="dv">27</span>   <span class="dv">31</span>   <span class="dv">37</span>   <span class="dv">46</span>   <span class="dv">48</span>   <span class="dv">53</span>   <span class="dv">55</span>   <span class="dv">66</span>   <span class="dv">87</span>   <span class="dv">90</span>   <span class="dv">92</span>   <span class="dv">94</span>   <span class="dv">97</span>   <span class="dv">99</span></span>
+<span id="cb43-23"><a href="#cb43-23" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">16</span>]  <span class="dv">104</span>  <span class="dv">106</span>  <span class="dv">108</span>  <span class="dv">111</span>  <span class="dv">113</span>  <span class="dv">115</span>  <span class="dv">117</span>  <span class="dv">119</span>  <span class="dv">121</span>  <span class="dv">123</span>  <span class="dv">125</span>  <span class="dv">127</span>  <span class="dv">131</span>  <span class="dv">133</span>  <span class="dv">135</span></span>
+<span id="cb43-24"><a href="#cb43-24" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">31</span>]  <span class="dv">137</span>  <span class="dv">139</span>  <span class="dv">141</span>  <span class="dv">143</span>  <span class="dv">145</span>  <span class="dv">163</span>  <span class="dv">165</span>  <span class="dv">167</span>  <span class="dv">169</span>  <span class="dv">171</span>  <span class="dv">173</span>  <span class="dv">175</span>  <span class="dv">177</span>  <span class="dv">180</span>  <span class="dv">183</span></span>
+<span id="cb43-25"><a href="#cb43-25" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">46</span>]  <span class="dv">185</span>  <span class="dv">187</span>  <span class="dv">190</span>  <span class="dv">195</span>  <span class="dv">198</span>  <span class="dv">200</span>  <span class="dv">203</span>  <span class="dv">207</span>  <span class="dv">209</span>  <span class="dv">211</span>  <span class="dv">213</span>  <span class="dv">215</span>  <span class="dv">217</span>  <span class="dv">219</span>  <span class="dv">222</span></span>
+<span id="cb43-26"><a href="#cb43-26" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">61</span>]  <span class="dv">224</span>  <span class="dv">226</span>  <span class="dv">228</span>  <span class="dv">230</span>  <span class="dv">233</span>  <span class="dv">235</span>  <span class="dv">237</span>  <span class="dv">239</span>  <span class="dv">241</span>  <span class="dv">243</span>  <span class="dv">245</span>  <span class="dv">247</span>  <span class="dv">249</span>  <span class="dv">251</span>  <span class="dv">253</span></span>
+<span id="cb43-27"><a href="#cb43-27" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">76</span>]  <span class="dv">255</span>  <span class="dv">258</span>  <span class="dv">261</span>  <span class="dv">263</span>  <span class="dv">265</span>  <span class="dv">267</span>  <span class="dv">269</span>  <span class="dv">271</span>  <span class="dv">273</span>  <span class="dv">275</span>  <span class="dv">277</span>  <span class="dv">279</span>  <span class="dv">281</span>  <span class="dv">283</span>  <span class="dv">285</span></span>
+<span id="cb43-28"><a href="#cb43-28" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">91</span>]  <span class="dv">287</span>  <span class="dv">290</span>  <span class="dv">292</span>  <span class="dv">294</span>  <span class="dv">296</span>  <span class="dv">299</span>  <span class="dv">302</span>  <span class="dv">304</span>  <span class="dv">306</span>  <span class="dv">308</span>  <span class="dv">311</span>  <span class="dv">318</span>  <span class="dv">320</span>  <span class="dv">322</span>  <span class="dv">330</span></span>
+<span id="cb43-29"><a href="#cb43-29" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">106</span>]  <span class="dv">332</span>  <span class="dv">334</span>  <span class="dv">336</span>  <span class="dv">338</span>  <span class="dv">340</span>  <span class="dv">343</span>  <span class="dv">346</span>  <span class="dv">348</span>  <span class="dv">355</span>  <span class="dv">357</span>  <span class="dv">361</span>  <span class="dv">363</span>  <span class="dv">365</span>  <span class="dv">367</span>  <span class="dv">369</span></span>
+<span id="cb43-30"><a href="#cb43-30" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">121</span>]  <span class="dv">372</span>  <span class="dv">375</span>  <span class="dv">377</span>  <span class="dv">379</span>  <span class="dv">381</span>  <span class="dv">383</span>  <span class="dv">386</span>  <span class="dv">389</span>  <span class="dv">392</span>  <span class="dv">395</span>  <span class="dv">397</span>  <span class="dv">400</span>  <span class="dv">402</span>  <span class="dv">404</span>  <span class="dv">408</span></span>
+<span id="cb43-31"><a href="#cb43-31" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">136</span>]  <span class="dv">410</span>  <span class="dv">412</span>  <span class="dv">414</span>  <span class="dv">416</span>  <span class="dv">419</span>  <span class="dv">421</span>  <span class="dv">423</span>  <span class="dv">425</span>  <span class="dv">427</span>  <span class="dv">429</span>  <span class="dv">431</span>  <span class="dv">433</span>  <span class="dv">439</span>  <span class="dv">442</span>  <span class="dv">447</span></span>
+<span id="cb43-32"><a href="#cb43-32" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">151</span>]  <span class="dv">451</span>  <span class="dv">455</span>  <span class="dv">457</span>  <span class="dv">459</span>  <span class="dv">461</span>  <span class="dv">463</span>  <span class="dv">465</span>  <span class="dv">467</span>  <span class="dv">470</span>  <span class="dv">472</span>  <span class="dv">474</span>  <span class="dv">477</span>  <span class="dv">481</span>  <span class="dv">483</span>  <span class="dv">486</span></span>
+<span id="cb43-33"><a href="#cb43-33" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">166</span>]  <span class="dv">488</span>  <span class="dv">490</span>  <span class="dv">492</span>  <span class="dv">494</span>  <span class="dv">496</span>  <span class="dv">498</span>  <span class="dv">500</span>  <span class="dv">502</span>  <span class="dv">504</span>  <span class="dv">506</span>  <span class="dv">508</span>  <span class="dv">510</span>  <span class="dv">512</span>  <span class="dv">514</span>  <span class="dv">516</span></span>
+<span id="cb43-34"><a href="#cb43-34" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">181</span>]  <span class="dv">518</span>  <span class="dv">520</span>  <span class="dv">522</span>  <span class="dv">524</span>  <span class="dv">526</span>  <span class="dv">528</span>  <span class="dv">530</span>  <span class="dv">532</span>  <span class="dv">535</span>  <span class="dv">537</span>  <span class="dv">540</span>  <span class="dv">542</span>  <span class="dv">544</span>  <span class="dv">546</span>  <span class="dv">548</span></span>
+<span id="cb43-35"><a href="#cb43-35" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">196</span>]  <span class="dv">550</span>  <span class="dv">553</span>  <span class="dv">555</span>  <span class="dv">557</span>  <span class="dv">559</span>  <span class="dv">561</span>  <span class="dv">565</span>  <span class="dv">567</span>  <span class="dv">569</span>  <span class="dv">571</span>  <span class="dv">580</span>  <span class="dv">583</span>  <span class="dv">592</span>  <span class="dv">601</span>  <span class="dv">604</span></span>
+<span id="cb43-36"><a href="#cb43-36" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">211</span>]  <span class="dv">606</span>  <span class="dv">609</span>  <span class="dv">615</span>  <span class="dv">617</span>  <span class="dv">620</span>  <span class="dv">662</span>  <span class="dv">664</span>  <span class="dv">666</span>  <span class="dv">668</span>  <span class="dv">670</span>  <span class="dv">685</span>  <span class="dv">687</span>  <span class="dv">689</span>  <span class="dv">691</span>  <span class="dv">693</span></span>
+<span id="cb43-37"><a href="#cb43-37" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">226</span>]  <span class="dv">696</span>  <span class="dv">699</span>  <span class="dv">702</span>  <span class="dv">704</span>  <span class="dv">706</span>  <span class="dv">708</span>  <span class="dv">710</span>  <span class="dv">712</span>  <span class="dv">714</span>  <span class="dv">716</span>  <span class="dv">718</span>  <span class="dv">720</span>  <span class="dv">722</span>  <span class="dv">724</span>  <span class="dv">726</span></span>
+<span id="cb43-38"><a href="#cb43-38" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">241</span>]  <span class="dv">728</span>  <span class="dv">730</span>  <span class="dv">733</span>  <span class="dv">735</span>  <span class="dv">737</span>  <span class="dv">739</span>  <span class="dv">741</span>  <span class="dv">743</span>  <span class="dv">745</span>  <span class="dv">747</span>  <span class="dv">750</span>  <span class="dv">754</span>  <span class="dv">756</span>  <span class="dv">758</span>  <span class="dv">760</span></span>
+<span id="cb43-39"><a href="#cb43-39" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">256</span>]  <span class="dv">762</span>  <span class="dv">764</span>  <span class="dv">766</span>  <span class="dv">768</span>  <span class="dv">770</span>  <span class="dv">772</span>  <span class="dv">774</span>  <span class="dv">777</span>  <span class="dv">779</span>  <span class="dv">781</span>  <span class="dv">789</span>  <span class="dv">791</span>  <span class="dv">793</span>  <span class="dv">797</span>  <span class="dv">804</span></span>
+<span id="cb43-40"><a href="#cb43-40" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">271</span>]  <span class="dv">807</span>  <span class="dv">811</span>  <span class="dv">813</span>  <span class="dv">816</span>  <span class="dv">818</span>  <span class="dv">821</span>  <span class="dv">825</span>  <span class="dv">827</span>  <span class="dv">829</span>  <span class="dv">831</span>  <span class="dv">832</span>  <span class="dv">834</span>  <span class="dv">840</span>  <span class="dv">842</span>  <span class="dv">844</span></span>
+<span id="cb43-41"><a href="#cb43-41" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">286</span>]  <span class="dv">846</span>  <span class="dv">848</span>  <span class="dv">850</span>  <span class="dv">852</span>  <span class="dv">854</span>  <span class="dv">856</span>  <span class="dv">858</span>  <span class="dv">862</span>  <span class="dv">864</span>  <span class="dv">866</span>  <span class="dv">868</span>  <span class="dv">871</span>  <span class="dv">874</span>  <span class="dv">877</span>  <span class="dv">885</span></span>
+<span id="cb43-42"><a href="#cb43-42" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">301</span>]  <span class="dv">894</span>  <span class="dv">899</span>  <span class="dv">903</span>  <span class="dv">905</span>  <span class="dv">907</span>  <span class="dv">909</span>  <span class="dv">911</span>  <span class="dv">913</span>  <span class="dv">915</span>  <span class="dv">917</span>  <span class="dv">919</span>  <span class="dv">921</span>  <span class="dv">923</span>  <span class="dv">925</span>  <span class="dv">928</span></span>
+<span id="cb43-43"><a href="#cb43-43" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">316</span>]  <span class="dv">930</span>  <span class="dv">934</span>  <span class="dv">936</span>  <span class="dv">938</span>  <span class="dv">940</span>  <span class="dv">942</span>  <span class="dv">946</span>  <span class="dv">950</span>  <span class="dv">952</span>  <span class="dv">954</span>  <span class="dv">956</span>  <span class="dv">958</span>  <span class="dv">960</span>  <span class="dv">962</span>  <span class="dv">964</span></span>
+<span id="cb43-44"><a href="#cb43-44" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">331</span>]  <span class="dv">968</span>  <span class="dv">971</span>  <span class="dv">974</span>  <span class="dv">978</span>  <span class="dv">981</span>  <span class="dv">990</span>  <span class="dv">997</span>  <span class="dv">999</span> <span class="dv">1001</span> <span class="dv">1005</span> <span class="dv">1025</span> <span class="dv">1028</span> <span class="dv">1035</span> <span class="dv">1043</span> <span class="dv">1049</span></span>
+<span id="cb43-45"><a href="#cb43-45" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">346</span>] <span class="dv">1061</span> <span class="dv">1067</span> <span class="dv">1086</span> <span class="dv">1088</span> <span class="dv">1090</span> <span class="dv">1092</span> <span class="dv">1094</span> <span class="dv">1096</span> <span class="dv">1098</span> <span class="dv">1100</span> <span class="dv">1102</span> <span class="dv">1104</span> <span class="dv">1106</span> <span class="dv">1108</span> <span class="dv">1110</span></span>
+<span id="cb43-46"><a href="#cb43-46" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">361</span>] <span class="dv">1112</span> <span class="dv">1114</span> <span class="dv">1116</span> <span class="dv">1118</span> <span class="dv">1120</span> <span class="dv">1122</span> <span class="dv">1124</span> <span class="dv">1126</span> <span class="dv">1128</span> <span class="dv">1130</span> <span class="dv">1132</span> <span class="dv">1134</span> <span class="dv">1136</span> <span class="dv">1138</span> <span class="dv">1141</span></span>
+<span id="cb43-47"><a href="#cb43-47" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">376</span>] <span class="dv">1143</span> <span class="dv">1145</span> <span class="dv">1147</span> <span class="dv">1149</span> <span class="dv">1151</span> <span class="dv">1153</span> <span class="dv">1155</span> <span class="dv">1157</span> <span class="dv">1159</span> <span class="dv">1161</span> <span class="dv">1163</span> <span class="dv">1165</span> <span class="dv">1167</span> <span class="dv">1169</span> <span class="dv">1171</span></span>
+<span id="cb43-48"><a href="#cb43-48" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">391</span>] <span class="dv">1173</span> <span class="dv">1175</span> <span class="dv">1177</span> <span class="dv">1179</span> <span class="dv">1181</span> <span class="dv">1183</span> <span class="dv">1185</span> <span class="dv">1187</span> <span class="dv">1189</span> <span class="dv">1191</span> <span class="dv">1193</span> <span class="dv">1195</span> <span class="dv">1197</span> <span class="dv">1199</span> <span class="dv">1201</span></span>
+<span id="cb43-49"><a href="#cb43-49" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">406</span>] <span class="dv">1203</span> <span class="dv">1205</span> <span class="dv">1207</span> <span class="dv">1209</span> <span class="dv">1211</span> <span class="dv">1213</span> <span class="dv">1215</span> <span class="dv">1217</span> <span class="dv">1219</span> <span class="dv">1221</span> <span class="dv">1223</span> <span class="dv">1225</span> <span class="dv">1227</span> <span class="dv">1230</span> <span class="dv">1232</span></span>
+<span id="cb43-50"><a href="#cb43-50" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">421</span>] <span class="dv">1234</span> <span class="dv">1237</span> <span class="dv">1239</span> <span class="dv">1242</span> <span class="dv">1244</span> <span class="dv">1252</span> <span class="dv">1255</span> <span class="dv">1257</span> <span class="dv">1259</span> <span class="dv">1262</span> <span class="dv">1264</span> <span class="dv">1266</span> <span class="dv">1270</span> <span class="dv">1272</span> <span class="dv">1274</span></span>
+<span id="cb43-51"><a href="#cb43-51" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">436</span>] <span class="dv">1276</span> <span class="dv">1278</span> <span class="dv">1280</span> <span class="dv">1282</span> <span class="dv">1284</span> <span class="dv">1288</span> <span class="dv">1291</span> <span class="dv">1293</span> <span class="dv">1296</span> <span class="dv">1298</span> <span class="dv">1300</span> <span class="dv">1303</span> <span class="dv">1305</span> <span class="dv">1307</span> <span class="dv">1309</span></span>
+<span id="cb43-52"><a href="#cb43-52" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">451</span>] <span class="dv">1312</span> <span class="dv">1314</span> <span class="dv">1316</span> <span class="dv">1319</span> <span class="dv">1322</span> <span class="dv">1324</span> <span class="dv">1326</span> <span class="dv">1328</span> <span class="dv">1330</span> <span class="dv">1334</span> <span class="dv">1336</span> <span class="dv">1338</span> <span class="dv">1340</span> <span class="dv">1343</span> <span class="dv">1346</span></span>
+<span id="cb43-53"><a href="#cb43-53" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">466</span>] <span class="dv">1354</span> <span class="dv">1356</span> <span class="dv">1358</span> <span class="dv">1360</span> <span class="dv">1363</span> <span class="dv">1365</span> <span class="dv">1367</span> <span class="dv">1369</span> <span class="dv">1371</span> <span class="dv">1374</span> <span class="dv">1381</span> <span class="dv">1387</span> <span class="dv">1391</span> <span class="dv">1395</span> <span class="dv">1397</span></span>
+<span id="cb43-54"><a href="#cb43-54" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">481</span>] <span class="dv">1399</span> <span class="dv">1401</span> <span class="dv">1403</span> <span class="dv">1405</span> <span class="dv">1409</span> <span class="dv">1415</span> <span class="dv">1418</span> <span class="dv">1420</span> <span class="dv">1422</span> <span class="dv">1424</span> <span class="dv">1429</span> <span class="dv">1431</span> <span class="dv">1433</span> <span class="dv">1435</span> <span class="dv">1437</span></span>
+<span id="cb43-55"><a href="#cb43-55" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">496</span>] <span class="dv">1439</span> <span class="dv">1441</span> <span class="dv">1443</span> <span class="dv">1445</span> <span class="dv">1447</span> <span class="dv">1449</span> <span class="dv">1451</span> <span class="dv">1453</span> <span class="dv">1455</span> <span class="dv">1457</span> <span class="dv">1459</span> <span class="dv">1461</span> <span class="dv">1463</span> <span class="dv">1465</span> <span class="dv">1467</span></span>
+<span id="cb43-56"><a href="#cb43-56" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">511</span>] <span class="dv">1469</span> <span class="dv">1471</span> <span class="dv">1473</span> <span class="dv">1475</span> <span class="dv">1477</span> <span class="dv">1479</span> <span class="dv">1481</span> <span class="dv">1483</span> <span class="dv">1485</span> <span class="dv">1487</span> <span class="dv">1489</span> <span class="dv">1491</span> <span class="dv">1494</span> <span class="dv">1496</span> <span class="dv">1503</span></span>
+<span id="cb43-57"><a href="#cb43-57" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">526</span>] <span class="dv">1505</span> <span class="dv">1507</span> <span class="dv">1509</span> <span class="dv">1511</span> <span class="dv">1513</span> <span class="dv">1515</span> <span class="dv">1519</span> <span class="dv">1521</span> <span class="dv">1523</span> <span class="dv">1525</span> <span class="dv">1528</span> <span class="dv">1530</span> <span class="dv">1532</span> <span class="dv">1534</span> <span class="dv">1536</span></span>
+<span id="cb43-58"><a href="#cb43-58" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">541</span>] <span class="dv">1538</span> <span class="dv">1540</span> <span class="dv">1542</span> <span class="dv">1544</span> <span class="dv">1546</span> <span class="dv">1548</span> <span class="dv">1550</span> <span class="dv">1552</span> <span class="dv">1554</span> <span class="dv">1556</span> <span class="dv">1558</span> <span class="dv">1561</span> <span class="dv">1563</span> <span class="dv">1565</span> <span class="dv">1567</span></span>
+<span id="cb43-59"><a href="#cb43-59" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">556</span>] <span class="dv">1569</span> <span class="dv">1571</span> <span class="dv">1573</span> <span class="dv">1575</span> <span class="dv">1577</span></span>
+<span id="cb43-60"><a href="#cb43-60" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb43-61"><a href="#cb43-61" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>holdout.type</span>
+<span id="cb43-62"><a href="#cb43-62" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"dispersion"</span></span>
+<span id="cb43-63"><a href="#cb43-63" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb43-64"><a href="#cb43-64" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>samples</span>
+<span id="cb43-65"><a href="#cb43-65" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"lv-H3K4me3-BN-female-bio1-tech1"</span> <span class="st">"lv-H3K4me3-BN-male-bio2-tech1"</span>  </span>
+<span id="cb43-66"><a href="#cb43-66" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">3</span>] <span class="st">"lv-H3K4me3-SHR-male-bio2-tech1"</span>  <span class="st">"lv-H3K4me3-SHR-male-bio3-tech1"</span></span></code></pre></div>
 <p><code><a href="../reference/checkNullCalibration.html">checkNullCalibration()</a></code> goes further and runs the actual
 contrast on those null rows. Under a correctly calibrated test the
 p-values should be uniform.</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">calibration</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/checkNullCalibration.html">checkNullCalibration</a></span><span class="op">(</span>fit <span class="op">=</span> <span class="va">fit</span>,</span>
 <span>                                    contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span>
 <span>                                    source <span class="op">=</span> <span class="st">"background"</span>,</span>
@@ -1311,12 +1407,12 @@ the opposite, and the analysis is losing power it could have.</p>
 rows, even though it sounds like the natural choice.
 <code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code> will refuse rather than return a
 dispersion estimated from rows with almost no counts:</p>
-<div class="sourceCode" id="cb42"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" tabindex="-1"></a><span class="fu">estimateNullDispersion</span>(<span class="at">counts =</span> counts,</span>
-<span id="cb42-2"><a href="#cb42-2" tabindex="-1"></a>                       <span class="at">source =</span> <span class="st">"regionSet"</span>,</span>
-<span id="cb42-3"><a href="#cb42-3" tabindex="-1"></a>                       <span class="at">regionSets =</span> <span class="st">"intergenic"</span>,</span>
-<span id="cb42-4"><a href="#cb42-4" tabindex="-1"></a>                       <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb42-5"><a href="#cb42-5" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">1</span>m [<span class="dv">33</span>mError [<span class="dv">39</span>m<span class="sc">:</span> [<span class="dv">22</span>m</span>
-<span id="cb42-6"><a href="#cb42-6" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">33</span>m<span class="sc">!</span> [<span class="dv">39</span>m Only <span class="dv">89</span> null rows reach <span class="dv">10</span> counts, which is too few to estimate a dispersion from.</span></code></pre></div>
+<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" tabindex="-1"></a><span class="fu">estimateNullDispersion</span>(<span class="at">counts =</span> counts,</span>
+<span id="cb45-2"><a href="#cb45-2" tabindex="-1"></a>                       <span class="at">source =</span> <span class="st">"regionSet"</span>,</span>
+<span id="cb45-3"><a href="#cb45-3" tabindex="-1"></a>                       <span class="at">regionSets =</span> <span class="st">"intergenic"</span>,</span>
+<span id="cb45-4"><a href="#cb45-4" tabindex="-1"></a>                       <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb45-5"><a href="#cb45-5" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">1</span>m [<span class="dv">33</span>mError [<span class="dv">39</span>m<span class="sc">:</span> [<span class="dv">22</span>m</span>
+<span id="cb45-6"><a href="#cb45-6" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">33</span>m<span class="sc">!</span> [<span class="dv">39</span>m Only <span class="dv">89</span> null rows reach <span class="dv">10</span> counts, which is too few to estimate a dispersion from.</span></code></pre></div>
 <p><br></p>
 <hr>
 </div>
@@ -1353,71 +1449,71 @@ makes it convenient for showing the method: the same contrast runs both
 ways and the answers can be compared. Both strains have a
 <code>bio2</code> library and both are male, so the subset is a clean
 one-versus-one with the sex difference removed as well.</p>
-<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">loadExampleData</span>(<span class="st">"counts"</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb43-2"><a href="#cb43-2" tabindex="-1"></a></span>
-<span id="cb43-3"><a href="#cb43-3" tabindex="-1"></a>singleCounts <span class="ot">&lt;-</span> <span class="fu">selectSamples</span>(<span class="at">counts =</span> counts,</span>
-<span id="cb43-4"><a href="#cb43-4" tabindex="-1"></a>                              biologicalReplicate <span class="sc">==</span> <span class="st">"bio2"</span>,</span>
-<span id="cb43-5"><a href="#cb43-5" tabindex="-1"></a>                              <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb43-6"><a href="#cb43-6" tabindex="-1"></a></span>
-<span id="cb43-7"><a href="#cb43-7" tabindex="-1"></a>SummarizedExperiment<span class="sc">::</span><span class="fu">colData</span>(singleCounts)</span>
-<span id="cb43-8"><a href="#cb43-8" tabindex="-1"></a><span class="sc">&gt;</span> DataFrame with <span class="dv">2</span> rows and <span class="dv">7</span> columns</span>
-<span id="cb43-9"><a href="#cb43-9" tabindex="-1"></a><span class="sc">&gt;</span>                                                sample               bam.file</span>
-<span id="cb43-10"><a href="#cb43-10" tabindex="-1"></a><span class="sc">&gt;</span>                                           <span class="er">&lt;</span>character<span class="sc">&gt;</span>            <span class="er">&lt;</span>character<span class="sc">&gt;</span></span>
-<span id="cb43-11"><a href="#cb43-11" tabindex="-1"></a><span class="er">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1  lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>b.. <span class="sc">/</span>home<span class="sc">/</span>s.gregoricchio..</span>
-<span id="cb43-12"><a href="#cb43-12" tabindex="-1"></a><span class="sc">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1 lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>.. <span class="sc">/</span>home<span class="sc">/</span>s.gregoricchio..</span>
-<span id="cb43-13"><a href="#cb43-13" tabindex="-1"></a><span class="sc">&gt;</span>                                condition         sex biologicalReplicate</span>
-<span id="cb43-14"><a href="#cb43-14" tabindex="-1"></a><span class="sc">&gt;</span>                                 <span class="er">&lt;</span>factor<span class="sc">&gt;</span> <span class="er">&lt;</span>character<span class="sc">&gt;</span>         <span class="er">&lt;</span>character<span class="sc">&gt;</span></span>
-<span id="cb43-15"><a href="#cb43-15" tabindex="-1"></a><span class="er">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1        BN         male                bio2</span>
-<span id="cb43-16"><a href="#cb43-16" tabindex="-1"></a><span class="sc">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1       SHR        male                bio2</span>
-<span id="cb43-17"><a href="#cb43-17" tabindex="-1"></a><span class="sc">&gt;</span>                                paired.end library.size</span>
-<span id="cb43-18"><a href="#cb43-18" tabindex="-1"></a><span class="sc">&gt;</span>                                 <span class="er">&lt;</span>logical<span class="sc">&gt;</span>    <span class="er">&lt;</span>numeric<span class="sc">&gt;</span></span>
-<span id="cb43-19"><a href="#cb43-19" tabindex="-1"></a><span class="er">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1       <span class="cn">FALSE</span>       <span class="dv">400384</span></span>
-<span id="cb43-20"><a href="#cb43-20" tabindex="-1"></a><span class="sc">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1      <span class="cn">FALSE</span>       <span class="dv">337600</span></span></code></pre></div>
+<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">loadExampleData</span>(<span class="st">"counts"</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb46-2"><a href="#cb46-2" tabindex="-1"></a></span>
+<span id="cb46-3"><a href="#cb46-3" tabindex="-1"></a>singleCounts <span class="ot">&lt;-</span> <span class="fu">selectSamples</span>(<span class="at">counts =</span> counts,</span>
+<span id="cb46-4"><a href="#cb46-4" tabindex="-1"></a>                              biologicalReplicate <span class="sc">==</span> <span class="st">"bio2"</span>,</span>
+<span id="cb46-5"><a href="#cb46-5" tabindex="-1"></a>                              <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb46-6"><a href="#cb46-6" tabindex="-1"></a></span>
+<span id="cb46-7"><a href="#cb46-7" tabindex="-1"></a>SummarizedExperiment<span class="sc">::</span><span class="fu">colData</span>(singleCounts)</span>
+<span id="cb46-8"><a href="#cb46-8" tabindex="-1"></a><span class="sc">&gt;</span> DataFrame with <span class="dv">2</span> rows and <span class="dv">7</span> columns</span>
+<span id="cb46-9"><a href="#cb46-9" tabindex="-1"></a><span class="sc">&gt;</span>                                                sample               bam.file</span>
+<span id="cb46-10"><a href="#cb46-10" tabindex="-1"></a><span class="sc">&gt;</span>                                           <span class="er">&lt;</span>character<span class="sc">&gt;</span>            <span class="er">&lt;</span>character<span class="sc">&gt;</span></span>
+<span id="cb46-11"><a href="#cb46-11" tabindex="-1"></a><span class="er">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1  lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>b.. <span class="sc">/</span>home<span class="sc">/</span>s.gregoricchio..</span>
+<span id="cb46-12"><a href="#cb46-12" tabindex="-1"></a><span class="sc">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1 lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>.. <span class="sc">/</span>home<span class="sc">/</span>s.gregoricchio..</span>
+<span id="cb46-13"><a href="#cb46-13" tabindex="-1"></a><span class="sc">&gt;</span>                                condition         sex biologicalReplicate</span>
+<span id="cb46-14"><a href="#cb46-14" tabindex="-1"></a><span class="sc">&gt;</span>                                 <span class="er">&lt;</span>factor<span class="sc">&gt;</span> <span class="er">&lt;</span>character<span class="sc">&gt;</span>         <span class="er">&lt;</span>character<span class="sc">&gt;</span></span>
+<span id="cb46-15"><a href="#cb46-15" tabindex="-1"></a><span class="er">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1        BN         male                bio2</span>
+<span id="cb46-16"><a href="#cb46-16" tabindex="-1"></a><span class="sc">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1       SHR        male                bio2</span>
+<span id="cb46-17"><a href="#cb46-17" tabindex="-1"></a><span class="sc">&gt;</span>                                paired.end library.size</span>
+<span id="cb46-18"><a href="#cb46-18" tabindex="-1"></a><span class="sc">&gt;</span>                                 <span class="er">&lt;</span>logical<span class="sc">&gt;</span>    <span class="er">&lt;</span>numeric<span class="sc">&gt;</span></span>
+<span id="cb46-19"><a href="#cb46-19" tabindex="-1"></a><span class="er">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1       <span class="cn">FALSE</span>       <span class="dv">400384</span></span>
+<span id="cb46-20"><a href="#cb46-20" tabindex="-1"></a><span class="sc">&gt;</span> lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1      <span class="cn">FALSE</span>       <span class="dv">337600</span></span></code></pre></div>
 <p><code><a href="../reference/selectSamples.html">selectSamples()</a></code> drops the normalisation when it subsets,
 since scaling factors estimated on four libraries do not describe two,
 so the object is renormalised and refiltered from scratch.</p>
-<div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" tabindex="-1"></a>singleCounts <span class="ot">&lt;-</span> <span class="fu">normalizeCounts</span>(singleCounts,</span>
-<span id="cb44-2"><a href="#cb44-2" tabindex="-1"></a>                                <span class="at">method =</span> <span class="st">"background"</span>,</span>
-<span id="cb44-3"><a href="#cb44-3" tabindex="-1"></a>                                <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb44-4"><a href="#cb44-4" tabindex="-1"></a></span>
-<span id="cb44-5"><a href="#cb44-5" tabindex="-1"></a>singleCounts <span class="ot">&lt;-</span> <span class="fu">filterRegions</span>(singleCounts, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb44-6"><a href="#cb44-6" tabindex="-1"></a></span>
-<span id="cb44-7"><a href="#cb44-7" tabindex="-1"></a><span class="fu">nrow</span>(singleCounts)</span>
-<span id="cb44-8"><a href="#cb44-8" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">2598</span></span></code></pre></div>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" tabindex="-1"></a>singleCounts <span class="ot">&lt;-</span> <span class="fu">normalizeCounts</span>(singleCounts,</span>
+<span id="cb47-2"><a href="#cb47-2" tabindex="-1"></a>                                <span class="at">method =</span> <span class="st">"background"</span>,</span>
+<span id="cb47-3"><a href="#cb47-3" tabindex="-1"></a>                                <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb47-4"><a href="#cb47-4" tabindex="-1"></a></span>
+<span id="cb47-5"><a href="#cb47-5" tabindex="-1"></a>singleCounts <span class="ot">&lt;-</span> <span class="fu">filterRegions</span>(singleCounts, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb47-6"><a href="#cb47-6" tabindex="-1"></a></span>
+<span id="cb47-7"><a href="#cb47-7" tabindex="-1"></a><span class="fu">nrow</span>(singleCounts)</span>
+<span id="cb47-8"><a href="#cb47-8" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">2598</span></span></code></pre></div>
 <p><br></p>
 </div>
 <div class="section level3">
 <h3 id="fitting">Fitting<a class="anchor" aria-label="anchor" href="#fitting"></a>
 </h3>
 <p>Nothing about the call changes.</p>
-<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" tabindex="-1"></a>singleFit <span class="ot">&lt;-</span> <span class="fu">fitRegions</span>(singleCounts,</span>
-<span id="cb45-2"><a href="#cb45-2" tabindex="-1"></a>                        <span class="at">design =</span> <span class="sc">~</span> condition,</span>
-<span id="cb45-3"><a href="#cb45-3" tabindex="-1"></a>                        <span class="at">engine =</span> <span class="st">"edgeR"</span>,</span>
-<span id="cb45-4"><a href="#cb45-4" tabindex="-1"></a>                        <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb45-5"><a href="#cb45-5" tabindex="-1"></a></span>
-<span id="cb45-6"><a href="#cb45-6" tabindex="-1"></a>singleFit</span>
-<span id="cb45-7"><a href="#cb45-7" tabindex="-1"></a><span class="sc">&gt;</span> An object of class <span class="st">'RegionSetDE.fit'</span></span>
-<span id="cb45-8"><a href="#cb45-8" tabindex="-1"></a><span class="sc">&gt;</span>   engine          <span class="sc">:</span> edgeR </span>
-<span id="cb45-9"><a href="#cb45-9" tabindex="-1"></a><span class="sc">&gt;</span>   rows            <span class="sc">:</span> <span class="dv">2598</span> (region level) </span>
-<span id="cb45-10"><a href="#cb45-10" tabindex="-1"></a><span class="sc">&gt;</span>   samples         <span class="sc">:</span> <span class="dv">2</span> (lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1, lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1) </span>
-<span id="cb45-11"><a href="#cb45-11" tabindex="-1"></a><span class="sc">&gt;</span>   coefficients    <span class="sc">:</span> (Intercept), conditionSHR </span>
-<span id="cb45-12"><a href="#cb45-12" tabindex="-1"></a><span class="sc">&gt;</span>   set universe    <span class="sc">:</span> <span class="fu">otherSets</span> (matched on width and abundance) </span>
-<span id="cb45-13"><a href="#cb45-13" tabindex="-1"></a><span class="sc">&gt;</span>   common disp.    <span class="sc">:</span> <span class="fl">0.0374</span> (BCV <span class="fl">0.193</span>) fixed </span>
-<span id="cb45-14"><a href="#cb45-14" tabindex="-1"></a><span class="sc">&gt;</span>   replicates      <span class="sc">:</span> none, dispersion from background</span></code></pre></div>
+<div class="sourceCode" id="cb48"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" tabindex="-1"></a>singleFit <span class="ot">&lt;-</span> <span class="fu">fitRegions</span>(singleCounts,</span>
+<span id="cb48-2"><a href="#cb48-2" tabindex="-1"></a>                        <span class="at">design =</span> <span class="sc">~</span> condition,</span>
+<span id="cb48-3"><a href="#cb48-3" tabindex="-1"></a>                        <span class="at">engine =</span> <span class="st">"edgeR"</span>,</span>
+<span id="cb48-4"><a href="#cb48-4" tabindex="-1"></a>                        <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb48-5"><a href="#cb48-5" tabindex="-1"></a></span>
+<span id="cb48-6"><a href="#cb48-6" tabindex="-1"></a>singleFit</span>
+<span id="cb48-7"><a href="#cb48-7" tabindex="-1"></a><span class="sc">&gt;</span> An object of class <span class="st">'RegionSetDE.fit'</span></span>
+<span id="cb48-8"><a href="#cb48-8" tabindex="-1"></a><span class="sc">&gt;</span>   engine          <span class="sc">:</span> edgeR </span>
+<span id="cb48-9"><a href="#cb48-9" tabindex="-1"></a><span class="sc">&gt;</span>   rows            <span class="sc">:</span> <span class="dv">2598</span> (region level) </span>
+<span id="cb48-10"><a href="#cb48-10" tabindex="-1"></a><span class="sc">&gt;</span>   samples         <span class="sc">:</span> <span class="dv">2</span> (lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>BN<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1, lv<span class="sc">-</span>H3K4me3<span class="sc">-</span>SHR<span class="sc">-</span>male<span class="sc">-</span>bio2<span class="sc">-</span>tech1) </span>
+<span id="cb48-11"><a href="#cb48-11" tabindex="-1"></a><span class="sc">&gt;</span>   coefficients    <span class="sc">:</span> (Intercept), conditionSHR </span>
+<span id="cb48-12"><a href="#cb48-12" tabindex="-1"></a><span class="sc">&gt;</span>   set universe    <span class="sc">:</span> <span class="fu">otherSets</span> (matched on width and abundance) </span>
+<span id="cb48-13"><a href="#cb48-13" tabindex="-1"></a><span class="sc">&gt;</span>   common disp.    <span class="sc">:</span> <span class="fl">0.0374</span> (BCV <span class="fl">0.193</span>) fixed </span>
+<span id="cb48-14"><a href="#cb48-14" tabindex="-1"></a><span class="sc">&gt;</span>   replicates      <span class="sc">:</span> none, dispersion from background</span></code></pre></div>
 <p>What changed is inside, and the fit records it rather than leaving
 you to guess:</p>
-<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" tabindex="-1"></a>singleFit<span class="sc">@</span>dispersion[<span class="fu">c</span>(<span class="st">"common"</span>, <span class="st">"fixed"</span>, <span class="st">"no.replicates"</span>, <span class="st">"source"</span>)]</span>
-<span id="cb46-2"><a href="#cb46-2" tabindex="-1"></a><span class="sc">&gt;</span> <span class="er">$</span>common</span>
-<span id="cb46-3"><a href="#cb46-3" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.03737481</span></span>
-<span id="cb46-4"><a href="#cb46-4" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb46-5"><a href="#cb46-5" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>fixed</span>
-<span id="cb46-6"><a href="#cb46-6" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="cn">TRUE</span></span>
-<span id="cb46-7"><a href="#cb46-7" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb46-8"><a href="#cb46-8" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>no.replicates</span>
-<span id="cb46-9"><a href="#cb46-9" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="cn">TRUE</span></span>
-<span id="cb46-10"><a href="#cb46-10" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb46-11"><a href="#cb46-11" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>source</span>
-<span id="cb46-12"><a href="#cb46-12" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"background"</span></span></code></pre></div>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a>singleFit<span class="sc">@</span>dispersion[<span class="fu">c</span>(<span class="st">"common"</span>, <span class="st">"fixed"</span>, <span class="st">"no.replicates"</span>, <span class="st">"source"</span>)]</span>
+<span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a><span class="sc">&gt;</span> <span class="er">$</span>common</span>
+<span id="cb49-3"><a href="#cb49-3" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.03737481</span></span>
+<span id="cb49-4"><a href="#cb49-4" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb49-5"><a href="#cb49-5" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>fixed</span>
+<span id="cb49-6"><a href="#cb49-6" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="cn">TRUE</span></span>
+<span id="cb49-7"><a href="#cb49-7" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb49-8"><a href="#cb49-8" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>no.replicates</span>
+<span id="cb49-9"><a href="#cb49-9" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="cn">TRUE</span></span>
+<span id="cb49-10"><a href="#cb49-10" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb49-11"><a href="#cb49-11" tabindex="-1"></a><span class="er">&gt;</span> <span class="er">$</span>source</span>
+<span id="cb49-12"><a href="#cb49-12" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"background"</span></span></code></pre></div>
 <p><code>no.replicates</code> marks that the fallback was taken,
 <code>fixed</code> that the dispersion was held rather than fitted, and
 <code>source</code> where the null rows came from. All of it travels
@@ -1441,16 +1537,16 @@ design without replicates does not have.</p>
 settings. When you want a different null, or want to see the number
 before committing to it, <code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code> runs the
 same estimation on its own.</p>
-<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" tabindex="-1"></a>nullDispersion <span class="ot">&lt;-</span> <span class="fu">estimateNullDispersion</span>(singleCounts,</span>
-<span id="cb47-2"><a href="#cb47-2" tabindex="-1"></a>                                         <span class="at">source =</span> <span class="st">"background"</span>,</span>
-<span id="cb47-3"><a href="#cb47-3" tabindex="-1"></a>                                         <span class="at">holdout =</span> <span class="fl">0.5</span>,</span>
-<span id="cb47-4"><a href="#cb47-4" tabindex="-1"></a>                                         <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb47-5"><a href="#cb47-5" tabindex="-1"></a></span>
-<span id="cb47-6"><a href="#cb47-6" tabindex="-1"></a>nullDispersion<span class="sc">$</span>dispersion</span>
-<span id="cb47-7"><a href="#cb47-7" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.03737481</span></span>
-<span id="cb47-8"><a href="#cb47-8" tabindex="-1"></a></span>
-<span id="cb47-9"><a href="#cb47-9" tabindex="-1"></a>nullDispersion<span class="sc">$</span>bcv</span>
-<span id="cb47-10"><a href="#cb47-10" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.1933257</span></span></code></pre></div>
+<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a>nullDispersion <span class="ot">&lt;-</span> <span class="fu">estimateNullDispersion</span>(singleCounts,</span>
+<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a>                                         <span class="at">source =</span> <span class="st">"background"</span>,</span>
+<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a>                                         <span class="at">holdout =</span> <span class="fl">0.5</span>,</span>
+<span id="cb50-4"><a href="#cb50-4" tabindex="-1"></a>                                         <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb50-5"><a href="#cb50-5" tabindex="-1"></a></span>
+<span id="cb50-6"><a href="#cb50-6" tabindex="-1"></a>nullDispersion<span class="sc">$</span>dispersion</span>
+<span id="cb50-7"><a href="#cb50-7" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.03737481</span></span>
+<span id="cb50-8"><a href="#cb50-8" tabindex="-1"></a></span>
+<span id="cb50-9"><a href="#cb50-9" tabindex="-1"></a>nullDispersion<span class="sc">$</span>bcv</span>
+<span id="cb50-10"><a href="#cb50-10" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.1933257</span></span></code></pre></div>
 <p>The biological coefficient of variation is the number to read, since
 it sits on the scale of a fold change rather than of a squared one.
 Around 0.1 is what well-behaved technical replicates give, 0.2 to 0.4
@@ -1460,7 +1556,7 @@ little. The value here, close to 0.19, is unremarkable for two animals
 of different strains.</p>
 <p>The result is passed back in, which is also how you would supply a
 dispersion taken from a previous experiment or from the literature:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">singleFit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitRegions.html">fitRegions</a></span><span class="op">(</span><span class="va">singleCounts</span>,</span>
 <span>                        design <span class="op">=</span> <span class="op">~</span> <span class="va">condition</span>,</span>
 <span>                        dispersion <span class="op">=</span> <span class="va">nullDispersion</span><span class="op">)</span></span>
@@ -1486,7 +1582,7 @@ on rows the dispersion was never fitted to. Checking on the same rows
 that produced it would be circular and would report good calibration
 whatever the truth. The held-out positions travel in the fit, so nothing
 has to be recomputed:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">singleCalibration</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/checkNullCalibration.html">checkNullCalibration</a></span><span class="op">(</span><span class="va">singleFit</span>,</span>
 <span>                       contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span>
@@ -1510,35 +1606,40 @@ you trust more is the first thing to try.</p>
 </h3>
 <p>From here nothing differs from the replicated case. Both levels are
 available and the objects behave identically.</p>
-<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a>singleResults <span class="ot">&lt;-</span> <span class="fu">testRegions</span>(singleFit,</span>
-<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a>                             <span class="at">contrast =</span> <span class="fu">c</span>(<span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span>),</span>
-<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a>                             <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb50-4"><a href="#cb50-4" tabindex="-1"></a></span>
-<span id="cb50-5"><a href="#cb50-5" tabindex="-1"></a>singleSetResults <span class="ot">&lt;-</span> <span class="fu">testRegionSets</span>(singleFit,</span>
-<span id="cb50-6"><a href="#cb50-6" tabindex="-1"></a>                                   <span class="at">contrast =</span> <span class="fu">c</span>(<span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span>),</span>
-<span id="cb50-7"><a href="#cb50-7" tabindex="-1"></a>                                   <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb50-8"><a href="#cb50-8" tabindex="-1"></a></span>
-<span id="cb50-9"><a href="#cb50-9" tabindex="-1"></a><span class="fu">resultsTable</span>(singleSetResults)</span>
-<span id="cb50-10"><a href="#cb50-10" tabindex="-1"></a><span class="sc">&gt;</span>       region.set n.regions n.comparison mean.log2FC median.log2FC</span>
-<span id="cb50-11"><a href="#cb50-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>    promoterCpG       <span class="dv">273</span>          <span class="dv">322</span> <span class="sc">-</span><span class="fl">0.34574769</span>   <span class="sc">-</span><span class="fl">0.35028835</span></span>
-<span id="cb50-12"><a href="#cb50-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>       geneBody      <span class="dv">1178</span>         <span class="dv">1420</span>  <span class="fl">0.20023317</span>    <span class="fl">0.04587859</span></span>
-<span id="cb50-13"><a href="#cb50-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> promoterNonCpG       <span class="dv">371</span>         <span class="dv">1855</span>  <span class="fl">0.13289085</span>    <span class="fl">0.04333004</span></span>
-<span id="cb50-14"><a href="#cb50-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>     intergenic       <span class="dv">776</span>         <span class="dv">1813</span>  <span class="fl">0.04786937</span>    <span class="fl">0.04333004</span></span>
-<span id="cb50-15"><a href="#cb50-15" tabindex="-1"></a><span class="sc">&gt;</span>   mean.log2FC.comparison delta.log2FC   CI.lower   CI.upper inter.region.cor</span>
-<span id="cb50-16"><a href="#cb50-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>            <span class="fl">0.287725959</span>  <span class="sc">-</span><span class="fl">0.63347365</span> <span class="sc">-</span><span class="fl">1.1543354</span> <span class="sc">-</span><span class="fl">0.1126119</span>             <span class="fl">0.01</span></span>
-<span id="cb50-17"><a href="#cb50-17" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>           <span class="sc">-</span><span class="fl">0.005591536</span>   <span class="fl">0.20582471</span> <span class="sc">-</span><span class="fl">0.4605448</span>  <span class="fl">0.8721942</span>             <span class="fl">0.01</span></span>
-<span id="cb50-18"><a href="#cb50-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>            <span class="fl">0.071712042</span>   <span class="fl">0.06117881</span> <span class="sc">-</span><span class="fl">0.6135756</span>  <span class="fl">0.7359332</span>             <span class="fl">0.01</span></span>
-<span id="cb50-19"><a href="#cb50-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>            <span class="fl">0.108141759</span>  <span class="sc">-</span><span class="fl">0.06027239</span> <span class="sc">-</span><span class="fl">0.7616854</span>  <span class="fl">0.6411406</span>             <span class="fl">0.01</span></span>
-<span id="cb50-20"><a href="#cb50-20" tabindex="-1"></a><span class="sc">&gt;</span>   inter.region.cor.universe median.width camera.direction     camera.p</span>
-<span id="cb50-21"><a href="#cb50-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>             Down <span class="fl">1.650640e-12</span></span>
-<span id="cb50-22"><a href="#cb50-22" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>               Up <span class="fl">7.329599e-02</span></span>
-<span id="cb50-23"><a href="#cb50-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>               Up <span class="fl">4.546972e-01</span></span>
-<span id="cb50-24"><a href="#cb50-24" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>               Up <span class="fl">5.513550e-01</span></span>
-<span id="cb50-25"><a href="#cb50-25" tabindex="-1"></a><span class="sc">&gt;</span>     camera.FDR</span>
-<span id="cb50-26"><a href="#cb50-26" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">6.602561e-12</span></span>
-<span id="cb50-27"><a href="#cb50-27" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">1.465920e-01</span></span>
-<span id="cb50-28"><a href="#cb50-28" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">5.513550e-01</span></span>
-<span id="cb50-29"><a href="#cb50-29" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> <span class="fl">5.513550e-01</span></span></code></pre></div>
+<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" tabindex="-1"></a>singleResults <span class="ot">&lt;-</span> <span class="fu">testRegions</span>(singleFit,</span>
+<span id="cb53-2"><a href="#cb53-2" tabindex="-1"></a>                             <span class="at">contrast =</span> <span class="fu">c</span>(<span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span>),</span>
+<span id="cb53-3"><a href="#cb53-3" tabindex="-1"></a>                             <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb53-4"><a href="#cb53-4" tabindex="-1"></a></span>
+<span id="cb53-5"><a href="#cb53-5" tabindex="-1"></a>singleSetResults <span class="ot">&lt;-</span> <span class="fu">testRegionSets</span>(singleFit,</span>
+<span id="cb53-6"><a href="#cb53-6" tabindex="-1"></a>                                   <span class="at">contrast =</span> <span class="fu">c</span>(<span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span>),</span>
+<span id="cb53-7"><a href="#cb53-7" tabindex="-1"></a>                                   <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb53-8"><a href="#cb53-8" tabindex="-1"></a></span>
+<span id="cb53-9"><a href="#cb53-9" tabindex="-1"></a><span class="fu">resultsTable</span>(singleSetResults)</span>
+<span id="cb53-10"><a href="#cb53-10" tabindex="-1"></a><span class="sc">&gt;</span>       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC</span>
+<span id="cb53-11"><a href="#cb53-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>    promoterCpG       <span class="dv">273</span>          <span class="dv">322</span>                        <span class="dv">0</span> <span class="sc">-</span><span class="fl">0.34574769</span></span>
+<span id="cb53-12"><a href="#cb53-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>       geneBody      <span class="dv">1178</span>         <span class="dv">1420</span>                        <span class="dv">0</span>  <span class="fl">0.20023317</span></span>
+<span id="cb53-13"><a href="#cb53-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> promoterNonCpG       <span class="dv">371</span>         <span class="dv">1855</span>                        <span class="dv">0</span>  <span class="fl">0.13289085</span></span>
+<span id="cb53-14"><a href="#cb53-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>     intergenic       <span class="dv">776</span>         <span class="dv">1813</span>                        <span class="dv">0</span>  <span class="fl">0.04786937</span></span>
+<span id="cb53-15"><a href="#cb53-15" tabindex="-1"></a><span class="sc">&gt;</span>   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower   CI.upper</span>
+<span id="cb53-16"><a href="#cb53-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>   <span class="sc">-</span><span class="fl">0.35028835</span>            <span class="fl">0.287725959</span>  <span class="sc">-</span><span class="fl">0.63347365</span> <span class="sc">-</span><span class="fl">1.1543354</span> <span class="sc">-</span><span class="fl">0.1126119</span></span>
+<span id="cb53-17"><a href="#cb53-17" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>    <span class="fl">0.04587859</span>           <span class="sc">-</span><span class="fl">0.005591536</span>   <span class="fl">0.20582471</span> <span class="sc">-</span><span class="fl">0.4605448</span>  <span class="fl">0.8721942</span></span>
+<span id="cb53-18"><a href="#cb53-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>    <span class="fl">0.04333004</span>            <span class="fl">0.071712042</span>   <span class="fl">0.06117881</span> <span class="sc">-</span><span class="fl">0.6135756</span>  <span class="fl">0.7359332</span></span>
+<span id="cb53-19"><a href="#cb53-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>    <span class="fl">0.04333004</span>            <span class="fl">0.108141759</span>  <span class="sc">-</span><span class="fl">0.06027239</span> <span class="sc">-</span><span class="fl">0.7616854</span>  <span class="fl">0.6411406</span></span>
+<span id="cb53-20"><a href="#cb53-20" tabindex="-1"></a><span class="sc">&gt;</span>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor</span>
+<span id="cb53-21"><a href="#cb53-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>  region             <span class="sc">-</span><span class="fl">1.1543354</span>             <span class="sc">-</span><span class="fl">0.1126119</span>             <span class="fl">0.01</span></span>
+<span id="cb53-22"><a href="#cb53-22" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>  region             <span class="sc">-</span><span class="fl">0.4605448</span>              <span class="fl">0.8721942</span>             <span class="fl">0.01</span></span>
+<span id="cb53-23"><a href="#cb53-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>  region             <span class="sc">-</span><span class="fl">0.6135756</span>              <span class="fl">0.7359332</span>             <span class="fl">0.01</span></span>
+<span id="cb53-24"><a href="#cb53-24" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>  region             <span class="sc">-</span><span class="fl">0.7616854</span>              <span class="fl">0.6411406</span>             <span class="fl">0.01</span></span>
+<span id="cb53-25"><a href="#cb53-25" tabindex="-1"></a><span class="sc">&gt;</span>   inter.region.cor.universe median.width camera.direction     camera.p</span>
+<span id="cb53-26"><a href="#cb53-26" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>             Down <span class="fl">1.650640e-12</span></span>
+<span id="cb53-27"><a href="#cb53-27" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>               Up <span class="fl">7.329599e-02</span></span>
+<span id="cb53-28"><a href="#cb53-28" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>               Up <span class="fl">4.546972e-01</span></span>
+<span id="cb53-29"><a href="#cb53-29" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>                      <span class="fl">0.01</span>         <span class="dv">1000</span>               Up <span class="fl">5.513550e-01</span></span>
+<span id="cb53-30"><a href="#cb53-30" tabindex="-1"></a><span class="sc">&gt;</span>     camera.FDR</span>
+<span id="cb53-31"><a href="#cb53-31" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">6.602561e-12</span></span>
+<span id="cb53-32"><a href="#cb53-32" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">1.465920e-01</span></span>
+<span id="cb53-33"><a href="#cb53-33" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">5.513550e-01</span></span>
+<span id="cb53-34"><a href="#cb53-34" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> <span class="fl">5.513550e-01</span></span></code></pre></div>
 <p><br></p>
 </div>
 <div class="section level3">
@@ -1547,7 +1648,7 @@ available and the objects behave identically.</p>
 <p>Since the packaged data has replicates, the same contrast can be run
 both ways and the answers compared, which is the check a reader wants
 before trusting the approach on data where it cannot be done.</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">replicatedTable</span> <span class="op">&lt;-</span></span>
@@ -1557,7 +1658,7 @@ before trusting the approach on data where it cannot be done.</p>
 <span></span>
 <span><span class="va">singleTable</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">singleResults</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">sharedRegions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">intersect</a></span><span class="op">(</span><span class="va">replicatedTable</span><span class="op">$</span><span class="va">region.id</span>, <span class="va">singleTable</span><span class="op">$</span><span class="va">region.id</span><span class="op">)</span></span>
+<span><span class="va">sharedRegions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/setops.html" class="external-link">intersect</a></span><span class="op">(</span><span class="va">replicatedTable</span><span class="op">$</span><span class="va">region.id</span>, <span class="va">singleTable</span><span class="op">$</span><span class="va">region.id</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">comparisonTable</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  replicated <span class="op">=</span> <span class="va">replicatedTable</span><span class="op">$</span><span class="va">log2FC</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">sharedRegions</span>, <span class="va">replicatedTable</span><span class="op">$</span><span class="va">region.id</span><span class="op">)</span><span class="op">]</span>,</span>
@@ -1568,7 +1669,7 @@ before trusting the approach on data where it cannot be done.</p>
 <span>                                   method <span class="op">=</span> <span class="st">"spearman"</span>,</span>
 <span>                                   exact <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p><br></p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Below the double precision floor the exact value is meaningless</span></span>
 <span><span class="va">pValueLabel</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="va">correlationTest</span><span class="op">$</span><span class="va">p.value</span> <span class="op">&lt;</span> <span class="fl">2.2e-16</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="st">"p &lt; 2.2e-16"</span></span>
@@ -1627,17 +1728,17 @@ anything worth reading.</p>
 </h2>
 <p><code><a href="../reference/exportResults.html">exportResults()</a></code> writes the tables in a form that
 survives leaving R.</p>
-<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" tabindex="-1"></a>outputDirectory <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">"regionSetDE-vignette"</span>)</span>
-<span id="cb53-2"><a href="#cb53-2" tabindex="-1"></a><span class="fu">dir.create</span>(outputDirectory, <span class="at">showWarnings =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb53-3"><a href="#cb53-3" tabindex="-1"></a></span>
-<span id="cb53-4"><a href="#cb53-4" tabindex="-1"></a><span class="fu">exportResults</span>(results,</span>
-<span id="cb53-5"><a href="#cb53-5" tabindex="-1"></a>              <span class="at">path =</span> outputDirectory,</span>
-<span id="cb53-6"><a href="#cb53-6" tabindex="-1"></a>              <span class="at">prefix =</span> <span class="st">"SHR_vs_BN"</span>,</span>
-<span id="cb53-7"><a href="#cb53-7" tabindex="-1"></a>              <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb53-8"><a href="#cb53-8" tabindex="-1"></a></span>
-<span id="cb53-9"><a href="#cb53-9" tabindex="-1"></a><span class="fu">list.files</span>(outputDirectory)</span>
-<span id="cb53-10"><a href="#cb53-10" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"SHR_vs_BN_parameters.tsv"</span> <span class="st">"SHR_vs_BN_regions.bed"</span>   </span>
-<span id="cb53-11"><a href="#cb53-11" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">3</span>] <span class="st">"SHR_vs_BN_regions.tsv.gz"</span></span></code></pre></div>
+<div class="sourceCode" id="cb56"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" tabindex="-1"></a>outputDirectory <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">"regionSetDE-vignette"</span>)</span>
+<span id="cb56-2"><a href="#cb56-2" tabindex="-1"></a><span class="fu">dir.create</span>(outputDirectory, <span class="at">showWarnings =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb56-3"><a href="#cb56-3" tabindex="-1"></a></span>
+<span id="cb56-4"><a href="#cb56-4" tabindex="-1"></a><span class="fu">exportResults</span>(results,</span>
+<span id="cb56-5"><a href="#cb56-5" tabindex="-1"></a>              <span class="at">path =</span> outputDirectory,</span>
+<span id="cb56-6"><a href="#cb56-6" tabindex="-1"></a>              <span class="at">prefix =</span> <span class="st">"SHR_vs_BN"</span>,</span>
+<span id="cb56-7"><a href="#cb56-7" tabindex="-1"></a>              <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb56-8"><a href="#cb56-8" tabindex="-1"></a></span>
+<span id="cb56-9"><a href="#cb56-9" tabindex="-1"></a><span class="fu">list.files</span>(outputDirectory)</span>
+<span id="cb56-10"><a href="#cb56-10" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"SHR_vs_BN_parameters.tsv"</span> <span class="st">"SHR_vs_BN_regions.bed"</span>   </span>
+<span id="cb56-11"><a href="#cb56-11" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">3</span>] <span class="st">"SHR_vs_BN_regions.tsv.gz"</span></span></code></pre></div>
 <p>Three kinds of file come out. The TSV holds the results table. The
 BED holds the same regions with zero-based starts, as the format
 requires, so its coordinates sit one lower than the TSV; with
@@ -1652,22 +1753,22 @@ the object carries in its <code>parameters</code> slot into one
 parameter per line: counting level, normalisation method and factors,
 filter and threshold, engine, design, contrast, correction, and on a fit
 with no replicates the dispersion and its source.</p>
-<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a>parameterFile <span class="ot">&lt;-</span> <span class="fu">list.files</span>(outputDirectory,</span>
-<span id="cb54-2"><a href="#cb54-2" tabindex="-1"></a>                            <span class="at">pattern =</span> <span class="st">"parameters"</span>,</span>
-<span id="cb54-3"><a href="#cb54-3" tabindex="-1"></a>                            <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb54-4"><a href="#cb54-4" tabindex="-1"></a></span>
-<span id="cb54-5"><a href="#cb54-5" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.delim</span>(parameterFile), <span class="dv">10</span>)</span>
-<span id="cb54-6"><a href="#cb54-6" tabindex="-1"></a><span class="sc">&gt;</span>                   parameter                value</span>
-<span id="cb54-7"><a href="#cb54-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                  contrast condition<span class="sc">:</span> SHR vs BN</span>
-<span id="cb54-8"><a href="#cb54-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                    engine                edgeR</span>
-<span id="cb54-9"><a href="#cb54-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>           genome.assembly                  rn4</span>
-<span id="cb54-10"><a href="#cb54-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>           seqlevels.style                 UCSC</span>
-<span id="cb54-11"><a href="#cb54-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>            thresholds.FDR                 <span class="fl">0.05</span></span>
-<span id="cb54-12"><a href="#cb54-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>         thresholds.log2FC                    <span class="dv">0</span></span>
-<span id="cb54-13"><a href="#cb54-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span>   thresholds.lfcThreshold                    <span class="dv">0</span></span>
-<span id="cb54-14"><a href="#cb54-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span>  thresholds.adjust.method                   BH</span>
-<span id="cb54-15"><a href="#cb54-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span>  loadRegions.keepMetadata                 <span class="cn">TRUE</span></span>
-<span id="cb54-16"><a href="#cb54-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">10</span>  loadRegions.sortRegions                 <span class="cn">TRUE</span></span></code></pre></div>
+<div class="sourceCode" id="cb57"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" tabindex="-1"></a>parameterFile <span class="ot">&lt;-</span> <span class="fu">list.files</span>(outputDirectory,</span>
+<span id="cb57-2"><a href="#cb57-2" tabindex="-1"></a>                            <span class="at">pattern =</span> <span class="st">"parameters"</span>,</span>
+<span id="cb57-3"><a href="#cb57-3" tabindex="-1"></a>                            <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb57-4"><a href="#cb57-4" tabindex="-1"></a></span>
+<span id="cb57-5"><a href="#cb57-5" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.delim</span>(parameterFile), <span class="dv">10</span>)</span>
+<span id="cb57-6"><a href="#cb57-6" tabindex="-1"></a><span class="sc">&gt;</span>                   parameter                value</span>
+<span id="cb57-7"><a href="#cb57-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                  contrast condition<span class="sc">:</span> SHR vs BN</span>
+<span id="cb57-8"><a href="#cb57-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                    engine                edgeR</span>
+<span id="cb57-9"><a href="#cb57-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>           genome.assembly                  rn4</span>
+<span id="cb57-10"><a href="#cb57-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>           seqlevels.style                 UCSC</span>
+<span id="cb57-11"><a href="#cb57-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>            thresholds.FDR                 <span class="fl">0.05</span></span>
+<span id="cb57-12"><a href="#cb57-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>         thresholds.log2FC                    <span class="dv">0</span></span>
+<span id="cb57-13"><a href="#cb57-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span>   thresholds.lfcThreshold                    <span class="dv">0</span></span>
+<span id="cb57-14"><a href="#cb57-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span>  thresholds.adjust.method                   BH</span>
+<span id="cb57-15"><a href="#cb57-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span>  loadRegions.keepMetadata                 <span class="cn">TRUE</span></span>
+<span id="cb57-16"><a href="#cb57-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">10</span>  loadRegions.sortRegions                 <span class="cn">TRUE</span></span></code></pre></div>
 <p>Six months later that file is the difference between a result that
 can be reproduced and one that can only be repeated.</p>
 <p><br></p>
@@ -1717,6 +1818,14 @@ can be reproduced and one that can only be repeated.</p>
 <code>delta.log2FC</code> between the two sets</td>
 </tr>
 <tr class="odd">
+<td align="left">Which class carries more signal, with only one
+condition?</td>
+<td align="left"><code><a href="../reference/scoreRegionSets.html">scoreRegionSets()</a></code></td>
+<td align="left">
+<code>mean.delta.score</code> and its interval, see <a href="#set_scores">When there is no contrast at all</a>
+</td>
+</tr>
+<tr class="even">
 <td align="left">Are my conclusions sensitive to the normalisation?</td>
 <td align="left">
 <code><a href="../reference/plotNormComparison.html">plotNormComparison()</a></code>,
@@ -1724,24 +1833,24 @@ can be reproduced and one that can only be repeated.</p>
 </td>
 <td align="left">how far the methods disagree</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Are my p-values trustworthy?</td>
 <td align="left"><code><a href="../reference/checkNullCalibration.html">checkNullCalibration()</a></code></td>
 <td align="left">flatness of the histogram</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Can I test without replicates?</td>
 <td align="left"><code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code></td>
 <td align="left">dispersion from the background, then
 <code>fitRegions(dispersion = )</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Is the competitive comparison fair?</td>
 <td align="left"><code><a href="../reference/plotUniverseMatching.html">plotUniverseMatching()</a></code></td>
 <td align="left">overlap of the two distributions</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Where in the region did the change happen?</td>
 <td align="left">
 <code>countReads(tileWidth = )</code>, then
@@ -1749,7 +1858,7 @@ can be reproduced and one that can only be repeated.</p>
 </td>
 <td align="left">the tile-level profile</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Can I test without replicates?</td>
 <td align="left">
 <code><a href="../reference/estimateNullDispersion.html">estimateNullDispersion()</a></code>, then
@@ -1778,92 +1887,92 @@ genome-wide catalogue.</p>
 <h2 id="session">
 <strong>Session info</strong><a class="anchor" aria-label="anchor" href="#session"></a>
 </h2>
-<div class="sourceCode" id="cb55"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb55-2"><a href="#cb55-2" tabindex="-1"></a><span class="sc">&gt;</span> R version <span class="dv">4</span>.<span class="fl">6.1</span> (<span class="dv">2026-06-24</span>)</span>
-<span id="cb55-3"><a href="#cb55-3" tabindex="-1"></a><span class="sc">&gt;</span> Platform<span class="sc">:</span> x86_64<span class="sc">-</span>pc<span class="sc">-</span>linux<span class="sc">-</span>gnu</span>
-<span id="cb55-4"><a href="#cb55-4" tabindex="-1"></a><span class="sc">&gt;</span> Running under<span class="sc">:</span> Ubuntu <span class="dv">24</span>.<span class="fl">04.4</span> LTS</span>
-<span id="cb55-5"><a href="#cb55-5" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb55-6"><a href="#cb55-6" tabindex="-1"></a><span class="er">&gt;</span> Matrix products<span class="sc">:</span> default</span>
-<span id="cb55-7"><a href="#cb55-7" tabindex="-1"></a><span class="sc">&gt;</span> BLAS<span class="sc">:</span>   <span class="er">/</span>usr<span class="sc">/</span>lib<span class="sc">/</span>x86_64<span class="sc">-</span>linux<span class="sc">-</span>gnu<span class="sc">/</span>openblas<span class="sc">-</span>pthread<span class="sc">/</span>libblas.so<span class="fl">.3</span> </span>
-<span id="cb55-8"><a href="#cb55-8" tabindex="-1"></a><span class="sc">&gt;</span> LAPACK<span class="sc">:</span> <span class="er">/</span>usr<span class="sc">/</span>lib<span class="sc">/</span>x86_64<span class="sc">-</span>linux<span class="sc">-</span>gnu<span class="sc">/</span>openblas<span class="sc">-</span>pthread<span class="sc">/</span>libopenblasp<span class="sc">-</span>r0.<span class="dv">3</span>.<span class="fl">26.</span>so;  LAPACK version <span class="dv">3</span>.<span class="fl">12.0</span></span>
-<span id="cb55-9"><a href="#cb55-9" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb55-10"><a href="#cb55-10" tabindex="-1"></a><span class="er">&gt;</span> locale<span class="sc">:</span></span>
-<span id="cb55-11"><a href="#cb55-11" tabindex="-1"></a><span class="er">&gt;</span>  [<span class="dv">1</span>] LC_CTYPE<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>       LC_NUMERIC<span class="ot">=</span>C              </span>
-<span id="cb55-12"><a href="#cb55-12" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">3</span>] LC_TIME<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>        LC_COLLATE<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>    </span>
-<span id="cb55-13"><a href="#cb55-13" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">5</span>] LC_MONETARY<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>    LC_MESSAGES<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>   </span>
-<span id="cb55-14"><a href="#cb55-14" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">7</span>] LC_PAPER<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>       LC_NAME<span class="ot">=</span>C                 </span>
-<span id="cb55-15"><a href="#cb55-15" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">9</span>] LC_ADDRESS<span class="ot">=</span>C               LC_TELEPHONE<span class="ot">=</span>C            </span>
-<span id="cb55-16"><a href="#cb55-16" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">11</span>] LC_MEASUREMENT<span class="ot">=</span>en_US.UTF<span class="dv">-8</span> LC_IDENTIFICATION<span class="ot">=</span>C       </span>
-<span id="cb55-17"><a href="#cb55-17" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb55-18"><a href="#cb55-18" tabindex="-1"></a><span class="er">&gt;</span> time zone<span class="sc">:</span> Europe<span class="sc">/</span>Amsterdam</span>
-<span id="cb55-19"><a href="#cb55-19" tabindex="-1"></a><span class="sc">&gt;</span> tzcode source<span class="sc">:</span> <span class="fu">system</span> (glibc)</span>
-<span id="cb55-20"><a href="#cb55-20" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb55-21"><a href="#cb55-21" tabindex="-1"></a><span class="er">&gt;</span> attached base packages<span class="sc">:</span></span>
-<span id="cb55-22"><a href="#cb55-22" tabindex="-1"></a><span class="er">&gt;</span> [<span class="dv">1</span>] stats4    stats     graphics  grDevices utils     datasets  methods  </span>
-<span id="cb55-23"><a href="#cb55-23" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">8</span>] base     </span>
-<span id="cb55-24"><a href="#cb55-24" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb55-25"><a href="#cb55-25" tabindex="-1"></a><span class="er">&gt;</span> other attached packages<span class="sc">:</span></span>
-<span id="cb55-26"><a href="#cb55-26" tabindex="-1"></a><span class="er">&gt;</span>  [<span class="dv">1</span>] ggplot2_4.<span class="fl">0.3</span>        dplyr_1.<span class="fl">2.1</span>          RegionSetDE_0.<span class="fl">99.0</span>  </span>
-<span id="cb55-27"><a href="#cb55-27" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">4</span>] GenomicRanges_1.<span class="fl">64.0</span> Seqinfo_1.<span class="fl">2.0</span>        IRanges_2.<span class="fl">46.0</span>      </span>
-<span id="cb55-28"><a href="#cb55-28" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">7</span>] S4Vectors_0.<span class="fl">50.2</span>     BiocGenerics_0.<span class="fl">58.1</span>  generics_0.<span class="fl">1.4</span>      </span>
-<span id="cb55-29"><a href="#cb55-29" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">10</span>] BiocStyle_2.<span class="fl">40.0</span>    </span>
-<span id="cb55-30"><a href="#cb55-30" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb55-31"><a href="#cb55-31" tabindex="-1"></a><span class="er">&gt;</span> loaded via a <span class="fu">namespace</span> (and not attached)<span class="sc">:</span></span>
-<span id="cb55-32"><a href="#cb55-32" tabindex="-1"></a><span class="er">&gt;</span>   [<span class="dv">1</span>] bitops_1<span class="fl">.1</span><span class="dv">-0</span>                rlang_1.<span class="fl">3.0</span>                </span>
-<span id="cb55-33"><a href="#cb55-33" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">3</span>] magrittr_2.<span class="fl">0.5</span>              clue_0<span class="fl">.3</span><span class="dv">-68</span>                </span>
-<span id="cb55-34"><a href="#cb55-34" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">5</span>] GetoptLong_1.<span class="fl">1.1</span>            otel_0.<span class="fl">2.0</span>                 </span>
-<span id="cb55-35"><a href="#cb55-35" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">7</span>] matrixStats_1.<span class="fl">5.0</span>           compiler_4.<span class="fl">6.1</span>             </span>
-<span id="cb55-36"><a href="#cb55-36" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">9</span>] mgcv_1<span class="fl">.9</span><span class="dv">-4</span>                  png_0<span class="fl">.1</span><span class="dv">-9</span>                  </span>
-<span id="cb55-37"><a href="#cb55-37" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">11</span>] systemfonts_1.<span class="fl">3.2</span>           vctrs_0.<span class="fl">7.3</span>                </span>
-<span id="cb55-38"><a href="#cb55-38" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">13</span>] stringr_1.<span class="fl">6.0</span>               shape_1.<span class="dv">4</span>.<span class="fl">6.1</span>              </span>
-<span id="cb55-39"><a href="#cb55-39" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">15</span>] pkgconfig_2.<span class="fl">0.3</span>             crayon_1.<span class="fl">5.3</span>               </span>
-<span id="cb55-40"><a href="#cb55-40" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">17</span>] fastmap_1.<span class="fl">2.0</span>               magick_2.<span class="fl">9.1</span>               </span>
-<span id="cb55-41"><a href="#cb55-41" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">19</span>] XVector_0.<span class="fl">52.0</span>              labeling_0.<span class="fl">4.3</span>             </span>
-<span id="cb55-42"><a href="#cb55-42" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">21</span>] Rsamtools_2.<span class="fl">28.0</span>            rmarkdown_2<span class="fl">.32</span>             </span>
-<span id="cb55-43"><a href="#cb55-43" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">23</span>] markdown_2<span class="fl">.0</span>                UCSC.utils_1.<span class="fl">8.0</span>           </span>
-<span id="cb55-44"><a href="#cb55-44" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">25</span>] ragg_1.<span class="fl">5.2</span>                  xfun_0<span class="fl">.60</span>                  </span>
-<span id="cb55-45"><a href="#cb55-45" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">27</span>] cachem_1.<span class="fl">1.0</span>                cigarillo_1.<span class="fl">2.1</span>            </span>
-<span id="cb55-46"><a href="#cb55-46" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">29</span>] litedown_0<span class="fl">.11</span>               GenomeInfoDb_1.<span class="fl">48.0</span>        </span>
-<span id="cb55-47"><a href="#cb55-47" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">31</span>] jsonlite_2.<span class="fl">0.0</span>              DelayedArray_0.<span class="fl">38.2</span>        </span>
-<span id="cb55-48"><a href="#cb55-48" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">33</span>] BiocParallel_1.<span class="fl">46.0</span>         cluster_2.<span class="dv">1</span>.<span class="fl">8.3</span>            </span>
-<span id="cb55-49"><a href="#cb55-49" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">35</span>] parallel_4.<span class="fl">6.1</span>              R6_2.<span class="fl">6.1</span>                   </span>
-<span id="cb55-50"><a href="#cb55-50" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">37</span>] bslib_0.<span class="fl">12.0</span>                stringi_1.<span class="fl">8.9</span>              </span>
-<span id="cb55-51"><a href="#cb55-51" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">39</span>] RColorBrewer_1<span class="fl">.1</span><span class="dv">-3</span>          limma_3.<span class="fl">68.5</span>               </span>
-<span id="cb55-52"><a href="#cb55-52" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">41</span>] rtracklayer_1.<span class="fl">72.0</span>          jquerylib_0.<span class="fl">1.4</span>            </span>
-<span id="cb55-53"><a href="#cb55-53" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">43</span>] iterators_1.<span class="fl">0.14</span>            Rcpp_1.<span class="fl">1.2</span>                 </span>
-<span id="cb55-54"><a href="#cb55-54" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">45</span>] bookdown_0<span class="fl">.48</span>               SummarizedExperiment_1.<span class="fl">42.0</span></span>
-<span id="cb55-55"><a href="#cb55-55" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">47</span>] knitr_1<span class="fl">.51</span>                  Matrix_1<span class="fl">.7</span><span class="dv">-6</span>               </span>
-<span id="cb55-56"><a href="#cb55-56" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">49</span>] splines_4.<span class="fl">6.1</span>               tidyselect_1.<span class="fl">2.1</span>           </span>
-<span id="cb55-57"><a href="#cb55-57" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">51</span>] rstudioapi_0.<span class="fl">19.0</span>           dichromat_2<span class="fl">.0</span><span class="dv">-1</span>            </span>
-<span id="cb55-58"><a href="#cb55-58" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">53</span>] abind_1<span class="fl">.4</span><span class="dv">-8</span>                 yaml_2.<span class="fl">3.12</span>                </span>
-<span id="cb55-59"><a href="#cb55-59" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">55</span>] doParallel_1.<span class="fl">0.17</span>           ggtext_0.<span class="fl">2.0</span>               </span>
-<span id="cb55-60"><a href="#cb55-60" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">57</span>] codetools_0<span class="fl">.2</span><span class="dv">-20</span>            curl_8.<span class="fl">0.0</span>                 </span>
-<span id="cb55-61"><a href="#cb55-61" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">59</span>] lattice_0<span class="fl">.23</span><span class="dv">-1</span>              tibble_3.<span class="fl">3.1</span>               </span>
-<span id="cb55-62"><a href="#cb55-62" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">61</span>] Biobase_2.<span class="fl">72.0</span>              withr_3.<span class="fl">0.3</span>                </span>
-<span id="cb55-63"><a href="#cb55-63" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">63</span>] S7_0.<span class="fl">2.2</span>                    csaw_1.<span class="fl">46.0</span>                </span>
-<span id="cb55-64"><a href="#cb55-64" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">65</span>] evaluate_1.<span class="fl">0.5</span>              desc_1.<span class="fl">4.3</span>                 </span>
-<span id="cb55-65"><a href="#cb55-65" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">67</span>] xml2_1.<span class="fl">6.0</span>                  circlize_0.<span class="fl">4.18</span>            </span>
-<span id="cb55-66"><a href="#cb55-66" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">69</span>] Biostrings_2.<span class="fl">80.2</span>           pillar_1.<span class="fl">11.1</span>              </span>
-<span id="cb55-67"><a href="#cb55-67" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">71</span>] BiocManager_1.<span class="fl">30.27</span>         MatrixGenerics_1.<span class="fl">24.0</span>      </span>
-<span id="cb55-68"><a href="#cb55-68" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">73</span>] foreach_1.<span class="fl">5.2</span>               RCurl_1<span class="fl">.98-1.20</span>            </span>
-<span id="cb55-69"><a href="#cb55-69" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">75</span>] commonmark_2.<span class="fl">0.0</span>            scales_1.<span class="fl">4.0</span>               </span>
-<span id="cb55-70"><a href="#cb55-70" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">77</span>] glue_1.<span class="fl">8.1</span>                  metapod_1.<span class="fl">20.0</span>             </span>
-<span id="cb55-71"><a href="#cb55-71" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">79</span>] tools_4.<span class="fl">6.1</span>                 BiocIO_1.<span class="fl">22.0</span>              </span>
-<span id="cb55-72"><a href="#cb55-72" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">81</span>] locfit_1<span class="fl">.5-9.12</span>             GenomicAlignments_1.<span class="fl">48.0</span>   </span>
-<span id="cb55-73"><a href="#cb55-73" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">83</span>] fs_2.<span class="fl">1.0</span>                    XML_3<span class="fl">.99-0.24</span>              </span>
-<span id="cb55-74"><a href="#cb55-74" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">85</span>] Cairo_1<span class="fl">.7</span><span class="dv">-0</span>                 grid_4.<span class="fl">6.1</span>                 </span>
-<span id="cb55-75"><a href="#cb55-75" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">87</span>] colorspace_2<span class="fl">.1</span><span class="dv">-3</span>            edgeR_4.<span class="fl">10.4</span>               </span>
-<span id="cb55-76"><a href="#cb55-76" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">89</span>] nlme_3<span class="fl">.1</span><span class="dv">-171</span>                restfulr_0.<span class="fl">0.17</span>            </span>
-<span id="cb55-77"><a href="#cb55-77" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">91</span>] cli_3.<span class="fl">6.6</span>                   textshaping_1.<span class="fl">0.5</span>          </span>
-<span id="cb55-78"><a href="#cb55-78" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">93</span>] viridisLite_0.<span class="fl">4.3</span>           S4Arrays_1.<span class="fl">12.0</span>            </span>
-<span id="cb55-79"><a href="#cb55-79" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">95</span>] ComplexHeatmap_2.<span class="fl">28.0</span>       gtable_0.<span class="fl">3.6</span>               </span>
-<span id="cb55-80"><a href="#cb55-80" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">97</span>] sass_0.<span class="fl">4.10</span>                 digest_0.<span class="fl">6.39</span>              </span>
-<span id="cb55-81"><a href="#cb55-81" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">99</span>] ggrepel_0.<span class="fl">9.8</span>               SparseArray_1.<span class="fl">12.2</span>         </span>
-<span id="cb55-82"><a href="#cb55-82" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">101</span>] rjson_0.<span class="fl">2.23</span>                htmlwidgets_1.<span class="fl">6.4</span>          </span>
-<span id="cb55-83"><a href="#cb55-83" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">103</span>] farver_2.<span class="fl">1.2</span>                htmltools_0.<span class="fl">5.9</span>            </span>
-<span id="cb55-84"><a href="#cb55-84" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">105</span>] pkgdown_2.<span class="fl">2.1</span>               lifecycle_1.<span class="fl">0.5</span>            </span>
-<span id="cb55-85"><a href="#cb55-85" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">107</span>] httr_1.<span class="fl">4.9</span>                  GlobalOptions_0.<span class="fl">1.4</span>        </span>
-<span id="cb55-86"><a href="#cb55-86" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">109</span>] statmod_1.<span class="fl">5.2</span>               gridtext_0.<span class="fl">1.6</span></span></code></pre></div>
+<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb58-2"><a href="#cb58-2" tabindex="-1"></a><span class="sc">&gt;</span> R version <span class="dv">4</span>.<span class="fl">6.1</span> (<span class="dv">2026-06-24</span>)</span>
+<span id="cb58-3"><a href="#cb58-3" tabindex="-1"></a><span class="sc">&gt;</span> Platform<span class="sc">:</span> x86_64<span class="sc">-</span>pc<span class="sc">-</span>linux<span class="sc">-</span>gnu</span>
+<span id="cb58-4"><a href="#cb58-4" tabindex="-1"></a><span class="sc">&gt;</span> Running under<span class="sc">:</span> Ubuntu <span class="dv">24</span>.<span class="fl">04.4</span> LTS</span>
+<span id="cb58-5"><a href="#cb58-5" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb58-6"><a href="#cb58-6" tabindex="-1"></a><span class="er">&gt;</span> Matrix products<span class="sc">:</span> default</span>
+<span id="cb58-7"><a href="#cb58-7" tabindex="-1"></a><span class="sc">&gt;</span> BLAS<span class="sc">:</span>   <span class="er">/</span>usr<span class="sc">/</span>lib<span class="sc">/</span>x86_64<span class="sc">-</span>linux<span class="sc">-</span>gnu<span class="sc">/</span>openblas<span class="sc">-</span>pthread<span class="sc">/</span>libblas.so<span class="fl">.3</span> </span>
+<span id="cb58-8"><a href="#cb58-8" tabindex="-1"></a><span class="sc">&gt;</span> LAPACK<span class="sc">:</span> <span class="er">/</span>usr<span class="sc">/</span>lib<span class="sc">/</span>x86_64<span class="sc">-</span>linux<span class="sc">-</span>gnu<span class="sc">/</span>openblas<span class="sc">-</span>pthread<span class="sc">/</span>libopenblasp<span class="sc">-</span>r0.<span class="dv">3</span>.<span class="fl">26.</span>so;  LAPACK version <span class="dv">3</span>.<span class="fl">12.0</span></span>
+<span id="cb58-9"><a href="#cb58-9" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb58-10"><a href="#cb58-10" tabindex="-1"></a><span class="er">&gt;</span> locale<span class="sc">:</span></span>
+<span id="cb58-11"><a href="#cb58-11" tabindex="-1"></a><span class="er">&gt;</span>  [<span class="dv">1</span>] LC_CTYPE<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>       LC_NUMERIC<span class="ot">=</span>C              </span>
+<span id="cb58-12"><a href="#cb58-12" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">3</span>] LC_TIME<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>        LC_COLLATE<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>    </span>
+<span id="cb58-13"><a href="#cb58-13" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">5</span>] LC_MONETARY<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>    LC_MESSAGES<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>   </span>
+<span id="cb58-14"><a href="#cb58-14" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">7</span>] LC_PAPER<span class="ot">=</span>en_US.UTF<span class="dv">-8</span>       LC_NAME<span class="ot">=</span>C                 </span>
+<span id="cb58-15"><a href="#cb58-15" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">9</span>] LC_ADDRESS<span class="ot">=</span>C               LC_TELEPHONE<span class="ot">=</span>C            </span>
+<span id="cb58-16"><a href="#cb58-16" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">11</span>] LC_MEASUREMENT<span class="ot">=</span>en_US.UTF<span class="dv">-8</span> LC_IDENTIFICATION<span class="ot">=</span>C       </span>
+<span id="cb58-17"><a href="#cb58-17" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb58-18"><a href="#cb58-18" tabindex="-1"></a><span class="er">&gt;</span> time zone<span class="sc">:</span> Europe<span class="sc">/</span>Amsterdam</span>
+<span id="cb58-19"><a href="#cb58-19" tabindex="-1"></a><span class="sc">&gt;</span> tzcode source<span class="sc">:</span> <span class="fu">system</span> (glibc)</span>
+<span id="cb58-20"><a href="#cb58-20" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb58-21"><a href="#cb58-21" tabindex="-1"></a><span class="er">&gt;</span> attached base packages<span class="sc">:</span></span>
+<span id="cb58-22"><a href="#cb58-22" tabindex="-1"></a><span class="er">&gt;</span> [<span class="dv">1</span>] stats4    stats     graphics  grDevices utils     datasets  methods  </span>
+<span id="cb58-23"><a href="#cb58-23" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">8</span>] base     </span>
+<span id="cb58-24"><a href="#cb58-24" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb58-25"><a href="#cb58-25" tabindex="-1"></a><span class="er">&gt;</span> other attached packages<span class="sc">:</span></span>
+<span id="cb58-26"><a href="#cb58-26" tabindex="-1"></a><span class="er">&gt;</span>  [<span class="dv">1</span>] ggplot2_4.<span class="fl">0.3</span>        dplyr_1.<span class="fl">2.1</span>          RegionSetDE_0.<span class="fl">99.0</span>  </span>
+<span id="cb58-27"><a href="#cb58-27" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">4</span>] GenomicRanges_1.<span class="fl">64.0</span> Seqinfo_1.<span class="fl">2.0</span>        IRanges_2.<span class="fl">46.0</span>      </span>
+<span id="cb58-28"><a href="#cb58-28" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">7</span>] S4Vectors_0.<span class="fl">50.2</span>     BiocGenerics_0.<span class="fl">58.1</span>  generics_0.<span class="fl">1.4</span>      </span>
+<span id="cb58-29"><a href="#cb58-29" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">10</span>] BiocStyle_2.<span class="fl">40.0</span>    </span>
+<span id="cb58-30"><a href="#cb58-30" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb58-31"><a href="#cb58-31" tabindex="-1"></a><span class="er">&gt;</span> loaded via a <span class="fu">namespace</span> (and not attached)<span class="sc">:</span></span>
+<span id="cb58-32"><a href="#cb58-32" tabindex="-1"></a><span class="er">&gt;</span>   [<span class="dv">1</span>] bitops_1<span class="fl">.1</span><span class="dv">-0</span>                rlang_1.<span class="fl">3.0</span>                </span>
+<span id="cb58-33"><a href="#cb58-33" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">3</span>] magrittr_2.<span class="fl">0.5</span>              clue_0<span class="fl">.3</span><span class="dv">-68</span>                </span>
+<span id="cb58-34"><a href="#cb58-34" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">5</span>] GetoptLong_1.<span class="fl">1.1</span>            otel_0.<span class="fl">2.0</span>                 </span>
+<span id="cb58-35"><a href="#cb58-35" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">7</span>] matrixStats_1.<span class="fl">5.0</span>           compiler_4.<span class="fl">6.1</span>             </span>
+<span id="cb58-36"><a href="#cb58-36" tabindex="-1"></a><span class="sc">&gt;</span>   [<span class="dv">9</span>] mgcv_1<span class="fl">.9</span><span class="dv">-4</span>                  png_0<span class="fl">.1</span><span class="dv">-9</span>                  </span>
+<span id="cb58-37"><a href="#cb58-37" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">11</span>] systemfonts_1.<span class="fl">3.2</span>           vctrs_0.<span class="fl">7.3</span>                </span>
+<span id="cb58-38"><a href="#cb58-38" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">13</span>] stringr_1.<span class="fl">6.0</span>               shape_1.<span class="dv">4</span>.<span class="fl">6.1</span>              </span>
+<span id="cb58-39"><a href="#cb58-39" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">15</span>] pkgconfig_2.<span class="fl">0.3</span>             crayon_1.<span class="fl">5.3</span>               </span>
+<span id="cb58-40"><a href="#cb58-40" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">17</span>] fastmap_1.<span class="fl">2.0</span>               magick_2.<span class="fl">9.1</span>               </span>
+<span id="cb58-41"><a href="#cb58-41" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">19</span>] XVector_0.<span class="fl">52.0</span>              labeling_0.<span class="fl">4.3</span>             </span>
+<span id="cb58-42"><a href="#cb58-42" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">21</span>] Rsamtools_2.<span class="fl">28.0</span>            rmarkdown_2<span class="fl">.32</span>             </span>
+<span id="cb58-43"><a href="#cb58-43" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">23</span>] markdown_2<span class="fl">.0</span>                UCSC.utils_1.<span class="fl">8.0</span>           </span>
+<span id="cb58-44"><a href="#cb58-44" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">25</span>] ragg_1.<span class="fl">5.2</span>                  xfun_0<span class="fl">.60</span>                  </span>
+<span id="cb58-45"><a href="#cb58-45" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">27</span>] cachem_1.<span class="fl">1.0</span>                cigarillo_1.<span class="fl">2.1</span>            </span>
+<span id="cb58-46"><a href="#cb58-46" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">29</span>] litedown_0<span class="fl">.11</span>               GenomeInfoDb_1.<span class="fl">48.0</span>        </span>
+<span id="cb58-47"><a href="#cb58-47" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">31</span>] jsonlite_2.<span class="fl">0.0</span>              DelayedArray_0.<span class="fl">38.2</span>        </span>
+<span id="cb58-48"><a href="#cb58-48" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">33</span>] BiocParallel_1.<span class="fl">46.0</span>         cluster_2.<span class="dv">1</span>.<span class="fl">8.3</span>            </span>
+<span id="cb58-49"><a href="#cb58-49" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">35</span>] parallel_4.<span class="fl">6.1</span>              R6_2.<span class="fl">6.1</span>                   </span>
+<span id="cb58-50"><a href="#cb58-50" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">37</span>] bslib_0.<span class="fl">12.0</span>                stringi_1.<span class="fl">8.9</span>              </span>
+<span id="cb58-51"><a href="#cb58-51" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">39</span>] RColorBrewer_1<span class="fl">.1</span><span class="dv">-3</span>          limma_3.<span class="fl">68.5</span>               </span>
+<span id="cb58-52"><a href="#cb58-52" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">41</span>] rtracklayer_1.<span class="fl">72.0</span>          jquerylib_0.<span class="fl">1.4</span>            </span>
+<span id="cb58-53"><a href="#cb58-53" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">43</span>] iterators_1.<span class="fl">0.14</span>            Rcpp_1.<span class="fl">1.2</span>                 </span>
+<span id="cb58-54"><a href="#cb58-54" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">45</span>] bookdown_0<span class="fl">.48</span>               SummarizedExperiment_1.<span class="fl">42.0</span></span>
+<span id="cb58-55"><a href="#cb58-55" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">47</span>] knitr_1<span class="fl">.52</span>                  Matrix_1<span class="fl">.7</span><span class="dv">-6</span>               </span>
+<span id="cb58-56"><a href="#cb58-56" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">49</span>] splines_4.<span class="fl">6.1</span>               tidyselect_1.<span class="fl">2.1</span>           </span>
+<span id="cb58-57"><a href="#cb58-57" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">51</span>] rstudioapi_0.<span class="fl">19.0</span>           dichromat_2<span class="fl">.0</span><span class="dv">-1</span>            </span>
+<span id="cb58-58"><a href="#cb58-58" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">53</span>] abind_1<span class="fl">.4</span><span class="dv">-8</span>                 yaml_2.<span class="fl">3.12</span>                </span>
+<span id="cb58-59"><a href="#cb58-59" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">55</span>] doParallel_1.<span class="fl">0.17</span>           ggtext_0.<span class="fl">2.0</span>               </span>
+<span id="cb58-60"><a href="#cb58-60" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">57</span>] codetools_0<span class="fl">.2</span><span class="dv">-20</span>            curl_8.<span class="fl">0.0</span>                 </span>
+<span id="cb58-61"><a href="#cb58-61" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">59</span>] lattice_0<span class="fl">.23</span><span class="dv">-1</span>              tibble_3.<span class="fl">3.1</span>               </span>
+<span id="cb58-62"><a href="#cb58-62" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">61</span>] Biobase_2.<span class="fl">72.0</span>              withr_3.<span class="fl">0.3</span>                </span>
+<span id="cb58-63"><a href="#cb58-63" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">63</span>] S7_0.<span class="fl">2.2</span>                    csaw_1.<span class="fl">46.0</span>                </span>
+<span id="cb58-64"><a href="#cb58-64" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">65</span>] evaluate_1.<span class="fl">0.5</span>              desc_1.<span class="fl">4.3</span>                 </span>
+<span id="cb58-65"><a href="#cb58-65" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">67</span>] xml2_1.<span class="fl">6.0</span>                  circlize_0.<span class="fl">4.18</span>            </span>
+<span id="cb58-66"><a href="#cb58-66" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">69</span>] Biostrings_2.<span class="fl">80.2</span>           pillar_1.<span class="fl">11.1</span>              </span>
+<span id="cb58-67"><a href="#cb58-67" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">71</span>] BiocManager_1.<span class="fl">30.27</span>         MatrixGenerics_1.<span class="fl">24.0</span>      </span>
+<span id="cb58-68"><a href="#cb58-68" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">73</span>] foreach_1.<span class="fl">5.2</span>               RCurl_1<span class="fl">.98-1.20</span>            </span>
+<span id="cb58-69"><a href="#cb58-69" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">75</span>] commonmark_2.<span class="fl">0.0</span>            scales_1.<span class="fl">4.0</span>               </span>
+<span id="cb58-70"><a href="#cb58-70" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">77</span>] glue_1.<span class="fl">8.1</span>                  metapod_1.<span class="fl">20.0</span>             </span>
+<span id="cb58-71"><a href="#cb58-71" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">79</span>] tools_4.<span class="fl">6.1</span>                 BiocIO_1.<span class="fl">22.0</span>              </span>
+<span id="cb58-72"><a href="#cb58-72" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">81</span>] locfit_1<span class="fl">.5-9.12</span>             GenomicAlignments_1.<span class="fl">48.0</span>   </span>
+<span id="cb58-73"><a href="#cb58-73" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">83</span>] fs_2.<span class="fl">1.0</span>                    XML_3<span class="fl">.99-0.24</span>              </span>
+<span id="cb58-74"><a href="#cb58-74" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">85</span>] Cairo_1<span class="fl">.7</span><span class="dv">-0</span>                 grid_4.<span class="fl">6.1</span>                 </span>
+<span id="cb58-75"><a href="#cb58-75" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">87</span>] colorspace_2<span class="fl">.1</span><span class="dv">-3</span>            edgeR_4.<span class="fl">10.5</span>               </span>
+<span id="cb58-76"><a href="#cb58-76" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">89</span>] nlme_3<span class="fl">.1</span><span class="dv">-171</span>                restfulr_0.<span class="fl">0.17</span>            </span>
+<span id="cb58-77"><a href="#cb58-77" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">91</span>] cli_3.<span class="fl">6.6</span>                   textshaping_1.<span class="fl">0.5</span>          </span>
+<span id="cb58-78"><a href="#cb58-78" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">93</span>] viridisLite_0.<span class="fl">4.3</span>           S4Arrays_1.<span class="fl">12.0</span>            </span>
+<span id="cb58-79"><a href="#cb58-79" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">95</span>] ComplexHeatmap_2.<span class="fl">28.0</span>       gtable_0.<span class="fl">3.6</span>               </span>
+<span id="cb58-80"><a href="#cb58-80" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">97</span>] sass_0.<span class="fl">4.10</span>                 digest_0.<span class="fl">6.39</span>              </span>
+<span id="cb58-81"><a href="#cb58-81" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">99</span>] ggrepel_0.<span class="fl">9.8</span>               SparseArray_1.<span class="fl">12.2</span>         </span>
+<span id="cb58-82"><a href="#cb58-82" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">101</span>] rjson_0.<span class="fl">2.23</span>                htmlwidgets_1.<span class="fl">6.4</span>          </span>
+<span id="cb58-83"><a href="#cb58-83" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">103</span>] farver_2.<span class="fl">1.2</span>                htmltools_0.<span class="fl">5.9</span>            </span>
+<span id="cb58-84"><a href="#cb58-84" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">105</span>] pkgdown_2.<span class="fl">2.1</span>               lifecycle_1.<span class="fl">0.5</span>            </span>
+<span id="cb58-85"><a href="#cb58-85" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">107</span>] httr_1.<span class="fl">4.9</span>                  GlobalOptions_0.<span class="fl">1.4</span>        </span>
+<span id="cb58-86"><a href="#cb58-86" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">109</span>] statmod_1.<span class="fl">5.2</span>               gridtext_0.<span class="fl">1.6</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

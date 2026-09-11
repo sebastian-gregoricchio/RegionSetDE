@@ -581,6 +581,38 @@ Use this whenever the hypothesis is comparative. Comparing two `camera` p-values
 
 <br>
 
+## When there is no contrast at all {#set_scores}
+
+Everything above runs on a contrast. An experiment with three replicates of one factor and no second condition has none, so `testSetContrast()` has nothing to compare, and the question there is a different one: *does one set carry more of the factor than another?* That is what `scoreRegionSets()` answers.
+
+The score of a set is its summarised signal divided by a reference measured in the same library, by default the background bins. It is a ratio taken inside one library, so the depth and the scaling factors cancel before the score exists. The raw counts are therefore what it reads, and no choice of normalisation can move the result.
+
+```{r score_sets}
+setScores <- scoreRegionSets(loadExampleData("counts", verbose = FALSE),
+                             reference = "background",
+                             verbose = FALSE)
+
+setScores
+```
+
+`resultsTable()` returns the comparisons and `scoreTable()` the per-library numbers behind them:
+
+```{r score_tables}
+head(scoreTable(setScores))
+```
+
+The difference between two sets is taken library by library, so the reference cancels a second time and what gets tested is the log ratio between the two sets. Neither the reference nor the normalisation enters it. The libraries do: four of them here, three in most experiments, and an interval built on two or three degrees of freedom is wide. That width is what three replicates support, and a narrower one would have come from treating the regions as replicates.
+
+```{r plot_set_scores, fig.height = 4.5}
+plotSetSignal(setScores, groupBy = "condition")
+```
+
+The lines join the points of each library across the sets, because the comparison is paired and a figure drawing the sets as independent clouds would be showing a test other than the one on the bracket.
+
+Read the output as a statement about signal and not yet as one about the factor. Region sets differ in width, mappability, GC content and accessibility, and those differences produce coverage in a library where nothing is bound, reproducibly, across every replicate, in the same way real binding does. `perBasepair = TRUE` removes the width term and leaves the others standing. Putting the composition of the sets next to the scores is what turns the observation into a claim. An input, an IgG or a spike-in removes the need to argue it: the score becomes an enrichment, and where one exists the comparison belongs in `testSetContrast()` instead.
+
+<br>
+
 ----------------------------------------------------------
 
 # **Checking the calibration** {#calibration}
@@ -883,6 +915,7 @@ unlink(outputDirectory, recursive = TRUE)
 | Did this class of regions respond as a class? | `testRegionSets()` | `delta.log2FC` and its interval, then `camera.FDR` |
 | Did the effect differ between two classes? | `testSetContrast()` | the contrast between the two sets |
 | Did one class gain what another lost? | `testSetContrast()` | `delta.log2FC` between the two sets |
+| Which class carries more signal, with only one condition? | `scoreRegionSets()` | `mean.delta.score` and its interval, see [When there is no contrast at all](#set_scores) |
 | Are my conclusions sensitive to the normalisation? | `plotNormComparison()`, `plotSetMA()` | how far the methods disagree |
 | Are my p-values trustworthy? | `checkNullCalibration()` | flatness of the histogram |
 | Can I test without replicates? | `estimateNullDispersion()` | dispersion from the background, then `fitRegions(dispersion = )` |

@@ -322,7 +322,7 @@ plotSetDistribution <-
 #'
 #' @description Draws the signal of every sample over the regions of each set, one violin per sample, with a bracket joining the groups being compared and the set level fold change and p-value written on it. Where \code{\link{plotSetDistribution}} shows the fold changes the model estimated, this one shows the values those estimates came from, so a set that moved because one replicate is out of line is visible rather than hidden inside a mean.
 #'
-#' @param setResults \code{RegionSetDE.setResults} or \code{RegionSetDE.setResultsList} object. A \code{RegionSetDE.fit} or a \code{RegionSetDE.counts} object is accepted as well, in which case no annotation is written.
+#' @param setResults \code{RegionSetDE.setResults} or \code{RegionSetDE.setResultsList} object. A \code{RegionSetDE.fit} or a \code{RegionSetDE.counts} object is accepted as well, in which case no annotation is written. A \code{RegionSetDE.setScores} object switches the figure to one point per library per set, joined library by library, with the paired difference written on the bracket.
 #' @param counts \code{RegionSetDE.counts} object holding the values, when \code{setResults} carries none. Default: \code{NULL}.
 #' @param contrast String with the name of the contrast to draw, or its position, when \code{setResults} holds several of them. Default: \code{NULL}.
 #' @param set Character vector with the names of the region sets to draw. Default: \code{NULL}, all of them.
@@ -403,6 +403,22 @@ plotSetSignal <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
+    # Scores carry one value per library instead of per region, and no contrast, so they need their own figure
+    if (methods::is(setResults, "RegionSetDE.setScores")) {
+      return(.plotSetScores(setScores = setResults,
+                            set = set,
+                            groupBy = groupBy,
+                            groupOrder = groupOrder,
+                            comparisons = comparisons,
+                            annotate = annotate,
+                            colours = colours,
+                            baseColours = baseColours,
+                            title = title,
+                            subtitle = subtitle,
+                            legendPosition = legendPosition,
+                            baseSize = baseSize))
+    }
+
     if (!(style %in% c("violin", "boxplot"))) {
       stop("The 'style' parameter must be either 'violin' or 'boxplot'.", call. = FALSE)
     }
@@ -1005,4 +1021,183 @@ plotUniverseMatching <-
                                      y.position = yPosition)
 
     return(as.data.frame(dplyr::filter(annotationTable, .data$region.set %in% setNames)))
+  } # END function
+
+
+
+#' @title .plotSetScores
+#'
+#' @description Draws a \code{RegionSetDE.setScores} object: one point per library per set, the points of a library joined across the sets, and a bracket carrying the paired difference and its adjusted p-value.
+#'
+#' @param setScores \code{RegionSetDE.setScores} object.
+#' @param set Character vector with the names of the region sets to draw. Default: \code{NULL}, all of them.
+#' @param groupBy String with the name of a column of the sample metadata driving the colour. Default: \code{NULL}, the sample itself.
+#' @param groupOrder Character vector with the levels of \code{groupBy} in the order they must appear. Default: \code{NULL}, alphabetical.
+#' @param comparisons List of character vectors of length two, naming the pairs to annotate. Default: \code{NULL}, every pair that was compared.
+#' @param annotate Logical value to indicate whether the brackets must be drawn. Default: \code{TRUE}.
+#' @param colours Named character vector with one colour per sample. Default: \code{NULL}, shades built from the groups.
+#' @param baseColours Character vector with one base colour per group. Default: \code{NULL}.
+#' @param title String with the title of the plot, rendered as markdown. Default: \code{NULL}.
+#' @param subtitle String with the subtitle of the plot, rendered as markdown. Default: \code{NULL}.
+#' @param legendPosition String with the position of the legend. Default: \code{"none"}.
+#' @param baseSize Numeric value with the base font size. Default: \code{12}.
+#'
+#' @return A \code{ggplot} object.
+#'
+#' @details The lines joining the points are not decoration. The comparison behind the bracket is paired, one difference per library, and a figure drawing the sets as independent clouds would be showing a test other than the one whose p-value it carries. Three lines running parallel are what a small difference with a decisive paired p-value looks like; three lines crossing are why the interval on that difference is wide.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom ggplot2 aes element_blank expansion geom_line geom_point geom_segment ggplot labs scale_colour_manual scale_y_continuous theme
+#' @importFrom ggtext geom_richtext
+#' @importFrom dplyr arrange filter mutate
+#' @importFrom rlang .data
+#'
+#' @keywords internal
+
+.plotSetScores <-
+  function(setScores,
+           set = NULL,
+           groupBy = NULL,
+           groupOrder = NULL,
+           comparisons = NULL,
+           annotate = TRUE,
+           colours = NULL,
+           baseColours = NULL,
+           title = NULL,
+           subtitle = NULL,
+           legendPosition = "none",
+           baseSize = 12) {
+
+    scoresTable <- setScores@scores
+    comparisonTable <- setScores@comparisons
+
+    if (!is.null(set)) {
+      absentSets <- setdiff(set, unique(scoresTable$region.set))
+
+      if (length(absentSets) > 0) {
+        stop("The following region sets were not scored: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+      }
+
+      scoresTable <- dplyr::filter(scoresTable, .data$region.set %in% set)
+      comparisonTable <- dplyr::filter(comparisonTable, .data$set.1 %in% set & .data$set.2 %in% set)
+    }
+
+    #---------------------------------#
+    # Colour and order the libraries  #
+    #---------------------------------#
+    colTable <- setScores@sample.metadata
+
+    if (!is.null(groupBy)) {
+      if (!(groupBy %in% colnames(colTable))) {
+        stop("The column '", groupBy, "' is absent from the metadata of the samples.", call. = FALSE)
+      }
+      colTable$group <- as.character(colTable[[groupBy]])
+    } else {
+      colTable$group <- colTable$sample
+    }
+
+    groupOrder <- .resolveGroupOrder(groupOrder = groupOrder,
+                                     groupLevels = unique(colTable$group))
+
+    colTable$group <- factor(colTable$group, levels = groupOrder)
+    colTable <- colTable[order(colTable$group, colTable$sample), , drop = FALSE]
+
+    sampleColours <- if (is.null(colours)) {
+      .groupShades(colTable = colTable, baseColours = baseColours)
+    } else {
+      colours
+    }
+
+    setLevels <- sort(unique(scoresTable$region.set))
+    scoresTable <- dplyr::mutate(scoresTable,
+                                 sample = factor(.data$sample, levels = colTable$sample),
+                                 region.set = factor(.data$region.set, levels = setLevels))
+    scoresTable <- dplyr::arrange(scoresTable, .data$region.set, .data$sample)
+
+    #----------------#
+    # Build the plot #
+    #----------------#
+    axisLabel <- if (setScores@reference == "none") {
+      paste0("log<sub>2</sub> ", setScores@assay)
+    } else {
+      paste0("log<sub>2</sub> (set / ", setScores@reference, ")")
+    }
+
+    scorePlot <-
+      ggplot2::ggplot(data = scoresTable,
+                      mapping = ggplot2::aes(x = .data$region.set, y = .data$score)) +
+      # One line per library across the sets, because the comparison is paired and a figure hiding that shows another test
+      ggplot2::geom_line(mapping = ggplot2::aes(group = .data$sample), colour = "grey70", linewidth = 0.4) +
+      ggplot2::geom_point(mapping = ggplot2::aes(colour = .data$sample), size = 3) +
+      ggplot2::scale_colour_manual(values = sampleColours) +
+      ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.08, 0.18))) +
+      ggplot2::labs(x = "",
+                    y = axisLabel,
+                    colour = "",
+                    title = title,
+                    subtitle = subtitle) +
+      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
+      ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
+                     panel.grid.major.x = ggplot2::element_blank())
+
+    #----------------------------------------#
+    # Brackets carrying the paired result    #
+    #----------------------------------------#
+    if (isTRUE(annotate) & nrow(comparisonTable) > 0) {
+
+      if (!is.null(comparisons)) {
+        requestedPairs <- vapply(comparisons, function(x) {paste(sort(x), collapse = "|")}, character(1))
+        comparisonTable <- dplyr::filter(comparisonTable,
+                                         paste(pmin(.data$set.1, .data$set.2),
+                                               pmax(.data$set.1, .data$set.2), sep = "|") %in% requestedPairs)
+      }
+
+      if (nrow(comparisonTable) > 0) {
+        scoreRange <- range(scoresTable$score, na.rm = TRUE)
+        scoreSpan <- diff(scoreRange)
+
+        if (!is.finite(scoreSpan) | scoreSpan == 0) {
+          scoreSpan <- 1
+        }
+
+        bracketStep <- scoreSpan * 0.13
+
+        # Neighbouring pairs first, so the short brackets sit under the long ones instead of crossing them
+        comparisonTable <- dplyr::arrange(comparisonTable,
+                                          abs(match(.data$set.1, setLevels) - match(.data$set.2, setLevels)))
+
+        bracketTable <-
+          dplyr::mutate(comparisonTable,
+                        x.start = match(.data$set.1, setLevels),
+                        x.end = match(.data$set.2, setLevels),
+                        y.bracket = scoreRange[2] + bracketStep * seq_len(nrow(comparisonTable)),
+                        y.tick = bracketStep * 0.2,
+                        # The delta is the paired difference between the two sets, the reference having cancelled out of it
+                        label = sprintf("&Delta;score = %.2f<br>FDR = %.1e", .data$mean.delta.score, .data$FDR))
+
+        scorePlot <-
+          scorePlot +
+          ggplot2::geom_segment(data = bracketTable,
+                                mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.end,
+                                                       y = .data$y.bracket, yend = .data$y.bracket),
+                                inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
+          ggplot2::geom_segment(data = bracketTable,
+                                mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.start,
+                                                       y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
+                                inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
+          ggplot2::geom_segment(data = bracketTable,
+                                mapping = ggplot2::aes(x = .data$x.end, xend = .data$x.end,
+                                                       y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
+                                inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
+          ggtext::geom_richtext(data = bracketTable,
+                                mapping = ggplot2::aes(x = (.data$x.start + .data$x.end) / 2,
+                                                       y = .data$y.bracket, label = .data$label),
+                                inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
+                                colour = "grey20", fill = NA, label.color = NA,
+                                label.padding = grid::unit(rep(1, 4), "pt"))
+      }
+    }
+
+    return(scorePlot)
   } # END function

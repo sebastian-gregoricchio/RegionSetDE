@@ -671,3 +671,68 @@ setMethod(f = "regionSetNames",
 
             return(regionSetNames(object@results[[1]]))
           })
+
+
+
+#' @rdname resultsTable
+#'
+#' @export
+
+setMethod(f = "resultsTable",
+          signature = "RegionSetDE.setScores",
+          definition = function(results) {
+            # The comparison between the sets is the result here, the per-library scores sit behind scoreTable()
+            return(results@comparisons)
+          })
+
+
+
+
+#' @title scoreTable
+#'
+#' @description Returns the per-library table behind a \code{RegionSetDE.setScores} object, one row per region set per library, with the summarised signal, the reference it was divided by and the score.
+#'
+#' @param object \code{RegionSetDE.setScores} object returned by \code{\link{scoreRegionSets}}.
+#'
+#' @return A data.frame with one row per library per region set.
+#'
+#' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' setScores <- scoreRegionSets(counts, verbose = FALSE)
+#'
+#' head(scoreTable(setScores))
+#'
+#' # The comparisons between the sets come out of resultsTable() instead
+#' resultsTable(setScores)
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @seealso \code{\link{scoreRegionSets}}, \code{\link{resultsTable}}
+#'
+#' @importFrom methods setGeneric setMethod
+#'
+#' @export
+
+setGeneric(name = "scoreTable", def = function(object) {standardGeneric("scoreTable")})
+
+
+#' @rdname scoreTable
+#' @export
+
+setMethod(f = "scoreTable",
+          signature = "RegionSetDE.setScores",
+          definition = function(object) {
+            return(object@scores)
+          })
+
+
+
+
+#' @rdname regionSetNames
+#' @export
+
+setMethod(f = "regionSetNames",
+          signature = "RegionSetDE.setScores",
+          definition = function(object) {
+            return(sort(unique(object@scores$region.set)))
+          })

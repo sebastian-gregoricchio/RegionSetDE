@@ -28,7 +28,7 @@ plotSetSignal(
 )
 }
 \arguments{
-\item{setResults}{\code{RegionSetDE.setResults} or \code{RegionSetDE.setResultsList} object. A \code{RegionSetDE.fit} or a \code{RegionSetDE.counts} object is accepted as well, in which case no annotation is written.}
+\item{setResults}{\code{RegionSetDE.setResults} or \code{RegionSetDE.setResultsList} object. A \code{RegionSetDE.fit} or a \code{RegionSetDE.counts} object is accepted as well, in which case no annotation is written. A \code{RegionSetDE.setScores} object switches the figure to one point per library per set, joined library by library, with the paired difference written on the bracket.}
 
 \item{counts}{\code{RegionSetDE.counts} object holding the values, when \code{setResults} carries none. Default: \code{NULL}.}
 

@@ -224,6 +224,19 @@ setContrast <- testSetContrast(fit,
 
 setContrast
 
+## ----score_sets---------------------------------------------------------------
+setScores <- scoreRegionSets(loadExampleData("counts", verbose = FALSE),
+                             reference = "background",
+                             verbose = FALSE)
+
+setScores
+
+## ----score_tables-------------------------------------------------------------
+head(scoreTable(setScores))
+
+## ----plot_set_scores, fig.height = 4.5----------------------------------------
+plotSetSignal(setScores, groupBy = "condition")
+
 ## ----null_dispersion----------------------------------------------------------
 nullDispersion <-
   estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>

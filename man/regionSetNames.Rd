@@ -9,6 +9,7 @@
 \alias{regionSetNames,RegionSetDE.setResults-method}
 \alias{regionSetNames,RegionSetDE.resultsList-method}
 \alias{regionSetNames,RegionSetDE.setResultsList-method}
+\alias{regionSetNames,RegionSetDE.setScores-method}
 \title{regionSetNames}
 \usage{
 regionSetNames(object)
@@ -26,6 +27,8 @@ regionSetNames(object)
 \S4method{regionSetNames}{RegionSetDE.resultsList}(object)
 
 \S4method{regionSetNames}{RegionSetDE.setResultsList}(object)
+
+\S4method{regionSetNames}{RegionSetDE.setScores}(object)
 }
 \arguments{
 \item{object}{\code{RegionSetDE}, \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or \code{RegionSetDE.results} object.}

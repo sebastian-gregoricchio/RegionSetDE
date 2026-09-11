@@ -167,6 +167,7 @@ plotVolcano(results)
 | Did this class of regions respond as a class? | `testRegionSets()` |
 | Did the effect differ between two classes? | `testSetContrast()` |
 | Did one class gain what another lost? | `testSetContrast()`, which is where a redistribution claim belongs |
+| Which class carries more signal, when there is only one condition? | `scoreRegionSets()` |
 | Are my conclusions sensitive to the normalisation assumption? | `plotNormComparison()`, `plotSetMA()` |
 | Are my p-values trustworthy? | `checkNullCalibration()` |
 | Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` |

@@ -917,3 +917,124 @@ setMethod(f = "length",
 
     return(results@results[[contrast[1]]])
   } # END function
+
+
+
+#' @title RegionSetDE.setScores class
+#'
+#' @description S4 class storing the signal scores computed by \code{\link{scoreRegionSets}}, one per region set per library, together with the paired comparisons between the sets. No contrast lies behind these numbers and no model was fitted on them, which is what separates this class from \code{RegionSetDE.setResults}: the replication is the libraries, and the comparison runs between sets rather than between conditions.
+#'
+#' @slot scores Data.frame with one row per library per set, carrying the summarised signal, the reference it was divided by and the \code{score} on a log2 scale.
+#' @slot comparisons Data.frame with one row per pair of sets, carrying the mean paired difference between their scores, its confidence interval, the paired t-statistic and the adjusted p-value.
+#' @slot sample.metadata Data.frame with the \code{colData} of the counts object the scores came from, so that the libraries can be grouped and coloured downstream without handing that object over again.
+#' @slot reference String naming what the signal of a set was divided by, one among \code{"background"}, \code{"regions"} and \code{"none"}.
+#' @slot assay String with the name of the assay the signal was read from.
+#' @slot summary String with how the regions of a set were summarised, either \code{"mean"} or \code{"median"}.
+#' @slot per.basepair Logical value indicating whether the signal was divided by the width of the region before being summarised.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @seealso \code{\link{scoreRegionSets}}
+#'
+#' @importFrom methods setClass representation prototype
+#'
+#' @export
+setClass(Class = "RegionSetDE.setScores",
+         contains = "RegionSetDE.provenance",
+         representation = representation(scores = "data.frame",
+                                         comparisons = "data.frame",
+                                         sample.metadata = "data.frame",
+                                         reference = "character",
+                                         assay = "character",
+                                         summary = "character",
+                                         per.basepair = "logical"),
+         prototype = prototype(scores = data.frame(),
+                               comparisons = data.frame(),
+                               sample.metadata = data.frame(),
+                               reference = NA_character_,
+                               assay = NA_character_,
+                               summary = NA_character_,
+                               per.basepair = NA))
+
+
+
+
+#' @importFrom methods setValidity
+setValidity(Class = "RegionSetDE.setScores",
+            method = function(object) {
+              issues <- character(0)
+
+              requiredScoreColumns <- c("sample", "region.set", "n.regions", "set.signal", "reference.signal", "score")
+              missingScoreColumns <- setdiff(requiredScoreColumns, colnames(object@scores))
+
+              if (nrow(object@scores) > 0 & length(missingScoreColumns) > 0) {
+                issues <- c(issues, paste0("The 'scores' slot lacks the columns: ", paste(missingScoreColumns, collapse = ", "), "."))
+              }
+
+              requiredComparisonColumns <- c("set.1", "set.2", "n.libraries", "mean.delta.score", "p.value", "FDR")
+              missingComparisonColumns <- setdiff(requiredComparisonColumns, colnames(object@comparisons))
+
+              if (nrow(object@comparisons) > 0 & length(missingComparisonColumns) > 0) {
+                issues <- c(issues, paste0("The 'comparisons' slot lacks the columns: ", paste(missingComparisonColumns, collapse = ", "), "."))
+              }
+
+              # A comparison naming a set that was never scored has nothing behind it to read or to draw
+              if (length(issues) == 0 & nrow(object@comparisons) > 0) {
+                unknownSets <- setdiff(c(object@comparisons$set.1, object@comparisons$set.2), object@scores$region.set)
+
+                if (length(unknownSets) > 0) {
+                  issues <- c(issues, paste0("The 'comparisons' slot names sets absent from 'scores': ", paste(unknownSets, collapse = ", "), "."))
+                }
+              }
+
+              if (length(issues) > 0) {return(issues)} else {return(TRUE)}
+            })
+
+
+
+
+#' @title show method for RegionSetDE.setScores
+#'
+#' @description Prints a summary of the region set scores and of the comparisons between them.
+#'
+#' @param object \code{RegionSetDE.setScores} object.
+#'
+#' @return Prints the summary to the console.
+#'
+#' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' scoreRegionSets(counts, verbose = FALSE)
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom methods setMethod
+#' @importFrom dplyr n_distinct
+#'
+#' @export
+setMethod(f = "show",
+          signature = "RegionSetDE.setScores",
+          definition = function(object) {
+            cat("An object of class 'RegionSetDE.setScores'\n")
+            cat("  region sets     :", paste(sort(unique(object@scores$region.set)), collapse = ", "), "\n")
+            cat("  libraries       :", dplyr::n_distinct(object@scores$sample), "\n")
+            cat("  reference       :", object@reference, "\n")
+            cat("  signal          :", paste0(object@summary, " of '", object@assay, "'",
+                                              if (isTRUE(object@per.basepair)) {" per base pair"} else {" per region"}), "\n")
+            cat("  comparisons     :", nrow(object@comparisons), "\n")
+
+            if (nrow(object@comparisons) > 0) {
+              shownColumns <- intersect(c("set.1", "set.2", "n.libraries", "mean.delta.score",
+                                          "CI.lower", "CI.upper", "p.value", "FDR"),
+                                        colnames(object@comparisons))
+              printTable <- object@comparisons[, shownColumns, drop = FALSE]
+              numericColumns <- vapply(printTable, is.numeric, logical(1))
+              printTable[numericColumns] <- lapply(printTable[numericColumns], signif, digits = 3)
+
+              cat("\n")
+              print(printTable, row.names = FALSE)
+            }
+
+            cat("\nThe libraries are the replication, the composition of the sets is not controlled for.\n")
+
+            invisible(NULL)
+          })

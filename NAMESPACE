@@ -38,6 +38,8 @@ export(renameBedColumns)
 export(resultCounts)
 export(resultRanges)
 export(resultsTable)
+export(scoreRegionSets)
+export(scoreTable)
 export(selectSamples)
 export(splitLoadRegions)
 export(splitSamples)
@@ -54,6 +56,7 @@ exportClasses(RegionSetDE.results)
 exportClasses(RegionSetDE.resultsList)
 exportClasses(RegionSetDE.setResults)
 exportClasses(RegionSetDE.setResultsList)
+exportClasses(RegionSetDE.setScores)
 exportClasses(RegionSetDE.universe)
 exportMethods("$")
 exportMethods("[[")
@@ -67,6 +70,7 @@ exportMethods(regionSetNames)
 exportMethods(resultCounts)
 exportMethods(resultRanges)
 exportMethods(resultsTable)
+exportMethods(scoreTable)
 exportMethods(show)
 exportMethods(tileTable)
 importClassesFrom(GenomicRanges,GRanges)
@@ -301,6 +305,7 @@ importFrom(stats,
   var
 )
 importFrom(utils,
+  combn,
   head,
   read.delim,
   write.table

@@ -15,6 +15,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.resultsList-class.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResults-class.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResultsList-class.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setScores-class.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.html</loc></url>
@@ -68,6 +69,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-overlappingRows.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-panelSets.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-pickResults.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-plotSetScores.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-prepareResultTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-provenanceSlots.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-regionAbundance.html</loc></url>
@@ -136,6 +138,8 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultRanges.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsList-accessors.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/selectSamples.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE-method.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.fit-method.html</loc></url>
@@ -143,6 +147,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.resultsList-method.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResults-method.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResultsList-method.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setScores-method.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.universe-method.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitSamples.html</loc></url>

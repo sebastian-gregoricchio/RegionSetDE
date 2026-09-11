@@ -18,6 +18,8 @@
   : RegionSetDE.setResults class
 - [`RegionSetDE.setResultsList-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResultsList-class.md)
   : RegionSetDE.setResultsList class
+- [`RegionSetDE.setScores-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setScores-class.md)
+  : RegionSetDE.setScores class
 - [`RegionSetDE.universe-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.md)
   : RegionSetDE.universe class
 - [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
@@ -108,6 +110,10 @@
   : Accessors of RegionSetDE.resultsList
 - [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
   : resultsTable
+- [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md)
+  : scoreRegionSets
+- [`scoreTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.md)
+  : scoreTable
 - [`selectSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/selectSamples.md)
   : selectSamples
 - [`show(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE-method.md)
@@ -122,6 +128,8 @@
   : show method for RegionSetDE.setResults
 - [`show(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResultsList-method.md)
   : show method for RegionSetDE.setResultsList
+- [`show(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setScores-method.md)
+  : show method for RegionSetDE.setScores
 - [`show(`*`<RegionSetDE.universe>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.universe-method.md)
   : show method for RegionSetDE.universe
 - [`splitLoadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.md)

@@ -28,6 +28,9 @@ regionSetNames(object)
 
 # S4 method for class 'RegionSetDE.setResultsList'
 regionSetNames(object)
+
+# S4 method for class 'RegionSetDE.setScores'
+regionSetNames(object)
 ```
 
 ## Arguments

@@ -1082,6 +1082,109 @@ a difference in significance is not a significant difference.
 
   
 
+### When there is no contrast at all
+
+Everything above runs on a contrast. An experiment with three replicates
+of one factor and no second condition has none, so
+[`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
+has nothing to compare, and the question there is a different one: *does
+one set carry more of the factor than another?* That is what
+[`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md)
+answers.
+
+The score of a set is its summarised signal divided by a reference
+measured in the same library, by default the background bins. It is a
+ratio taken inside one library, so the depth and the scaling factors
+cancel before the score exists. The raw counts are therefore what it
+reads, and no choice of normalisation can move the result.
+
+``` r
+setScores <- scoreRegionSets(loadExampleData("counts", verbose = FALSE),
+                             reference = "background",
+                             verbose = FALSE)
+
+setScores
+> An object of class 'RegionSetDE.setScores'
+>   region sets     : geneBody, intergenic, promoterCpG, promoterNonCpG 
+>   libraries       : 4 
+>   reference       : background 
+>   signal          : mean of 'counts' per base pair 
+>   comparisons     : 6 
+> 
+>        set.1          set.2 n.libraries mean.delta.score CI.lower CI.upper
+>  promoterCpG promoterNonCpG           4            3.180    2.880    3.480
+>   intergenic    promoterCpG           4           -5.890   -6.740   -5.040
+>     geneBody    promoterCpG           4           -5.360   -6.380   -4.330
+>   intergenic promoterNonCpG           4           -2.710   -3.290   -2.130
+>     geneBody promoterNonCpG           4           -2.180   -2.920   -1.430
+>     geneBody     intergenic           4            0.532    0.348    0.716
+>   p.value      FDR
+>  5.51e-05 0.000331
+>  2.04e-04 0.000613
+>  4.68e-04 0.000937
+>  6.59e-04 0.000989
+>  2.60e-03 0.002720
+>  2.72e-03 0.002720
+> 
+> The libraries are the replication, the composition of the sets is not controlled for.
+```
+
+[`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
+returns the comparisons and
+[`scoreTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.md)
+the per-library numbers behind them:
+
+``` r
+head(scoreTable(setScores))
+>                            sample region.set n.regions  set.signal
+> 1 lv-H3K4me3-BN-female-bio1-tech1   geneBody      1370 0.006523358
+> 2   lv-H3K4me3-BN-male-bio2-tech1   geneBody      1370 0.007104380
+> 3  lv-H3K4me3-SHR-male-bio2-tech1   geneBody      1370 0.006563504
+> 4  lv-H3K4me3-SHR-male-bio3-tech1   geneBody      1370 0.019312409
+> 5 lv-H3K4me3-BN-female-bio1-tech1 intergenic      1112 0.004901978
+> 6   lv-H3K4me3-BN-male-bio2-tech1 intergenic      1112 0.005135791
+>   reference.signal       score
+> 1      0.005052627  0.36858114
+> 2      0.005285830  0.42657861
+> 3      0.004592457  0.51519989
+> 4      0.012350258  0.64498698
+> 5      0.005052627 -0.04366946
+> 6      0.005285830 -0.04154346
+```
+
+The difference between two sets is taken library by library, so the
+reference cancels a second time and what gets tested is the log ratio
+between the two sets. Neither the reference nor the normalisation enters
+it. The libraries do: four of them here, three in most experiments, and
+an interval built on two or three degrees of freedom is wide. That width
+is what three replicates support, and a narrower one would have come
+from treating the regions as replicates.
+
+``` r
+
+plotSetSignal(setScores, groupBy = "condition")
+```
+
+![](RegionSetDE.vignette_files/figure-html/plot_set_scores-1.png)
+
+The lines join the points of each library across the sets, because the
+comparison is paired and a figure drawing the sets as independent clouds
+would be showing a test other than the one on the bracket.
+
+Read the output as a statement about signal and not yet as one about the
+factor. Region sets differ in width, mappability, GC content and
+accessibility, and those differences produce coverage in a library where
+nothing is bound, reproducibly, across every replicate, in the same way
+real binding does. `perBasepair = TRUE` removes the width term and
+leaves the others standing. Putting the composition of the sets next to
+the scores is what turns the observation into a claim. An input, an IgG
+or a spike-in removes the need to argue it: the score becomes an
+enrichment, and where one exists the comparison belongs in
+[`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
+instead.
+
+  
+
 ------------------------------------------------------------------------
 
 ## **Checking the calibration**
@@ -1642,6 +1745,7 @@ be reproduced and one that can only be repeated.
 | Did this class of regions respond as a class? | [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md) | `delta.log2FC` and its interval, then `camera.FDR` |
 | Did the effect differ between two classes? | [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md) | the contrast between the two sets |
 | Did one class gain what another lost? | [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md) | `delta.log2FC` between the two sets |
+| Which class carries more signal, with only one condition? | [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md) | `mean.delta.score` and its interval, see [When there is no contrast at all](#set_scores) |
 | Are my conclusions sensitive to the normalisation? | [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md), [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md) | how far the methods disagree |
 | Are my p-values trustworthy? | [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md) | flatness of the histogram |
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md) | dispersion from the background, then `fitRegions(dispersion = )` |
@@ -1671,7 +1775,7 @@ genome-wide catalogue.
 sessionInfo()
 > R version 4.6.1 (2026-06-24)
 > Platform: x86_64-pc-linux-gnu
-> Running under: Ubuntu 24.04.4 LTS
+> Running under: Ubuntu 24.04.5 LTS
 > 
 > Matrix products: default
 > BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
@@ -1719,7 +1823,7 @@ sessionInfo()
 >  [39] limma_3.68.5                rtracklayer_1.72.0         
 >  [41] jquerylib_0.1.4             iterators_1.0.14           
 >  [43] Rcpp_1.1.2                  bookdown_0.48              
->  [45] SummarizedExperiment_1.42.0 knitr_1.51                 
+>  [45] SummarizedExperiment_1.42.0 knitr_1.52                 
 >  [47] Matrix_1.7-5                splines_4.6.1              
 >  [49] tidyselect_1.2.1            abind_1.4-8                
 >  [51] yaml_2.3.12                 doParallel_1.0.17          
@@ -1738,16 +1842,16 @@ sessionInfo()
 >  [77] BiocIO_1.22.0               locfit_1.5-9.12            
 >  [79] GenomicAlignments_1.48.0    fs_2.1.0                   
 >  [81] XML_3.99-0.24               grid_4.6.1                 
->  [83] colorspace_2.1-3            edgeR_4.10.4               
+>  [83] colorspace_2.1-3            edgeR_4.10.5               
 >  [85] nlme_3.1-169                restfulr_0.0.17            
 >  [87] cli_3.6.6                   textshaping_1.0.5          
 >  [89] S4Arrays_1.12.0             viridisLite_0.4.3          
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
 >  [95] SparseArray_1.12.2          ggrepel_0.9.8              
->  [97] rjson_0.2.23                htmlwidgets_1.6.4          
->  [99] farver_2.1.2                htmltools_0.5.9            
-> [101] pkgdown_2.2.1               lifecycle_1.0.5            
-> [103] httr_1.4.9                  GlobalOptions_0.1.4        
-> [105] statmod_1.5.2               gridtext_0.1.6
+>  [97] rjson_0.2.23                farver_2.1.2               
+>  [99] htmltools_0.5.9             pkgdown_2.2.1              
+> [101] lifecycle_1.0.5             httr_1.4.9                 
+> [103] GlobalOptions_0.1.4         statmod_1.5.2              
+> [105] gridtext_0.1.6
 ```

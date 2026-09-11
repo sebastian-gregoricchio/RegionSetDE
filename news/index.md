@@ -1,132 +1,5 @@
 # Changelog
 
-## RegionSetDE 0.99.1
-
-Statistical and interpretive corrections, from a review of the set-level
-inference. Three of these change what the output means rather than how
-it is computed, so a result produced with 0.99.0 should be re-read
-against them.
-
-### Set-level effect sizes
-
-- [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
-  and
-  [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
-  gain `effectMethod`. With the default `"sample"` the confidence
-  interval is built from one set score per library, the mean signal over
-  the set minus the mean signal over its comparison, run through the
-  design of the experiment. The replication behind the interval is now
-  the biological samples.
-- The interval of 0.99.0 is still reported, under
-  `heterogeneity.CI.lower` and `heterogeneity.CI.upper`, and named for
-  what it measures: how far the effect varies between the loci of a set,
-  conditional on the libraries at hand. It was documented as a
-  confidence interval on the set effect, which it is not, since its
-  sampling units are genomic loci.
-- `sample.delta.log2FC`, its standard error, degrees of freedom, p-value
-  and adjusted p-value are reported alongside.
-
-### Interpretation of camera and fry
-
-- The reading of a significant competitive test with a non-significant
-  self-contained one as redistribution has been removed from the manual,
-  the vignette and the README. Failing to reject a self-contained null
-  is not evidence that the absolute change is zero, and unequal power
-  between the two tests produces the same pattern. The four outcomes are
-  now described as evidence rather than as mechanism.
-- A redistribution claim belongs to
-  [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md),
-  which compares two sets directly. The documentation points there.
-- Also stated: a centring normalisation removes a genuinely global shift
-  before `fry` ever sees the data, so the self-contained test is not
-  where to look for one.
-
-### What normalisation can and cannot decide
-
-- The claim that
-  [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
-  and
-  [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md)
-  say whether a global shift is technical or biological has been
-  dropped. The two are not separable from endogenous data alone. Those
-  plots answer whether the conclusions are sensitive to the
-  normalisation assumption, which is what they are now documented as
-  answering.
-
-### No-replicate analysis
-
-- The “no replicates needed” heading is gone.
-  [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
-  measures how two libraries differ over rows assumed not to respond,
-  which is not the biological variability that was never sampled, and
-  the documentation says so.
-- [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
-  gains `backgroundHoldout`, which keeps a fraction of the background
-  bins out of the estimation of the scaling factors.
-  [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
-  picks up that split rather than drawing its own, so the calibration
-  rows sit outside the whole preprocessing chain.
-- The returned list gains `holdout.type`, distinguishing rows held out
-  of the dispersion alone from rows held out of both steps.
-
-### Counts and coverage
-
-- [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
-  gains the `"limma"` engine, limma-trend on the log2 signal, for values
-  that are not counts.
-- [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
-  gains `countLike` and no longer rounds by default. Rounding coverage
-  to integers does not make it a fragment count, and the negative
-  binomial and voom engines now refuse an object built from bigWig files
-  unless `countLike` was declared or `assumeCountLike` overrides it in
-  [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md).
-- [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
-  gains the same `countLike`, for external matrices holding coverage
-  rather than counts.
-
-### Tiles
-
-- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
-  [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
-  and
-  [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
-  mark a tiled object as tiled. They previously stored
-  `counting.level = "region"` whatever `tileWidth` was, so
-  [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
-  never recombined the tiles of a region and the tile-level output path
-  could not be reached.
-- [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
-  gains `tileHandling`, collapsing the tiles of a region into one row
-  before the set is assembled. Without it a 40 kb region counted at 1 kb
-  weighs forty times a 1 kb one, which makes the set effect an average
-  over base pairs rather than over regions.
-
-### Overlapping sets
-
-- [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
-  gains `overlapPolicy`, and
-  [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
-  now detects shared regions through
-  [`IRanges::findOverlaps`](https://rdrr.io/pkg/IRanges/man/findOverlaps-methods.html)
-  rather than through region identifiers. Two sets can cover the same
-  chromatin without sharing an identifier, and the shared reads pull the
-  difference between them towards zero.
-- The number of overlapping comparison rows is reported in
-  `n.comparison.overlapping`.
-
-### The comparison universe
-
-- [`makeSetUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeSetUniverse.md),
-  [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
-  and
-  [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
-  gain `universeSets`, naming the sets the comparison rows are drawn
-  from.
-- `RegionSetDE.universe` gains the `comparison.sets` slot and prints it.
-  A competitive p-value is relative to the sets that happen to be
-  loaded, and that is now recorded with the result instead of having to
-  be reconstructed.
-
 ## RegionSetDE 0.99.0
 
 First version.
@@ -145,7 +18,20 @@ First version.
   and
   [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
   count over the regions, either one row per region or one row per tile,
-  and return a `RegionSetDE.counts` object.
+  and return a `RegionSetDE.counts` object. A tiled object is marked as
+  tiled, so
+  [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
+  recombines the tiles of a region instead of treating each of them as a
+  region of its own.
+- [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
+  takes `countLike` and does not round. Rounding coverage to integers
+  does not make it a fragment count, and the negative binomial and voom
+  engines refuse an object built from bigWig files unless `countLike`
+  was declared or `assumeCountLike` overrides it in
+  [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md).
+  [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
+  takes the same argument, for external matrices holding coverage rather
+  than counts.
 - [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
   counts genome-wide bins alongside the regions, for the normalisation
   and for the null estimates.
@@ -155,11 +41,17 @@ First version.
 - [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
   estimates scaling factors from the background bins, from the regions
   themselves, or takes them from outside, for instance from a spike-in
-  or a greenlist.
+  or a greenlist. `backgroundHoldout` keeps a fraction of the bins out
+  of that estimation, so that the rows used to check the calibration sit
+  outside the whole preprocessing chain.
 - [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md)
   and
   [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
-  show what a normalisation did before anything is fitted on it.
+  show what a normalisation did before anything is fitted on it. What
+  they answer is whether the conclusions are sensitive to the
+  normalisation assumption. Whether a global shift is technical or
+  biological is not separable from endogenous data alone, and neither
+  plot decides it.
 - [`filterRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filterRegions.md)
   removes the rows that carry too little signal to say anything, on
   average abundance alone so that the choice is independent of the
@@ -182,10 +74,11 @@ First version.
 ### Fitting and testing
 
 - [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
-  fits one model per region with `edgeR`, `limma-voom`,
+  fits one model per region with `edgeR`, `limma-voom`, `limma-trend`,
   [`variancePartition::dream`](http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.md)
   or `DESeq2`, reading the normalisation out of the object as offsets
-  rather than recomputing it.
+  rather than recomputing it. The `"limma"` engine runs limma-trend on
+  the log2 signal, for values that are not counts.
 - [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
   tests a contrast, or a named list of them, and combines tiled regions
   back to one row per region through
@@ -203,13 +96,79 @@ First version.
   self-contained through
   [`limma::fry`](https://rdrr.io/pkg/limma/man/roast.html), with the
   variance inflated for the correlation between regions so that a large
-  set does not come out certain by virtue of being large.
+  set does not come out certain by virtue of being large. The four
+  combinations of the two outcomes are documented as evidence rather
+  than as mechanism: failing to reject a self-contained null is not
+  evidence that the absolute change is zero, unequal power between the
+  two tests produces the same pattern, and a centring normalisation
+  removes a genuinely global shift before `fry` ever sees the data.
+- `effectMethod` decides what the confidence interval describes. With
+  the default `"sample"` it is built from one set score per library, the
+  mean signal over the set minus the mean signal over its comparison,
+  run through the design of the experiment, so the replication behind it
+  is the biological samples. `sample.delta.log2FC`, its standard error,
+  degrees of freedom, p-value and adjusted p-value are reported
+  alongside. `heterogeneity.CI.lower` and `heterogeneity.CI.upper`
+  report the other quantity, how far the effect varies between the loci
+  of a set, conditional on the libraries at hand.
 - [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
-  asks whether a contrast affects one set differently from another.
+  asks whether a contrast affects one set differently from another,
+  which is where a redistribution claim belongs.
+- `tileHandling` collapses the tiles of a region into one row before the
+  set is assembled. Without it a 40 kb region counted at 1 kb weighs
+  forty times a 1 kb one, which makes the set effect an average over
+  base pairs rather than over regions.
+- `overlapPolicy` handles sets covering the same chromatin, found
+  through
+  [`IRanges::findOverlaps`](https://rdrr.io/pkg/IRanges/man/findOverlaps-methods.html)
+  rather than through region identifiers, since two sets can cover the
+  same chromatin without sharing an identifier and the shared reads pull
+  the difference between them towards zero. `n.comparison.overlapping`
+  reports how many comparison rows overlap.
 - [`makeSetUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeSetUniverse.md)
   builds the comparison universe, matched on width and abundance;
   [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
-  builds one automatically and keeps it in the fit.
+  builds one automatically and keeps it in the fit. `universeSets` names
+  the sets the comparison rows are drawn from, and
+  `RegionSetDE.universe` records them in `comparison.sets` and prints
+  them, since a competitive p-value is relative to the sets that happen
+  to be loaded.
+
+### Region set scores
+
+- [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md)
+  compares region sets to each other in an experiment holding a single
+  condition, where there is no contrast for
+  [`testSetContrast()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md)
+  to run on. It computes one score per set per library, the summarised
+  signal over the set divided by a reference measured in the same
+  library, and compares the sets library by library.
+- The replication is the libraries. The regions of a set collapse to one
+  number per library rather than being tested across, so the interval
+  rests on the biological samples and the p-value is not the vanishing
+  one a per-region test over the same data returns.
+- The score is a ratio taken inside one library, so the sequencing depth
+  and the scaling factors cancel before it exists. With
+  `reference = "background"` the regions are read from the raw `counts`
+  assay, since the bins hold raw counts, and the normalisation never
+  enters. The reference cancels a second time in the difference between
+  two sets, which therefore depends on neither.
+- What the comparison does not separate is the factor from the
+  composition of the sets. Width, mappability, GC content and
+  accessibility produce coverage in a library where nothing is bound,
+  reproducibly across replicates. `perBasepair` removes the width term,
+  and the documentation states plainly that the rest remain, so that the
+  step from more signal to more factor is made as an argument rather
+  than read off the output.
+- `RegionSetDE.setScores` holds the per-library scores, the comparisons
+  and the `colData` of the counts object. `show` prints the sets, the
+  libraries, the reference and the comparisons;
+  [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
+  returns the comparisons,
+  [`scoreTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.md)
+  the scores behind them, and
+  [`regionSetNames()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionSetNames.md)
+  works on the object.
 
 ### Designs without replicates
 
@@ -218,7 +177,13 @@ First version.
   that a design with one sample per condition has a dispersion to be
   tested against.
   [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
-  calls it on its own when the design leaves no residual.
+  calls it on its own when the design leaves no residual. What it
+  measures is how two libraries differ over those rows, which is not the
+  biological variability that was never sampled, and the documentation
+  says so.
+- The returned list carries `holdout.type`, distinguishing rows held out
+  of the dispersion alone from rows held out of both the dispersion and
+  the normalisation.
 - [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   runs the same contrast on rows that should not respond and reports how
   many come out significant anyway, broken down by abundance, with a
@@ -236,6 +201,10 @@ First version.
   [`plotSetDistribution()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetDistribution.md),
   [`plotSetSignal()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetSignal.md),
   [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md).
+  [`plotSetSignal()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetSignal.md)
+  also draws a `RegionSetDE.setScores` object, one point per library per
+  set with the points of a library joined across the sets, since the
+  comparison behind the bracket is paired.
 - Samples:
   [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md)
   and

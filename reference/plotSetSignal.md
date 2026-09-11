@@ -41,7 +41,10 @@ plotSetSignal(
 
   `RegionSetDE.setResults` or `RegionSetDE.setResultsList` object. A
   `RegionSetDE.fit` or a `RegionSetDE.counts` object is accepted as
-  well, in which case no annotation is written.
+  well, in which case no annotation is written. A
+  `RegionSetDE.setScores` object switches the figure to one point per
+  library per set, joined library by library, with the paired difference
+  written on the bracket.
 
 - counts:
 

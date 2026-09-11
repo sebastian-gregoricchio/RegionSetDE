@@ -1,11 +1,10 @@
 ![release](https://img.shields.io/github/v/release/sebastian-gregoricchio/RegionSetDE?sort=semver)
 [![license](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://sebastian-gregoricchio.github.io/RegionSetDE/LICENSE.md/LICENSE)
-[![R-CMD-check-bioc](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/R-CMD-check-bioc.yaml/badge.svg)](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/R-CMD-check-bioc.yaml)
-[![pkgdown](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/pkgdown.yaml)
+[![R-CMD-check-bioc](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/R-CMD-check-bioc.yaml/badge.svg?branch=devel-tools)](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/R-CMD-check-bioc.yaml?query=branch%3Adevel-tools)
+[![pkgdown](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/pkgdown.yaml/badge.svg?branch=devel-tools)](https://github.com/sebastian-gregoricchio/RegionSetDE/actions/workflows/pkgdown.yaml)
 [![Codecov](https://codecov.io/gh/sebastian-gregoricchio/RegionSetDE/branch/main/graph/badge.svg)](https://app.codecov.io/gh/sebastian-gregoricchio/RegionSetDE)
 [![forks](https://img.shields.io/github/forks/sebastian-gregoricchio/RegionSetDE?style=social)](https://github.com/sebastian-gregoricchio/RegionSetDE/fork)
-<!---[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXXX)--->
-<!---![downloads](https://img.shields.io/github/downloads/sebastian-gregoricchio/RegionSetDE/total.svg)--->
+
 
 # RegionSetDE
 

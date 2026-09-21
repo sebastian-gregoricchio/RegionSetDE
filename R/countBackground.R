@@ -15,12 +15,14 @@
 #' @param maxFragmentLength Numeric value with the maximum insert size accepted for a pair. Default: \code{NULL}, the value used at the counting step.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{NULL}, the value used at the counting step.
 #' @param removeDuplicates Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.
-#' @param nThreads Number of threads used to process the files in parallel. Default: \code{1}.
+#' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}.
+#' @return The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}. Its \code{totals} column holds the library sizes of the bins.
 #'
 #' @details Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
+#'
+#' The bins start at the first base of every chromosome read, the last one of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. Every chromosome allowed by \code{restrictChromosomes} is read, whatever the value of \code{fullLibrarySize} used for the regions.
 #'
 #' @examples
 #' # The example counts already carry their background bins
@@ -38,12 +40,12 @@
 #'
 #' @seealso \code{\link{countReads}}
 #'
-#' @importFrom csaw readParam windowCounts
-#' @importFrom SummarizedExperiment assay rowRanges colData colData<- SummarizedExperiment
+#' @importFrom Rsamtools scanBamHeader
+#' @importFrom SummarizedExperiment assay rowRanges SummarizedExperiment
 #' @importFrom GenomicRanges GRanges
-#' @importFrom GenomeInfoDb seqinfo seqlevels
-#' @importFrom IRanges overlapsAny
-#' @importFrom S4Vectors metadata metadata<-
+#' @importFrom GenomeInfoDb seqlevels
+#' @importFrom IRanges IRanges overlapsAny
+#' @importFrom S4Vectors metadata metadata<- DataFrame
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
 #' @importFrom methods is
@@ -111,7 +113,27 @@ countBackground <-
       stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
     }
 
-    parallelParam <- .makeParallelParam(nThreads = nThreads)
+    #--------------------#
+    # Tile the genome    #
+    #--------------------#
+    # The bins come from the BAM header, from the first base of every chromosome read
+    chromosomeLengths <- Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets
+
+    if (!is.null(restrictChromosomes)) {
+      chromosomeLengths <- chromosomeLengths[names(chromosomeLengths) %in% restrictChromosomes]
+    }
+
+    if (length(chromosomeLengths) == 0) {
+      stop("None of the chromosomes in 'restrictChromosomes' is found in the BAM files.", call. = FALSE)
+    }
+
+    binsPerChromosome <- as.integer(ceiling(chromosomeLengths / binSize))
+    binStarts <- as.integer(unlist(lapply(binsPerChromosome, function(n) {(seq_len(n) - 1L) * binSize + 1L}), use.names = FALSE))
+    binEnds <- pmin(binStarts + binSize - 1L, rep(as.integer(chromosomeLengths), times = binsPerChromosome))
+
+    backgroundBins <- GenomicRanges::GRanges(seqnames = rep(names(chromosomeLengths), times = binsPerChromosome),
+                                             ranges = IRanges::IRanges(start = binStarts, end = binEnds),
+                                             seqlengths = chromosomeLengths)
 
     #-------------------#
     # Count in the bins #
@@ -120,40 +142,27 @@ countBackground <-
       message("Counting reads in ", format(binSize, big.mark = ","), " bp bins across ", length(bamFiles), " samples...")
     }
 
-    backgroundList <-
-      lapply(unique(pairedEnd),
-             function(layout) {
-               readParameters <- csaw::readParam(pe = ifelse(layout, "both", "none"),
-                                                 max.frag = maxFragmentLength,
-                                                 dedup = removeDuplicates,
-                                                 minq = minMapq,
-                                                 restrict = restrictChromosomes)
+    # Counted at a single point per fragment, a fragment lying across two bins would otherwise be counted in both
+    binCounts <- .countBamFragments(bamFiles = bamFiles,
+                                    ranges = backgroundBins,
+                                    pairedEnd = pairedEnd,
+                                    fragmentLength = fragmentLength[1],
+                                    maxFragmentLength = maxFragmentLength[1],
+                                    minMapq = minMapq,
+                                    removeDuplicates = removeDuplicates,
+                                    restrictChromosomes = restrictChromosomes,
+                                    fullLibrarySize = TRUE,
+                                    countMode = "bin",
+                                    nThreads = nThreads)
 
-               csaw::windowCounts(bam.files = bamFiles[pairedEnd == layout],
-                                  bin = TRUE,
-                                  width = binSize,
-                                  filter = 0,
-                                  ext = ifelse(layout, NA, as.integer(fragmentLength[1])),
-                                  param = readParameters,
-                                  BPPARAM = parallelParam)
-             })
-
-    # The bins come from the BAM headers, files aligned against different chromosome sizes cannot share them
-    if (length(backgroundList) > 1) {
-      if (!identical(GenomeInfoDb::seqinfo(backgroundList[[1]]), GenomeInfoDb::seqinfo(backgroundList[[2]])) |
-          nrow(backgroundList[[1]]) != nrow(backgroundList[[2]])) {
-        stop("The paired-end and single-end BAM files do not share the same chromosome sizes, their background bins cannot be merged.", call. = FALSE)
-      }
-    }
-
-    # The passes are stacked by layout, this index puts the samples back in the order of the counts object
-    columnOrder <- order(unlist(lapply(unique(pairedEnd), function(layout) {which(pairedEnd == layout)})))
-
+    # csaw::normFactors takes the library sizes from the 'totals' column
     backgroundCounts <-
-      SummarizedExperiment::SummarizedExperiment(assays = list(counts = do.call(cbind, lapply(backgroundList, function(x) {SummarizedExperiment::assay(x, "counts")}))[, columnOrder, drop = FALSE]),
-                                                 rowRanges = SummarizedExperiment::rowRanges(backgroundList[[1]]),
-                                                 colData = do.call(rbind, lapply(backgroundList, SummarizedExperiment::colData))[columnOrder, , drop = FALSE],
-                                                 metadata = S4Vectors::metadata(backgroundList[[1]]))
+      SummarizedExperiment::SummarizedExperiment(assays = list(counts = binCounts$counts),
+                                                 rowRanges = backgroundBins,
+                                                 colData = S4Vectors::DataFrame(bam.files = bamFiles,
+                                                                                totals = binCounts$library.size,
+                                                                                row.names = colnames(counts)),
+                                                 metadata = list(spacing = binSize, width = binSize, shift = 0L, bin = TRUE))
 
     colnames(backgroundCounts) <- colnames(counts)
 

@@ -20,6 +20,7 @@ countReads(
   removeDuplicates = TRUE,
   restrictChromosomes = NULL,
   discardRegions = NULL,
+  fullLibrarySize = TRUE,
   nThreads = 1,
   verbose = TRUE
 )
@@ -27,7 +28,7 @@ countReads(
 \arguments{
 \item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.}
 
-\item{bamFiles}{Character vector with the paths of the BAM files. Each file must be indexed.}
+\item{bamFiles}{Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header.}
 
 \item{sampleNames}{Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.}
 
@@ -45,17 +46,19 @@ countReads(
 
 \item{fragmentLength}{Numeric value with the length to which single-end reads are extended. Applied to the single-end samples only. Default: \code{150}.}
 
-\item{maxFragmentLength}{Numeric value with the maximum insert size accepted for a pair. Applied to the paired-end samples only. Default: \code{1000}.}
+\item{maxFragmentLength}{Numeric value with the maximum length accepted for a paired-end fragment. Applied to the paired-end samples only. Default: \code{1000}.}
 
 \item{minMapq}{Numeric value with the minimum mapping quality of a read. Default: \code{20}.}
 
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.}
 
-\item{restrictChromosomes}{Character vector with the chromosomes to read from the BAM files. Default: \code{NULL}, all of them.}
+\item{restrictChromosomes}{Character vector with the chromosomes to read, named as in the BAM files. The other chromosomes are left out of both the counts and the library sizes, which is the way to keep, for instance, the mitochondrial reads out of the normalisation. Default: \code{NULL}, all of them.}
 
-\item{discardRegions}{\code{GRanges} with regions whose reads must be ignored, for instance a blacklist. Default: \code{NULL}.}
+\item{discardRegions}{\code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.}
 
-\item{nThreads}{Number of threads used to process the files in parallel. Default: \code{1}.}
+\item{fullLibrarySize}{Logical value: \code{TRUE} reads every chromosome, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.}
+
+\item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
@@ -63,12 +66,16 @@ countReads(
 A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}.
 }
 \description{
-Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Single-end reads are extended to the expected fragment length before the overlap is evaluated, while paired-end data are counted as fragments. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.
+Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the expected fragment length before the overlap is evaluated. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.
 }
 \details{
 Regions shared by several sets are counted only once and the values are then copied to every set they belong to, which keeps the running time proportional to the number of distinct regions.
 
-Paired-end and single-end samples can be mixed in the same call. Each layout is counted in a separate pass, paired-end libraries as fragments and single-end ones as reads extended to \code{fragmentLength}, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake keeps only the proper pairs and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
+A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from the \code{MQ} tag, which \code{samtools fixmate} and Picard write; on files without it only the first mate is checked, and a message says so.
+
+The library size of a sample is the number of fragments that went through the same filters as the counts, on all the chromosomes read. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
+
+Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to \code{fragmentLength}, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
 
 Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.
 }
@@ -82,6 +89,9 @@ counts <- countReads(regions,
                      nThreads = 4)
 
 countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
+
+# A few regions counted in seconds, with library sizes that are not meant for normalisation
+countsQuick <- countReads(fewRegions, bamFiles = bamPaths, fullLibrarySize = FALSE)
 }
 
 }

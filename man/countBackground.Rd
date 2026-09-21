@@ -43,18 +43,20 @@ countBackground(
 
 \item{removeDuplicates}{Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.}
 
-\item{nThreads}{Number of threads used to process the files in parallel. Default: \code{1}.}
+\item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}.
+The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}. Its \code{totals} column holds the library sizes of the bins.
 }
 \description{
 Counts the reads falling in large genome wide bins, which provide the background distribution used to estimate composition-aware normalisation factors. The bins overlapping the counted regions are removed by default, so that the normalisation is not driven by the signal under study. The result is stored in the metadata of the counts object, where the normalisation step retrieves it.
 }
 \details{
 Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
+
+The bins start at the first base of every chromosome read, the last one of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. Every chromosome allowed by \code{restrictChromosomes} is read, whatever the value of \code{fullLibrarySize} used for the regions.
 }
 \examples{
 # The example counts already carry their background bins

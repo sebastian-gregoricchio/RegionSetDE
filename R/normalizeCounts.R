@@ -124,6 +124,12 @@ normalizeCounts <-
       }
     }
 
+    # Library sizes counted on the chromosomes of the regions alone would carry their bias into every factor built on them
+    if (isFALSE(counts@parameters$countReads$fullLibrarySize) & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "background")) {
+      warning("The library sizes cover only the chromosomes carrying regions (countReads with fullLibrarySize = FALSE), and the '", method,
+              "' method relies on them. Count again with 'fullLibrarySize = TRUE', or supply the factors through the 'manual' or 'spikeIn' methods.", call. = FALSE)
+    }
+
     #-----------------------------------#
     # Regions used for the estimation   #
     #-----------------------------------#

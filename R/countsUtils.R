@@ -270,6 +270,7 @@
 #' @description Builds the \code{BiocParallel} back end matching the number of requested threads and the operating system.
 #'
 #' @param nThreads Number of threads. Default: \code{1}.
+#' @param tasks Number of tasks the work is split into, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the threads become free. Default: \code{0}, one task per thread.
 #'
 #' @return A \code{BiocParallelParam} object.
 #'
@@ -280,7 +281,8 @@
 #' @keywords internal
 
 .makeParallelParam <-
-  function(nThreads = 1) {
+  function(nThreads = 1,
+           tasks = 0L) {
     nThreads <- as.integer(nThreads[1])
 
     if (is.na(nThreads) | nThreads < 1) {
@@ -293,10 +295,11 @@
 
     # Windows has no forking, sockets give the same result at a higher start-up cost
     if (.Platform$OS.type == "windows") {
-      return(BiocParallel::SnowParam(workers = nThreads))
+      return(BiocParallel::SnowParam(workers = nThreads, tasks = as.integer(tasks)))
     }
 
-    return(BiocParallel::MulticoreParam(workers = nThreads))
+    # Forked workers already see the options of the session, sending them along with every task only costs time
+    return(BiocParallel::MulticoreParam(workers = nThreads, tasks = as.integer(tasks), exportglobals = FALSE))
   } # END function
 
 

@@ -4,10 +4,12 @@
 \alias{.makeParallelParam}
 \title{.makeParallelParam}
 \usage{
-.makeParallelParam(nThreads = 1)
+.makeParallelParam(nThreads = 1, tasks = 0L)
 }
 \arguments{
 \item{nThreads}{Number of threads. Default: \code{1}.}
+
+\item{tasks}{Number of tasks the work is split into, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the threads become free. Default: \code{0}, one task per thread.}
 }
 \value{
 A \code{BiocParallelParam} object.

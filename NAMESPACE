@@ -98,7 +98,6 @@ importFrom(GenomeInfoDb,
   "seqlevelsStyle<-",
   genome,
   mapSeqlevels,
-  seqinfo,
   seqlevels,
   seqlevelsStyle,
   seqnames
@@ -112,12 +111,17 @@ importFrom(GenomicRanges,
 )
 importFrom(IRanges,
   IRanges,
+  countOverlaps,
   overlapsAny,
   pintersect,
+  ranges,
   reduce,
   slidingWindows
 )
 importFrom(Rsamtools,
+  ScanBamParam,
+  scanBam,
+  scanBamFlag,
   scanBamHeader,
   testPairedEndBam
 )
@@ -146,10 +150,7 @@ importFrom(SummarizedExperiment,
 importFrom(csaw,
   combineTests,
   normFactors,
-  normOffsets,
-  readParam,
-  regionCounts,
-  windowCounts
+  normOffsets
 )
 importFrom(dplyr,
   "%>%",

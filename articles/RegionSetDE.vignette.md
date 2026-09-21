@@ -244,6 +244,20 @@ counts <-
              nThreads = 4)
 ```
 
+Paired-end libraries are counted as fragments: a fragment counts in
+every region it overlaps, the stretch between its two reads included.
+The BAM files are cut into pieces of at most 50 Mb, shared among the
+threads, so even a single file runs faster with a larger `nThreads`.
+
+By default every chromosome is read, including those without any region,
+because the library sizes have to cover the whole library to be of any
+use for the normalisation. When only a few regions are needed,
+`fullLibrarySize = FALSE` limits the reading to the chromosomes carrying
+them. The counts stay the same and come back in seconds, but the library
+sizes cover those chromosomes only, and
+[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+warns if the chosen method depends on them.
+
 [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
 is the equivalent for coverage tracks, and
 [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
@@ -1797,7 +1811,7 @@ sessionInfo()
 > other attached packages:
 >  [1] ggplot2_4.0.3        dplyr_1.2.1          RegionSetDE_0.99.0  
 >  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
->  [7] S4Vectors_0.50.2     BiocGenerics_0.58.1  generics_0.1.4      
+>  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
 > [10] BiocStyle_2.40.0    
 > 
 > loaded via a namespace (and not attached):
@@ -1813,7 +1827,7 @@ sessionInfo()
 >  [19] labeling_0.4.3              Rsamtools_2.28.0           
 >  [21] rmarkdown_2.32              markdown_2.0               
 >  [23] UCSC.utils_1.8.0            ragg_1.5.2                 
->  [25] xfun_0.60                   cachem_1.1.0               
+>  [25] xfun_0.61                   cachem_1.1.0               
 >  [27] cigarillo_1.2.1             litedown_0.11              
 >  [29] GenomeInfoDb_1.48.0         jsonlite_2.0.0             
 >  [31] DelayedArray_0.38.2         BiocParallel_1.46.0        

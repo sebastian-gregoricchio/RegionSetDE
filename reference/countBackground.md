@@ -89,7 +89,8 @@ countBackground(
 
 - nThreads:
 
-  Number of threads used to process the files in parallel. Default: `1`.
+  Number of threads. The files are cut into pieces of at most 50 Mb,
+  shared among the threads. Default: `1`.
 
 - verbose:
 
@@ -99,7 +100,8 @@ countBackground(
 ## Value
 
 The input `RegionSetDE.counts` object with the bin counts stored as a
-`RangedSummarizedExperiment` in `metadata(counts)$background`.
+`RangedSummarizedExperiment` in `metadata(counts)$background`. Its
+`totals` column holds the library sizes of the bins.
 
 ## Details
 
@@ -111,6 +113,13 @@ parameters of
 matters here: bins counted with a different mapping quality or duplicate
 policy would return factors that do not apply to the region counts. The
 parameters are taken from the object unless they are given explicitly.
+
+The bins start at the first base of every chromosome read, the last one
+of each chromosome stopping at its end. Each fragment is counted once,
+in the bin holding its centre, or the 5' end of the read for single-end
+data, so a fragment lying across two bins is not counted twice. Every
+chromosome allowed by `restrictChromosomes` is read, whatever the value
+of `fullLibrarySize` used for the regions.
 
 ## See also
 

@@ -33,6 +33,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-buildDesign.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-buildSampleTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-checkDispersion.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-cigarReferenceWidth.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-collapseTileMatrix.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-collapseTileStats.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-combineTiles.html</loc></url>
@@ -40,6 +41,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-contrastGroups.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-contrastSuggestion.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-correlationSummary.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-countBamFragments.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-countsLogMatrix.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-defaultAssay.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-diffCounts.html</loc></url>
@@ -73,6 +75,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-plotSetScores.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-prepareResultTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-provenanceSlots.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-readBamFragments.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-regionAbundance.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-regionIdentifiers.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-regionSetTheme.html</loc></url>

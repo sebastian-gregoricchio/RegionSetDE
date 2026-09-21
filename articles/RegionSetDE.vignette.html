@@ -64,7 +64,7 @@ Gregoricchio, Ph.D.</h4>
 Netherlands<br><a class="author_email" href="mailto:#"></a><a href="mailto:s.gregoricchio@nki.nl" class="email">s.gregoricchio@nki.nl</a>
       </address>
                   
-            <h4 data-toc-skip class="date">Last update: 11<sup>th</sup>
+            <h4 data-toc-skip class="date">Last update: 21<sup>th</sup>
 September, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/blob/devel-tools/vignettes/RegionSetDE.vignette.Rmd" class="external-link"><code>vignettes/RegionSetDE.vignette.Rmd</code></a></small>
@@ -354,6 +354,19 @@ is set.</p>
 <span>             fragmentLength <span class="op">=</span> <span class="fl">180</span>,</span>
 <span>             minMapq <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>             nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
+<p>Paired-end libraries are counted as fragments: a fragment counts in
+every region it overlaps, the stretch between its two reads included.
+The BAM files are cut into pieces of at most 50 Mb, shared among the
+threads, so even a single file runs faster with a larger
+<code>nThreads</code>.</p>
+<p>By default every chromosome is read, including those without any
+region, because the library sizes have to cover the whole library to be
+of any use for the normalisation. When only a few regions are needed,
+<code>fullLibrarySize = FALSE</code> limits the reading to the
+chromosomes carrying them. The counts stay the same and come back in
+seconds, but the library sizes cover those chromosomes only, and
+<code><a href="../reference/normalizeCounts.html">normalizeCounts()</a></code> warns if the chosen method depends on
+them.</p>
 <p><code><a href="../reference/countBigwig.html">countBigwig()</a></code> is the equivalent for coverage tracks, and
 <code><a href="../reference/loadCounts.html">loadCounts()</a></code> takes a count matrix produced elsewhere, so an
 existing <em>featureCounts</em> or <em>deepTools</em> table can enter
@@ -1912,7 +1925,7 @@ genome-wide catalogue.</p>
 <span id="cb58-23"><a href="#cb58-23" tabindex="-1"></a><span class="er">&gt;</span> other attached packages<span class="sc">:</span></span>
 <span id="cb58-24"><a href="#cb58-24" tabindex="-1"></a><span class="er">&gt;</span>  [<span class="dv">1</span>] ggplot2_4.<span class="fl">0.3</span>        dplyr_1.<span class="fl">2.1</span>          RegionSetDE_0.<span class="fl">99.0</span>  </span>
 <span id="cb58-25"><a href="#cb58-25" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">4</span>] GenomicRanges_1.<span class="fl">64.0</span> Seqinfo_1.<span class="fl">2.0</span>        IRanges_2.<span class="fl">46.0</span>      </span>
-<span id="cb58-26"><a href="#cb58-26" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">7</span>] S4Vectors_0.<span class="fl">50.2</span>     BiocGenerics_0.<span class="fl">58.1</span>  generics_0.<span class="fl">1.4</span>      </span>
+<span id="cb58-26"><a href="#cb58-26" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">7</span>] S4Vectors_0.<span class="fl">50.3</span>     BiocGenerics_0.<span class="fl">58.1</span>  generics_0.<span class="fl">1.4</span>      </span>
 <span id="cb58-27"><a href="#cb58-27" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">10</span>] BiocStyle_2.<span class="fl">40.0</span>    </span>
 <span id="cb58-28"><a href="#cb58-28" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb58-29"><a href="#cb58-29" tabindex="-1"></a><span class="er">&gt;</span> loaded via a <span class="fu">namespace</span> (and not attached)<span class="sc">:</span></span>
@@ -1928,7 +1941,7 @@ genome-wide catalogue.</p>
 <span id="cb58-39"><a href="#cb58-39" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">19</span>] labeling_0.<span class="fl">4.3</span>              Rsamtools_2.<span class="fl">28.0</span>           </span>
 <span id="cb58-40"><a href="#cb58-40" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">21</span>] rmarkdown_2<span class="fl">.32</span>              markdown_2<span class="fl">.0</span>               </span>
 <span id="cb58-41"><a href="#cb58-41" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">23</span>] UCSC.utils_1.<span class="fl">8.0</span>            ragg_1.<span class="fl">5.2</span>                 </span>
-<span id="cb58-42"><a href="#cb58-42" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">25</span>] xfun_0<span class="fl">.60</span>                   cachem_1.<span class="fl">1.0</span>               </span>
+<span id="cb58-42"><a href="#cb58-42" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">25</span>] xfun_0<span class="fl">.61</span>                   cachem_1.<span class="fl">1.0</span>               </span>
 <span id="cb58-43"><a href="#cb58-43" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">27</span>] cigarillo_1.<span class="fl">2.1</span>             litedown_0<span class="fl">.11</span>              </span>
 <span id="cb58-44"><a href="#cb58-44" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">29</span>] GenomeInfoDb_1.<span class="fl">48.0</span>         jsonlite_2.<span class="fl">0.0</span>             </span>
 <span id="cb58-45"><a href="#cb58-45" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">31</span>] DelayedArray_0.<span class="fl">38.2</span>         BiocParallel_1.<span class="fl">46.0</span>        </span>

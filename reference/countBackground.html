@@ -109,7 +109,7 @@
 
 
 <dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
-<dd><p>Number of threads used to process the files in parallel. Default: <code>1</code>.</p></dd>
+<dd><p>Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: <code>1</code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -118,11 +118,12 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>The input <code>RegionSetDE.counts</code> object with the bin counts stored as a <code>RangedSummarizedExperiment</code> in <code>metadata(counts)$background</code>.</p>
+    <p>The input <code>RegionSetDE.counts</code> object with the bin counts stored as a <code>RangedSummarizedExperiment</code> in <code>metadata(counts)$background</code>. Its <code>totals</code> column holds the library sizes of the bins.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of <code><a href="countReads.html">countReads</a></code> matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.</p>
+<p>The bins start at the first base of every chromosome read, the last one of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. Every chromosome allowed by <code>restrictChromosomes</code> is read, whatever the value of <code>fullLibrarySize</code> used for the regions.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

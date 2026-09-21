@@ -89,7 +89,7 @@ if (requireNamespace("DESeq2", quietly = TRUE)) {
 #> assays(2): counts normalizationFactors
 #> rownames(3224): promoterNonCpG|region_00002 promoterNonCpG|region_00003
 #>   ... promoterCpG|region_03797 promoterCpG|region_03798
-#> rowData names(3): region.set region.id tile.id
+#> rowData names(4): region.set region.id tile.id regionId
 #> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 #>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 #>   lv-H3K4me3-SHR-male-bio3-tech1

@@ -94,11 +94,11 @@ counts <- loadExampleData("counts")
 counts
 #> class: RegionSetDE.counts 
 #> dim: 3224 4 
-#> metadata(2): signal.type background
+#> metadata(3): signal.type count.like background
 #> assays(1): counts
 #> rownames(3224): promoterNonCpG|region_00002 promoterNonCpG|region_00003
 #>   ... promoterCpG|region_03797 promoterCpG|region_03798
-#> rowData names(3): region.set region.id tile.id
+#> rowData names(4): region.set region.id tile.id regionId
 #> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 #>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 #>   lv-H3K4me3-SHR-male-bio3-tech1
@@ -119,4 +119,10 @@ topRegions(results, n = 5, FDR = 1)
 #> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
 #> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
 #> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+#>       regionId
+#> 1 region_02996
+#> 2 region_03590
+#> 3 region_00212
+#> 4 region_02435
+#> 5 region_02220
 ```

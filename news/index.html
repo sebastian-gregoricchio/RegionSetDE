@@ -51,6 +51,8 @@
 <code><a href="../reference/countBigwig.html">countBigwig()</a></code> takes <code>countLike</code> and does not round. Rounding coverage to integers does not make it a fragment count, and the negative binomial and voom engines refuse an object built from bigWig files unless <code>countLike</code> was declared or <code>assumeCountLike</code> overrides it in <code><a href="../reference/fitRegions.html">fitRegions()</a></code>. <code><a href="../reference/loadCounts.html">loadCounts()</a></code> takes the same argument, for external matrices holding coverage rather than counts.</li>
 <li>
 <code><a href="../reference/countBackground.html">countBackground()</a></code> counts genome-wide bins alongside the regions, for the normalisation and for the null estimates.</li>
+<li>
+<code><a href="../reference/countReads.html">countReads()</a></code> and <code><a href="../reference/countBackground.html">countBackground()</a></code> rebuild each paired-end fragment from the first mate of the pair and its template length, and read the BAM files in pieces shared among the threads. <code>excludeChromosomes</code> keeps chromosomes such as chrM out of the library sizes and of the background bins, while <code>fullLibrarySize = FALSE</code> reads only the chromosomes carrying regions, which is faster but gives library sizes that are not meant for normalisation.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="normalisation-and-filtering-0-99-0">Normalisation and filtering<a class="anchor" aria-label="anchor" href="#normalisation-and-filtering-0-99-0"></a></h3>

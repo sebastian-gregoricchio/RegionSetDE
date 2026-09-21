@@ -49,7 +49,7 @@
 <span>  binSize <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  excludeRegions <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  minCount <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  restrictChromosomes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  excludeChromosomes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pairedEnd <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fragmentLength <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  maxFragmentLength <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -84,8 +84,8 @@
 <dd><p>Numeric value with the minimum total count required to keep a bin. Default: <code>1</code>.</p></dd>
 
 
-<dt id="arg-restrictchromosomes">restrictChromosomes<a class="anchor" aria-label="anchor" href="#arg-restrictchromosomes"></a></dt>
-<dd><p>Character vector with the chromosomes to read from the BAM files. Default: <code>NULL</code>, the value used at the counting step.</p></dd>
+<dt id="arg-excludechromosomes">excludeChromosomes<a class="anchor" aria-label="anchor" href="#arg-excludechromosomes"></a></dt>
+<dd><p>Character vector with the chromosomes left out of the bins and of their library sizes, named as in the BAM files. <code>character(0)</code> excludes nothing. Default: <code>NULL</code>, the value used at the counting step.</p></dd>
 
 
 <dt id="arg-pairedend">pairedEnd<a class="anchor" aria-label="anchor" href="#arg-pairedend"></a></dt>
@@ -123,7 +123,7 @@
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of <code><a href="countReads.html">countReads</a></code> matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.</p>
-<p>The bins start at the first base of every chromosome read, the last one of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. Every chromosome allowed by <code>restrictChromosomes</code> is read, whatever the value of <code>fullLibrarySize</code> used for the regions.</p>
+<p>The bins cover every chromosome of the BAM files except those in <code>excludeChromosomes</code>, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of <code>fullLibrarySize</code> used for the regions.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -143,14 +143,14 @@
 <span class="r-in"><span><span class="va">backgroundBins</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> class: RangedSummarizedExperiment </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> dim: 1579 4 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> metadata(6): spacing width ... param final.ext</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> metadata(4): spacing width shift bin</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> assays(1): counts</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rownames: NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rowData names(0):</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> colnames(4): lv-H3K4me3-BN-female-bio1-tech1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   lv-H3K4me3-SHR-male-bio3-tech1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> colData names(4): bam.files totals ext rlen</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> colData names(2): bam.files totals</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="co"># Recomputing them needs the BAM files the object was counted from</span></span></span>

@@ -249,12 +249,33 @@ every region it overlaps, the stretch between its two reads included.
 The BAM files are cut into pieces of at most 50 Mb, shared among the
 threads, so even a single file runs faster with a larger `nThreads`.
 
-By default every chromosome is read, including those without any region,
-because the library sizes have to cover the whole library to be of any
-use for the normalisation. When only a few regions are needed,
-`fullLibrarySize = FALSE` limits the reading to the chromosomes carrying
-them. The counts stay the same and come back in seconds, but the library
-sizes cover those chromosomes only, and
+The counts and the library sizes are two separate things. Every region
+is counted, wherever it lies, and the counts only need the chromosomes
+carrying regions. The library sizes, instead, are meant to measure the
+whole library, so by default every chromosome is read, including those
+without any region. Some chromosomes are better left out of that total:
+the mitochondrial genome in ATAC-seq, whose share of the reads changes
+from sample to sample, chrY when the samples differ in sex, or the
+unplaced and alternative contigs. `excludeChromosomes` takes them out of
+the library sizes, and later out of the background bins, while the
+regions lying on them are still counted. The names follow the BAM files,
+and the contigs can be collected from their header:
+
+``` r
+
+bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+
+counts <-
+  countReads(regions,
+             bamFiles = bamPaths,
+             excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+             nThreads = 4)
+```
+
+When only a few regions are needed, `fullLibrarySize = FALSE` limits the
+reading to the chromosomes carrying them. The counts stay the same and
+come back in seconds, but the library sizes cover those chromosomes
+only, and
 [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
 warns if the chosen method depends on them.
 
@@ -319,12 +340,12 @@ set:
 
 ``` r
 head(SummarizedExperiment::rowData(counts), 3)
-> DataFrame with 3 rows and 3 columns
->                                 region.set    region.id   tile.id
->                                <character>  <character> <integer>
-> promoterNonCpG|region_00002 promoterNonCpG region_00002        NA
-> promoterNonCpG|region_00003 promoterNonCpG region_00003        NA
-> promoterNonCpG|region_00005 promoterNonCpG region_00005        NA
+> DataFrame with 3 rows and 4 columns
+>                                 region.set    region.id   tile.id     regionId
+>                                <character>  <character> <integer>  <character>
+> promoterNonCpG|region_00002 promoterNonCpG region_00002        NA region_00002
+> promoterNonCpG|region_00003 promoterNonCpG region_00003        NA region_00003
+> promoterNonCpG|region_00005 promoterNonCpG region_00005        NA region_00005
 
 table(SummarizedExperiment::rowData(counts)$region.set)
 > 
@@ -349,10 +370,10 @@ counts@genome.assembly
 
 [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
 counts the same libraries over wide bins tiling the genome, by default
-10 kb, excluding the regions under analysis. Those bins are the closest
-thing available to a set of rows known to carry no biological effect,
-and three separate steps use them: normalisation, filtering, and the
-calibration checks.
+10 kb, excluding the regions under analysis and the chromosomes left out
+with `excludeChromosomes`. Those bins are the closest thing available to
+a set of rows known to carry no biological effect, and three separate
+steps use them: normalisation, filtering, and the calibration checks.
 
 ``` r
 
@@ -371,14 +392,14 @@ dim(backgroundBins)
 head(backgroundBins, 3)
 > class: RangedSummarizedExperiment 
 > dim: 3 4 
-> metadata(6): spacing width ... param final.ext
+> metadata(4): spacing width shift bin
 > assays(1): counts
 > rownames: NULL
 > rowData names(0):
 > colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 >   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 >   lv-H3K4me3-SHR-male-bio3-tech1
-> colData names(4): bam.files totals ext rlen
+> colData names(2): bam.files totals
 ```
 
   
@@ -603,11 +624,12 @@ Two accessors avoid reaching into the slots:
 fitCounts(fit)
 > class: RegionSetDE.counts 
 > dim: 1895 4 
-> metadata(4): signal.type background background.holdout normalization
+> metadata(5): signal.type count.like background background.holdout
+>   normalization
 > assays(2): counts norm.counts
 > rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 >   ... promoterCpG|region_03797 promoterCpG|region_03798
-> rowData names(3): region.set region.id tile.id
+> rowData names(4): region.set region.id tile.id regionId
 > colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 >   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 >   lv-H3K4me3-SHR-male-bio3-tech1
@@ -700,10 +722,10 @@ head(resultTable, 3)
 > 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744875
 > 2 promoterNonCpG region_00017      NA    chr12 39449 40448  1000 -1.6911510
 > 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328365
->   average.signal       stat   p.value       FDR diff.status
-> 1       3.098695 0.16629041 0.6880013 0.9200864        null
-> 2       3.141973 2.33758830 0.1429932 0.7997195        null
-> 3       3.273341 0.01002874 0.9213104 0.9807286        null
+>   average.signal       stat   p.value       FDR diff.status     regionId
+> 1       3.098695 0.16629041 0.6880013 0.9200864        null region_00012
+> 2       3.141973 2.33758830 0.1429932 0.7997195        null region_00017
+> 3       3.273341 0.01002874 0.9213104 0.9807286        null region_00019
 ```
 
 | Column | Meaning |
@@ -731,7 +753,7 @@ contrastName(results)
 > [1] "condition: SHR vs BN"
 
 head(resultRanges(results), 2)
-> GRanges object with 2 ranges and 9 metadata columns:
+> GRanges object with 2 ranges and 10 metadata columns:
 >                               seqnames      ranges strand |     region.set
 >                                  <Rle>   <IRanges>  <Rle> |    <character>
 >   promoterNonCpG|region_00012    chr12 26988-27987      * | promoterNonCpG
@@ -744,17 +766,22 @@ head(resultRanges(results), 2)
 >                               <numeric> <numeric> <numeric>    <factor>
 >   promoterNonCpG|region_00012   0.16629  0.688001  0.920086        null
 >   promoterNonCpG|region_00017   2.33759  0.142993  0.799720        null
+>                                   regionId
+>                                <character>
+>   promoterNonCpG|region_00012 region_00012
+>   promoterNonCpG|region_00017 region_00017
 >   -------
 >   seqinfo: 1 sequence from rn4 genome
 
 resultCounts(results)
 > class: RegionSetDE.counts 
 > dim: 1895 4 
-> metadata(4): signal.type background background.holdout normalization
+> metadata(5): signal.type count.like background background.holdout
+>   normalization
 > assays(2): counts norm.counts
 > rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 >   ... promoterCpG|region_03797 promoterCpG|region_03798
-> rowData names(3): region.set region.id tile.id
+> rowData names(4): region.set region.id tile.id regionId
 > colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 >   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 >   lv-H3K4me3-SHR-male-bio3-tech1
@@ -780,6 +807,12 @@ topRegions(results, n = 5, FDR = 1)
 > 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
 > 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
 > 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+>       regionId
+> 1 region_02996
+> 2 region_03590
+> 3 region_00212
+> 4 region_02435
+> 5 region_02220
 ```
 
 ``` r
@@ -788,10 +821,10 @@ topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
 > 1 promoterCpG region_03747      NA    chr12 46273309 46274308  1000  2.148719
 > 2 promoterCpG region_01273      NA    chr12 15719347 15720346  1000 -1.771521
 > 3 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046
->   average.signal      stat      p.value        FDR diff.status
-> 1       4.113765  4.520231 0.0472100147 0.66268873        null
-> 2       5.933614 21.009851 0.0002058661 0.03901163        down
-> 3       4.658080  7.080136 0.0163032446 0.45433307        null
+>   average.signal      stat      p.value        FDR diff.status     regionId
+> 1       4.113765  4.520231 0.0472100147 0.66268873        null region_03747
+> 2       5.933614 21.009851 0.0002058661 0.03901163        down region_01273
+> 3       4.658080  7.080136 0.0163032446 0.45433307        null region_00824
 ```
 
   

@@ -82,10 +82,10 @@ dgeList$samples
 #> lv-H3K4me3-SHR-male-bio2-tech1   lv-H3K4me3-SHR-male-bio2-tech1
 #> lv-H3K4me3-SHR-male-bio3-tech1   lv-H3K4me3-SHR-male-bio3-tech1
 #>                                                                                                                                                   bam.file
-#> lv-H3K4me3-BN-female-bio1-tech1 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.4/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
-#> lv-H3K4me3-BN-male-bio2-tech1     /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.4/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-male-bio2-tech1.bam
-#> lv-H3K4me3-SHR-male-bio2-tech1   /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.4/chromstaRData/extdata/euratrans/lv-H3K4me3-SHR-male-bio2-tech1.bam
-#> lv-H3K4me3-SHR-male-bio3-tech1   /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.4/chromstaRData/extdata/euratrans/lv-H3K4me3-SHR-male-bio3-tech1.bam
+#> lv-H3K4me3-BN-female-bio1-tech1 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+#> lv-H3K4me3-BN-male-bio2-tech1     /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-male-bio2-tech1.bam
+#> lv-H3K4me3-SHR-male-bio2-tech1   /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-SHR-male-bio2-tech1.bam
+#> lv-H3K4me3-SHR-male-bio3-tech1   /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-SHR-male-bio3-tech1.bam
 #>                                 condition    sex biologicalReplicate paired.end
 #> lv-H3K4me3-BN-female-bio1-tech1        BN female                bio1      FALSE
 #> lv-H3K4me3-BN-male-bio2-tech1          BN   male                bio2      FALSE

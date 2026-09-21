@@ -52,13 +52,13 @@ head(resultTable)
 #> 4 promoterNonCpG region_00020      NA    chr12  46527  47526  1000  1.3000608
 #> 5 promoterNonCpG region_00026      NA    chr12  89229  90228  1000 -0.0791789
 #> 6 promoterNonCpG region_00043      NA    chr12 330751 331750  1000 -1.2370885
-#>   average.signal        stat   p.value       FDR diff.status
-#> 1       3.098695 0.166290413 0.6880013 0.9200864        null
-#> 2       3.141973 2.337588301 0.1429932 0.7997195        null
-#> 3       3.273341 0.010028735 0.9213104 0.9807286        null
-#> 4       3.490690 2.084865356 0.1637725 0.7997195        null
-#> 5       3.220877 0.007114484 0.9335959 0.9807286        null
-#> 6       3.411317 2.273415136 0.1472119 0.7997195        null
+#>   average.signal        stat   p.value       FDR diff.status     regionId
+#> 1       3.098695 0.166290413 0.6880013 0.9200864        null region_00012
+#> 2       3.141973 2.337588301 0.1429932 0.7997195        null region_00017
+#> 3       3.273341 0.010028735 0.9213104 0.9807286        null region_00019
+#> 4       3.490690 2.084865356 0.1637725 0.7997195        null region_00020
+#> 5       3.220877 0.007114484 0.9335959 0.9807286        null region_00026
+#> 6       3.411317 2.273415136 0.1472119 0.7997195        null region_00043
 
 table(resultTable$region.set, resultTable$diff.status)
 #>                 

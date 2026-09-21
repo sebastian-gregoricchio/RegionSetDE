@@ -35,6 +35,16 @@ First version.
 - [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
   counts genome-wide bins alongside the regions, for the normalisation
   and for the null estimates.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  and
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
+  rebuild each paired-end fragment from the first mate of the pair and
+  its template length, and read the BAM files in pieces shared among the
+  threads. `excludeChromosomes` keeps chromosomes such as chrM out of
+  the library sizes and of the background bins, while
+  `fullLibrarySize = FALSE` reads only the chromosomes carrying regions,
+  which is faster but gives library sizes that are not meant for
+  normalisation.
 
 ### Normalisation and filtering
 

@@ -116,6 +116,17 @@ topRegions(results, n = 10)
 #> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down
 #> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up
 #> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down
+#>        regionId
+#> 1  region_02996
+#> 2  region_03590
+#> 3  region_00212
+#> 4  region_02435
+#> 5  region_02220
+#> 6  region_03406
+#> 7  region_02700
+#> 8  region_00572
+#> 9  region_01472
+#> 10 region_01273
 
 # FDR = 1 ranks everything instead, which is what you want when power is low
 topRegions(results, n = 10, FDR = 1)
@@ -141,6 +152,17 @@ topRegions(results, n = 10, FDR = 1)
 #> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down
 #> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up
 #> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down
+#>        regionId
+#> 1  region_02996
+#> 2  region_03590
+#> 3  region_00212
+#> 4  region_02435
+#> 5  region_02220
+#> 6  region_03406
+#> 7  region_02700
+#> 8  region_00572
+#> 9  region_01472
+#> 10 region_01273
 
 # One set at a time, ranked rather than filtered
 topRegions(results, n = 5, set = "promoterCpG", FDR = 1)
@@ -150,12 +172,12 @@ topRegions(results, n = 5, set = "promoterCpG", FDR = 1)
 #> 3 promoterCpG region_01859      NA    chr12 22815633 22816632  1000  1.445776
 #> 4 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046
 #> 5 promoterCpG region_00836      NA    chr12 10545505 10546504  1000 -1.223234
-#>   average.signal      stat      p.value        FDR diff.status
-#> 1       5.933614 21.009851 0.0002058661 0.03901163        down
-#> 2       5.117243 10.076467 0.0049984001 0.28702934        null
-#> 3       5.016526  8.582683 0.0086069702 0.36371630        null
-#> 4       4.658080  7.080136 0.0163032446 0.45433307        null
-#> 5       5.879394  6.508768 0.0207077166 0.49672308        null
+#>   average.signal      stat      p.value        FDR diff.status     regionId
+#> 1       5.933614 21.009851 0.0002058661 0.03901163        down region_01273
+#> 2       5.117243 10.076467 0.0049984001 0.28702934        null region_02452
+#> 3       5.016526  8.582683 0.0086069702 0.36371630        null region_01859
+#> 4       4.658080  7.080136 0.0163032446 0.45433307        null region_00824
+#> 5       5.879394  6.508768 0.0207077166 0.49672308        null region_00836
 
 # Sorting by effect size instead of significance
 topRegions(results, n = 5, FDR = 1, sortBy = "log2FC", direction = "down")
@@ -171,4 +193,10 @@ topRegions(results, n = 5, FDR = 1, sortBy = "log2FC", direction = "down")
 #> 3 -3.154327       3.819372 15.362838 9.731331e-04 9.705722e-02        null
 #> 4 -3.020137       3.189783  8.417927 8.828997e-03 3.637163e-01        null
 #> 5 -2.887100       5.237329 43.045774 2.743053e-06 2.599042e-03        down
+#>       regionId
+#> 1 region_02996
+#> 2 region_00212
+#> 3 region_01115
+#> 4 region_03415
+#> 5 region_03590
 ```

@@ -20,7 +20,7 @@ from their 5' end.
   maxFragmentLength = 1000,
   minMapq = 20,
   removeDuplicates = TRUE,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   discardRegions = NULL,
   fullLibrarySize = TRUE,
   countMode = "overlap",
@@ -66,10 +66,11 @@ from their 5' end.
   Logical value indicating whether the reads flagged as duplicates must
   be discarded. Default: `TRUE`.
 
-- restrictChromosomes:
+- excludeChromosomes:
 
-  Character vector with the chromosomes to read, named as in the BAM
-  files. Default: `NULL`, all of them.
+  Character vector with the chromosomes left out of the library sizes,
+  named as in the BAM files. The ranges lying on them are still counted.
+  Default: `NULL`, none.
 
 - discardRegions:
 
@@ -79,9 +80,10 @@ from their 5' end.
 
 - fullLibrarySize:
 
-  Logical value: `TRUE` reads every chromosome to compute the library
-  sizes, `FALSE` only the chromosomes carrying ranges, which is faster
-  but leaves the library sizes partial. Default: `TRUE`.
+  Logical value: `TRUE` reads every chromosome that is not excluded to
+  compute the library sizes, `FALSE` only the chromosomes carrying
+  ranges, which is faster but leaves the library sizes partial. Default:
+  `TRUE`.
 
 - countMode:
 
@@ -104,7 +106,7 @@ from their 5' end.
 
 A list with three elements: `counts`, an integer matrix with one row per
 range and one column per file; `library.size`, the number of fragments
-that went through the filters on the chromosomes read;
+that went through the filters on the chromosomes read and not excluded;
 `mate.mapq.found`, telling for each paired-end file whether the `MQ` tag
 was found (`NA` for single-end files).
 

@@ -16,7 +16,7 @@ countBackground(
   binSize = 10000,
   excludeRegions = TRUE,
   minCount = 1,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   pairedEnd = NULL,
   fragmentLength = NULL,
   maxFragmentLength = NULL,
@@ -56,10 +56,12 @@ countBackground(
   Numeric value with the minimum total count required to keep a bin.
   Default: `1`.
 
-- restrictChromosomes:
+- excludeChromosomes:
 
-  Character vector with the chromosomes to read from the BAM files.
-  Default: `NULL`, the value used at the counting step.
+  Character vector with the chromosomes left out of the bins and of
+  their library sizes, named as in the BAM files. `character(0)`
+  excludes nothing. Default: `NULL`, the value used at the counting
+  step.
 
 - pairedEnd:
 
@@ -114,12 +116,13 @@ matters here: bins counted with a different mapping quality or duplicate
 policy would return factors that do not apply to the region counts. The
 parameters are taken from the object unless they are given explicitly.
 
-The bins start at the first base of every chromosome read, the last one
+The bins cover every chromosome of the BAM files except those in
+`excludeChromosomes`, starting at the first base and with the last bin
 of each chromosome stopping at its end. Each fragment is counted once,
 in the bin holding its centre, or the 5' end of the read for single-end
-data, so a fragment lying across two bins is not counted twice. Every
-chromosome allowed by `restrictChromosomes` is read, whatever the value
-of `fullLibrarySize` used for the regions.
+data, so a fragment lying across two bins is not counted twice. The
+whole genome is read whatever the value of `fullLibrarySize` used for
+the regions.
 
 ## See also
 
@@ -139,14 +142,14 @@ backgroundBins <- S4Vectors::metadata(counts)$background
 backgroundBins
 #> class: RangedSummarizedExperiment 
 #> dim: 1579 4 
-#> metadata(6): spacing width ... param final.ext
+#> metadata(4): spacing width shift bin
 #> assays(1): counts
 #> rownames: NULL
 #> rowData names(0):
 #> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 #>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 #>   lv-H3K4me3-SHR-male-bio3-tech1
-#> colData names(4): bam.files totals ext rlen
+#> colData names(2): bam.files totals
 
 if (FALSE) { # \dontrun{
 # Recomputing them needs the BAM files the object was counted from

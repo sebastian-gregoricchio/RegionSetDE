@@ -8,6 +8,7 @@ First version.
 * `countReads()` and `countBigwig()` count over the regions, either one row per region or one row per tile, and return a `RegionSetDE.counts` object. A tiled object is marked as tiled, so `testRegions()` recombines the tiles of a region instead of treating each of them as a region of its own.
 * `countBigwig()` takes `countLike` and does not round. Rounding coverage to integers does not make it a fragment count, and the negative binomial and voom engines refuse an object built from bigWig files unless `countLike` was declared or `assumeCountLike` overrides it in `fitRegions()`. `loadCounts()` takes the same argument, for external matrices holding coverage rather than counts.
 * `countBackground()` counts genome-wide bins alongside the regions, for the normalisation and for the null estimates.
+* `countReads()` and `countBackground()` rebuild each paired-end fragment from the first mate of the pair and its template length, and read the BAM files in pieces shared among the threads. `excludeChromosomes` keeps chromosomes such as chrM out of the library sizes and of the background bins, while `fullLibrarySize = FALSE` reads only the chromosomes carrying regions, which is faster but gives library sizes that are not meant for normalisation.
 
 
 ## Normalisation and filtering

@@ -17,9 +17,9 @@
 #' @param maxFragmentLength Numeric value with the maximum length accepted for a paired-end fragment. Applied to the paired-end samples only. Default: \code{1000}.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
-#' @param restrictChromosomes Character vector with the chromosomes to read, named as in the BAM files. The other chromosomes are left out of both the counts and the library sizes, which is the way to keep, for instance, the mitochondrial reads out of the normalisation. Default: \code{NULL}, all of them.
+#' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, named as in the BAM files, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.
 #' @param discardRegions \code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.
-#' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.
+#' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.
 #' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
@@ -29,7 +29,7 @@
 #'
 #' A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from the \code{MQ} tag, which \code{samtools fixmate} and Picard write; on files without it only the first mate is checked, and a message says so.
 #'
-#' The library size of a sample is the number of fragments that went through the same filters as the counts, on all the chromosomes read. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
+#' Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
 #'
 #' Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to \code{fragmentLength}, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
 #'
@@ -45,6 +45,13 @@
 #'                      nThreads = 4)
 #'
 #' countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
+#'
+#' # Mitochondrial genome, chrY and contigs out of the library sizes
+#' bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+#' countsAtac <- countReads(regions,
+#'                          bamFiles = bamPaths,
+#'                          excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+#'                          nThreads = 4)
 #'
 #' # A few regions counted in seconds, with library sizes that are not meant for normalisation
 #' countsQuick <- countReads(fewRegions, bamFiles = bamPaths, fullLibrarySize = FALSE)
@@ -78,7 +85,7 @@ countReads <-
            maxFragmentLength = 1000,
            minMapq = 20,
            removeDuplicates = TRUE,
-           restrictChromosomes = NULL,
+           excludeChromosomes = NULL,
            discardRegions = NULL,
            fullLibrarySize = TRUE,
            nThreads = 1,
@@ -137,13 +144,17 @@ countReads <-
       stop("The 'discardRegions' parameter must be a GRanges object.", call. = FALSE)
     }
 
+    if (!is.null(excludeChromosomes) & !is.character(excludeChromosomes)) {
+      stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
+    }
+
     bamSeqlevels <- names(Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets)
 
-    if (!is.null(restrictChromosomes)) {
-      if (length(intersect(restrictChromosomes, bamSeqlevels)) == 0) {
-        stop("None of the chromosomes in 'restrictChromosomes' is found in the BAM files, which use names such as ",
-             paste(utils::head(bamSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
-      }
+    # A misspelt name would exclude nothing and go unnoticed
+    unknownChromosomes <- setdiff(excludeChromosomes, bamSeqlevels)
+    if (isTRUE(verbose) & length(unknownChromosomes) > 0) {
+      message("The following chromosomes in 'excludeChromosomes' are absent from the BAM files, which use names such as ",
+              paste(utils::head(bamSeqlevels, 3), collapse = ", "), ": ", paste(unknownChromosomes, collapse = ", "), ".")
     }
 
     #------------------------#
@@ -181,12 +192,17 @@ countReads <-
       discardRegions <- .matchSeqlevels(x = discardRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
     }
 
-    # A region on a chromosome that is not read keeps a count of zero, better to say it than to let it pass for an empty region
-    readChromosomes <- if (is.null(restrictChromosomes)) {bamSeqlevels} else {intersect(restrictChromosomes, bamSeqlevels)}
-    unreadRegions <- sum(!(as.character(GenomeInfoDb::seqnames(countingRegions)) %in% readChromosomes))
+    # A region on a chromosome missing from the files keeps a count of zero, better to say it than to let it pass for an empty region
+    regionChromosomes <- as.character(GenomeInfoDb::seqnames(countingRegions))
+    absentRegions <- sum(!(regionChromosomes %in% bamSeqlevels))
+    excludedRegions <- sum(regionChromosomes %in% excludeChromosomes)
 
-    if (isTRUE(verbose) & unreadRegions > 0) {
-      message(unreadRegions, " regions lie on chromosomes that are absent from the BAM files or excluded by 'restrictChromosomes', and get zero counts.")
+    if (isTRUE(verbose) & absentRegions > 0) {
+      message(absentRegions, " regions lie on chromosomes absent from the BAM files and get zero counts.")
+    }
+
+    if (isTRUE(verbose) & excludedRegions > 0) {
+      message(excludedRegions, " regions lie on chromosomes listed in 'excludeChromosomes': they are counted, but their chromosomes stay out of the library sizes.")
     }
 
     #----------------#
@@ -208,7 +224,7 @@ countReads <-
                                          maxFragmentLength = maxFragmentLength[1],
                                          minMapq = minMapq,
                                          removeDuplicates = removeDuplicates,
-                                         restrictChromosomes = restrictChromosomes,
+                                         excludeChromosomes = excludeChromosomes,
                                          discardRegions = discardRegions,
                                          fullLibrarySize = fullLibrarySize,
                                          countMode = "overlap",
@@ -223,6 +239,13 @@ countReads <-
     if (isTRUE(verbose) & length(missingMateMapq) > 0 & isTRUE(minMapq > 0)) {
       message("No MQ tag in: ", paste(sampleTable$sample[missingMateMapq], collapse = ", "),
               ". For these samples 'minMapq' is applied to the first mate of each pair only.")
+    }
+
+    # An empty library breaks every normalisation downstream, and usually points to a wrong layout or to excluding too much
+    emptyLibraries <- which(fragmentCounts$library.size == 0)
+    if (length(emptyLibraries) > 0) {
+      warning("No fragment entered the library size of: ", paste(sampleTable$sample[emptyLibraries], collapse = ", "),
+              ". Check 'pairedEnd', 'excludeChromosomes' and the read filters.", call. = FALSE)
     }
 
     #-------------------------#
@@ -241,7 +264,7 @@ countReads <-
                                             maxFragmentLength = maxFragmentLength,
                                             minMapq = minMapq,
                                             removeDuplicates = removeDuplicates,
-                                            restrictChromosomes = restrictChromosomes,
+                                            excludeChromosomes = excludeChromosomes,
                                             fullLibrarySize = fullLibrarySize))
 
     # A tiled object has to say so it is tiled, otherwise testRegions treats every tile as a region

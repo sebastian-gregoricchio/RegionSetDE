@@ -10,7 +10,7 @@ countBackground(
   binSize = 10000,
   excludeRegions = TRUE,
   minCount = 1,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   pairedEnd = NULL,
   fragmentLength = NULL,
   maxFragmentLength = NULL,
@@ -31,7 +31,7 @@ countBackground(
 
 \item{minCount}{Numeric value with the minimum total count required to keep a bin. Default: \code{1}.}
 
-\item{restrictChromosomes}{Character vector with the chromosomes to read from the BAM files. Default: \code{NULL}, the value used at the counting step.}
+\item{excludeChromosomes}{Character vector with the chromosomes left out of the bins and of their library sizes, named as in the BAM files. \code{character(0)} excludes nothing. Default: \code{NULL}, the value used at the counting step.}
 
 \item{pairedEnd}{Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.}
 
@@ -56,7 +56,7 @@ Counts the reads falling in large genome wide bins, which provide the background
 \details{
 Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
 
-The bins start at the first base of every chromosome read, the last one of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. Every chromosome allowed by \code{restrictChromosomes} is read, whatever the value of \code{fullLibrarySize} used for the regions.
+The bins cover every chromosome of the BAM files except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
 }
 \examples{
 # The example counts already carry their background bins

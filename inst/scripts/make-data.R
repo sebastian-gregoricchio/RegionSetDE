@@ -502,7 +502,9 @@ sampleMetadata <-
 # ---- Counting ---------------------------------------------------------------
 
 # Duplicates are not flagged in these BAM files, so removeDuplicates would be a
-# no-op and is switched off to keep the record honest.
+# no-op and is switched off to keep the record honest. The files only hold reads
+# on the target chromosome, so the rest of the header is excluded, which keeps
+# it out of the library sizes and of the background bins.
 counts <- RegionSetDE::countReads(
   regionSet = regions,
   bamFiles = chipSamples$bamPath,
@@ -512,7 +514,7 @@ counts <- RegionSetDE::countReads(
   fragmentLength = extensionLength,
   minMapq = minimumMappingQuality,
   removeDuplicates = FALSE,
-  restrictChromosomes = targetChromosomes,
+  excludeChromosomes = setdiff(names(bamTargets), targetChromosomes),
   nThreads = 1,
   verbose = TRUE
 )

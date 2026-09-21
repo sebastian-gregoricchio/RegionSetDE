@@ -124,16 +124,38 @@ test_that("fullLibrarySize = FALSE only reads the chromosomes carrying regions",
 })
 
 
-test_that("restrictChromosomes leaves the other chromosomes out of counts and library sizes", {
+test_that("excludeChromosomes changes the library sizes, never the counts", {
 
-  counts <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = toyPairedBam(), sampleNames = "toy",
-                                    restrictChromosomes = "chr2", verbose = FALSE)
+  bamFile <- toyPairedBam()
+  allChromosomes <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy", verbose = FALSE)
 
-  expect_equal(sum(SummarizedExperiment::assay(counts, "counts")), 0)
-  expect_equal(counts$library.size, 1)
+  # chr2 carries no region, only its fragment leaves the library size
+  withoutSecond <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy",
+                                           excludeChromosomes = "chr2", verbose = FALSE)
 
-  expect_error(RegionSetDE::countReads(toyEngineRegions(), bamFiles = toyPairedBam(), sampleNames = "toy",
-                                       restrictChromosomes = "chrZ", verbose = FALSE))
+  expect_equal(SummarizedExperiment::assay(withoutSecond, "counts"), SummarizedExperiment::assay(allChromosomes, "counts"))
+  expect_equal(withoutSecond$library.size, 2)
+
+  # chr1 carries the regions: they are still counted, but its fragments leave the library size
+  withoutFirst <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy",
+                                          excludeChromosomes = "chr1", verbose = FALSE)
+
+  expect_equal(SummarizedExperiment::assay(withoutFirst, "counts"), SummarizedExperiment::assay(allChromosomes, "counts"))
+  expect_equal(withoutFirst$library.size, 1)
+
+  countingMessages <- testthat::capture_messages(RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy",
+                                                                         excludeChromosomes = c("chr1", "chrZ")))
+  expect_true(any(grepl("they are counted", countingMessages)))
+  expect_true(any(grepl("absent from the BAM files", countingMessages)))
+})
+
+
+test_that("a library size of zero raises a warning", {
+
+  # Only chr1 is read, and chr1 is excluded: nothing is left for the library size
+  expect_warning(RegionSetDE::countReads(toyEngineRegions(), bamFiles = toyPairedBam(), sampleNames = "toy",
+                                         excludeChromosomes = "chr1", fullLibrarySize = FALSE, verbose = FALSE),
+                 "No fragment entered the library size")
 })
 
 

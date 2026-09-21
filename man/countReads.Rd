@@ -18,7 +18,7 @@ countReads(
   maxFragmentLength = 1000,
   minMapq = 20,
   removeDuplicates = TRUE,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   discardRegions = NULL,
   fullLibrarySize = TRUE,
   nThreads = 1,
@@ -52,11 +52,11 @@ countReads(
 
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.}
 
-\item{restrictChromosomes}{Character vector with the chromosomes to read, named as in the BAM files. The other chromosomes are left out of both the counts and the library sizes, which is the way to keep, for instance, the mitochondrial reads out of the normalisation. Default: \code{NULL}, all of them.}
+\item{excludeChromosomes}{Character vector with the chromosomes left out of the library sizes, named as in the BAM files, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.}
 
 \item{discardRegions}{\code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.}
 
-\item{fullLibrarySize}{Logical value: \code{TRUE} reads every chromosome, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.}
+\item{fullLibrarySize}{Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.}
 
 \item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.}
 
@@ -73,7 +73,7 @@ Regions shared by several sets are counted only once and the values are then cop
 
 A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from the \code{MQ} tag, which \code{samtools fixmate} and Picard write; on files without it only the first mate is checked, and a message says so.
 
-The library size of a sample is the number of fragments that went through the same filters as the counts, on all the chromosomes read. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
+Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
 
 Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to \code{fragmentLength}, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
 
@@ -89,6 +89,13 @@ counts <- countReads(regions,
                      nThreads = 4)
 
 countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
+
+# Mitochondrial genome, chrY and contigs out of the library sizes
+bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+countsAtac <- countReads(regions,
+                         bamFiles = bamPaths,
+                         excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+                         nThreads = 4)
 
 # A few regions counted in seconds, with library sizes that are not meant for normalisation
 countsQuick <- countReads(fewRegions, bamFiles = bamPaths, fullLibrarySize = FALSE)

@@ -79,17 +79,30 @@ test_that("minCount removes the empty bins", {
 })
 
 
-test_that("restrictChromosomes narrows the bins to one contig", {
+test_that("excludeChromosomes leaves a contig out of the bins", {
 
   counts <- toyCounts()
 
   counts <- countBackground(counts, binSize = backgroundBinWidth,
-                            restrictChromosomes = "seq1",
+                            excludeChromosomes = "seq2",
                             excludeRegions = FALSE, verbose = FALSE)
 
   backgroundBins <- S4Vectors::metadata(counts)$background
 
   expect_gt(nrow(backgroundBins), 0)
+  expect_setequal(unique(as.character(GenomicRanges::seqnames(backgroundBins))), "seq1")
+})
+
+
+test_that("the bins leave out the chromosomes excluded at the counting step", {
+
+  counts <- toyCounts(excludeChromosomes = "seq2")
+  counts <- countBackground(counts, binSize = backgroundBinWidth,
+                            excludeRegions = FALSE, verbose = FALSE)
+
+  backgroundBins <- S4Vectors::metadata(counts)$background
+
+  expect_setequal(unique(as.character(GenomicRanges::seqnames(backgroundBins))), "seq1")
 })
 
 

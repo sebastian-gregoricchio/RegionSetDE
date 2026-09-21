@@ -12,7 +12,7 @@
   maxFragmentLength = 1000,
   minMapq = 20,
   removeDuplicates = TRUE,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   discardRegions = NULL,
   fullLibrarySize = TRUE,
   countMode = "overlap",
@@ -35,11 +35,11 @@
 
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.}
 
-\item{restrictChromosomes}{Character vector with the chromosomes to read, named as in the BAM files. Default: \code{NULL}, all of them.}
+\item{excludeChromosomes}{Character vector with the chromosomes left out of the library sizes, named as in the BAM files. The ranges lying on them are still counted. Default: \code{NULL}, none.}
 
 \item{discardRegions}{\code{GRanges} with the regions whose reads must be ignored, named after the chromosomes of the BAM files. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.}
 
-\item{fullLibrarySize}{Logical value: \code{TRUE} reads every chromosome to compute the library sizes, \code{FALSE} only the chromosomes carrying ranges, which is faster but leaves the library sizes partial. Default: \code{TRUE}.}
+\item{fullLibrarySize}{Logical value: \code{TRUE} reads every chromosome that is not excluded to compute the library sizes, \code{FALSE} only the chromosomes carrying ranges, which is faster but leaves the library sizes partial. Default: \code{TRUE}.}
 
 \item{countMode}{String with the way a fragment is assigned to the ranges: \code{"overlap"} counts it in every range it overlaps, \code{"bin"} counts it once, at its centre for paired-end data and at the 5' end of the read for single-end data, as csaw does for genome wide bins. Default: \code{"overlap"}.}
 
@@ -48,7 +48,7 @@
 \item{nThreads}{Number of threads. Default: \code{1}.}
 }
 \value{
-A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
+A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
 }
 \description{
 Counts the fragments of a group of BAM files over a set of ranges. The chromosomes are cut into pieces of at most 50 Mb, and the pieces of all the files are shared among the threads, so that even a single file keeps every thread busy. Paired-end fragments are rebuilt from the first mate of each proper pair, whose position, mate position and template length (TLEN) give the start and the width of the fragment: the two reads never have to be matched. Single-end reads are extended to the fragment length from their 5' end.

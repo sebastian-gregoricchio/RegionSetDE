@@ -11,14 +11,14 @@
 #' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment. Default: \code{1000}.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. For paired-end data the mate is checked through its \code{MQ} tag, when the file carries it. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
-#' @param restrictChromosomes Character vector with the chromosomes to read, named as in the BAM files. Default: \code{NULL}, all of them.
+#' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, named as in the BAM files. The ranges lying on them are still counted. Default: \code{NULL}, none.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, named after the chromosomes of the BAM files. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.
-#' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome to compute the library sizes, \code{FALSE} only the chromosomes carrying ranges, which is faster but leaves the library sizes partial. Default: \code{TRUE}.
+#' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded to compute the library sizes, \code{FALSE} only the chromosomes carrying ranges, which is faster but leaves the library sizes partial. Default: \code{TRUE}.
 #' @param countMode String with the way a fragment is assigned to the ranges: \code{"overlap"} counts it in every range it overlaps, \code{"bin"} counts it once, at its centre for paired-end data and at the 5' end of the read for single-end data, as csaw does for genome wide bins. Default: \code{"overlap"}.
 #' @param pieceLength Numeric value with the maximum length of the stretch of genome read by a single job, in base pairs. Default: \code{5e7}.
 #' @param nThreads Number of threads. Default: \code{1}.
 #'
-#' @return A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
+#' @return A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -39,7 +39,7 @@
            maxFragmentLength = 1000,
            minMapq = 20,
            removeDuplicates = TRUE,
-           restrictChromosomes = NULL,
+           excludeChromosomes = NULL,
            discardRegions = NULL,
            fullLibrarySize = TRUE,
            countMode = "overlap",
@@ -58,19 +58,18 @@
            " differ from ", basename(bamFiles[1]), ".", call. = FALSE)
     }
 
+    # A chromosome is read when it carries ranges to count, or, for the full library sizes, whenever it is not excluded
+    rangeChromosomes <- as.character(GenomeInfoDb::seqnames(ranges))
+
     chromosomeTable <- data.frame(chromosome = names(targetList[[1]]),
                                   length = as.numeric(targetList[[1]]),
                                   stringsAsFactors = FALSE)
 
-    if (!is.null(restrictChromosomes)) {
-      chromosomeTable <- dplyr::filter(chromosomeTable, .data$chromosome %in% restrictChromosomes)
-    }
+    chromosomeTable <- dplyr::mutate(chromosomeTable,
+                                     has.ranges = .data$chromosome %in% rangeChromosomes,
+                                     in.library = !(.data$chromosome %in% excludeChromosomes))
 
-    # Without the full library sizes, the chromosomes carrying no range are not worth reading
-    rangeChromosomes <- as.character(GenomeInfoDb::seqnames(ranges))
-    if (isFALSE(fullLibrarySize)) {
-      chromosomeTable <- dplyr::filter(chromosomeTable, .data$chromosome %in% rangeChromosomes)
-    }
+    chromosomeTable <- dplyr::filter(chromosomeTable, .data$has.ranges | (isTRUE(fullLibrarySize) & .data$in.library))
 
     countMatrix <- matrix(0L, nrow = length(ranges), ncol = length(bamFiles))
     librarySizes <- numeric(length(bamFiles))
@@ -90,6 +89,7 @@
 
     pieceTable <- data.frame(chromosome = rep(chromosomeTable$chromosome, times = piecesPerChromosome),
                              chromosome.length = as.integer(rep(chromosomeTable$length, times = piecesPerChromosome)),
+                             in.library = rep(chromosomeTable$in.library, times = piecesPerChromosome),
                              start = as.integer(unlist(lapply(piecesPerChromosome, function(n) {(seq_len(n) - 1L) * pieceLength + 1L}))),
                              stringsAsFactors = FALSE)
 
@@ -280,7 +280,11 @@
 
       fragmentStart <- pmax(fragmentStart, 1L)
       fragmentEnd <- pmin(fragmentEnd, pieces$chromosome.length[i])
-      totalFragments <- totalFragments + length(fragmentStart)
+
+      # An excluded chromosome is read for its ranges only, its fragments stay out of the library size
+      if (pieces$in.library[i]) {
+        totalFragments <- totalFragments + length(fragmentStart)
+      }
 
       #--------------------------#
       # Count over the ranges    #

@@ -71,6 +71,15 @@ regions@filtering.log
 #              minMapq = 10,
 #              nThreads = 4)
 
+## ----count_reads_exclude, eval = FALSE----------------------------------------
+# bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+# 
+# counts <-
+#   countReads(regions,
+#              bamFiles = bamPaths,
+#              excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+#              nThreads = 4)
+
 ## ----counts_structure---------------------------------------------------------
 counts <- loadExampleData("counts", verbose = FALSE)
 

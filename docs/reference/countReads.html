@@ -57,7 +57,7 @@
 <span>  maxFragmentLength <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  minMapq <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  removeDuplicates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  restrictChromosomes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  excludeChromosomes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  discardRegions <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fullLibrarySize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -121,8 +121,8 @@
 <dd><p>Logical value indicating whether the reads flagged as duplicates must be discarded. Default: <code>TRUE</code>.</p></dd>
 
 
-<dt id="arg-restrictchromosomes">restrictChromosomes<a class="anchor" aria-label="anchor" href="#arg-restrictchromosomes"></a></dt>
-<dd><p>Character vector with the chromosomes to read, named as in the BAM files. The other chromosomes are left out of both the counts and the library sizes, which is the way to keep, for instance, the mitochondrial reads out of the normalisation. Default: <code>NULL</code>, all of them.</p></dd>
+<dt id="arg-excludechromosomes">excludeChromosomes<a class="anchor" aria-label="anchor" href="#arg-excludechromosomes"></a></dt>
+<dd><p>Character vector with the chromosomes left out of the library sizes, named as in the BAM files, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. <code>grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)</code>. Default: <code>NULL</code>, every chromosome enters the library sizes.</p></dd>
 
 
 <dt id="arg-discardregions">discardRegions<a class="anchor" aria-label="anchor" href="#arg-discardregions"></a></dt>
@@ -130,7 +130,7 @@
 
 
 <dt id="arg-fulllibrarysize">fullLibrarySize<a class="anchor" aria-label="anchor" href="#arg-fulllibrarysize"></a></dt>
-<dd><p>Logical value: <code>TRUE</code> reads every chromosome, even those without any region, so that the library sizes cover the whole library; <code>FALSE</code> reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: <code>TRUE</code>.</p></dd>
+<dd><p>Logical value: <code>TRUE</code> reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; <code>FALSE</code> reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
@@ -149,7 +149,7 @@
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Regions shared by several sets are counted only once and the values are then copied to every set they belong to, which keeps the running time proportional to the number of distinct regions.</p>
 <p>A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than <code>maxFragmentLength</code> are dropped. The mapping quality of the second mate is read from the <code>MQ</code> tag, which <code>samtools fixmate</code> and Picard write; on files without it only the first mate is checked, and a message says so.</p>
-<p>The library size of a sample is the number of fragments that went through the same filters as the counts, on all the chromosomes read. With <code>fullLibrarySize = FALSE</code> only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and <code><a href="normalizeCounts.html">normalizeCounts</a></code> warns when a method relies on them.</p>
+<p>Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in <code>excludeChromosomes</code>. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With <code>fullLibrarySize = FALSE</code> only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and <code><a href="normalizeCounts.html">normalizeCounts</a></code> warns when a method relies on them.</p>
 <p>Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to <code>fragmentLength</code>, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the <code>paired.end</code> column of the <code>colData</code>.</p>
 <p>Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.</p>
     </div>
@@ -173,6 +173,13 @@
 <span class="r-in"><span>                     nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">countsTiled</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>, bamFiles <span class="op">=</span> <span class="va">bamPaths</span>, tileWidth <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Mitochondrial genome, chrY and contigs out of the library sizes</span></span></span>
+<span class="r-in"><span><span class="va">bamChromosomes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu">Rsamtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Rsamtools/man/scanBam.html" class="external-link">scanBamHeader</a></span><span class="op">(</span><span class="va">bamPaths</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">targets</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">countsAtac</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>,</span></span>
+<span class="r-in"><span>                         bamFiles <span class="op">=</span> <span class="va">bamPaths</span>,</span></span>
+<span class="r-in"><span>                         excludeChromosomes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"chrM"</span>, <span class="st">"chrY"</span>, <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"_|EBV"</span>, <span class="va">bamChromosomes</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                         nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># A few regions counted in seconds, with library sizes that are not meant for normalisation</span></span></span>
 <span class="r-in"><span><span class="va">countsQuick</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">fewRegions</span>, bamFiles <span class="op">=</span> <span class="va">bamPaths</span>, fullLibrarySize <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>

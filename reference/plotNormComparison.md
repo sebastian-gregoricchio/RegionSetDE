@@ -130,14 +130,10 @@ counts <- loadExampleData("counts", verbose = FALSE)
 # Scaling factors from four methods side by side, before committing to one
 plotNormComparison(counts)
 #> calcNormFactors has been renamed to normLibSizes
-#> calcNormFactors has been renamed to normLibSizes
-#> calcNormFactors has been renamed to normLibSizes
 
 
 # The numbers behind the panel
 head(plotNormComparison(counts, returnData = TRUE))
-#> calcNormFactors has been renamed to normLibSizes
-#> calcNormFactors has been renamed to normLibSizes
 #> calcNormFactors has been renamed to normLibSizes
 #>                            sample      method scaling.factor
 #> 1 lv-H3K4me3-BN-female-bio1-tech1 librarySize      0.8114696

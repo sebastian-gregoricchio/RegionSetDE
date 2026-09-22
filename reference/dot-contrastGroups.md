@@ -2,7 +2,11 @@
 
 Works out which variable of the sample metadata a contrast separates,
 and which two of its levels, by comparing the contrast against the
-difference between the design rows of every pair of levels.
+difference between the design rows of every pair of levels. The
+variables of the design are tried first. A column holding a different
+value for every sample, such as the sample names, is never tried unless
+it is in the design, since any two samples from two groups reproduce a
+contrast between those groups.
 
 ## Usage
 

@@ -97,6 +97,11 @@ First version.
   design columns, a numeric vector, or as
   `c("column", "groupA", "groupB")`, which works whatever the reference
   level is.
+- `RegionSetDE.results` records in `contrast.groups` the column and the
+  two levels a contrast compares, as `RegionSetDE.setResults` already
+  did. A contrast written as a coefficient name, an expression or a
+  vector is assigned to the design variable it belongs to, never to a
+  column naming each sample on its own, such as the sample names.
 
 ### Region sets
 
@@ -206,6 +211,15 @@ First version.
   [`plotResultsMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotResultsMA.md),
   [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md),
   [`plotTopHeatmap()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotTopHeatmap.md).
+- [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
+  draws brackets between the groups of `groupBy` through `pairwiseTest`.
+  With `"model"` each bracket carries the fold change and the FDR of a
+  fitted contrast comparing two of those groups. `"t.test"` and
+  `"wilcox.test"` test the plotted values instead, paired through a
+  `colData` column with `pairBy`, and `pAdjustMethod` corrects across
+  the brackets of the plot. The caption names the test, the function
+  warns when it runs on raw counts, and a message says when the groups
+  are too small for the exact Wilcoxon test to reach 0.05.
 - Per set:
   [`plotSetEffect()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetEffect.md),
   [`plotSetDistribution()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetDistribution.md),

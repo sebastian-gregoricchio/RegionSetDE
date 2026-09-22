@@ -881,6 +881,34 @@ plotRegion(results, region = topRegion, groupBy = "condition")
 
 ![](RegionSetDE.vignette_files/figure-html/plot_region-1.png)
 
+The same figure can carry a bracket between the groups. With
+`pairwiseTest = "model"` the bracket holds the fold change and the FDR
+the fit gave to this region, the same numbers
+[`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
+reports for it:
+
+``` r
+
+plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "model")
+```
+
+![](RegionSetDE.vignette_files/figure-html/plot_region_model-1.png)
+
+`pairwiseTest = "t.test"` and `"wilcox.test"` test the plotted values
+instead, paired through a `colData` column when `pairBy` names one.
+These tests see neither the offsets, nor the dispersion, nor the
+thousands of other regions, so their p-value and the FDR above rarely
+agree, and with two samples per group the Wilcoxon test cannot go below
+0.33. They are useful on counts that were never fitted, or between
+groups that no contrast compared. The caption says which test was run.
+
+``` r
+
+plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t.test")
+```
+
+![](RegionSetDE.vignette_files/figure-html/plot_region_ttest-1.png)
+
 ``` r
 
 plotTopHeatmap(results, n = 20, FDR = 1)

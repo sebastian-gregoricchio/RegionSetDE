@@ -196,7 +196,6 @@ SummarizedExperiment::colData(counts)
 
 # TMM estimates them from the regions themselves instead
 tmmCounts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
-#> calcNormFactors has been renamed to normLibSizes
 SummarizedExperiment::colData(tmmCounts)$scaling.factor
 #> lv-H3K4me3-BN-female-bio1-tech1   lv-H3K4me3-BN-male-bio2-tech1 
 #>                       0.7502489                       0.7881769 

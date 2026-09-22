@@ -32,6 +32,15 @@ the summary.
   Numeric vector with the coefficients of the contrast over the columns
   of the design.
 
+- `contrast.groups`:
+
+  List with the `column` of the `colData` the contrast separates and the
+  two `groups` it compares, the first one being the level the fold
+  change is positive for. Empty when the contrast is not a difference
+  between two levels of one variable.
+  [`plotRegion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
+  reads it to draw the model brackets.
+
 - `engine`:
 
   String with the engine that produced the statistics.

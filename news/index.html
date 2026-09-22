@@ -75,6 +75,8 @@
 <li>
 <code><a href="../reference/testRegions.html">testRegions()</a></code> tests a contrast, or a named list of them, and combines tiled regions back to one row per region through <code><a href="https://rdrr.io/pkg/csaw/man/combineTests.html" class="external-link">csaw::combineTests</a></code>.</li>
 <li>Contrasts can be given as a coefficient name, an expression over the design columns, a numeric vector, or as <code>c("column", "groupA", "groupB")</code>, which works whatever the reference level is.</li>
+<li>
+<code>RegionSetDE.results</code> records in <code>contrast.groups</code> the column and the two levels a contrast compares, as <code>RegionSetDE.setResults</code> already did. A contrast written as a coefficient name, an expression or a vector is assigned to the design variable it belongs to, never to a column naming each sample on its own, such as the sample names.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="region-sets-0-99-0">Region sets<a class="anchor" aria-label="anchor" href="#region-sets-0-99-0"></a></h3>
@@ -112,6 +114,8 @@
 <div class="section level3">
 <h3 id="plots-0-99-0">Plots<a class="anchor" aria-label="anchor" href="#plots-0-99-0"></a></h3>
 <ul><li>Per region: <code><a href="../reference/plotVolcano.html">plotVolcano()</a></code>, <code><a href="../reference/plotResultsMA.html">plotResultsMA()</a></code>, <code><a href="../reference/plotRegion.html">plotRegion()</a></code>, <code><a href="../reference/plotTopHeatmap.html">plotTopHeatmap()</a></code>.</li>
+<li>
+<code><a href="../reference/plotRegion.html">plotRegion()</a></code> draws brackets between the groups of <code>groupBy</code> through <code>pairwiseTest</code>. With <code>"model"</code> each bracket carries the fold change and the FDR of a fitted contrast comparing two of those groups. <code>"t.test"</code> and <code>"wilcox.test"</code> test the plotted values instead, paired through a <code>colData</code> column with <code>pairBy</code>, and <code>pAdjustMethod</code> corrects across the brackets of the plot. The caption names the test, the function warns when it runs on raw counts, and a message says when the groups are too small for the exact Wilcoxon test to reach 0.05.</li>
 <li>Per set: <code><a href="../reference/plotSetEffect.html">plotSetEffect()</a></code>, <code><a href="../reference/plotSetDistribution.html">plotSetDistribution()</a></code>, <code><a href="../reference/plotSetSignal.html">plotSetSignal()</a></code>, <code><a href="../reference/plotUniverseMatching.html">plotUniverseMatching()</a></code>. <code><a href="../reference/plotSetSignal.html">plotSetSignal()</a></code> also draws a <code>RegionSetDE.setScores</code> object, one point per library per set with the points of a library joined across the sets, since the comparison behind the bracket is paired.</li>
 <li>Samples: <code><a href="../reference/plotRegionPCA.html">plotRegionPCA()</a></code> and <code><a href="../reference/plotSampleCorrelation.html">plotSampleCorrelation()</a></code>, both able to draw the same figure with and without the normalisation so that a grouping caused by the scaling factors can be told apart from one in the data.</li>
 </ul></div>

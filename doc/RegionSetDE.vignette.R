@@ -117,6 +117,13 @@ SummarizedExperiment::colData(counts)
 ## ----norm_assays--------------------------------------------------------------
 SummarizedExperiment::assayNames(counts)
 
+## ----count_table--------------------------------------------------------------
+head(countTable(counts, normalized = TRUE), 3)
+
+longTable <- countTable(counts, normalized = TRUE, format = "long")
+
+head(longTable, 3)
+
 ## ----plot_norm_comparison, fig.height = 4-------------------------------------
 plotNormComparison(loadExampleData("counts", verbose = FALSE))
 

@@ -125,6 +125,8 @@
 <code><a href="../reference/asDGEList.html">asDGEList()</a></code>, <code>as(x, "DGEList")</code> and <code><a href="../reference/asDESeqDataSet.html">asDESeqDataSet()</a></code> hand the counts to <code>edgeR</code> or <code>DESeq2</code> with the offsets attached the right way round.</li>
 <li>
 <code><a href="../reference/exportResults.html">exportResults()</a></code> writes the table, a BED coloured by direction, and every parameter the analysis was run with.</li>
+<li>
+<code><a href="../reference/countTable.html">countTable()</a></code> returns the values of a counts, fit or results object as a table, raw or normalised, with the coordinates and the annotation of each row. <code>format = "long"</code> repeats every row once per sample and attaches the <code>colData</code>, the shape <code>ggplot2</code> expects, and <code>format = "matrix"</code> returns a plain matrix. On a tiled object <code>level = "region"</code> combines the tiles back into their region, summing the reads and following <code>summaryFunction</code> for bigWig signal. A fragment crossing the border between two tiles is counted in both, so summed tiles come out higher than the same region counted whole, and a message says so.</li>
 </ul></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

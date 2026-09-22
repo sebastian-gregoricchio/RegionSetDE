@@ -64,9 +64,7 @@
 <p>The second level is the reason the package exists. A great deal of chromatin biology is phrased as a question about a class of elements rather than about individual loci. <em>Does H3K4me3 redistribute away from CpG island promoters in this mutant?</em> is a question about a set, and answering it by counting how many members of the set crossed an FDR threshold conflates the size of the effect with the power to detect it. Here the set is the unit of the test, and the effect size comes with a confidence interval built on the biological samples, which is where the replication of the experiment lives.</p>
 <p>Because no peak calling happens anywhere in the pipeline, the region definitions come from you and stay fixed across conditions. Nothing is redefined when the signal moves, which is what makes a redistribution visible instead of being absorbed into a new set of peak boundaries.</p>
 <p><br></p>
-<div class="section level3">
-<h3 id="main-features">Main features<a class="anchor" aria-label="anchor" href="#main-features"></a>
-</h3>
+<p>### Main features</p>
 <ul>
 <li>
 <strong>No peak calling.</strong> Regions are supplied as BED, narrowPeak, broadPeak, <code>GRanges</code> or data.frames, and are the same in every condition.</li>
@@ -88,61 +86,43 @@
 <strong>Exploratory no-replicate mode.</strong> One library per condition can be analysed: the dispersion is estimated from rows assumed not to respond, half of them held back so <code><a href="reference/checkNullCalibration.html">checkNullCalibration()</a></code> can check the assumption rather than confirm it, and <code>normalizeCounts(backgroundHoldout = )</code> keeps those rows out of the normalisation as well. What this measures is how two libraries differ, not how two animals or two donors would. It is conditional on the null-region assumption and it is not a substitute for biological replication.</li>
 </ul>
 <p><br></p>
-</div>
-<div class="section level3">
-<h3 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
-</h3>
-<p>If you use this package, please cite:</p>
+<p>### Citation If you use this package, please cite:</p>
 <div class="warning" style="padding:2.5%; background-color:#ffffee; color:#787878; margin-left:5%; margin-right:5%; border-radius:15px;">
 <p><span> <font size="-0.5"></font></span></p>
 <div style="margin-left:2%; margin-right:2%; text-align: justify">
-<p><i>RegionSetDE</i>: differential analysis of chromatin signal over user-defined genomic region sets.<br> Gregoricchio S.<br><i>Manuscript in preparation</i><br></p>
+<i>RegionSetDE</i>: differential analysis of chromatin signal over user-defined genomic region sets.<br> Gregoricchio S.<br><i>Manuscript in preparation</i><br>
 </div>
 <p></p>
-<p></p>
+
 </div>
 <p><br></p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h2>
-<div class="section level3">
-<h3 id="bioconductor">Bioconductor<a class="anchor" aria-label="anchor" href="#bioconductor"></a>
-</h3>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"RegionSetDE"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="developmental-version">Developmental version<a class="anchor" aria-label="anchor" href="#developmental-version"></a>
-</h3>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## Install remotes from CRAN (if not already installed)</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://remotes.r-lib.org" class="external-link">"remotes"</a></span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="co"># Install the RegionSetDE package</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"sebastian-gregoricchio/RegionSetDE"</span>,</span>
-<span>                        build_manual <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>                        build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-</div>
+<p>## Installation</p>
+<p>### Bioconductor ```r if (!requireNamespace(“BiocManager”, quietly = TRUE)) { install.packages(“BiocManager”) }</p>
+<p>BiocManager::install(“RegionSetDE”)</p>
+<pre><code>
+### Developmental version
+```r
+## Install remotes from CRAN (if not already installed)
+if (!require("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+# Install the RegionSetDE package
+remotes::install_github("sebastian-gregoricchio/RegionSetDE",
+                        build_manual = TRUE,
+                        build_vignettes = TRUE)</code></pre>
 <div class="section level3">
 <h3 id="possible-installation-issues">Possible installation issues<a class="anchor" aria-label="anchor" href="#possible-installation-issues"></a>
 </h3>
 <p>Most of the dependencies live on Bioconductor rather than on the CRAN, so <code>BiocManager</code> has to be installed and its repositories active before <code>remotes::install_github()</code> is able to resolve them:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/setRepositories.html" class="external-link">setRepositories</a></span><span class="op">(</span>ind <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span></span></code></pre></div>
 <p>Building the vignette additionally requires <a href="https://bioconductor.org/packages/BiocStyle/" class="external-link"><code>BiocStyle</code></a>, and a few of the plotting functions require packages listed under <code>Suggests</code>:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BiocStyle"</span>, <span class="st">"ComplexHeatmap"</span>, <span class="st">"circlize"</span>, <span class="st">"ggrepel"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Only for the random-effects engine</span></span>
@@ -151,28 +131,24 @@
 <span><span class="co"># Only for the DESeq2 engine</span></span>
 <span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"DESeq2"</span><span class="op">)</span></span></code></pre></div>
 <p><br></p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
-</h2>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>## Quick start</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sebastian-gregoricchio/RegionSetDE/" class="external-link">RegionSetDE</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Region sets: a named list of BED files, GRanges or data.frames</span></span>
 <span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/loadRegions.html">loadRegions</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>promoters <span class="op">=</span> <span class="st">"annotation/promoters.bed"</span>,</span>
-<span>                            enhancers <span class="op">=</span> <span class="st">"annotation/enhancers.bed"</span>,</span>
-<span>                            CTCF      <span class="op">=</span> <span class="st">"peaks/CTCF.narrowPeak"</span><span class="op">)</span>,</span>
-<span>                       genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span><span class="op">)</span></span>
+<span>                          enhancers <span class="op">=</span> <span class="st">"annotation/enhancers.bed"</span>,</span>
+<span>                          CTCF      <span class="op">=</span> <span class="st">"peaks/CTCF.narrowPeak"</span><span class="op">)</span>,</span>
+<span>                     genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/applyBlacklist.html">applyBlacklist</a></span><span class="op">(</span><span class="va">regions</span>, blacklist <span class="op">=</span> <span class="va">encodeBlacklist</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Counting, plus the background bins used for the normalisation and the null</span></span>
 <span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/countReads.html">countReads</a></span><span class="op">(</span><span class="va">regions</span>,</span>
-<span>                     bamFiles <span class="op">=</span> <span class="va">bamPaths</span>,</span>
-<span>                     sampleMetadata <span class="op">=</span> <span class="va">sampleTable</span>,</span>
-<span>                     pairedEnd <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>                     nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<span>                   bamFiles <span class="op">=</span> <span class="va">bamPaths</span>,</span>
+<span>                   sampleMetadata <span class="op">=</span> <span class="va">sampleTable</span>,</span>
+<span>                   pairedEnd <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>                   nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/countBackground.html">countBackground</a></span><span class="op">(</span><span class="va">counts</span>, binSize <span class="op">=</span> <span class="fl">10000</span>, nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
@@ -188,22 +164,19 @@
 <span></span>
 <span><span class="co"># Does one class respond differently from another, which is the redistribution question</span></span>
 <span><span class="va">setContrast</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/testSetContrast.html">testSetContrast</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"treated"</span>, <span class="st">"control"</span><span class="op">)</span>,</span>
-<span>                               set1 <span class="op">=</span> <span class="st">"promoters"</span>, set2 <span class="op">=</span> <span class="st">"enhancers"</span><span class="op">)</span></span>
+<span>                             set1 <span class="op">=</span> <span class="st">"promoters"</span>, set2 <span class="op">=</span> <span class="st">"enhancers"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="reference/topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">setResults</span><span class="op">)</span></span></code></pre></div>
 <p>Every object in the package ships with a worked example, so the whole pipeline can be run without any data of your own:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"counts"</span><span class="op">)</span></span>
 <span><span class="va">fit</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/plotVolcano.html">plotVolcano</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><br></p>
-</div>
-<div class="section level2">
-<h2 id="which-analysis-for-which-question">Which analysis for which question<a class="anchor" aria-label="anchor" href="#which-analysis-for-which-question"></a>
-</h2>
+<p>## Which analysis for which question</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -264,6 +237,10 @@
 </td>
 </tr>
 <tr>
+<td align="left">What are the raw and normalised counts of each region?</td>
+<td align="left"><code><a href="reference/countTable.html">countTable()</a></code></td>
+</tr>
+<tr>
 <td align="left">More than what, exactly?</td>
 <td align="left">
 <code>makeSetUniverse(universeSets = )</code>, then <code><a href="reference/plotUniverseMatching.html">plotUniverseMatching()</a></code>
@@ -272,20 +249,13 @@
 </tbody>
 </table>
 <p><br></p>
-</div>
-<div class="section level2">
-<h2 id="three-things-the-output-does-not-say">Three things the output does not say<a class="anchor" aria-label="anchor" href="#three-things-the-output-does-not-say"></a>
-</h2>
+<p>## Three things the output does not say</p>
 <p>Worth reading once before the first result is interpreted.</p>
 <p><strong>A competitive test is significant <em>relative to the other loaded sets</em>.</strong> The comparison universe is drawn from the sets in the object, so the answer changes when the object does. Load two sets and they are being compared to each other. Load four that respond alike and none of them stands out, which is a fact about the comparison rather than about the chromatin. <code>makeSetUniverse(universeSets = )</code> fixes the pool explicitly, and the sets that formed it are printed with the universe.</p>
 <p><strong>A non-significant self-contained test is not evidence that nothing changed.</strong> <code>camera</code> significant with <code>fry</code> not significant means there is evidence of a difference relative to the comparison and the absolute claim is unresolved, not that the absolute change is zero. Different power alone produces that pattern. For a redistribution claim, use <code><a href="reference/testSetContrast.html">testSetContrast()</a></code>; for a claim that something did <em>not</em> change, an equivalence test against a bounded near-zero interval is what the argument needs.</p>
 <p><strong>Whether a global shift is technical or biological cannot be decided from endogenous data.</strong> A mark genuinely 1.5x higher everywhere and an IP that worked 1.5x better look the same in the reads. <code>normalizeCounts(method = "background")</code> assumes the background bins are invariant enough to carry the technical scaling, which is a reasonable assumption and still an assumption. <code><a href="reference/plotNormComparison.html">plotNormComparison()</a></code> shows how far the conclusions move when it is changed, which is a different and answerable question. Deciding the original one needs an external anchor: spike-in chromatin, spike-in cells, calibrated input, or loci validated as invariant.</p>
 <p><br></p>
-</div>
-<div class="section level2">
-<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
-</h2>
-<p>With the package there are available:</p>
+<p>## Documentation With the package there are available:</p>
 <ul>
 <li>
 <a href="https://sebastian-gregoricchio.github.io/RegionSetDE/reference/index.html">web-manual</a>: technical manual of each function;</li>
@@ -294,31 +264,18 @@
 </ul>
 <p>Note that the vignette can be inspected on R as well by typing <code>browseVignettes("RegionSetDE")</code>.</p>
 <p><br></p>
-</div>
-<div class="section level2">
-<h2 id="package-history-and-releases">Package history and releases<a class="anchor" aria-label="anchor" href="#package-history-and-releases"></a>
-</h2>
-<p>A list of all releases and the respective description of the changes applied can be found <a href="https://sebastian-gregoricchio.github.io/RegionSetDE/news/index.html">here</a>.</p>
+<p>## Package history and releases A list of all releases and the respective description of the changes applied can be found <a href="https://sebastian-gregoricchio.github.io/RegionSetDE/news/index.html">here</a>.</p>
 <p><br></p>
 <hr>
+<p>## Contact For any suggestion, bug fixing or commentary please report it in the <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/issues" class="external-link">issues</a>/<a href="https://github.com/sebastian-gregoricchio/RegionSetDE/pulls" class="external-link">request</a> tab of this repository.</p>
 </div>
-<div class="section level2">
-<h2 id="contact">Contact<a class="anchor" aria-label="anchor" href="#contact"></a>
-</h2>
-<p>For any suggestion, bug fixing or commentary please report it in the <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/issues" class="external-link">issues</a>/<a href="https://github.com/sebastian-gregoricchio/RegionSetDE/pulls" class="external-link">request</a> tab of this repository.</p>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
 <p>This package is under a GNU General Public License (version 3).</p>
 <p><br></p>
-<div class="section level4">
-<h4 id="contributors">Contributors<a class="anchor" aria-label="anchor" href="#contributors"></a>
-</h4>
-<div class="float">
-<img src="https://badges.pufler.dev/contributors/sebastian-gregoricchio/RegionSetDE?size=50&amp;padding=5&amp;bots=true" alt="contributors"><div class="figcaption">contributors</div>
-</div>
-</div>
+<p>#### Contributors <img src="https://badges.pufler.dev/contributors/sebastian-gregoricchio/RegionSetDE?size=50&amp;padding=5&amp;bots=true" alt="contributors"></p>
 </div>
 </div>
 

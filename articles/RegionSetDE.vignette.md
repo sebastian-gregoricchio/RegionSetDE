@@ -466,6 +466,62 @@ SummarizedExperiment::assayNames(counts)
 > [1] "counts"      "norm.counts"
 ```
 
+[`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
+returns either of the two as a table, with the coordinates and the
+annotation of each row next to the values. The wide format has one
+column per sample. The long format repeats every row once per sample and
+attaches the `colData`, which is the shape `ggplot2` expects, and
+`format = "matrix"` hands a plain matrix to `ComplexHeatmap` or to any
+other tool.
+
+``` r
+head(countTable(counts, normalized = TRUE), 3)
+>                                 region.set    region.id seqnames start   end
+> promoterNonCpG|region_00002 promoterNonCpG region_00002    chr12  4041  5040
+> promoterNonCpG|region_00003 promoterNonCpG region_00003    chr12  6212  7211
+> promoterNonCpG|region_00005 promoterNonCpG region_00005    chr12 10685 11684
+>                             width     regionId lv-H3K4me3-BN-female-bio1-tech1
+> promoterNonCpG|region_00002  1000 region_00002                        0.000000
+> promoterNonCpG|region_00003  1000 region_00003                        0.000000
+> promoterNonCpG|region_00005  1000 region_00005                        1.840561
+>                             lv-H3K4me3-BN-male-bio2-tech1
+> promoterNonCpG|region_00002                             0
+> promoterNonCpG|region_00003                             0
+> promoterNonCpG|region_00005                             0
+>                             lv-H3K4me3-SHR-male-bio2-tech1
+> promoterNonCpG|region_00002                              0
+> promoterNonCpG|region_00003                              0
+> promoterNonCpG|region_00005                              0
+>                             lv-H3K4me3-SHR-male-bio3-tech1
+> promoterNonCpG|region_00002                      0.0000000
+> promoterNonCpG|region_00003                      0.0000000
+> promoterNonCpG|region_00005                      0.4276009
+
+longTable <- countTable(counts, normalized = TRUE, format = "long")
+
+head(longTable, 3)
+>       region.set    region.id seqnames start   end width     regionId
+> 1 promoterNonCpG region_00002    chr12  4041  5040  1000 region_00002
+> 2 promoterNonCpG region_00003    chr12  6212  7211  1000 region_00003
+> 3 promoterNonCpG region_00005    chr12 10685 11684  1000 region_00005
+>                            sample norm.counts
+> 1 lv-H3K4me3-BN-female-bio1-tech1    0.000000
+> 2 lv-H3K4me3-BN-female-bio1-tech1    0.000000
+> 3 lv-H3K4me3-BN-female-bio1-tech1    1.840561
+>                                                                                                                     bam.file
+> 1 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+> 2 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+> 3 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+>   condition    sex biologicalReplicate paired.end library.size norm.factor
+> 1        BN female                bio1      FALSE       386378   0.7959318
+> 2        BN female                bio1      FALSE       386378   0.7959318
+> 3        BN female                bio1      FALSE       386378   0.7959318
+>   scaling.factor
+> 1      0.5433126
+> 2      0.5433126
+> 3      0.5433126
+```
+
 Before committing, it is worth seeing how much the choice actually moves
 the samples.
 [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
@@ -849,6 +905,14 @@ head(tileTable(tiledResults))
 On an object counted per region there are no tiles and
 [`tileTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md)
 says so rather than returning an empty table.
+
+The counts follow the same logic.
+`countTable(tiledResults, level = "tile")` returns them per tile, and
+`level = "region"` sums the tiles back into their region. That sum is
+higher than a count of the same region taken whole, since a fragment
+lying across two tiles is counted in both. It still compares between
+samples, but the number of fragments in a region only comes from
+counting it without tiles.
 
   
 
@@ -1826,6 +1890,7 @@ be reproduced and one that can only be repeated.
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md) | dispersion from the background, then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) | overlap of the two distributions |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) | the tile-level profile |
+| What are the counts behind a region, raw or normalised? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) | one column per sample, or `format = "long"` with the `colData` attached |
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md), then `fitRegions(dispersion = )` | see [Working without replicates](#no_replicates) |
 
   
@@ -1924,9 +1989,9 @@ sessionInfo()
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
 >  [95] SparseArray_1.12.2          ggrepel_0.9.8              
->  [97] rjson_0.2.23                farver_2.1.2               
->  [99] htmltools_0.5.9             pkgdown_2.2.1              
-> [101] lifecycle_1.0.5             httr_1.4.9                 
-> [103] GlobalOptions_0.1.4         statmod_1.5.2              
-> [105] gridtext_0.1.6
+>  [97] rjson_0.2.23                htmlwidgets_1.6.4          
+>  [99] farver_2.1.2                htmltools_0.5.9            
+> [101] pkgdown_2.2.1               lifecycle_1.0.5            
+> [103] httr_1.4.9                  GlobalOptions_0.1.4        
+> [105] statmod_1.5.2               gridtext_0.1.6
 ```

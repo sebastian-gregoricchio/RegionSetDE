@@ -43,6 +43,8 @@
   : countBigwig
 - [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   : countReads
+- [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
+  : countTable
 - [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
   : estimateNullDispersion
 - [`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)

@@ -19,10 +19,10 @@ The second level is the reason the package exists. A great deal of chromatin bio
 Because no peak calling happens anywhere in the pipeline, the region definitions come from you and stay fixed across conditions. Nothing is redefined when the signal moves, which is what makes a redistribution visible instead of being absorbed into a new set of peak boundaries.
 
 <br>
-
-### Main features
-
-* **No peak calling.** Regions are supplied as BED, narrowPeak, broadPeak, `GRanges` or data.frames, and are the same in every condition.
+  
+  ### Main features
+  
+  * **No peak calling.** Regions are supplied as BED, narrowPeak, broadPeak, `GRanges` or data.frames, and are the same in every condition.
 * **Two levels of testing from one fit.** `testRegions()` for individual regions, `testRegionSets()` for whole sets, and `testSetContrast()` for the difference between two sets.
 * **Effect sizes before p-values.** Set-level results carry two intervals side by side: a confidence interval on the condition effect, computed from one set score per library and the design of the experiment, and a region-heterogeneity interval describing how much the effect varies from locus to locus. A tiny shift over 30,000 promoters is not mistaken for a finding, and 30,000 regions are never mistaken for replicates.
 * **Normalisation you can defend.** Scaling factors from background bins, from the regions themselves, or supplied from a spike-in or greenlist, with `plotNormComparison()` to show how far the choice moves the samples before anything is fitted on it.
@@ -33,32 +33,32 @@ Because no peak calling happens anywhere in the pipeline, the region definitions
 * **Exploratory no-replicate mode.** One library per condition can be analysed: the dispersion is estimated from rows assumed not to respond, half of them held back so `checkNullCalibration()` can check the assumption rather than confirm it, and `normalizeCounts(backgroundHoldout = )` keeps those rows out of the normalisation as well. What this measures is how two libraries differ, not how two animals or two donors would. It is conditional on the null-region assumption and it is not a substitute for biological replication.
 
 <br>
-
-
-### Citation
-If you use this package, please cite:
-
-<div class="warning" style='padding:2.5%; background-color:#ffffee; color:#787878; margin-left:5%; margin-right:5%; border-radius:15px;'>
-<span>
-<font size="-0.5">
-
-<div style="margin-left:2%; margin-right:2%; text-align: justify">
-<i>RegionSetDE</i>: differential analysis of chromatin signal over user-defined genomic region sets.<br>
-Gregoricchio S.<br>
-<i>Manuscript in preparation</i><br>
-</div>
-</font>
-
-</span>
-</div>
-
-<br>
-
-
-## Installation
-
-### Bioconductor
-```r
+  
+  
+  ### Citation
+  If you use this package, please cite:
+  
+  <div class="warning" style='padding:2.5%; background-color:#ffffee; color:#787878; margin-left:5%; margin-right:5%; border-radius:15px;'>
+  <span>
+  <font size="-0.5">
+  
+  <div style="margin-left:2%; margin-right:2%; text-align: justify">
+  <i>RegionSetDE</i>: differential analysis of chromatin signal over user-defined genomic region sets.<br>
+  Gregoricchio S.<br>
+  <i>Manuscript in preparation</i><br>
+  </div>
+  </font>
+  
+  </span>
+  </div>
+  
+  <br>
+  
+  
+  ## Installation
+  
+  ### Bioconductor
+  ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
@@ -81,8 +81,8 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 
 ### Possible installation issues
 Most of the dependencies live on Bioconductor rather than on the CRAN, so `BiocManager` has to be installed and its repositories active before `remotes::install_github()` is able to resolve them:
-
-```r
+  
+  ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
@@ -91,8 +91,8 @@ setRepositories(ind = 1:8)
 ```
 
 Building the vignette additionally requires [`BiocStyle`](https://bioconductor.org/packages/BiocStyle/), and a few of the plotting functions require packages listed under `Suggests`:
-
-```r
+  
+  ```r
 BiocManager::install(c("BiocStyle", "ComplexHeatmap", "circlize", "ggrepel"))
 
 # Only for the random-effects engine
@@ -103,11 +103,11 @@ BiocManager::install("DESeq2")
 ```
 
 <br>
-
-
-## Quick start
-
-```r
+  
+  
+  ## Quick start
+  
+  ```r
 library(RegionSetDE)
 
 # Region sets: a named list of BED files, GRanges or data.frames
@@ -146,8 +146,8 @@ resultsTable(setResults)
 ```
 
 Every object in the package ships with a worked example, so the whole pipeline can be run without any data of your own:
-
-```r
+  
+  ```r
 counts <- loadExampleData("counts")
 fit    <- loadExampleData("fit")
 
@@ -156,30 +156,31 @@ plotVolcano(results)
 ```
 
 <br>
-
-
-## Which analysis for which question
-
-| Question | Function |
-| :------- | :------- |
-| Which individual regions changed? | `testRegions()`, then `topRegions()` |
-| Did this class of regions respond as a class? | `testRegionSets()` |
-| Did the effect differ between two classes? | `testSetContrast()` |
-| Did one class gain what another lost? | `testSetContrast()`, which is where a redistribution claim belongs |
-| Which class carries more signal, when there is only one condition? | `scoreRegionSets()` |
-| Are my conclusions sensitive to the normalisation assumption? | `plotNormComparison()`, `plotSetMA()` |
-| Are my p-values trustworthy? | `checkNullCalibration()` |
-| Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` |
-| Is the competitive comparison fair? | `plotUniverseMatching()` |
-| Where inside the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` |
-| More than what, exactly? | `makeSetUniverse(universeSets = )`, then `plotUniverseMatching()` |
-
-<br>
-
-
-## Three things the output does not say
-
-Worth reading once before the first result is interpreted.
+  
+  
+  ## Which analysis for which question
+  
+  | Question | Function |
+  | :------- | :------- |
+  | Which individual regions changed? | `testRegions()`, then `topRegions()` |
+  | Did this class of regions respond as a class? | `testRegionSets()` |
+  | Did the effect differ between two classes? | `testSetContrast()` |
+  | Did one class gain what another lost? | `testSetContrast()`, which is where a redistribution claim belongs |
+  | Which class carries more signal, when there is only one condition? | `scoreRegionSets()` |
+  | Are my conclusions sensitive to the normalisation assumption? | `plotNormComparison()`, `plotSetMA()` |
+  | Are my p-values trustworthy? | `checkNullCalibration()` |
+  | Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` |
+  | Is the competitive comparison fair? | `plotUniverseMatching()` |
+  | Where inside the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` |
+  | What are the raw and normalised counts of each region? | `countTable()` |
+  | More than what, exactly? | `makeSetUniverse(universeSets = )`, then `plotUniverseMatching()` |
+  
+  <br>
+  
+  
+  ## Three things the output does not say
+  
+  Worth reading once before the first result is interpreted.
 
 **A competitive test is significant *relative to the other loaded sets*.** The comparison universe is drawn from the sets in the object, so the answer changes when the object does. Load two sets and they are being compared to each other. Load four that respond alike and none of them stands out, which is a fact about the comparison rather than about the chromatin. `makeSetUniverse(universeSets = )` fixes the pool explicitly, and the sets that formed it are printed with the universe.
 
@@ -188,32 +189,32 @@ Worth reading once before the first result is interpreted.
 **Whether a global shift is technical or biological cannot be decided from endogenous data.** A mark genuinely 1.5x higher everywhere and an IP that worked 1.5x better look the same in the reads. `normalizeCounts(method = "background")` assumes the background bins are invariant enough to carry the technical scaling, which is a reasonable assumption and still an assumption. `plotNormComparison()` shows how far the conclusions move when it is changed, which is a different and answerable question. Deciding the original one needs an external anchor: spike-in chromatin, spike-in cells, calibrated input, or loci validated as invariant.
 
 <br>
-
-
-## Documentation
-With the package there are available:
-
-* [web-manual](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/index.html): technical manual of each function;
+  
+  
+  ## Documentation
+  With the package there are available:
+  
+  * [web-manual](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/index.html): technical manual of each function;
 * [overview vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html): presents the whole workflow, what each object contains, how to extract its parts, and how to read the results.
 
 Note that the vignette can be inspected on R as well by typing `browseVignettes("RegionSetDE")`.
 
 <br>
-
-
-## Package history and releases
-A list of all releases and the respective description of the changes applied can be found [here](https://sebastian-gregoricchio.github.io/RegionSetDE/news/index.html).
+  
+  
+  ## Package history and releases
+  A list of all releases and the respective description of the changes applied can be found [here](https://sebastian-gregoricchio.github.io/RegionSetDE/news/index.html).
 
 <br>
-
------------------
-## Contact
-For any suggestion, bug fixing or commentary please report it in the [issues](https://github.com/sebastian-gregoricchio/RegionSetDE/issues)/[request](https://github.com/sebastian-gregoricchio/RegionSetDE/pulls) tab of this repository.
+  
+  -----------------
+  ## Contact
+  For any suggestion, bug fixing or commentary please report it in the [issues](https://github.com/sebastian-gregoricchio/RegionSetDE/issues)/[request](https://github.com/sebastian-gregoricchio/RegionSetDE/pulls) tab of this repository.
 
 ## License
 This package is under a GNU General Public License (version 3).
 
 <br />
-
-#### Contributors
-![contributors](https://badges.pufler.dev/contributors/sebastian-gregoricchio/RegionSetDE?size=50&padding=5&bots=true)
+  
+  #### Contributors
+  ![contributors](https://badges.pufler.dev/contributors/sebastian-gregoricchio/RegionSetDE?size=50&padding=5&bots=true)

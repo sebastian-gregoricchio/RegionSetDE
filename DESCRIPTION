@@ -31,7 +31,7 @@ Imports:
   BiocParallel,
   csaw,
   dplyr,
-  edgeR,
+  edgeR (>= 4.0.0),
   farver,
   GenomeInfoDb,
   ggplot2,

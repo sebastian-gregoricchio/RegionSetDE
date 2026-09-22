@@ -61,3 +61,4 @@ First version.
 ## Export
 * `asDGEList()`, `as(x, "DGEList")` and `asDESeqDataSet()` hand the counts to `edgeR` or `DESeq2` with the offsets attached the right way round.
 * `exportResults()` writes the table, a BED coloured by direction, and every parameter the analysis was run with.
+* `countTable()` returns the values of a counts, fit or results object as a table, raw or normalised, with the coordinates and the annotation of each row. `format = "long"` repeats every row once per sample and attaches the `colData`, the shape `ggplot2` expects, and `format = "matrix"` returns a plain matrix. On a tiled object `level = "region"` combines the tiles back into their region, summing the reads and following `summaryFunction` for bigWig signal. A fragment crossing the border between two tiles is counted in both, so summed tiles come out higher than the same region counted whole, and a message says so.

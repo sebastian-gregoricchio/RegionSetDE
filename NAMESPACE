@@ -9,6 +9,7 @@ export(contrastName)
 export(countBackground)
 export(countBigwig)
 export(countReads)
+export(countTable)
 export(estimateNullDispersion)
 export(exportResults)
 export(filterRegions)
@@ -62,6 +63,7 @@ exportMethods("$")
 exportMethods("[[")
 exportMethods(coerce)
 exportMethods(contrastName)
+exportMethods(countTable)
 exportMethods(fitCounts)
 exportMethods(fitObject)
 exportMethods(length)
@@ -169,6 +171,7 @@ importFrom(dplyr,
   n,
   n_distinct,
   relocate,
+  row_number,
   select,
   slice,
   slice_head,

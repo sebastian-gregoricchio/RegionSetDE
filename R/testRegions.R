@@ -952,7 +952,7 @@ testRegions <-
       colnames(extraTable)[collidingColumns] <- paste0(candidateColumns[collidingColumns], ".region")
 
       if (isTRUE(verbose)) {
-        message("The following region columns share a name with a statistic and carry the suffix '.region': ",
+        message("The following region columns share a name with another column of the table and carry the suffix '.region': ",
                 paste(candidateColumns[collidingColumns], collapse = ", "), ".")
       }
     }

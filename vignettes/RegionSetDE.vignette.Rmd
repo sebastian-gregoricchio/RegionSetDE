@@ -284,6 +284,16 @@ A second assay is added and the original counts are left untouched:
 SummarizedExperiment::assayNames(counts)
 ```
 
+`countTable()` returns either of the two as a table, with the coordinates and the annotation of each row next to the values. The wide format has one column per sample. The long format repeats every row once per sample and attaches the `colData`, which is the shape `ggplot2` expects, and `format = "matrix"` hands a plain matrix to `ComplexHeatmap` or to any other tool.
+
+```{r count_table}
+head(countTable(counts, normalized = TRUE), 3)
+
+longTable <- countTable(counts, normalized = TRUE, format = "long")
+
+head(longTable, 3)
+```
+
 Before committing, it is worth seeing how much the choice actually moves the samples. `plotNormComparison()` puts the methods side by side, and `returnData = TRUE` hands back the numbers.
 
 ```{r plot_norm_comparison, fig.height = 4}
@@ -467,6 +477,8 @@ head(tileTable(tiledResults))
 ```
 
 On an object counted per region there are no tiles and `tileTable()` says so rather than returning an empty table.
+
+The counts follow the same logic. `countTable(tiledResults, level = "tile")` returns them per tile, and `level = "region"` sums the tiles back into their region. That sum is higher than a count of the same region taken whole, since a fragment lying across two tiles is counted in both. It still compares between samples, but the number of fragments in a region only comes from counting it without tiles.
 
 <br>
 
@@ -949,6 +961,7 @@ unlink(outputDirectory, recursive = TRUE)
 | Can I test without replicates? | `estimateNullDispersion()` | dispersion from the background, then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | `plotUniverseMatching()` | overlap of the two distributions |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` | the tile-level profile |
+| What are the counts behind a region, raw or normalised? | `countTable()` | one column per sample, or `format = "long"` with the `colData` attached |
 | Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` | see [Working without replicates](#no_replicates) |
 
 <br>

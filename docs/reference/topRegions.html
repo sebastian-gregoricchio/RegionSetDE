@@ -142,6 +142,17 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  region_02996</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  region_03590</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  region_00212</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  region_02435</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  region_02220</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6  region_03406</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  region_02700</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  region_00572</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  region_01472</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 region_01273</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># FDR = 1 ranks everything instead, which is what you want when power is low</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">10</span>, FDR <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
@@ -167,6 +178,17 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  region_02996</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  region_03590</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  region_00212</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  region_02435</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  region_02220</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6  region_03406</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  region_02700</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  region_00572</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  region_01472</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 region_01273</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># One set at a time, ranked rather than filtered</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">5</span>, set <span class="op">=</span> <span class="st">"promoterCpG"</span>, FDR <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
@@ -176,12 +198,12 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterCpG region_01859      NA    chr12 22815633 22816632  1000  1.445776</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5 promoterCpG region_00836      NA    chr12 10545505 10546504  1000 -1.223234</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal      stat      p.value        FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.933614 21.009851 0.0002058661 0.03901163        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.117243 10.076467 0.0049984001 0.28702934        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       5.016526  8.582683 0.0086069702 0.36371630        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4.658080  7.080136 0.0163032446 0.45433307        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.879394  6.508768 0.0207077166 0.49672308        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal      stat      p.value        FDR diff.status     regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.933614 21.009851 0.0002058661 0.03901163        down region_01273</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.117243 10.076467 0.0049984001 0.28702934        null region_02452</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3       5.016526  8.582683 0.0086069702 0.36371630        null region_01859</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4.658080  7.080136 0.0163032446 0.45433307        null region_00824</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.879394  6.508768 0.0207077166 0.49672308        null region_00836</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Sorting by effect size instead of significance</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">5</span>, FDR <span class="op">=</span> <span class="fl">1</span>, sortBy <span class="op">=</span> <span class="st">"log2FC"</span>, direction <span class="op">=</span> <span class="st">"down"</span><span class="op">)</span></span></span>
@@ -197,6 +219,12 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.154327       3.819372 15.362838 9.731331e-04 9.705722e-02        null</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4 -3.020137       3.189783  8.417927 8.828997e-03 3.637163e-01        null</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.887100       5.237329 43.045774 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 region_02996</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 region_00212</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 region_01115</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 region_03415</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 region_03590</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

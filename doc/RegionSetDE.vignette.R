@@ -199,6 +199,12 @@ topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
 
 plotRegion(results, region = topRegion, groupBy = "condition")
 
+## ----plot_region_model, fig.height = 4----------------------------------------
+plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "model")
+
+## ----plot_region_ttest, fig.height = 4----------------------------------------
+plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t.test")
+
 ## ----plot_heatmap, fig.height = 7---------------------------------------------
 plotTopHeatmap(results, n = 20, FDR = 1)
 

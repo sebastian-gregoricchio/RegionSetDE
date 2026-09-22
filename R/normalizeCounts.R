@@ -46,7 +46,7 @@
 #'
 #' @seealso \code{\link{countReads}}, \code{\link{countBackground}}
 #'
-#' @importFrom edgeR calcNormFactors
+#' @importFrom edgeR normLibSizes
 #' @importFrom csaw normFactors normOffsets
 #' @importFrom SummarizedExperiment assay assay<- assayNames colData colData<- rowData
 #' @importFrom S4Vectors metadata metadata<-
@@ -185,10 +185,11 @@ normalizeCounts <-
     } else if (method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile")) {
       edgeRMethod <- c("TMM" = "TMM", "TMMwsp" = "TMMwsp", "RLE" = "RLE", "upperQuartile" = "upperquartile")[method]
 
-      normFactorVector <- edgeR::calcNormFactors(object = countMatrix[estimationRows$row.index, , drop = FALSE],
-                                                 lib.size = librarySizes,
-                                                 method = as.character(edgeRMethod),
-                                                 refColumn = .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts)))
+      # normLibSizes is the name edgeR gave to calcNormFactors from version 4.0, the old one now prints a notice at every call
+      normFactorVector <- edgeR::normLibSizes(object = countMatrix[estimationRows$row.index, , drop = FALSE],
+                                              lib.size = librarySizes,
+                                              method = as.character(edgeRMethod),
+                                              refColumn = .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts)))
 
       scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
 

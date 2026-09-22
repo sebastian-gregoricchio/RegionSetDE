@@ -336,6 +336,7 @@ setClass(Class = "RegionSetDE.fit",
 #' @slot regions \code{GRanges} with the coordinates of the rows of \code{results}.
 #' @slot contrast String describing the contrast that was tested.
 #' @slot contrast.vector Numeric vector with the coefficients of the contrast over the columns of the design.
+#' @slot contrast.groups List with the \code{column} of the \code{colData} the contrast separates and the two \code{groups} it compares, the first one being the level the fold change is positive for. Empty when the contrast is not a difference between two levels of one variable. \code{\link{plotRegion}} reads it to draw the model brackets.
 #' @slot engine String with the engine that produced the statistics.
 #' @slot counting.level String indicating whether the model was fitted on regions or on tiles.
 #' @slot combination List with the method used to combine the tiles and whether it was applied.
@@ -355,6 +356,7 @@ setClass(Class = "RegionSetDE.results",
                                          regions = "GRanges",
                                          contrast = "character",
                                          contrast.vector = "numeric",
+                                         contrast.groups = "list",
                                          engine = "character",
                                          counting.level = "character",
                                          combination = "list",
@@ -364,6 +366,7 @@ setClass(Class = "RegionSetDE.results",
                                tiles = data.frame(),
                                contrast = NA_character_,
                                contrast.vector = numeric(0),
+                               contrast.groups = list(),
                                engine = NA_character_,
                                counting.level = NA_character_,
                                combination = list(),

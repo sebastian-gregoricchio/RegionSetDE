@@ -268,6 +268,7 @@ testRegions <-
                          regions = regionRanges,
                          contrast = contrastObject$label,
                          contrast.vector = contrastObject$vector,
+                         contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
                          engine = fit@engine,
                          counting.level = fit@counting.level,
                          combination = combinationInfo,
@@ -429,7 +430,7 @@ testRegions <-
 
 #' @title .contrastGroups
 #'
-#' @description Works out which variable of the sample metadata a contrast separates, and which two of its levels, by comparing the contrast against the difference between the design rows of every pair of levels.
+#' @description Works out which variable of the sample metadata a contrast separates, and which two of its levels, by comparing the contrast against the difference between the design rows of every pair of levels. The variables of the design are tried first. A column holding a different value for every sample, such as the sample names, is never tried unless it is in the design, since any two samples from two groups reproduce a contrast between those groups.
 #'
 #' @param contrastVector Numeric vector with the contrast.
 #' @param design Design matrix.
@@ -454,7 +455,25 @@ testRegions <-
 
     colTable <- as.data.frame(colData)
 
-    for (columnName in colnames(colTable)) {
+    # A variable of the design names its coefficients after itself and its levels, e.g. conditionSHR
+    isDesignColumn <- vapply(colnames(colTable),
+                             function(columnName) {
+                               any(paste0(columnName, unique(as.character(colTable[[columnName]]))) %in% colnames(design))
+                             },
+                             logical(1))
+
+    # A column with one value per sample only names the samples, and any two of them taken from two groups match the contrast
+    isSampleLabel <- vapply(colnames(colTable),
+                            function(columnName) {
+                              columnValues <- as.character(colTable[[columnName]])
+                              anyDuplicated(columnValues[!is.na(columnValues)]) == 0
+                            },
+                            logical(1))
+
+    candidateColumns <- c(colnames(colTable)[isDesignColumn],
+                          colnames(colTable)[!isDesignColumn & !isSampleLabel])
+
+    for (columnName in candidateColumns) {
       columnValues <- as.character(colTable[[columnName]])
       columnLevels <- unique(columnValues[!is.na(columnValues)])
 

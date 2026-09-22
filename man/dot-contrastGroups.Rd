@@ -19,7 +19,7 @@
 A list with the \code{column} and the two \code{groups}, the first one being the level the contrast is positive for. An empty list when the contrast is not a difference between two levels of one variable.
 }
 \description{
-Works out which variable of the sample metadata a contrast separates, and which two of its levels, by comparing the contrast against the difference between the design rows of every pair of levels.
+Works out which variable of the sample metadata a contrast separates, and which two of its levels, by comparing the contrast against the difference between the design rows of every pair of levels. The variables of the design are tried first. A column holding a different value for every sample, such as the sample names, is never tried unless it is in the design, since any two samples from two groups reproduce a contrast between those groups.
 }
 \author{
 Sebastian Gregoricchio

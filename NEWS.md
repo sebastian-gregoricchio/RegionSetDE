@@ -25,6 +25,7 @@ First version.
 * `fitRegions()` fits one model per region with `edgeR`, `limma-voom`, `limma-trend`, `variancePartition::dream` or `DESeq2`, reading the normalisation out of the object as offsets rather than recomputing it. The `"limma"` engine runs limma-trend on the log2 signal, for values that are not counts.
 * `testRegions()` tests a contrast, or a named list of them, and combines tiled regions back to one row per region through `csaw::combineTests`.
 * Contrasts can be given as a coefficient name, an expression over the design columns, a numeric vector, or as `c("column", "groupA", "groupB")`, which works whatever the reference level is.
+* `RegionSetDE.results` records in `contrast.groups` the column and the two levels a contrast compares, as `RegionSetDE.setResults` already did. A contrast written as a coefficient name, an expression or a vector is assigned to the design variable it belongs to, never to a column naming each sample on its own, such as the sample names.
 
 
 ## Region sets
@@ -52,6 +53,7 @@ First version.
 
 ## Plots
 * Per region: `plotVolcano()`, `plotResultsMA()`, `plotRegion()`, `plotTopHeatmap()`.
+* `plotRegion()` draws brackets between the groups of `groupBy` through `pairwiseTest`. With `"model"` each bracket carries the fold change and the FDR of a fitted contrast comparing two of those groups. `"t.test"` and `"wilcox.test"` test the plotted values instead, paired through a `colData` column with `pairBy`, and `pAdjustMethod` corrects across the brackets of the plot. The caption names the test, the function warns when it runs on raw counts, and a message says when the groups are too small for the exact Wilcoxon test to reach 0.05.
 * Per set: `plotSetEffect()`, `plotSetDistribution()`, `plotSetSignal()`, `plotUniverseMatching()`. `plotSetSignal()` also draws a `RegionSetDE.setScores` object, one point per library per set with the points of a library joined across the sets, since the comparison behind the bracket is paired.
 * Samples: `plotRegionPCA()` and `plotSampleCorrelation()`, both able to draw the same figure with and without the normalisation so that a grouping caused by the scaling factors can be told apart from one in the data.
 

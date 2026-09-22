@@ -20,6 +20,8 @@ S4 class holding the outcome of a per-region contrast. The table in the \code{re
 
 \item{\code{contrast.vector}}{Numeric vector with the coefficients of the contrast over the columns of the design.}
 
+\item{\code{contrast.groups}}{List with the \code{column} of the \code{colData} the contrast separates and the two \code{groups} it compares, the first one being the level the fold change is positive for. Empty when the contrast is not a difference between two levels of one variable. \code{\link{plotRegion}} reads it to draw the model brackets.}
+
 \item{\code{engine}}{String with the engine that produced the statistics.}
 
 \item{\code{counting.level}}{String indicating whether the model was fitted on regions or on tiles.}

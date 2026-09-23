@@ -169,10 +169,12 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-# The small bigWig shipped with rtracklayer, with a region set built on its own intervals
+# The small bigWig shipped with rtracklayer, with a region set built on its own intervals.
+# Current rtracklayer builds for Windows fail to open bigWig files given as a path with a
+# drive letter (lawremi/rtracklayer#151), so the example runs on the other platforms only
 bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
 
-if (file.exists(bigwigFile)) {
+if (file.exists(bigwigFile) & .Platform$OS.type != "windows") {
   bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
   regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
 

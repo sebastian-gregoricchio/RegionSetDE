@@ -208,7 +208,7 @@
     #--------------------------#
     # Read and collect         #
     #--------------------------#
-    jobResults <- BiocParallel::bplapply(jobList,
+    jobResults <- .bplapplySameLibraries(jobList,
                                          .readBamFragments,
                                          bamFiles = bamFiles,
                                          pairedEnd = pairedEnd,

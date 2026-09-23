@@ -305,6 +305,46 @@
 
 
 
+#' @title .bplapplySameLibraries
+#'
+#' @description Runs \code{BiocParallel::bplapply} with socket workers that load the packages from the same libraries as the calling session. A socket worker is a new R process: the functions it receives refer to the RegionSetDE namespace by name, and the worker loads that namespace from the libraries it starts with, which are not the ones the session may have added with \code{.libPaths()}. When the two disagree, as during \code{R CMD build}, where the package being built sits in a temporary library, the worker runs new code against an older installed namespace, or finds no package at all. Forked and serial workers share the session and need nothing.
+#'
+#' @param X List or vector to iterate over.
+#' @param FUN Function applied to each element.
+#' @param ... Further arguments of \code{FUN}.
+#' @param BPPARAM \code{BiocParallelParam} object.
+#'
+#' @return The list returned by \code{BiocParallel::bplapply}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocParallel bplapply
+#' @importFrom methods is
+#'
+#' @keywords internal
+
+.bplapplySameLibraries <-
+  function(X,
+           FUN,
+           ...,
+           BPPARAM) {
+
+    # The workers are started by bplapply and read R_LIBS when they start, the setting only has to last that long
+    if (methods::is(BPPARAM, "SnowParam")) {
+      previousLibraries <- Sys.getenv("R_LIBS", unset = NA)
+      Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
+
+      on.exit({
+        if (is.na(previousLibraries)) {Sys.unsetenv("R_LIBS")} else {Sys.setenv(R_LIBS = previousLibraries)}
+      }, add = TRUE)
+    }
+
+    return(BiocParallel::bplapply(X, FUN, ..., BPPARAM = BPPARAM))
+  } # END function
+
+
+
+
 #' @title .matchChromosomeNames
 #'
 #' @description Renames a plain vector of chromosome names into the naming style of a signal file, the way \code{.matchSeqlevels} does for a set of ranges. What it is for is \code{excludeChromosomes}: a name that matches nothing is not an error, it simply excludes nothing, and since the chromosomes left out decide the library sizes the silence would be paid for by the normalisation.

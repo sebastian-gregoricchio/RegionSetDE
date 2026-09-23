@@ -129,9 +129,11 @@ test_that("the fold change cut-off of the labels is drawn on the volcano and on 
   withCutoff <- testRegions(fit, contrast = exampleContrast, log2FC = 1, verbose = FALSE)
   withoutCutoff <- testRegions(fit, contrast = exampleContrast, verbose = FALSE)
 
+  # ggplot2 4 names the layers of a plot, and unlist() would carry those names into the values
   lineIntercepts <- function(plotObject, geomClass, aesthetic) {
     layerData <- lapply(plotObject$layers, function(layer) {if (inherits(layer$geom, geomClass)) {layer$data[[aesthetic]]} else {NULL}})
-    sort(unlist(layerData))
+    interceptValues <- unlist(layerData, use.names = FALSE)
+    if (is.null(interceptValues)) {numeric(0)} else {sort(as.numeric(interceptValues))}
   }
 
   expect_identical(lineIntercepts(plotVolcano(withCutoff), "GeomVline", "xintercept"), c(-1, 1))

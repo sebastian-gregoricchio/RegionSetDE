@@ -80,7 +80,12 @@ First version.
   draws the occupancy of the regions as an UpSet plot through
   `ComplexHeatmap`, one set per group or one per sample, with the
   colours of the other plots of the package, and writes the sizes above
-  the bars horizontally.
+  the bars horizontally. The plot is built with
+  [`ComplexHeatmap::Heatmap()`](https://rdrr.io/pkg/ComplexHeatmap/man/Heatmap.html)
+  on a plain matrix rather than with `UpSet()`: on R-devel
+  [`aperm()`](https://rdrr.io/r/base/aperm.html) keeps the class of its
+  input, and `ComplexHeatmap` then recurses without end inside
+  `comb_name()` until the node stack overflows.
 - [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   and
   [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)

@@ -61,9 +61,8 @@ plotPeakUpset(
 
 ## Value
 
-An UpSet plot built by
-[`ComplexHeatmap::UpSet`](https://rdrr.io/pkg/ComplexHeatmap/man/UpSet.html),
-drawn when printed, and open to
+An UpSet plot, as a `Heatmap` object of `ComplexHeatmap` with one row
+per set and one column per intersection, drawn when printed and open to
 [`ComplexHeatmap::draw`](https://rdrr.io/pkg/ComplexHeatmap/man/draw-dispatch.html)
 for the layout options.
 

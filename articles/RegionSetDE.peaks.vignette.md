@@ -280,12 +280,11 @@ set.
 consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 excludeRegions = artefactRegions,
-                                seqlevelsStyle = "Ensembl",
-                                genomeAssembly = "hg38")
+                                seqlevelsStyle = "Ensembl")
 
 consensus
 > ### RegionSetDE object ###
-> Genome assembly:   hg38
+> Genome assembly:   not declared
 > Chromosome style:  Ensembl
 > Region sets:       1
 > 
@@ -472,8 +471,7 @@ table.
 
 ``` r
 counts <- countReads(consensus,
-                     sampleSheet = sampleSheet,
-                     nThreads = 2)
+                     sampleSheet = sampleSheet)
 
 counts
 > class: RegionSetDE.counts 
@@ -492,7 +490,9 @@ Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of
 which can be changed through `removeDuplicates` and `minMapq`.
 `excludeChromosomes` leaves chromosomes out of the library sizes, the
 mitochondrial genome in ATAC-seq above all, and accepts the names in
-either style.
+either style. The files are read one after the other here, the slices
+being small; on whole-genome BAMs `nThreads` spreads them over several
+workers.
 
   
 
@@ -629,7 +629,7 @@ against another.
 
 ``` r
 
-counts <- countBackground(counts, binSize = 10000, nThreads = 2)
+counts <- countBackground(counts, binSize = 10000)
 ```
 
   

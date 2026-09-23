@@ -321,22 +321,21 @@ and pools the groups into one region set.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>consensus <span class="ot">&lt;-</span> <span class="fu">loadConsensusPeaks</span>(sampleSheet,</span>
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>                                <span class="at">groupBy =</span> <span class="st">"condition"</span>,</span>
 <span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>                                <span class="at">excludeRegions =</span> artefactRegions,</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>                                <span class="at">seqlevelsStyle =</span> <span class="st">"Ensembl"</span>,</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>                                <span class="at">genomeAssembly =</span> <span class="st">"hg38"</span>)</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>consensus</span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="do">### RegionSetDE object </span><span class="al">###</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="er">&gt;</span> Genome assembly<span class="sc">:</span>   hg38</span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="sc">&gt;</span> Chromosome style<span class="sc">:</span>  Ensembl</span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="sc">&gt;</span> Region sets<span class="sc">:</span>       <span class="dv">1</span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="er">&gt;</span>   consensus  <span class="dv">109</span> <span class="fu">regions</span>  (<span class="dv">54</span>,<span class="dv">721</span> bp)</span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="er">&gt;</span> Blacklist<span class="sc">:</span>  not applied</span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="sc">&gt;</span> Whitelist<span class="sc">:</span>  not applied</span>
-<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="er">&gt;</span> Consensus<span class="sc">:</span>  <span class="dv">9</span> samples <span class="cf">in</span> <span class="dv">3</span> <span class="fu">groups</span> (consensus mode), <span class="dv">109</span> regions <span class="cf">in</span> the total consensus</span>
-<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="sc">&gt;</span> (see <span class="fu">consensusData</span>() <span class="cf">for</span> the details)</span></code></pre></div>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>                                <span class="at">seqlevelsStyle =</span> <span class="st">"Ensembl"</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>consensus</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="do">### RegionSetDE object </span><span class="al">###</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="er">&gt;</span> Genome assembly<span class="sc">:</span>   not declared</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="sc">&gt;</span> Chromosome style<span class="sc">:</span>  Ensembl</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="sc">&gt;</span> Region sets<span class="sc">:</span>       <span class="dv">1</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="er">&gt;</span>   consensus  <span class="dv">109</span> <span class="fu">regions</span>  (<span class="dv">54</span>,<span class="dv">721</span> bp)</span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="er">&gt;</span> Blacklist<span class="sc">:</span>  not applied</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="sc">&gt;</span> Whitelist<span class="sc">:</span>  not applied</span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="er">&gt;</span> Consensus<span class="sc">:</span>  <span class="dv">9</span> samples <span class="cf">in</span> <span class="dv">3</span> <span class="fu">groups</span> (consensus mode), <span class="dv">109</span> regions <span class="cf">in</span> the total consensus</span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="sc">&gt;</span> (see <span class="fu">consensusData</span>() <span class="cf">for</span> the details)</span></code></pre></div>
 <p>In this window neither list touches a peak, which is what one hopes;
 the <code>n.excluded</code> column below says so for every sample. On a
 whole genome the blacklist alone typically takes a few per cent of the
@@ -518,26 +517,27 @@ is specific to DMSO.</p>
 the sheet it finds the BAM files itself, and takes the sample names and
 the metadata from the same table.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">countReads</span>(consensus,</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>                     <span class="at">sampleSheet =</span> sampleSheet,</span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>                     <span class="at">nThreads =</span> <span class="dv">2</span>)</span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>counts</span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="sc">&gt;</span> class<span class="sc">:</span> RegionSetDE.counts </span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="sc">&gt;</span> dim<span class="sc">:</span> <span class="dv">109</span> <span class="dv">9</span> </span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">2</span>)<span class="sc">:</span> signal.type count.like</span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">assays</span>(<span class="dv">1</span>)<span class="sc">:</span> counts</span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">rownames</span>(<span class="dv">109</span>)<span class="sc">:</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="sc">&gt;</span>   consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span> ... consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">57823636-57824055</span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="sc">&gt;</span>   consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">57840011-57840689</span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="sc">&gt;</span> rowData <span class="fu">names</span>(<span class="dv">8</span>)<span class="sc">:</span> region.set region.id ... peak.groups peak.samples</span>
-<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">colnames</span>(<span class="dv">9</span>)<span class="sc">:</span> AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3</span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="sc">&gt;</span> colData <span class="fu">names</span>(<span class="dv">11</span>)<span class="sc">:</span> sample bam.file ... paired.end library.size</span></code></pre></div>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>                     <span class="at">sampleSheet =</span> sampleSheet)</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>counts</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="sc">&gt;</span> class<span class="sc">:</span> RegionSetDE.counts </span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="sc">&gt;</span> dim<span class="sc">:</span> <span class="dv">109</span> <span class="dv">9</span> </span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">2</span>)<span class="sc">:</span> signal.type count.like</span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">assays</span>(<span class="dv">1</span>)<span class="sc">:</span> counts</span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">rownames</span>(<span class="dv">109</span>)<span class="sc">:</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="sc">&gt;</span>   consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span> ... consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">57823636-57824055</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="sc">&gt;</span>   consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">57840011-57840689</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="sc">&gt;</span> rowData <span class="fu">names</span>(<span class="dv">8</span>)<span class="sc">:</span> region.set region.id ... peak.groups peak.samples</span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">colnames</span>(<span class="dv">9</span>)<span class="sc">:</span> AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3</span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="sc">&gt;</span> colData <span class="fu">names</span>(<span class="dv">11</span>)<span class="sc">:</span> sample bam.file ... paired.end library.size</span></code></pre></div>
 <p>Duplicates are dropped and reads below <code>MAPQ</code> 20 are
 ignored, both of which can be changed through
 <code>removeDuplicates</code> and <code>minMapq</code>.
 <code>excludeChromosomes</code> leaves chromosomes out of the library
 sizes, the mitochondrial genome in ATAC-seq above all, and accepts the
-names in either style.</p>
+names in either style. The files are read one after the other here, the
+slices being small; on whole-genome BAMs <code>nThreads</code> spreads
+them over several workers.</p>
 <p><br></p>
 <p>Every region is counted whole here, one row per region, which is the
 right choice for a transcription factor whose peaks are a few hundred
@@ -649,7 +649,7 @@ bins covering everything, and stores the result inside the counts
 object. It is needed for background normalisation and for the
 diagnostics that compare one normalisation against another.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/countBackground.html">countBackground</a></span><span class="op">(</span><span class="va">counts</span>, binSize <span class="op">=</span> <span class="fl">10000</span>, nThreads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/countBackground.html">countBackground</a></span><span class="op">(</span><span class="va">counts</span>, binSize <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span></code></pre></div>
 <p><br></p>
 <hr>
 </div>

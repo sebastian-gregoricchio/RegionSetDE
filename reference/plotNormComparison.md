@@ -36,8 +36,11 @@ plotNormComparison(
 
   Character vector with the methods to compare, among those accepted by
   [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
-  that need no extra input: `"librarySize"`, `"TMM"`, `"TMMwsp"`,
-  `"RLE"`, `"upperQuartile"` and `"background"`. Default:
+  that need no extra input: `"librarySize"`, `"readsInRegions"`,
+  `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"background"` and
+  `"greenlist"`, the last one requiring
+  [`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  to have been run. Default:
   `c("librarySize", "TMM", "RLE", "background")`.
 
 - plotType:

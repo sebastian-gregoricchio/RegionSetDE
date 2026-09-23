@@ -50,8 +50,8 @@ visible instead of being absorbed into a new set of peak boundaries.
   promoters is not mistaken for a finding, and 30,000 regions are never
   mistaken for replicates.
 - **Normalisation you can defend.** Scaling factors from background
-  bins, from the regions themselves, or supplied from a spike-in or
-  greenlist, with
+  bins, from the regions themselves, from the CUT&RUN greenlist shipped
+  with the package, or supplied from a spike-in, with
   [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
   to show how far the choice moves the samples before anything is fitted
   on it.
@@ -156,7 +156,7 @@ regions <- loadRegions(list(promoters = "annotation/promoters.bed",
                           CTCF      = "peaks/CTCF.narrowPeak"),
                      genomeAssembly = "hg38")
 
-regions <- applyBlacklist(regions, blacklist = encodeBlacklist)
+regions <- applyBlacklist(regions, blacklist = loadBlacklist("hg38"))
 
 # Counting, plus the background bins used for the normalisation and the null
 counts <- countReads(regions,
@@ -214,6 +214,12 @@ plotVolcano(results)
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 | Where inside the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) |
 | What are the raw and normalised counts of each region? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) |
+| Do the replicates agree, and do the conditions separate? | [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md), [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md) |
+| Do the inputs flag artefact regions? | [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md), then [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) |
+| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeCounts(method = "greenlist")` |
+| Where is the blacklist for my assembly, T2T included? | [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md), then [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md) |
+| Which peaks are shared between the groups? | [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), then [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md) |
+| Did the condition move the shared peaks, or gain and lose whole sites? | [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md), then [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md) |
 | More than what, exactly? | `makeSetUniverse(universeSets = )`, then [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 
   
@@ -260,7 +266,12 @@ or loci validated as invariant.
 - [overview
   vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html):
   presents the whole workflow, what each object contains, how to extract
-  its parts, and how to read the results.
+  its parts, and how to read the results;
+- [peaks
+  vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html):
+  starts from peak calls instead, with the sample sheet, the consensus,
+  the occupancy of the regions, and what a global change in binding does
+  to the usual normalisation defaults.
 
 Note that the vignette can be inspected on R as well by typing
 `browseVignettes("RegionSetDE")`.
@@ -315,23 +326,37 @@ This package is under a GNU General Public License (version 3).
   : RegionSetDE.universe class
 - [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
   : applyBlacklist
+- [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+  : applyGreylist
 - [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
   : applyWhitelist
 - [`asDESeqDataSet()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/asDESeqDataSet.md)
   : asDESeqDataSet
 - [`asDGEList()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/asDGEList.md)
   : asDGEList
+- [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md)
+  : availableRegionLists
 - [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   : checkNullCalibration
 - [`coerce-RegionSetDE.counts-DGEList`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
   [`coerce,RegionSetDE.counts,DGEList-method`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
   : Coerce a counts object to a DGEList
+- [`computeSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md)
+  : computeSampleCorrelation
+- [`computeSamplePCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md)
+  : computeSamplePCA
+- [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md)
+  : consensusData
+- [`contrastInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
+  : contrastInfo
 - [`contrastName()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastName.md)
   : contrastName
 - [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
   : countBackground
 - [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
   : countBigwig
+- [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  : countGreenlist
 - [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   : countReads
 - [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
@@ -348,20 +373,40 @@ This package is under a GNU General Public License (version 3).
   : fitObject
 - [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
   : fitRegions
+- [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+  : libInfo
+- [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md)
+  : loadBlacklist
+- [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  : loadConsensusPeaks
 - [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
   : loadCounts
 - [`loadExampleData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadExampleData.md)
   : loadExampleData
+- [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md)
+  : loadGreenlist
 - [`loadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
   : loadRegions
+- [`loadSampleSheet()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md)
+  : loadSampleSheet
+- [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+  : makeGreylist
 - [`makeSetUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeSetUniverse.md)
   : makeSetUniverse
 - [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
   : normalizeCounts
+- [`pairwiseContrasts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/pairwiseContrasts.md)
+  : pairwiseContrasts
+- [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md)
+  : peakOccupancyTable
 - [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
   : plotNormComparison
 - [`plotNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNullCalibration.md)
   : plotNullCalibration
+- [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md)
+  : plotPeakOccupancy
+- [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md)
+  : plotPeakUpset
 - [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
   : plotRegion
 - [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md)
@@ -403,6 +448,8 @@ This package is under a GNU General Public License (version 3).
   : Accessors of RegionSetDE.resultsList
 - [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
   : resultsTable
+- [`sampleInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/sampleInfo.md)
+  : sampleInfo
 - [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md)
   : scoreRegionSets
 - [`scoreTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.md)
@@ -444,6 +491,8 @@ This package is under a GNU General Public License (version 3).
 
 ### All vignettes
 
+- [\*RegionSetDE\*: from peak calls to differential
+  binding](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.md):
 - [\*RegionSetDE\*: differential chromatin signal over user-defined
   region
   sets](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.md):

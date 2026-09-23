@@ -1,9 +1,10 @@
 # plotSampleCorrelation
 
-Draws the pairwise correlation between the samples over the region
-signal, which with a handful of libraries often reads more clearly than
-an ordination: replicates of a condition should sit closer to each other
-than to anything else.
+Draws the correlation between the samples as a heatmap, clustered and
+annotated with any column of the sample table, such as the condition,
+the treatment or the replicate. The correlation can be computed on the
+normalised or on the raw signal, on every region or on the most variable
+ones.
 
 ## Usage
 
@@ -14,23 +15,24 @@ plotSampleCorrelation(
   contrast = NULL,
   method = "spearman",
   groupBy = NULL,
+  annotationColumns = NULL,
+  annotationColours = NULL,
   useOffsets = TRUE,
   compareOffsets = FALSE,
   facetBySet = FALSE,
   cluster = TRUE,
   clusteringMethod = "complete",
+  showDendrogram = TRUE,
   topRegions = NULL,
   excludeDiagonal = FALSE,
   palette = NULL,
   limits = NULL,
   showValues = TRUE,
   valuesColour = NULL,
-  valuesSize = 2.5,
   digits = 2,
   title = NULL,
-  subtitle = NULL,
-  legendPosition = "right",
-  baseSize = 12
+  fontSize = 9,
+  verbose = TRUE
 )
 ```
 
@@ -39,7 +41,8 @@ plotSampleCorrelation(
 - object:
 
   `RegionSetDE.counts`, `RegionSetDE.fit` or any result object of the
-  package.
+  package, or the list returned by
+  [`computeSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md).
 
 - set:
 
@@ -59,24 +62,41 @@ plotSampleCorrelation(
 - groupBy:
 
   String with the name of a `colData` column defining the groups whose
-  within and between correlations are summarised in the panel label.
-  Default: `NULL`.
+  within and between correlations are summarised in the title. Default:
+  `NULL`.
+
+- annotationColumns:
+
+  Character vector with the `colData` columns drawn as annotation bars
+  above and beside the heatmap, for instance
+  `c("condition", "replicate")`. Default: `NULL`, the `groupBy` column
+  when there is one.
+
+- annotationColours:
+
+  Named list with the colours of the annotation columns, as
+  `ComplexHeatmap` takes them: a named vector for a categorical column,
+  a
+  [`circlize::colorRamp2`](https://rdrr.io/pkg/circlize/man/colorRamp2.html)
+  function for a numeric one. The columns left out take the palette of
+  the package. Default: `NULL`.
 
 - useOffsets:
 
   Logical value to indicate whether the normalisation stored in the
-  object must be applied. Default: `TRUE`.
+  object must be applied, `FALSE` scaling the samples by their library
+  sizes alone. Default: `TRUE`.
 
 - compareOffsets:
 
-  Logical value to indicate whether the same matrix must be drawn twice,
-  once with the normalisation and once on the library sizes alone.
-  Default: `FALSE`.
+  Logical value to indicate whether the same heatmap must be drawn twice
+  side by side, once with the normalisation and once on the library
+  sizes alone. Default: `FALSE`.
 
 - facetBySet:
 
   Logical value to indicate whether each region set must get its own
-  matrix. Default: `FALSE`.
+  heatmap, side by side. Default: `FALSE`.
 
 - cluster:
 
@@ -89,6 +109,11 @@ plotSampleCorrelation(
   String with the agglomeration passed to
   [`stats::hclust`](https://rdrr.io/r/stats/hclust.html). Default:
   `"complete"`.
+
+- showDendrogram:
+
+  Logical value to indicate whether the dendrogram of the clustering
+  must be drawn. Default: `TRUE`.
 
 - topRegions:
 
@@ -123,37 +148,35 @@ plotSampleCorrelation(
   String with the colour of the written values. Default: `NULL`, black
   or white on each cell depending on how dark it is.
 
-- valuesSize:
-
-  Numeric value with the font size of the written values. Default:
-  `2.5`.
-
 - digits:
 
   Numeric value with the number of decimals written. Default: `2`.
 
 - title:
 
-  String with the title of the plot, rendered as markdown. Default:
+  String with the title, written above the first heatmap. Default:
   `NULL`.
 
-- subtitle:
+- fontSize:
 
-  String with the subtitle of the plot, rendered as markdown. Default:
-  `NULL`.
+  Numeric value with the font size of the names, the values being
+  written slightly smaller. Default: `9`.
 
-- legendPosition:
+- verbose:
 
-  String with the position of the legend. Default: `"right"`.
-
-- baseSize:
-
-  Numeric value with the base font size. Default: `12`.
+  Logical value to indicate whether the messages must be printed.
+  Default: `TRUE`.
 
 ## Value
 
-A `ggplot` object, carrying the correlation matrices as the
-`correlation` attribute.
+A `Heatmap` built by `ComplexHeatmap`, or a `HeatmapList` when
+`compareOffsets` or `facetBySet` draw several of them, drawn when
+printed.
+[`ComplexHeatmap::draw`](https://rdrr.io/pkg/ComplexHeatmap/man/draw-dispatch.html)
+opens the layout, for instance `draw(x, heatmap_legend_side = "bottom")`
+or `draw(x, ht_gap = grid::unit(5, "mm"))` to push several panels apart.
+The matrices themselves come out of
+[`computeSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md).
 
 ## Details
 
@@ -163,12 +186,9 @@ pair of libraries from the same assay correlates highly. A scale
 anchored at zero turns the whole matrix one shade and hides the
 differences that matter. `limits` takes that decision back, and either
 end can be left as `NA` to be read from the data: `c(NA, 1)` fixes the
-top at one and lets the bottom follow the values.
-
-Values outside `limits` are drawn at the nearest end of the scale rather
-than left blank, so a cell that falls below the floor still shows as the
-extreme colour. That hides how far below it went, which is why the
-number of cells it happened to is reported.
+top at one and lets the bottom follow the values. Values outside
+`limits` are drawn at the nearest end, which hides how far past it they
+went, so the number of cells concerned is reported.
 
 The palette is sequential, since a correlation has a low end and a high
 end and nothing meaningful in the middle. A diverging scale with white
@@ -176,19 +196,30 @@ at the centre reads that midpoint as an absence, which on a matrix where
 everything sits between 0.9 and 1 is exactly wrong.
 
 With `groupBy`, the mean correlation within a group and between groups
-is written in the panel label. Within above between is what a usable
+is written in the title. Within above between is what a usable
 experiment looks like; the two being equal says the condition effect is
 small next to the replicate noise, and that is the answer about whether
 to block, regardless of what an ordination suggests.
 
-The clustering order is taken from the first panel and reused in the
-others, so that a comparison across `compareOffsets` shows the values
-changing rather than the rows moving. No dendrogram is drawn for the
-same reason: a single dendrogram cannot describe several panels, and one
-per panel would defeat the comparison.
+The clustering, on one minus the correlation, comes from the first
+heatmap and is reused by the others, so a comparison across
+`compareOffsets` or `facetBySet` shows the values changing rather than
+the samples moving. The dendrogram on the side is drawn once for the
+same reason, and so are the sample names, the columns of every panel
+following the order of the rows. Numeric annotation columns get a grey
+gradient, and turning one into a factor colours it by level instead,
+which suits a replicate number.
+
+`compareOffsets` answers less here than it does on an ordination. A
+correlation does not see a single factor per sample, so the two panels
+come out identical unless the normalisation holds one offset per region,
+as `method = "loess"` and offsets supplied from outside do. Whether the
+scaling factors are driving a grouping is a question for
+[`plotRegionPCA`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md).
 
 ## See also
 
+[`computeSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md),
 [`plotRegionPCA`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md),
 [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
 
@@ -203,10 +234,10 @@ counts <- loadExampleData("counts", verbose = FALSE)
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
-plotSampleCorrelation(counts, groupBy = "condition")
+plotSampleCorrelation(counts, groupBy = "condition", annotationColumns = c("condition", "sex"))
 
 
-# Pearson on the CpG island promoters only
-plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson")
+# The same samples before and after the normalisation, on the CpG island promoters only
+plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson", compareOffsets = TRUE)
 
 ```

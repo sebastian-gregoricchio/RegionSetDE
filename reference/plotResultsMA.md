@@ -67,7 +67,8 @@ plotResultsMA(
 - log2FC:
 
   Numeric value with the absolute log2 fold change cut-off used to label
-  the points. Default: `NULL`, the threshold stored in the object.
+  the points, drawn as two dashed horizontal lines when above zero.
+  Default: `NULL`, the threshold stored in the object.
 
 - showCounts:
 

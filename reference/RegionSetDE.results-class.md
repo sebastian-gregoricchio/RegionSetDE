@@ -36,10 +36,13 @@ the summary.
 
   List with the `column` of the `colData` the contrast separates and the
   two `groups` it compares, the first one being the level the fold
-  change is positive for. Empty when the contrast is not a difference
-  between two levels of one variable.
+  change is positive for, and `n.samples`, the number of samples in each
+  of the two. Empty when the contrast is not a difference between two
+  levels of one variable.
   [`plotRegion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
-  reads it to draw the model brackets.
+  reads it to draw the model brackets, and
+  [`contrastInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
+  reports it.
 
 - `engine`:
 

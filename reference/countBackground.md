@@ -59,9 +59,10 @@ countBackground(
 - excludeChromosomes:
 
   Character vector with the chromosomes left out of the bins and of
-  their library sizes, named as in the BAM files. `character(0)`
-  excludes nothing. Default: `NULL`, the value used at the counting
-  step.
+  their library sizes, written in either naming style, as in
+  [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md).
+  `character(0)` excludes nothing. Default: `NULL`, the value used at
+  the counting step.
 
 - pairedEnd:
 

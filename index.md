@@ -50,8 +50,8 @@ visible instead of being absorbed into a new set of peak boundaries.
   promoters is not mistaken for a finding, and 30,000 regions are never
   mistaken for replicates.
 - **Normalisation you can defend.** Scaling factors from background
-  bins, from the regions themselves, or supplied from a spike-in or
-  greenlist, with
+  bins, from the regions themselves, from the CUT&RUN greenlist shipped
+  with the package, or supplied from a spike-in, with
   [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
   to show how far the choice moves the samples before anything is fitted
   on it.
@@ -156,7 +156,7 @@ regions <- loadRegions(list(promoters = "annotation/promoters.bed",
                           CTCF      = "peaks/CTCF.narrowPeak"),
                      genomeAssembly = "hg38")
 
-regions <- applyBlacklist(regions, blacklist = encodeBlacklist)
+regions <- applyBlacklist(regions, blacklist = loadBlacklist("hg38"))
 
 # Counting, plus the background bins used for the normalisation and the null
 counts <- countReads(regions,
@@ -214,6 +214,12 @@ plotVolcano(results)
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 | Where inside the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) |
 | What are the raw and normalised counts of each region? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) |
+| Do the replicates agree, and do the conditions separate? | [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md), [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md) |
+| Do the inputs flag artefact regions? | [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md), then [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) |
+| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeCounts(method = "greenlist")` |
+| Where is the blacklist for my assembly, T2T included? | [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md), then [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md) |
+| Which peaks are shared between the groups? | [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), then [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md) |
+| Did the condition move the shared peaks, or gain and lose whole sites? | [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md), then [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md) |
 | More than what, exactly? | `makeSetUniverse(universeSets = )`, then [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 
   
@@ -260,7 +266,12 @@ or loci validated as invariant.
 - [overview
   vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html):
   presents the whole workflow, what each object contains, how to extract
-  its parts, and how to read the results.
+  its parts, and how to read the results;
+- [peaks
+  vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html):
+  starts from peak calls instead, with the sample sheet, the consensus,
+  the occupancy of the regions, and what a global change in binding does
+  to the usual normalisation defaults.
 
 Note that the vignette can be inspected on R as well by typing
 `browseVignettes("RegionSetDE")`.

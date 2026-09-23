@@ -35,7 +35,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
+<li><a class="dropdown-item" href="articles/RegionSetDE.peaks.vignette.html">*RegionSetDE*: from peak calls to differential binding</a></li>
+    <li><a class="dropdown-item" href="articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -73,7 +74,7 @@
 <li>
 <strong>Effect sizes before p-values.</strong> Set-level results carry two intervals side by side: a confidence interval on the condition effect, computed from one set score per library and the design of the experiment, and a region-heterogeneity interval describing how much the effect varies from locus to locus. A tiny shift over 30,000 promoters is not mistaken for a finding, and 30,000 regions are never mistaken for replicates.</li>
 <li>
-<strong>Normalisation you can defend.</strong> Scaling factors from background bins, from the regions themselves, or supplied from a spike-in or greenlist, with <code><a href="reference/plotNormComparison.html">plotNormComparison()</a></code> to show how far the choice moves the samples before anything is fitted on it.</li>
+<strong>Normalisation you can defend.</strong> Scaling factors from background bins, from the regions themselves, from the CUT&amp;RUN greenlist shipped with the package, or supplied from a spike-in, with <code><a href="reference/plotNormComparison.html">plotNormComparison()</a></code> to show how far the choice moves the samples before anything is fitted on it.</li>
 <li>
 <strong>Five engines.</strong> <code>edgeR</code>, <code>limma-voom</code>, <code><a href="http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.html" class="external-link">variancePartition::dream</a></code> for random effects, <code>DESeq2</code>, and <code>limma</code>-trend for signal that is not count data.</li>
 <li>
@@ -141,7 +142,7 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 <span>                          CTCF      <span class="op">=</span> <span class="st">"peaks/CTCF.narrowPeak"</span><span class="op">)</span>,</span>
 <span>                     genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/applyBlacklist.html">applyBlacklist</a></span><span class="op">(</span><span class="va">regions</span>, blacklist <span class="op">=</span> <span class="va">encodeBlacklist</span><span class="op">)</span></span>
+<span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/applyBlacklist.html">applyBlacklist</a></span><span class="op">(</span><span class="va">regions</span>, blacklist <span class="op">=</span> <span class="fu"><a href="reference/loadBlacklist.html">loadBlacklist</a></span><span class="op">(</span><span class="st">"hg38"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Counting, plus the background bins used for the normalisation and the null</span></span>
 <span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/countReads.html">countReads</a></span><span class="op">(</span><span class="va">regions</span>,</span>
@@ -241,6 +242,42 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 <td align="left"><code><a href="reference/countTable.html">countTable()</a></code></td>
 </tr>
 <tr>
+<td align="left">Do the replicates agree, and do the conditions separate?</td>
+<td align="left">
+<code><a href="reference/plotRegionPCA.html">plotRegionPCA()</a></code>, <code><a href="reference/plotSampleCorrelation.html">plotSampleCorrelation()</a></code>
+</td>
+</tr>
+<tr>
+<td align="left">Do the inputs flag artefact regions?</td>
+<td align="left">
+<code><a href="reference/makeGreylist.html">makeGreylist()</a></code>, then <code><a href="reference/applyGreylist.html">applyGreylist()</a></code>
+</td>
+</tr>
+<tr>
+<td align="left">How do I normalise CUT&amp;RUN or CUT&amp;Tag without a spike-in?</td>
+<td align="left">
+<code><a href="reference/loadGreenlist.html">loadGreenlist()</a></code>, <code><a href="reference/countGreenlist.html">countGreenlist()</a></code>, then <code>normalizeCounts(method = "greenlist")</code>
+</td>
+</tr>
+<tr>
+<td align="left">Where is the blacklist for my assembly, T2T included?</td>
+<td align="left">
+<code><a href="reference/availableRegionLists.html">availableRegionLists()</a></code>, then <code><a href="reference/loadBlacklist.html">loadBlacklist()</a></code>
+</td>
+</tr>
+<tr>
+<td align="left">Which peaks are shared between the groups?</td>
+<td align="left">
+<code><a href="reference/loadConsensusPeaks.html">loadConsensusPeaks()</a></code>, then <code><a href="reference/plotPeakUpset.html">plotPeakUpset()</a></code>
+</td>
+</tr>
+<tr>
+<td align="left">Did the condition move the shared peaks, or gain and lose whole sites?</td>
+<td align="left">
+<code><a href="reference/peakOccupancyTable.html">peakOccupancyTable()</a></code>, then <code><a href="reference/plotPeakOccupancy.html">plotPeakOccupancy()</a></code>
+</td>
+</tr>
+<tr>
 <td align="left">More than what, exactly?</td>
 <td align="left">
 <code>makeSetUniverse(universeSets = )</code>, then <code><a href="reference/plotUniverseMatching.html">plotUniverseMatching()</a></code>
@@ -260,7 +297,9 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 <li>
 <a href="https://sebastian-gregoricchio.github.io/RegionSetDE/reference/index.html">web-manual</a>: technical manual of each function;</li>
 <li>
-<a href="https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html">overview vignette</a>: presents the whole workflow, what each object contains, how to extract its parts, and how to read the results.</li>
+<a href="https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html">overview vignette</a>: presents the whole workflow, what each object contains, how to extract its parts, and how to read the results;</li>
+<li>
+<a href="https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html">peaks vignette</a>: starts from peak calls instead, with the sample sheet, the consensus, the occupancy of the regions, and what a global change in binding does to the usual normalisation defaults.</li>
 </ul>
 <p>Note that the vignette can be inspected on R as well by typing <code>browseVignettes("RegionSetDE")</code>.</p>
 <p><br></p>

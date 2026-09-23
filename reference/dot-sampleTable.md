@@ -1,35 +1,41 @@
 # .sampleTable
 
-Assembles the sample metadata a sample level plot maps onto colour,
-shape and labels.
+Builds the table of the points of an ordination, with the groups driving
+the colour and the shape and the labels.
 
 ## Usage
 
 ``` r
-.sampleTable(counts, colourBy = NULL, shapeBy = NULL, labelBy = "sample")
+.sampleTable(
+  sampleAnnotation,
+  colourBy = NULL,
+  shapeBy = NULL,
+  labelBy = "sample"
+)
 ```
 
 ## Arguments
 
-- counts:
+- sampleAnnotation:
 
-  `RegionSetDE.counts` object.
+  Data.frame with a `sample` column and the annotation of the samples.
 
 - colourBy:
 
-  String with a `colData` column, or `NULL`.
+  String with a column of the annotation, or `NULL`.
 
 - shapeBy:
 
-  String with a `colData` column, or `NULL`.
+  String with a column of the annotation, or `NULL`.
 
 - labelBy:
 
-  String with a `colData` column, `"sample"`, or `NULL`.
+  String with a column of the annotation, `"sample"`, or `NULL`.
 
 ## Value
 
-A data.frame with one row per sample.
+A data.frame with the `sample`, `colour.group`, `shape.group` and
+`point.label` columns.
 
 ## Author
 

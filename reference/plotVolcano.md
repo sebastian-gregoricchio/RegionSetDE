@@ -73,8 +73,11 @@ plotVolcano(
 
 - log2FC:
 
-  Numeric value with the absolute log2 fold change cut-off drawn as a
-  line. Default: `NULL`, the threshold stored in the object.
+  Numeric value with the absolute log2 fold change cut-off used to label
+  the points, drawn as two dashed vertical lines at `-log2FC` and
+  `log2FC` when above zero. Default: `NULL`, the threshold stored in the
+  object, which is the `log2FC` given to
+  [`testRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md).
 
 - showCounts:
 

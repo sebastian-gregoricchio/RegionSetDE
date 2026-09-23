@@ -11,7 +11,8 @@ in which case each tile becomes a row of the resulting object.
 ``` r
 countReads(
   regionSet,
-  bamFiles,
+  bamFiles = NULL,
+  sampleSheet = NULL,
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
@@ -42,7 +43,17 @@ countReads(
 - bamFiles:
 
   Character vector with the paths of the BAM files. Each file must be
-  indexed, and all of them must share the same header.
+  indexed, and all of them must share the same header. Default: `NULL`,
+  taken from `sampleSheet`, or from the sample sheet a consensus was
+  built from by
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+
+- sampleSheet:
+
+  Data.frame returned by
+  [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
+  or the path to a sample sheet, providing the BAM files, the sample
+  names and the annotation in one go. Default: `NULL`.
 
 - sampleNames:
 
@@ -107,10 +118,14 @@ countReads(
 - excludeChromosomes:
 
   Character vector with the chromosomes left out of the library sizes,
-  named as in the BAM files, for instance the mitochondrial genome, chrY
-  or the unplaced and alternative contigs. The regions lying on them are
-  still counted: to leave those out as well, filter the regions when
-  loading them. The contigs can be collected from the BAM header, e.g.
+  written in either naming style, `chrM` and `MT` both reaching the
+  mitochondrial genome of a file naming it either way, for instance the
+  mitochondrial genome, chrY or the unplaced and alternative contigs. A
+  name matching no chromosome once converted raises a warning, since it
+  would leave that chromosome inside the library sizes without a word.
+  The regions lying on them are still counted: to leave those out as
+  well, filter the regions when loading them. The contigs can be
+  collected from the BAM header, e.g.
   `grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)`.
   Default: `NULL`, every chromosome enters the library sizes.
 

@@ -37,6 +37,13 @@ Along the way each object is opened up, so that you know what it holds
 and how to pull the parts out. The last section is a decision guide:
 which function answers which question.
 
+Regions that come from a peak caller rather than from an annotation are
+the subject of a [second
+vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.md),
+which covers the sample sheet, the consensus of the peak calls, and the
+normalisation trap that a dataset with a global change in binding walks
+into.
+
   
 
 ### Installation
@@ -162,6 +169,7 @@ with `@`:
 | *seqlevels.style* | naming style the sets were harmonised to |
 | *filtering.log* | one row per filtering step, with how many regions each set lost |
 | *parameters* | the arguments of every call that touched the object |
+| *consensus* | the consensus data when the regions come from peaks through [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), empty otherwise |
 
 The set names come back from
 [`regionSetNames()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionSetNames.md),
@@ -218,6 +226,61 @@ Notice that the exclusion list shipped here is **not** an ENCODE
 blacklist. Rat rn4 has none, so it was assembled from the UCSC assembly
 gap track together with bins carrying implausible coverage in the input
 libraries. It is fine for an example and should not be reused elsewhere.
+
+For the assemblies that do have one,
+[`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md)
+returns it from the files that travel with the package, without anything
+to download:
+
+``` r
+availableRegionLists(type = "blacklist")
+>         type genome  assay        source version n.regions covered.bp
+> 1  blacklist   ce10    any        ENCODE      v2       100    2205200
+> 2  blacklist   ce11    any        ENCODE      v2        97     728500
+> 3  blacklist    dm3    any        ENCODE      v2       271    2689400
+> 4  blacklist    dm6    any        ENCODE      v2       182    3740300
+> 5  blacklist   hg19    any        ENCODE      v2       834  274970000
+> 6  blacklist   hg38    any        ENCODE      v2       636  227162400
+> 7  blacklist   hg38 cutrun       deMello      v1       832   10133493
+> 8  blacklist   hg38 cuttag       deMello      v1      2020    9183890
+> 9  blacklist    hs1    any excluderanges      v1      3565  275454700
+> 10 blacklist   mm10    any        ENCODE      v2      3435  238977200
+> 11 blacklist   mm39 cutrun       deMello      v1      1452   22330024
+>                                            reference
+> 1   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 2   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 3   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 4   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 5   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 6   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 7  de Mello et al. (2024) Brief Bioinform 25:bbad538
+> 8  de Mello et al. (2024) Brief Bioinform 25:bbad538
+> 9   Dozmorov et al. (2023) Bioinformatics 39:btad198
+> 10  Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 11 de Mello et al. (2024) Brief Bioinform 25:bbad538
+
+loadBlacklist("hg38", verbose = FALSE)
+> GRanges object with 636 ranges and 1 metadata column:
+>         seqnames            ranges strand |               name
+>            <Rle>         <IRanges>  <Rle> |        <character>
+>     [1]    chr10           1-45700      * |    Low Mappability
+>     [2]    chr10 38481301-38596500      * | High Signal Region
+>     [3]    chr10 38782601-38967900      * | High Signal Region
+>     [4]    chr10 39901301-41712900      * | High Signal Region
+>     [5]    chr10 41838901-42107300      * | High Signal Region
+>     ...      ...               ...    ... .                ...
+>   [632]     chrY   4343801-4345800      * | High Signal Region
+>   [633]     chrY 10246201-11041200      * | High Signal Region
+>   [634]     chrY 11072101-11335300      * | High Signal Region
+>   [635]     chrY 11486601-11757800      * | High Signal Region
+>   [636]     chrY 26637301-57227400      * | High Signal Region
+>   -------
+>   seqinfo: 24 sequences from hg38 genome; no seqlengths
+```
+
+Naming an assay returns the high signal regions of that protocol
+instead, `loadBlacklist("hg38", assay = "cutrun")`, which is a different
+claim about the genome and is worth keeping apart from the ENCODE list.
 
   
 
@@ -412,7 +475,8 @@ The scaling factors decide what a fold change means, and in chromatin
 data they are rarely a detail.
 [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
 offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`,
-`"background"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
+`"readsInRegions"`, `"background"`, `"greenlist"`, `"loess"`,
+`"spikeIn"`, `"manual"` and `"none"`.
 
 The distinction that matters is what each method assumes:
 
@@ -424,9 +488,25 @@ The distinction that matters is what each method assumes:
 - **`"background"`** estimates them from the background bins instead.
   The assumption moves to the bins, which is where you want it: the
   regions under test are free to change as much as they like.
+- **`"librarySize"` and `"readsInRegions"`** scale by a depth, the whole
+  library for the first and the reads collected in the regions for the
+  second, which is what DiffBind calls reads in peaks. The second puts
+  every sample on the same total enrichment, so it assumes the fraction
+  of the library sitting in the regions comes from the protocol and not
+  from the treatment.
+- **`"greenlist"`** is the CUT&RUN and CUT&Tag answer to the same
+  problem without a spike-in. The greenlist is a set of regions whose
+  background is reproducible between experiments, so the reads landing
+  there follow the amount of material sequenced rather than the factor
+  being mapped.
+  [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md)
+  returns the published list for hg38 or mm39,
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  counts the libraries over it, and the factors come out by median of
+  ratios.
 - **`"spikeIn"` and `"manual"`** take the factors from outside
   altogether, which is the right answer whenever an exogenous reference
-  or a greenlist estimate exists.
+  exists.
 
 ``` r
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
@@ -611,10 +691,29 @@ plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 
 ``` r
 
-plotSampleCorrelation(counts, groupBy = "condition")
+plotSampleCorrelation(counts, groupBy = "condition",
+                      annotationColumns = c("condition", "sex"))
 ```
 
 ![](RegionSetDE.vignette_files/figure-html/plot_correlation-1.png)
+
+The heatmap is drawn with `ComplexHeatmap`, so any column of the sample
+table can be added to the annotation bars, and the samples are clustered
+on one minus the correlation. Both figures work on the normalised
+values, `useOffsets = FALSE` asking for the library sizes alone, and
+`plotRegionPCA(compareOffsets = TRUE)` puts the two side by side, which
+is how a grouping produced by the scaling factors is told apart from one
+in the data. A correlation does not move when a library is scaled by a
+single factor, so there the comparison only says something once the
+normalisation holds one offset per region, as `method = "loess"` does.
+
+The numbers behind the two figures come from
+[`computeSamplePCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md)
+and
+[`computeSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md),
+which return the coordinates, the variance explained, the loadings and
+the correlation matrix, and can be handed back to the plotting functions
+as they are.
 
 If the samples do not separate by condition here, that is not
 necessarily fatal, since a real effect can be confined to a small class
@@ -778,10 +877,14 @@ head(resultTable, 3)
 > 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744875
 > 2 promoterNonCpG region_00017      NA    chr12 39449 40448  1000 -1.6911510
 > 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328365
->   average.signal       stat   p.value       FDR diff.status     regionId
-> 1       3.098695 0.16629041 0.6880013 0.9200864        null region_00012
-> 2       3.141973 2.33758830 0.1429932 0.7997195        null region_00017
-> 3       3.273341 0.01002874 0.9213104 0.9807286        null region_00019
+>   average.signal average.signal.BN average.signal.SHR       stat
+> 1       3.098695          3.154609           3.071096 0.16629041
+> 2       3.141973          3.512708           2.774385 2.33758830
+> 3       3.273341          3.149796           3.390540 0.01002874
+>   stat.distribution df1      df2   p.value       FDR diff.status     regionId
+> 1                 f   1 18.94543 0.6880013 0.9200864        null region_00012
+> 2                 f   1 18.73556 0.1429932 0.7997195        null region_00017
+> 3                 f   1 18.45274 0.9213104 0.9807286        null region_00019
 ```
 
 | Column | Meaning |
@@ -809,7 +912,7 @@ contrastName(results)
 > [1] "condition: SHR vs BN"
 
 head(resultRanges(results), 2)
-> GRanges object with 2 ranges and 10 metadata columns:
+> GRanges object with 2 ranges and 15 metadata columns:
 >                               seqnames      ranges strand |     region.set
 >                                  <Rle>   <IRanges>  <Rle> |    <character>
 >   promoterNonCpG|region_00012    chr12 26988-27987      * | promoterNonCpG
@@ -818,14 +921,18 @@ head(resultRanges(results), 2)
 >                                <character> <integer> <numeric>      <numeric>
 >   promoterNonCpG|region_00012 region_00012      <NA> -0.474488        3.09870
 >   promoterNonCpG|region_00017 region_00017      <NA> -1.691151        3.14197
->                                    stat   p.value       FDR diff.status
->                               <numeric> <numeric> <numeric>    <factor>
->   promoterNonCpG|region_00012   0.16629  0.688001  0.920086        null
->   promoterNonCpG|region_00017   2.33759  0.142993  0.799720        null
->                                   regionId
->                                <character>
->   promoterNonCpG|region_00012 region_00012
->   promoterNonCpG|region_00017 region_00017
+>                               average.signal.BN average.signal.SHR      stat
+>                                       <numeric>          <numeric> <numeric>
+>   promoterNonCpG|region_00012           3.15461            3.07110   0.16629
+>   promoterNonCpG|region_00017           3.51271            2.77439   2.33759
+>                               stat.distribution       df1       df2   p.value
+>                                     <character> <numeric> <numeric> <numeric>
+>   promoterNonCpG|region_00012                 f         1   18.9454  0.688001
+>   promoterNonCpG|region_00017                 f         1   18.7356  0.142993
+>                                     FDR diff.status     regionId
+>                               <numeric>    <factor>  <character>
+>   promoterNonCpG|region_00012  0.920086        null region_00012
+>   promoterNonCpG|region_00017  0.799720        null region_00017
 >   -------
 >   seqinfo: 1 sequence from rn4 genome
 
@@ -857,12 +964,18 @@ topRegions(results, n = 5, FDR = 1)
 > 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000
 > 4       geneBody region_02435      NA    chr12 29881730 29882729  1000
 > 5       geneBody region_02220      NA    chr12 27481625 27482624  1000
->      log2FC average.signal     stat      p.value          FDR diff.status
-> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down
-> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down
-> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
-> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
-> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+>      log2FC average.signal average.signal.BN average.signal.SHR     stat
+> 1 -5.203835       5.159079          6.078432           2.651961 84.13617
+> 2 -2.887100       5.237329          5.930447           4.057310 43.04577
+> 3 -3.222630       4.816977          5.557234           3.451580 34.29977
+> 4 -2.778908       5.406565          6.079193           4.289880 36.15528
+> 5 -2.281658       5.277404          5.837722           4.471639 29.11255
+>   stat.distribution df1      df2      p.value          FDR diff.status
+> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down
+> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down
+> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down
+> 4                 f   1 17.03010 1.387480e-05 6.573186e-03        down
+> 5                 f   1 18.93934 3.347081e-05 1.268544e-02        down
 >       regionId
 > 1 region_02996
 > 2 region_03590
@@ -877,10 +990,18 @@ topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
 > 1 promoterCpG region_03747      NA    chr12 46273309 46274308  1000  2.148719
 > 2 promoterCpG region_01273      NA    chr12 15719347 15720346  1000 -1.771521
 > 3 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046
->   average.signal      stat      p.value        FDR diff.status     regionId
-> 1       4.113765  4.520231 0.0472100147 0.66268873        null region_03747
-> 2       5.933614 21.009851 0.0002058661 0.03901163        down region_01273
-> 3       4.658080  7.080136 0.0163032446 0.45433307        null region_00824
+>   average.signal average.signal.BN average.signal.SHR      stat
+> 1       4.113765          2.928469           4.669146  4.520231
+> 2       5.933614          6.369677           5.354945 21.009851
+> 3       4.658080          3.519312           5.233976  7.080136
+>   stat.distribution df1      df2      p.value        FDR diff.status
+> 1                 f   1 18.48302 0.0472100147 0.66268873        null
+> 2                 f   1 18.87993 0.0002058661 0.03901163        down
+> 3                 f   1 17.28329 0.0163032446 0.45433307        null
+>       regionId
+> 1 region_03747
+> 2 region_01273
+> 3 region_00824
 ```
 
   
@@ -1985,7 +2106,7 @@ sessionInfo()
 >  [83] colorspace_2.1-3            edgeR_4.10.5               
 >  [85] nlme_3.1-169                restfulr_0.0.17            
 >  [87] cli_3.6.6                   textshaping_1.0.5          
->  [89] S4Arrays_1.12.0             viridisLite_0.4.3          
+>  [89] viridisLite_0.4.3           S4Arrays_1.12.0            
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
 >  [95] SparseArray_1.12.2          ggrepel_0.9.8              

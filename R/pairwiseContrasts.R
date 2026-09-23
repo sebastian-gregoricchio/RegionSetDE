@@ -17,8 +17,7 @@
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #' pairwiseContrasts(counts, column = "condition")
 #'
-#' \dontrun{
-#' sampleSheet <- loadExampleData("peakSheet")
+#' sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 #'
 #' # Every pair of the three conditions
 #' pairwiseContrasts(sampleSheet, column = "condition")
@@ -26,8 +25,10 @@
 #' # Every treatment against the vehicle only
 #' pairwiseContrasts(sampleSheet, column = "condition", reference = "DMSO")
 #'
-#' results <- testRegions(fit, contrast = pairwiseContrasts(fit, column = "condition"))
-#' }
+#' # The list goes straight into testRegions()
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' results <- testRegions(fit, contrast = pairwiseContrasts(fit, column = "condition"), verbose = FALSE)
+#' results
 #'
 #' @author Sebastian Gregoricchio
 #'

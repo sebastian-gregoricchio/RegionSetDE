@@ -22,29 +22,17 @@ A data.frame with one row per tile.
 Returns the per-tile table of a \code{RegionSetDE.results} object, empty when the counts were not tiled.
 }
 \examples{
-# Tiling splits each region into fixed-width windows, kept alongside the region
-bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
+# The peaks of one sample of the AR example, cut into tiles of 100 bp
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
-exampleRegions <- GenomicRanges::GRanges(
-  seqnames = rep(c("seq1", "seq2"), each = 2),
-  ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400))
+tiledCounts <- countReads(peakRegions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)
+tiledCounts <- normalizeCounts(tiledCounts, method = "TMM", verbose = FALSE)
+tiledFit <- fitRegions(tiledCounts, design = ~ condition, verbose = FALSE)
 
-exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 2)
-
-exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                seqlevelsStyle = NULL, verbose = FALSE)
-
-tiledCounts <- countReads(exampleSets, bamFiles = bamFile,
-                          sampleNames = "example", tileWidth = 100,
-                          verbose = FALSE)
-
-head(SummarizedExperiment::rowData(tiledCounts))
-
-\dontrun{
-# After testing, the per-tile statistics sit behind the combined ones
-tiledResults <- testRegions(tiledFit, contrast = c("condition", "SHR", "BN"))
-head(tileTable(tiledResults))
-}
+# The tiles are combined into regions, and their own statistics sit behind the combined ones
+tiledResults <- testRegions(tiledFit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+head(tileTable(tiledResults), 3)
 
 }
 \author{

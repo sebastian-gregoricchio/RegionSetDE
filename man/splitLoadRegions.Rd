@@ -74,11 +74,16 @@ regions <- splitLoadRegions(regionRanges,
                             verbose = FALSE)
 regionSetNames(regions)
 
-\dontrun{
-regions <- splitLoadRegions("peaks/all_peaks_annotated.bed",
-                            splitBy = "name",
-                            genomeAssembly = "hg38")
-}
+# A BED file, 0-based, whose name column carries the set of every region
+bedFile <- tempfile(fileext = ".bed")
+utils::write.table(data.frame(chrom = regionTable$seqnames,
+                              start = regionTable$start - 1,
+                              end = regionTable$end,
+                              name = regionTable$setName),
+                   file = bedFile, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+regions <- splitLoadRegions(bedFile, splitBy = "name", genomeAssembly = "rn4", verbose = FALSE)
+regionSetNames(regions)
 
 }
 \seealso{

@@ -234,7 +234,7 @@ length(consensusInfo$total)             # the pooled region set that will be cou
 Every region carries one logical column per group, plus the number of groups and of samples that called a peak on it.
 
 ```{r occupancy_columns}
-as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
+as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
   dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 ```

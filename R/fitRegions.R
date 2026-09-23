@@ -42,14 +42,12 @@
 #' fit <- fitRegions(counts, design = ~ condition, engine = "edgeR", verbose = FALSE)
 #' fit
 #'
-#' \donttest{
 #' # limma-voom on the same design
 #' voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
-#' }
 #'
-#' \dontrun{
 #' # Random effects need the dream engine and the formula given as such
-#' mixedFit <- fitRegions(counts, design = ~ condition + (1|donor), engine = "dream")
+#' if (requireNamespace("variancePartition", quietly = TRUE)) {
+#'   mixedFit <- fitRegions(counts, design = ~ condition + (1|biologicalReplicate), engine = "dream", verbose = FALSE)
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -916,7 +914,7 @@ fitRegions <-
                           silent = TRUE)
 
     if (inherits(nullDispersion, "try-error")) {
-      stop("The dispersion could not be estimated: ", sub("^Error[^:]*: ", "", nullDispersion[1]),
+      stop("The dispersion could not be estimated: ", conditionMessage(attr(nullDispersion, "condition")),
            "\n  Supply one through \'dispersion\', as a BCV squared, and check it with `checkNullCalibration()`.", call. = FALSE)
     }
 

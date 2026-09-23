@@ -21,6 +21,13 @@ A \code{GRanges} with one element per region.
 \description{
 Returns the coordinates of a \code{RegionSetDE.results} object with the statistics attached as metadata columns, ready to be exported as a BED-like file.
 }
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+
+resultRanges(results)
+
+}
 \author{
 Sebastian Gregoricchio
 }

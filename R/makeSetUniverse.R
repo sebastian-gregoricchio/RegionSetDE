@@ -174,7 +174,7 @@ makeSetUniverse <-
 
     if (isTRUE(verbose)) {
       message("Universe built for ", length(setNames), " sets",
-              if (length(match) > 0) {paste0(", matched on ", paste(match, collapse = " and "))} else {""},
+              if (length(match) > 0) {c(", matched on ", paste(match, collapse = " and "))} else {""},
               ", compared against ", paste(comparisonSets, collapse = ", "), ".")
 
       # One line per set rather than a printed table, so nothing is written outside a show method
@@ -268,11 +268,11 @@ makeSetUniverse <-
       # A fit is useful without a universe, so failing to build one there is a remark rather than an error
       if (isTRUE(soft)) {
         if (isTRUE(verbose)) {
-          message("No comparison universe was built: ", sub("^Error[^:]*: ", "", builtUniverse[1]))
+          message("No comparison universe was built: ", conditionMessage(attr(builtUniverse, "condition")))
         }
         return(new(Class = "RegionSetDE.universe"))
       }
-      stop(sub("^Error[^:]*: ", "", builtUniverse[1]), call. = FALSE)
+      stop(conditionMessage(attr(builtUniverse, "condition")), call. = FALSE)
     }
 
     return(builtUniverse)

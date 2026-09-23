@@ -419,7 +419,7 @@
     }
 
     if (length(intersect(renamedSeqlevels, targetSeqlevels)) == 0) {
-      stop("The chromosome names of ", ifelse(is.null(fileName), "the signal file", paste0("'", basename(fileName), "'")),
+      stop("The chromosome names of ", if (is.null(fileName)) {"the signal file"} else {c("'", basename(fileName), "'")},
            " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
            " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
     }

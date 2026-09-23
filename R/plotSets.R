@@ -551,7 +551,7 @@ plotSetSignal <-
         # Labelling a bracket over the replicates with the treatment effect would attach the number to the wrong comparison
         message("The samples are grouped by '", if (is.null(groupBy)) {"sample"} else {groupBy},
                 "' while the contrast compares ",
-                if (is.null(contrastColumn)) {"coefficients of the design"} else {paste0("'", contrastColumn, "'")},
+                if (is.null(contrastColumn)) {"coefficients of the design"} else {c("'", contrastColumn, "'")},
                 ", so no fold change is written.")
 
       } else {

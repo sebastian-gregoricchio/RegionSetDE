@@ -67,11 +67,19 @@ Coverage is not a count and rounding it does not make it one. A value of 12.72 b
 The object therefore records where its values came from, and \code{\link{fitRegions}} refuses the count engines on it unless \code{countLike} says otherwise. The engine to reach for on bigWig input is \code{"limma"}, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting \code{countLike = TRUE} is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.
 }
 \examples{
-\dontrun{
-counts <- countBigwig(regions,
-                      bigwigFiles = list.files("bigwig", pattern = "\\\\.bw$", full.names = TRUE),
-                      summaryFunction = "sum",
-                      nThreads = 4)
+# The small bigWig shipped with rtracklayer, with a region set built on its own intervals
+bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
+
+if (file.exists(bigwigFile)) {
+  bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+  regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
+
+  signal <- countBigwig(regions,
+                        bigwigFiles = bigwigFile,
+                        sampleNames = "example",
+                        summaryFunction = "mean",
+                        verbose = FALSE)
+  SummarizedExperiment::assay(signal)
 }
 
 }

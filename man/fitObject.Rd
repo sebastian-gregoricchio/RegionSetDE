@@ -18,6 +18,14 @@ The engine specific fit object.
 \description{
 Returns the object produced by the engine, untouched, so that any function of \code{edgeR}, \code{limma}, \code{variancePartition} or \code{DESeq2} can be applied to it.
 }
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+# The example was fitted by edgeR, so the object is an edgeR quasi-likelihood fit
+engineFit <- fitObject(fit)
+class(engineFit)
+
+}
 \author{
 Sebastian Gregoricchio
 }

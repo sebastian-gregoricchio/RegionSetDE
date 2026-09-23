@@ -41,13 +41,12 @@
 #' # The threshold and the fit behind it
 #' S4Vectors::metadata(greylist)$thresholds
 #'
-#' \dontrun{
 #' # From a sample sheet, each distinct input once
-#' sampleSheet <- loadSampleSheet("samples.csv")
-#' greylist <- makeGreylist(sampleSheet, excludeChromosomes = c("chrM", "chrY"), nThreads = 4)
+#' sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#' greylist <- makeGreylist(sampleSheet, binSize = 10000, verbose = FALSE)
 #'
-#' regions <- applyGreylist(regions, greylist = greylist)
-#' }
+#' peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
+#' peakRegions <- applyGreylist(peakRegions, greylist = greylist, verbose = FALSE)
 #'
 #' @author Sebastian Gregoricchio
 #'

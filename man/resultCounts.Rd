@@ -27,6 +27,13 @@ A \code{RegionSetDE.counts} object.
 \description{
 Returns the \code{RegionSetDE.counts} object carried inside a result, the one the contrast was computed on.
 }
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+
+resultCounts(results)
+
+}
 \author{
 Sebastian Gregoricchio
 }

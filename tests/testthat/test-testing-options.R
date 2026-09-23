@@ -262,3 +262,19 @@ test_that("checkNullCalibration runs from a region set as well", {
 
   expect_false(is.null(calibration))
 })
+
+
+test_that("an unreadable contrast suggests a reference level only when one was written", {
+
+  fit <- exampleFit()
+
+  unreadable <- tryCatch(testRegions(fit, contrast = "conditionXX + ", verbose = FALSE),
+                         error = function(e) {conditionMessage(e)})
+  expect_match(unreadable, "could not be read")
+  expect_false(grepl("reference level", unreadable))
+  expect_false(grepl("'NA'", unreadable, fixed = TRUE))
+
+  referenceWritten <- tryCatch(testRegions(fit, contrast = "conditionSHR - conditionBN", verbose = FALSE),
+                               error = function(e) {conditionMessage(e)})
+  expect_match(referenceWritten, "'BN' is the reference level of 'condition'")
+})

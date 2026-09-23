@@ -58,13 +58,14 @@ This is the function for the redistribution question. A set gaining what another
 A region shared by the two sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Sharing is measured on the genome and not on the identifiers: chr1:1000-2000 in one set and chr1:1500-2500 in the other are half the same chromatin even though neither region identifier appears twice. Overlapping regions are removed from both sides by default and the number removed is reported in \code{n.shared.dropped}; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
 }
 \examples{
-\dontrun{
-setContrast <- testSetContrast(fit, contrast = "conditionCOMBO",
-                               set1 = "enhancers", set2 = "tss")
+fit <- loadExampleData("fit", verbose = FALSE)
+
+setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
+                               set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE)
+resultsTable(setContrast)
 
 # Every pair at once
-allPairs <- testSetContrast(fit, contrast = "conditionCOMBO")
-}
+allPairs <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
 }
 \seealso{

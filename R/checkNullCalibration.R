@@ -187,8 +187,8 @@ checkNullCalibration <-
       if (verdict == "too liberal") {
         message("The dispersion of ", signif(fit@dispersion$common, 3), " is too low.",
                 if (is.finite(suggestedDispersion)) {
-                  paste0(" Around ", signif(suggestedDispersion, 3), " (BCV ", signif(sqrt(suggestedDispersion), 2),
-                         ") would calibrate these rows.")
+                  c(" Around ", signif(suggestedDispersion, 3), " (BCV ", signif(sqrt(suggestedDispersion), 2),
+                    ") would calibrate these rows.")
                 } else {""})
       } else if (verdict == "too conservative") {
         message("The dispersion is higher than the null rows need, which costs power but not credibility.")

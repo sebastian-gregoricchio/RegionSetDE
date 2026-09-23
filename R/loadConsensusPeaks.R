@@ -44,14 +44,14 @@
 #'   regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition")
 #'   regions
 #'
-#'   head(regions@regions$consensus, 3)
+#'   head(regionRanges(regions)$consensus, 3)
 #'
 #'   # The same peaks split by regions of interest of the user
 #'   firstHalf <- GenomicRanges::GRanges("chr1", IRanges::IRanges(1, 5e5))
 #'   splitRegions <- loadConsensusPeaks(sampleSheet, groupBy = "condition",
 #'                                      regionSets = list(firstHalf = firstHalf),
 #'                                      verbose = FALSE)
-#'   lengths(splitRegions@regions)
+#'   lengths(regionRanges(splitRegions))
 #' }
 #'
 #' @author Sebastian Gregoricchio

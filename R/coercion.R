@@ -226,9 +226,11 @@ asDESeqDataSet <-
 #' @return A \code{DGEList} holding the counts, the sample metadata, the region annotation and the normalisation as offsets.
 #'
 #' @examples
-#' \dontrun{
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#'
 #' dgeList <- as(counts, "DGEList")
-#' }
+#' dgeList$samples
 #'
 #' @author Sebastian Gregoricchio
 #'

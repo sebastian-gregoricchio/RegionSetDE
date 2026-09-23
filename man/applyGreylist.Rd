@@ -54,7 +54,7 @@ regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable,
 greylist <- loadExampleData("exclusionRegions", verbose = FALSE)
 
 greylisted <- applyGreylist(regions, greylist = greylist)
-greylisted@filtering.log
+filteringLog(greylisted)
 
 # Broad domains lose the greylisted stretch only
 trimmed <- applyGreylist(regions, greylist = greylist, trimRegions = TRUE, verbose = FALSE)

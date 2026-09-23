@@ -51,18 +51,17 @@
 #' The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the four engines. The self-contained test needs the values themselves and is computed on the log-CPM matrix of the fit; for \code{edgeR} and \code{DESeq2} that matrix is a transformation of the counts rather than the quantity the model was fitted on, so the two are close but not identical, and the competitive test is the one to lead with.
 #'
 #' @examples
-#' \dontrun{
-#' fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
+#' fit <- loadExampleData("fit", verbose = FALSE)
 #'
 #' # The universe comes from the fit and travels into the result
-#' setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
+#' setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+#' resultsTable(setRes)
 #'
 #' plotUniverseMatching(setRes)
 #' plotSetEffect(setRes)
 #'
 #' # Overriding it for one test
-#' setRes <- testRegionSets(fit, contrast = "conditionCOMBO", universe = "all")
-#' }
+#' setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), universe = "all", verbose = FALSE)
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -502,13 +501,14 @@ testRegionSets <-
 #' A region shared by the two sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Sharing is measured on the genome and not on the identifiers: chr1:1000-2000 in one set and chr1:1500-2500 in the other are half the same chromatin even though neither region identifier appears twice. Overlapping regions are removed from both sides by default and the number removed is reported in \code{n.shared.dropped}; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
 #'
 #' @examples
-#' \dontrun{
-#' setContrast <- testSetContrast(fit, contrast = "conditionCOMBO",
-#'                                set1 = "enhancers", set2 = "tss")
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
+#'                                set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE)
+#' resultsTable(setContrast)
 #'
 #' # Every pair at once
-#' allPairs <- testSetContrast(fit, contrast = "conditionCOMBO")
-#' }
+#' allPairs <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 #'
 #' @author Sebastian Gregoricchio
 #'

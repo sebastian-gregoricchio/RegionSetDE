@@ -167,3 +167,28 @@ test_that("topRegions ranks and filters as asked", {
   upOnly <- topRegions(results, n = 5, FDR = 1, direction = "up")
   expect_true(all(upOnly$log2FC > 0))
 })
+
+
+test_that("the slot accessors return what the slots hold", {
+
+  regions <- toyRegionSet()
+  counts <- exampleCounts()
+  fit <- exampleFit()
+  results <- exampleResults()
+
+  expect_s4_class(regionRanges(regions), "GRangesList")
+  expect_identical(names(regionRanges(regions)), regionSetNames(regions))
+
+  expect_s3_class(filteringLog(counts), "data.frame")
+  expect_identical(filteringLog(results), results@filtering.log)
+
+  expect_identical(genomeAssembly(counts), counts@genome.assembly)
+  expect_identical(genomeAssembly(fit), fit@genome.assembly)
+
+  expect_identical(countingLevel(counts), "region")
+  expect_identical(countingLevel(fit), "region")
+  expect_identical(countingLevel(results), "region")
+
+  expect_type(dispersionInfo(fit), "list")
+  expect_identical(dispersionInfo(fit), fit@dispersion)
+})

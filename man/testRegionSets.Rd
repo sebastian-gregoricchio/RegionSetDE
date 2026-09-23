@@ -93,18 +93,17 @@ A fit with no replicates loses the self-contained test. \code{fry} builds a line
 The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the four engines. The self-contained test needs the values themselves and is computed on the log-CPM matrix of the fit; for \code{edgeR} and \code{DESeq2} that matrix is a transformation of the counts rather than the quantity the model was fitted on, so the two are close but not identical, and the competitive test is the one to lead with.
 }
 \examples{
-\dontrun{
-fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
+fit <- loadExampleData("fit", verbose = FALSE)
 
 # The universe comes from the fit and travels into the result
-setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
+setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+resultsTable(setRes)
 
 plotUniverseMatching(setRes)
 plotSetEffect(setRes)
 
 # Overriding it for one test
-setRes <- testRegionSets(fit, contrast = "conditionCOMBO", universe = "all")
-}
+setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), universe = "all", verbose = FALSE)
 
 }
 \seealso{

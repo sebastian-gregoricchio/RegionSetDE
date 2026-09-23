@@ -41,14 +41,24 @@ The table says where the differences sit, which is the question a peak-based exp
 What the table is not is a test of occupancy. Whether a peak is called in a sample depends on the depth of that library and on the threshold of the caller as much as on the chromatin, so the number of group-specific regions is not an effect size and comparing those numbers between groups is not evidence of anything. The evidence is in the columns beside them, which come from the counts.
 }
 \examples{
-\dontrun{
-# Regions built from peaks, counted, fitted and tested as usual
-results <- testRegions(fit, contrast = c("condition", "treated", "control"))
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  # AR binding without ligand and after 24 hours of R1881
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  sampleSheet <- dplyr::filter(sampleSheet, condition \%in\% c("DMSO", "R1881_24h"))
 
-peakOccupancyTable(results)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 
-# The regions called in a single sample, whatever the group
-peakOccupancyTable(results, by = "samples")
+  counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+  counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+  counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
+  fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+  results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+
+  peakOccupancyTable(results)
+
+  # By number of samples calling a peak, whatever the group
+  peakOccupancyTable(results, by = "samples")
 }
 
 }

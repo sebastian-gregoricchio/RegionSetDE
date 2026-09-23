@@ -78,26 +78,27 @@ The statistic, the distribution it follows and its degrees of freedom are in the
 The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
 }
 \examples{
-\dontrun{
-fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
+fit <- loadExampleData("fit", verbose = FALSE)
 
-res <- testRegions(fit, contrast = "conditionCOMBO")
+# A coefficient of the design
+res <- testRegions(fit, contrast = "conditionSHR", verbose = FALSE)
 
 # Two levels of a column, whichever of them the design took as reference
-res <- testRegions(fit, contrast = c("condition", "COMBO", "DMSO"))
+res <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+res
 
-# Difference between two coefficients of the design
-res <- testRegions(fit, contrast = "conditionCOMBO - conditionEPZ")
+# The opposite direction, the fold changes change sign
+resReverse <- testRegions(fit, contrast = c("condition", "BN", "SHR"), verbose = FALSE)
 
 # Several contrasts on the same fit
-resList <- testRegions(fit, contrast = list(combo = c("condition", "COMBO", "DMSO"),
-                                            epz = c("condition", "EPZ", "DMSO")))
+resList <- testRegions(fit, contrast = list(shr = c("condition", "SHR", "BN"),
+                                            bn = c("condition", "BN", "SHR")),
+                       verbose = FALSE)
 resList
-topRegions(resList, contrast = "combo")
+topRegions(resList, contrast = "shr", FDR = 1, n = 3)
 
 # Threshold inside the test rather than on the output
-resStrict <- testRegions(fit, contrast = "conditionCOMBO", lfcThreshold = 1)
-}
+resStrict <- testRegions(fit, contrast = c("condition", "SHR", "BN"), lfcThreshold = 1, verbose = FALSE)
 
 }
 \seealso{

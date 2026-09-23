@@ -11,9 +11,11 @@ A \code{DGEList} holding the counts, the sample metadata, the region annotation 
 Registers the \code{as(x, "DGEList")} idiom, which calls \code{\link{asDGEList}} with its defaults.
 }
 \examples{
-\dontrun{
+counts <- loadExampleData("counts", verbose = FALSE)
+counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
 dgeList <- as(counts, "DGEList")
-}
+dgeList$samples
 
 }
 \seealso{

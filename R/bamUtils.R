@@ -388,8 +388,10 @@
 .cigarReferenceWidth <-
   function(cigar) {
     # Most reads are a single match, only the others need their operations added up
-    referenceWidth <- suppressWarnings(as.integer(sub("M$", "", cigar)))
-    complexCigar <- which(is.na(referenceWidth))
+    simpleCigar <- grepl("^[0-9]+M$", cigar)
+    referenceWidth <- rep(NA_integer_, length(cigar))
+    referenceWidth[simpleCigar] <- as.integer(sub("M$", "", cigar[simpleCigar]))
+    complexCigar <- which(!simpleCigar)
 
     if (length(complexCigar) > 0) {
       operationList <- regmatches(cigar[complexCigar], gregexpr("[0-9]+[MDN=X]", cigar[complexCigar]))

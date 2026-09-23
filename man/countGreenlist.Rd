@@ -53,14 +53,18 @@ The read filters are taken from \code{\link{countReads}} unless they are given h
 Each fragment is counted once, in the region holding its centre, as the background bins do, so the totals stay a share of the library and two neighbouring regions never claim the same fragment. The list is merged beforehand for the same reason. Greenlist regions lying on chromosomes absent from the BAM files are dropped, and how many were is reported, which is what catches a list built for another assembly before it quietly halves the counts.
 }
 \examples{
-\dontrun{
-greenlist <- loadGreenlist("hg38", assay = "cutrun")
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
+counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
 
-counts <- countGreenlist(counts, greenlist = greenlist, nThreads = 4)
-counts <- normalizeCounts(counts, method = "greenlist")
+# A published list, loadGreenlist("hg38", assay = "cuttag"), holds too few reads in these small
+# slices of chromosome 19, so a few stretches of the window stand in for it here
+greenlist <- GenomicRanges::GRanges("19", IRanges::IRanges(start = seq(46.5e6, 57.5e6, by = 1e6), width = 2e5))
+
+counts <- countGreenlist(counts, greenlist = greenlist, verbose = FALSE)
+counts <- normalizeCounts(counts, method = "greenlist", verbose = FALSE)
 
 SummarizedExperiment::colData(counts)$scaling.factor
-}
 
 }
 \seealso{

@@ -19,14 +19,24 @@
 #' What the table is not is a test of occupancy. Whether a peak is called in a sample depends on the depth of that library and on the threshold of the caller as much as on the chromatin, so the number of group-specific regions is not an effect size and comparing those numbers between groups is not evidence of anything. The evidence is in the columns beside them, which come from the counts.
 #'
 #' @examples
-#' \dontrun{
-#' # Regions built from peaks, counted, fitted and tested as usual
-#' results <- testRegions(fit, contrast = c("condition", "treated", "control"))
+#' if (requireNamespace("consensusRegions", quietly = TRUE)) {
+#'   # AR binding without ligand and after 24 hours of R1881
+#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'   sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
 #'
-#' peakOccupancyTable(results)
+#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 #'
-#' # The regions called in a single sample, whatever the group
-#' peakOccupancyTable(results, by = "samples")
+#'   counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+#'   counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+#'   counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#'
+#'   fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+#'   results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+#'
+#'   peakOccupancyTable(results)
+#'
+#'   # By number of samples calling a peak, whatever the group
+#'   peakOccupancyTable(results, by = "samples")
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -112,18 +122,29 @@ peakOccupancyTable <-
 #' @details With \code{proportion = TRUE} the bars all reach the same height and what they show is the composition of each class. That is the version to read when the shared regions outnumber the group-specific ones by an order of magnitude, which they usually do, and the absolute bars leave the small classes invisible.
 #'
 #' @examples
-#' \dontrun{
-#' results <- testRegions(fit, contrast = c("condition", "treated", "control"))
+#' if (requireNamespace("consensusRegions", quietly = TRUE)) {
+#'   # AR binding without ligand and after 24 hours of R1881
+#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'   sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
 #'
-#' plotPeakOccupancy(results)
-#' plotPeakOccupancy(results, proportion = TRUE)
+#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+#'
+#'   counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+#'   counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+#'   counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#'
+#'   fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+#'   results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+#'
+#'   plotPeakOccupancy(results)
+#'   plotPeakOccupancy(results, proportion = TRUE)
 #' }
 #'
 #' @author Sebastian Gregoricchio
 #'
 #' @seealso \code{\link{peakOccupancyTable}}, \code{\link{plotPeakUpset}}, \code{\link{plotVolcano}}
 #'
-#' @importFrom ggplot2 ggplot aes geom_col geom_text labs scale_fill_manual scale_y_continuous position_stack theme
+#' @importFrom ggplot2 ggplot aes geom_col geom_text labs scale_fill_manual scale_y_continuous position_stack theme element_blank
 #' @importFrom scales percent
 #' @importFrom rlang .data
 #'
@@ -204,7 +225,7 @@ plotPeakOccupancy <-
                            position = ggplot2::position_stack(vjust = 0.5),
                            colour = plotTable$label.colour,
                            size = baseSize / 4, show.legend = FALSE) +
-        ggplot2::theme(axis.ticks.x = element_blank())
+        ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
     }
 
     return(occupancyPlot)

@@ -17,13 +17,11 @@
 #' The FRiP is computed on \code{library.size}, the reads that went through the same filters as the counts. Computed on \code{bam.reads} it would mix fragments with alignment records and mapped with filtered reads.
 #'
 #' @examples
-#' \dontrun{
-#' sampleSheet <- loadExampleData("peakSheet")
-#' consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl")
-#' counts <- countReads(consensus, sampleSheet = sampleSheet)
+#' sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#' peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
+#' counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
 #'
 #' libInfo(counts, annotationColumns = "condition")
-#' }
 #'
 #' @author Sebastian Gregoricchio
 #'

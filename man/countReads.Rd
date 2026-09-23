@@ -83,26 +83,24 @@ Paired-end and single-end samples can be mixed in the same call, paired-end libr
 Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.
 }
 \examples{
-\dontrun{
-counts <- countReads(regions,
-                     bamFiles = list.files("bam", pattern = "\\\\.bam$", full.names = TRUE),
-                     sampleMetadata = data.frame(sample = c("ctrl1", "ctrl2", "treat1", "treat2"),
-                                                 condition = c("ctrl", "ctrl", "treat", "treat")),
-                     pairedEnd = TRUE,
-                     nThreads = 4)
+# The peaks of one sample of the AR example stand in for a region set
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
-countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
+# The sheet brings the BAM files, the sample names and the annotation
+counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
+counts
 
-# Mitochondrial genome, chrY and contigs out of the library sizes
-bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
-countsAtac <- countReads(regions,
-                         bamFiles = bamPaths,
-                         excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
-                         nThreads = 4)
+# The same files given one by one, with the annotation as a table
+counts <- countReads(peakRegions,
+                     bamFiles = sampleSheet$bam,
+                     sampleNames = sampleSheet$sample,
+                     sampleMetadata = sampleSheet[, c("sample", "condition")],
+                     verbose = FALSE)
 
-# A few regions counted in seconds, with library sizes that are not meant for normalisation
-countsQuick <- countReads(fewRegions, bamFiles = bamPaths, fullLibrarySize = FALSE)
-}
+# Tiles of 100 bp, one row each
+tiledCounts <- countReads(peakRegions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)
+head(SummarizedExperiment::rowData(tiledCounts), 3)
 
 }
 \seealso{

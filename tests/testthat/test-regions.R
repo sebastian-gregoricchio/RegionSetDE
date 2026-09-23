@@ -46,6 +46,22 @@ test_that("splitLoadRegions splits on a metadata column", {
 })
 
 
+test_that("splitLoadRegions reads the name column of a headerless BED4 file", {
+
+  bedFile <- tempfile(fileext = ".bed")
+  utils::write.table(data.frame(chrom = "chr1",
+                                start = c(99, 999, 4999),
+                                end = c(200, 1100, 5100),
+                                name = c("setA", "setA", "setB")),
+                     file = bedFile, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+  regions <- splitLoadRegions(bedFile, seqlevelsStyle = NULL, verbose = FALSE)
+
+  expect_setequal(regionSetNames(regions), c("setA", "setB"))
+  expect_equal(GenomicRanges::start(regionRanges(regions)$setA), c(100, 1000))
+})
+
+
 test_that("splitLoadRegions drops sets below minRegionsPerSet", {
 
   regionRanges <- toyRegions()

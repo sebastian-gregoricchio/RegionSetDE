@@ -88,14 +88,12 @@ counts <- filterRegions(counts, verbose = FALSE)
 fit <- fitRegions(counts, design = ~ condition, engine = "edgeR", verbose = FALSE)
 fit
 
-\donttest{
 # limma-voom on the same design
 voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
-}
 
-\dontrun{
 # Random effects need the dream engine and the formula given as such
-mixedFit <- fitRegions(counts, design = ~ condition + (1|donor), engine = "dream")
+if (requireNamespace("variancePartition", quietly = TRUE)) {
+  mixedFit <- fitRegions(counts, design = ~ condition + (1|biologicalReplicate), engine = "dream", verbose = FALSE)
 }
 
 }

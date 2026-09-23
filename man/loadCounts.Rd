@@ -74,17 +74,32 @@ The column sums of the imported table are a poor substitute for the real library
 What the table holds decides what may be fitted on it. A \code{featureCounts} or \code{bedtools multicov} matrix holds fragment counts and the default is right for it. A \code{deeptools multiBigwigSummary} matrix holds coverage, often already normalised, and \code{countLike = FALSE} should be set so that \code{\link{fitRegions}} steers it to the \code{"limma"} engine instead of a negative binomial one.
 }
 \examples{
-\dontrun{
-counts <- loadCounts(regions,
-                     counts = "featureCounts/all_samples.txt",
-                     sampleMetadata = sampleSheet,
-                     librarySizes = c(2.3e7, 2.1e7, 1.9e7, 2.4e7))
+# A count table as an external tool would write it: coordinates first, one column per sample
+exampleCounts <- loadExampleData("counts", verbose = FALSE)
+regionRows <- SummarizedExperiment::rowRanges(exampleCounts)
 
+countMatrix <- data.frame(chr = as.character(GenomicRanges::seqnames(regionRows)),
+                          start = GenomicRanges::start(regionRows),
+                          end = GenomicRanges::end(regionRows),
+                          SummarizedExperiment::assay(exampleCounts, "counts"),
+                          check.names = FALSE)
+
+regions <- splitLoadRegions(regionRows, splitBy = "region.set", genomeAssembly = "rn4", verbose = FALSE)
+
+# The real library sizes, the column sums of the table only cover the regions
 counts <- loadCounts(regions,
-                     counts = bedtoolsMatrix,
-                     startsAt = 0,
-                     missingRegions = "zero")
-}
+                     counts = countMatrix,
+                     sampleMetadata = data.frame(sample = colnames(exampleCounts),
+                                                 condition = exampleCounts$condition),
+                     librarySizes = exampleCounts$library.size,
+                     verbose = FALSE)
+counts
+
+# A BED-like table, 0-based, where some regions were never counted
+bedMatrix <- countMatrix[-(1:10), ]
+bedMatrix$start <- bedMatrix$start - 1
+
+counts <- loadCounts(regions, counts = bedMatrix, startsAt = 0, missingRegions = "zero", verbose = FALSE)
 
 }
 \seealso{

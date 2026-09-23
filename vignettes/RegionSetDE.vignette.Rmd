@@ -131,27 +131,27 @@ regions <- splitLoadRegions(regionRanges,
 regions
 ```
 
-The result is an S4 object of class `RegionSetDE`. Its slots are reached with `@`:
+The result is an S4 object of class `RegionSetDE`. The slots that matter in an analysis have an accessor:
 
-| Slot | Description |
-| ---------------: | :---------- |
-| *regions*         | `GRangesList` with one element per region set, named |
-| *blacklist*       | the exclusion regions applied, `NULL` until `applyBlacklist()` runs |
-| *whitelist*       | the regions kept, `NULL` until `applyWhitelist()` runs |
-| *genome.assembly* | assembly string, or `NULL` |
-| *seqlevels.style* | naming style the sets were harmonised to |
-| *filtering.log*   | one row per filtering step, with how many regions each set lost |
-| *parameters*      | the arguments of every call that touched the object |
-| *consensus*       | the consensus data when the regions come from peaks through `loadConsensusPeaks()`, empty otherwise |
+| Slot | Accessor | Description |
+| ---------------: | :---------- | :---------- |
+| *regions*         | `regionRanges()`   | `GRangesList` with one element per region set, named |
+| *blacklist*       |                    | the exclusion regions applied, `NULL` until `applyBlacklist()` runs |
+| *whitelist*       |                    | the regions kept, `NULL` until `applyWhitelist()` runs |
+| *genome.assembly* | `genomeAssembly()` | assembly string, or `NULL` |
+| *seqlevels.style* |                    | naming style the sets were harmonised to |
+| *filtering.log*   | `filteringLog()`   | one row per filtering step, with how many regions each set lost |
+| *parameters*      |                    | the arguments of every call that touched the object |
+| *consensus*       | `consensusData()`  | the consensus data when the regions come from peaks through `loadConsensusPeaks()`, empty otherwise |
 
-The set names come back from `regionSetNames()`, and the regions themselves from the `regions` slot:
+The set names come back from `regionSetNames()`, and the regions themselves from `regionRanges()`:
 
 ```{r regions_accessors}
 regionSetNames(regions)
 
-lengths(regions@regions)
+lengths(regionRanges(regions))
 
-head(regions@regions$promoterCpG, 3)
+head(regionRanges(regions)$promoterCpG, 3)
 ```
 
 <br>
@@ -167,7 +167,7 @@ regions <- applyBlacklist(regions,
                           blacklist = exclusionRegions,
                           verbose = FALSE)
 
-regions@filtering.log
+filteringLog(regions)
 ```
 
 `applyWhitelist()` is the complement and keeps only what falls inside the supplied regions, which is how you restrict an analysis to a capture panel or to a single chromosome.
@@ -243,12 +243,12 @@ head(SummarizedExperiment::rowData(counts), 3)
 table(SummarizedExperiment::rowData(counts)$region.set)
 ```
 
-Whether the object is counted per region or per tile is recorded in its own slot, and the filters applied upstream are still there:
+Whether the object is counted per region or per tile is recorded with it, and so is what came from upstream:
 
 ```{r counts_provenance}
-counts@counting.level
+countingLevel(counts)
 
-counts@genome.assembly
+genomeAssembly(counts)
 ```
 
 <br>
@@ -775,7 +775,7 @@ singleFit
 What changed is inside, and the fit records it rather than leaving you to guess:
 
 ```{r single_sample_dispersion_slot}
-singleFit@dispersion[c("common", "fixed", "no.replicates", "source")]
+dispersionInfo(singleFit)[c("common", "fixed", "no.replicates", "source")]
 ```
 
 `no.replicates` marks that the fallback was taken, `fixed` that the dispersion was held rather than fitted, and `source` where the null rows came from. All of it travels into the file written by `exportResults()`, so the choice is recoverable from the output months later.
@@ -829,7 +829,7 @@ singleCalibration <-
   checkNullCalibration(singleFit,
                        contrast = c("condition", "SHR", "BN"),
                        source = "background",
-                       index = singleFit@dispersion$holdout.index,
+                       index = dispersionInfo(singleFit)$holdout.index,
                        verbose = FALSE)
 
 plotNullCalibration(singleCalibration)

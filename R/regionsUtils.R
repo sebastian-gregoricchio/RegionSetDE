@@ -101,6 +101,11 @@ renameBedColumns <-
     if (header == FALSE) {
       bed <- renameBedColumns(bed, bedFormat = ifelse(ncol(bed) >= 6, 6, 3))
 
+      # BED4 and BED5 carry the name, and the score, without a strand
+      if (ncol(bed) %in% c(4, 5)) {
+        colnames(bed)[4:ncol(bed)] <- c("name", "score")[seq_len(ncol(bed) - 3)]
+      }
+
       # Drop the track/browser headers and any row without usable coordinates
       bed <-
         bed %>%

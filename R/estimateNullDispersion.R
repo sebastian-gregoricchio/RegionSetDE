@@ -144,7 +144,7 @@ estimateNullDispersion <-
     if (isTRUE(verbose)) {
       message("Dispersion estimated on ", nrow(countMatrix), " ", source, " rows over ", ncol(countMatrix),
               " samples: ", signif(commonDispersion, 3), " (BCV ", signif(sqrt(commonDispersion), 3), ")",
-              if (length(holdoutIndex) > 0) {paste0(", ", length(holdoutIndex), " rows held out for the check")} else {""}, ".")
+              if (length(holdoutIndex) > 0) {c(", ", length(holdoutIndex), " rows held out for the check")} else {""}, ".")
       message("This is an assumption, not a replicate: it measures how these two libraries differ, not how two ",
               "biological samples would. Run checkNullCalibration before reading the p-values.")
 

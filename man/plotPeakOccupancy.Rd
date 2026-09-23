@@ -63,11 +63,22 @@ Draws the table of \code{\link{peakOccupancyTable}} as stacked bars, one per occ
 With \code{proportion = TRUE} the bars all reach the same height and what they show is the composition of each class. That is the version to read when the shared regions outnumber the group-specific ones by an order of magnitude, which they usually do, and the absolute bars leave the small classes invisible.
 }
 \examples{
-\dontrun{
-results <- testRegions(fit, contrast = c("condition", "treated", "control"))
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  # AR binding without ligand and after 24 hours of R1881
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  sampleSheet <- dplyr::filter(sampleSheet, condition \%in\% c("DMSO", "R1881_24h"))
 
-plotPeakOccupancy(results)
-plotPeakOccupancy(results, proportion = TRUE)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+
+  counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+  counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+  counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
+  fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+  results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+
+  plotPeakOccupancy(results)
+  plotPeakOccupancy(results, proportion = TRUE)
 }
 
 }

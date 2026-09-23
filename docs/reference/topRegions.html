@@ -18,7 +18,8 @@
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/RegionSetDE.peaks.vignette.html">*RegionSetDE*: from peak calls to differential binding</a></li>
+    <li><a class="dropdown-item" href="../articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -131,17 +132,28 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 8        geneBody region_00572      NA    chr12  7295412  7296411  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 9  promoterNonCpG region_01472      NA    chr12 17981162 17982161  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 10    promoterCpG region_01273      NA    chr12 15719347 15720346  1000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       log2FC average.signal     stat      p.value          FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4  -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6   3.180337       4.777653 26.92056 4.205306e-05 1.328176e-02          up</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  -2.202950       5.128097 25.79674 6.712520e-05 1.683932e-02        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       log2FC average.signal average.signal.BN average.signal.SHR     stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  -5.203835       5.159079          6.078432           2.651961 84.13617</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  -2.887100       5.237329          5.930447           4.057310 43.04577</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  -3.222630       4.816977          5.557234           3.451580 34.29977</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  -2.778908       5.406565          6.079193           4.289880 36.15528</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  -2.281658       5.277404          5.837722           4.471639 29.11255</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   3.180337       4.777653          2.930994           5.497549 26.92056</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  -2.202950       5.128097          5.668217           4.374667 25.79674</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950          7.432141           5.909114 25.58223</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639          3.512708           6.217038 23.21950</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614          6.369677           5.354945 21.00985</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    stat.distribution df1      df2      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                  f   1 20.32506 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                  f   1 19.05860 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  f   1 18.45056 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                  f   1 17.03010 1.387480e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                  f   1 18.93934 3.347081e-05 1.268544e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                  f   1 20.39240 4.205306e-05 1.328176e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                  f   1 18.95485 6.712520e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8                  f   1 18.88816 7.108947e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                  f   1 17.29784 1.531036e-04 3.223681e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10                 f   1 18.87993 2.058661e-04 3.901163e-02        down</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        regionId</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1  region_02996</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2  region_03590</span>
@@ -167,17 +179,28 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 8        geneBody region_00572      NA    chr12  7295412  7296411  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 9  promoterNonCpG region_01472      NA    chr12 17981162 17982161  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 10    promoterCpG region_01273      NA    chr12 15719347 15720346  1000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       log2FC average.signal     stat      p.value          FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4  -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6   3.180337       4.777653 26.92056 4.205306e-05 1.328176e-02          up</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  -2.202950       5.128097 25.79674 6.712520e-05 1.683932e-02        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950 25.58223 7.108947e-05 1.683932e-02        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639 23.21950 1.531036e-04 3.223681e-02          up</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614 21.00985 2.058661e-04 3.901163e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       log2FC average.signal average.signal.BN average.signal.SHR     stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  -5.203835       5.159079          6.078432           2.651961 84.13617</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  -2.887100       5.237329          5.930447           4.057310 43.04577</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  -3.222630       4.816977          5.557234           3.451580 34.29977</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  -2.778908       5.406565          6.079193           4.289880 36.15528</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  -2.281658       5.277404          5.837722           4.471639 29.11255</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   3.180337       4.777653          2.930994           5.497549 26.92056</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  -2.202950       5.128097          5.668217           4.374667 25.79674</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  -2.343642       6.847950          7.432141           5.909114 25.58223</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   2.864652       5.445639          3.512708           6.217038 23.21950</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 -1.771521       5.933614          6.369677           5.354945 21.00985</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    stat.distribution df1      df2      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                  f   1 20.32506 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                  f   1 19.05860 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  f   1 18.45056 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                  f   1 17.03010 1.387480e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                  f   1 18.93934 3.347081e-05 1.268544e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                  f   1 20.39240 4.205306e-05 1.328176e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                  f   1 18.95485 6.712520e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8                  f   1 18.88816 7.108947e-05 1.683932e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                  f   1 17.29784 1.531036e-04 3.223681e-02          up</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10                 f   1 18.87993 2.058661e-04 3.901163e-02        down</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        regionId</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1  region_02996</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2  region_03590</span>
@@ -198,12 +221,24 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterCpG region_01859      NA    chr12 22815633 22816632  1000  1.445776</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5 promoterCpG region_00836      NA    chr12 10545505 10546504  1000 -1.223234</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal      stat      p.value        FDR diff.status     regionId</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.933614 21.009851 0.0002058661 0.03901163        down region_01273</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.117243 10.076467 0.0049984001 0.28702934        null region_02452</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       5.016526  8.582683 0.0086069702 0.36371630        null region_01859</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4.658080  7.080136 0.0163032446 0.45433307        null region_00824</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.879394  6.508768 0.0207077166 0.49672308        null region_00836</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   average.signal average.signal.BN average.signal.SHR      stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1       5.933614          6.369677           5.354945 21.009851</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2       5.117243          3.933038           5.716098 10.076467</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3       5.016526          3.931088           5.594134  8.582683</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       4.658080          3.519312           5.233976  7.080136</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5       5.879394          6.180296           5.518509  6.508768</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   stat.distribution df1      df2      p.value        FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 f   1 18.87993 0.0002058661 0.03901163        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 f   1 18.97783 0.0049984001 0.28702934        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                 f   1 18.97791 0.0086069702 0.36371630        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                 f   1 17.28329 0.0163032446 0.45433307        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                 f   1 16.92300 0.0207077166 0.49672308        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 region_01273</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 region_02452</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 region_01859</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 region_00824</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 region_00836</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Sorting by effect size instead of significance</span></span></span>
 <span class="r-in"><span><span class="fu">topRegions</span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">5</span>, FDR <span class="op">=</span> <span class="fl">1</span>, sortBy <span class="op">=</span> <span class="st">"log2FC"</span>, direction <span class="op">=</span> <span class="st">"down"</span><span class="op">)</span></span></span>
@@ -213,12 +248,18 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3     intergenic region_01115      NA    chr12 13844500 13845499  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4       geneBody region_03415      NA    chr12 42209041 42210040  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5     intergenic region_03590      NA    chr12 44174500 44175499  1000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal      stat      p.value          FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079 84.136173 1.148685e-08 2.176757e-05        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -3.222630       4.816977 34.299774 1.370844e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.154327       3.819372 15.362838 9.731331e-04 9.705722e-02        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -3.020137       3.189783  8.417927 8.828997e-03 3.637163e-01        null</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.887100       5.237329 43.045774 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal average.signal.BN average.signal.SHR      stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079          6.078432           2.651961 84.136173</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -3.222630       4.816977          5.557234           3.451580 34.299774</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.154327       3.819372          4.514520           2.774385 15.362838</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -3.020137       3.189783          3.806558           2.388896  8.417927</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.887100       5.237329          5.930447           4.057310 43.045774</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   stat.distribution df1      df2      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 f   1 18.45056 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                 f   1 18.35724 9.731331e-04 9.705722e-02        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                 f   1 19.99364 8.828997e-03 3.637163e-01        null</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                 f   1 19.05860 2.743053e-06 2.599042e-03        down</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       regionId</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 region_02996</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 region_00212</span>

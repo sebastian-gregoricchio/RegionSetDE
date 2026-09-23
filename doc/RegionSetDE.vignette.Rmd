@@ -51,6 +51,8 @@ Because no peak calling happens anywhere in the pipeline, the region definitions
 
 The example follows one dataset from BAM files to an interpreted result. Along the way each object is opened up, so that you know what it holds and how to pull the parts out. The last section is a decision guide: which function answers which question.
 
+Regions that come from a peak caller rather than from an annotation are the subject of a [second vignette](RegionSetDE.peaks.vignette.html), which covers the sample sheet, the consensus of the peak calls, and the normalisation trap that a dataset with a global change in binding walks into.
+
 <br>
 
 ## Installation
@@ -140,6 +142,7 @@ The result is an S4 object of class `RegionSetDE`. Its slots are reached with `@
 | *seqlevels.style* | naming style the sets were harmonised to |
 | *filtering.log*   | one row per filtering step, with how many regions each set lost |
 | *parameters*      | the arguments of every call that touched the object |
+| *consensus*       | the consensus data when the regions come from peaks through `loadConsensusPeaks()`, empty otherwise |
 
 The set names come back from `regionSetNames()`, and the regions themselves from the `regions` slot:
 
@@ -170,6 +173,16 @@ regions@filtering.log
 `applyWhitelist()` is the complement and keeps only what falls inside the supplied regions, which is how you restrict an analysis to a capture panel or to a single chromosome.
 
 Notice that the exclusion list shipped here is **not** an ENCODE blacklist. Rat rn4 has none, so it was assembled from the UCSC assembly gap track together with bins carrying implausible coverage in the input libraries. It is fine for an example and should not be reused elsewhere.
+
+For the assemblies that do have one, `loadBlacklist()` returns it from the files that travel with the package, without anything to download:
+
+```{r load_blacklist}
+availableRegionLists(type = "blacklist")
+
+loadBlacklist("hg38", verbose = FALSE)
+```
+
+Naming an assay returns the high signal regions of that protocol instead, `loadBlacklist("hg38", assay = "cutrun")`, which is a different claim about the genome and is worth keeping apart from the ENCODE list.
 
 <br>
 
@@ -264,13 +277,15 @@ head(backgroundBins, 3)
 
 # **Normalisation** {#normalization}
 
-The scaling factors decide what a fold change means, and in chromatin data they are rarely a detail. `normalizeCounts()` offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`, `"background"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
+The scaling factors decide what a fold change means, and in chromatin data they are rarely a detail. `normalizeCounts()` offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`, `"readsInRegions"`, `"background"`, `"greenlist"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
 
 The distinction that matters is what each method assumes:
 
 - **`"TMM"`, `"RLE"`, `"upperQuartile"`** estimate the factors from the regions themselves, and assume most of them do not change. That assumption is safe when the regions are a broad sample of the genome and unsafe when they are a curated set chosen because it is expected to respond.
 - **`"background"`** estimates them from the background bins instead. The assumption moves to the bins, which is where you want it: the regions under test are free to change as much as they like.
-- **`"spikeIn"` and `"manual"`** take the factors from outside altogether, which is the right answer whenever an exogenous reference or a greenlist estimate exists.
+- **`"librarySize"` and `"readsInRegions"`** scale by a depth, the whole library for the first and the reads collected in the regions for the second, which is what DiffBind calls reads in peaks. The second puts every sample on the same total enrichment, so it assumes the fraction of the library sitting in the regions comes from the protocol and not from the treatment.
+- **`"greenlist"`** is the CUT&RUN and CUT&Tag answer to the same problem without a spike-in. The greenlist is a set of regions whose background is reproducible between experiments, so the reads landing there follow the amount of material sequenced rather than the factor being mapped. `loadGreenlist()` returns the published list for hg38 or mm39, `countGreenlist()` counts the libraries over it, and the factors come out by median of ratios.
+- **`"spikeIn"` and `"manual"`** take the factors from outside altogether, which is the right answer whenever an exogenous reference exists.
 
 ```{r normalize}
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
@@ -339,8 +354,13 @@ plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 ```
 
 ```{r plot_correlation, fig.height = 4.5}
-plotSampleCorrelation(counts, groupBy = "condition")
+plotSampleCorrelation(counts, groupBy = "condition",
+                      annotationColumns = c("condition", "sex"))
 ```
+
+The heatmap is drawn with `ComplexHeatmap`, so any column of the sample table can be added to the annotation bars, and the samples are clustered on one minus the correlation. Both figures work on the normalised values, `useOffsets = FALSE` asking for the library sizes alone, and `plotRegionPCA(compareOffsets = TRUE)` puts the two side by side, which is how a grouping produced by the scaling factors is told apart from one in the data. A correlation does not move when a library is scaled by a single factor, so there the comparison only says something once the normalisation holds one offset per region, as `method = "loess"` does.
+
+The numbers behind the two figures come from `computeSamplePCA()` and `computeSampleCorrelation()`, which return the coordinates, the variance explained, the loadings and the correlation matrix, and can be handed back to the plotting functions as they are.
 
 If the samples do not separate by condition here, that is not necessarily fatal, since a real effect can be confined to a small class of regions and be invisible in a global ordination. It does mean the effect is not global, which is information worth having before interpreting a set-level result. Running `plotRegionPCA(set = )` on one set at a time is the way to find out where the structure lives.
 

@@ -18,7 +18,8 @@
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/RegionSetDE.peaks.vignette.html">*RegionSetDE*: from peak calls to differential binding</a></li>
+    <li><a class="dropdown-item" href="../articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -51,7 +52,7 @@
 
 
 <dl><dt id="arg-dataset">dataset<a class="anchor" aria-label="anchor" href="#arg-dataset"></a></dt>
-<dd><p>String indicating which object to load, one among <code>"counts"</code>, <code>"fit"</code>, <code>"regions"</code>, <code>"exclusionRegions"</code>, <code>"sampleSheet"</code> and <code>"buildMetadata"</code>. The string <code>"blacklist"</code> is accepted as a synonym of <code>"exclusionRegions"</code>. Default: <code>"counts"</code>.</p></dd>
+<dd><p>String indicating which object to load, one among <code>"counts"</code>, <code>"fit"</code>, <code>"regions"</code>, <code>"exclusionRegions"</code>, <code>"sampleSheet"</code>, <code>"peakSheet"</code> and <code>"buildMetadata"</code>. The string <code>"blacklist"</code> is accepted as a synonym of <code>"exclusionRegions"</code>. Default: <code>"counts"</code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -60,15 +61,17 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>The requested object. <code>"counts"</code> returns a <code>RegionSetDE.counts</code> object, unnormalised and unfiltered, with the background bins already stored in its metadata. <code>"fit"</code> returns a <code>RegionSetDE.fit</code> object ready for <code><a href="testRegions.html">testRegions</a></code> and <code><a href="testRegionSets.html">testRegionSets</a></code>. <code>"regions"</code> returns a data.frame with one row per region and its set membership, <code>"exclusionRegions"</code> a <code>GRanges</code>, <code>"sampleSheet"</code> a data.frame describing every library of the source dataset, and <code>"buildMetadata"</code> a list with the parameters used to generate the others.</p>
+    <p>The requested object. <code>"counts"</code> returns a <code>RegionSetDE.counts</code> object, unnormalised and unfiltered, with the background bins already stored in its metadata. <code>"fit"</code> returns a <code>RegionSetDE.fit</code> object ready for <code><a href="testRegions.html">testRegions</a></code> and <code><a href="testRegionSets.html">testRegionSets</a></code>. <code>"regions"</code> returns a data.frame with one row per region and its set membership, <code>"exclusionRegions"</code> a <code>GRanges</code>, <code>"sampleSheet"</code> a data.frame describing every library of the source dataset, <code>"peakSheet"</code> the sheet of the nine peak files and BAM files of the androgen receptor example, read with <code><a href="loadSampleSheet.html">loadSampleSheet</a></code> so that the paths point at the installed files, and <code>"buildMetadata"</code> a list with the parameters used to generate the others.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The example data comes from the liver ChIP-seq libraries of the EURATRANS project, distributed by the <code>chromstaRData</code> package and aligned to rn4. The contrast is H3K4me3 in the spontaneously hypertensive (SHR) rat against the Brown Norway (BN) strain, two biological replicates each, restricted to chromosome 12.</p>
+    <p>Two datasets are installed with the package, one for each end of the workflow.</p>
+<p>Everything but <code>"peakSheet"</code> comes from the liver ChIP-seq libraries of the EURATRANS project, distributed by the <code>chromstaRData</code> package and aligned to rn4. The contrast is H3K4me3 in the spontaneously hypertensive (SHR) rat against the Brown Norway (BN) strain, two biological replicates each, restricted to chromosome 12. It starts from a counts object, which is where an analysis of fixed windows or of an existing count matrix begins.</p>
+<p><code>"peakSheet"</code> points at the other one, which starts a step earlier, from peak files and alignments. It is a slice of the androgen receptor ChIP-seq of GSE284522: LNCaP cells treated with DMSO, or with the synthetic androgen R1881 for four or twenty-four hours, three replicates each, plus one input. The alignments are cut down to a window of chromosome 19 and subsampled, so the counts are the real ones scaled by a known fraction; the peaks are the calls of the full libraries filtered to the same window. <code>system.file("extdata", "lncapAR", "SOURCES.md", package = "RegionSetDE")</code> says exactly what was done to them.</p>
 <p>The regions are one kilobase windows split into four sets ordered by the amount of H3K4me3 they are expected to carry: promoters overlapping a CpG island, promoters without one, positions inside gene bodies away from any transcription start site, and intergenic positions that serve as the low-signal control. The sets are disjoint, and a window claimed by an earlier set is never reused by a later one.</p>
 <p>Only the counts are stored on disk. Asking for <code>"fit"</code> runs <code><a href="normalizeCounts.html">normalizeCounts</a></code>, <code><a href="filterRegions.html">filterRegions</a></code> and <code><a href="fitRegions.html">fitRegions</a></code> on them, with the parameters recorded in <code>"buildMetadata"</code>, and keeps the result for the rest of the session. A fitted model carries the internals of its engine, and those change between releases of <code>edgeR</code> and <code>limma</code>, so a serialised fit would break as soon as the engine moved underneath it.</p>
 <p>rn4 has no curated blacklist, so <code>"exclusionRegions"</code> is assembled from the UCSC assembly gap track and from bins carrying implausible coverage in the input libraries. It is not an ENCODE-grade exclusion list and should not be reused outside these examples.</p>
-<p>The script that generated the stored objects is installed with the package, at <code>system.file("scripts", "make-data.R", package = "RegionSetDE")</code>.</p>
+<p>The scripts that generated the stored objects and the peak files are installed with the package, at <code>system.file("scripts", package = "RegionSetDE")</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -105,12 +108,18 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4       geneBody region_02435      NA    chr12 29881730 29882729  1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5       geneBody region_02220      NA    chr12 27481625 27482624  1000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal     stat      p.value          FDR diff.status</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal average.signal.BN average.signal.SHR     stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079          6.078432           2.651961 84.13617</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -2.887100       5.237329          5.930447           4.057310 43.04577</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.222630       4.816977          5.557234           3.451580 34.29977</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 -2.778908       5.406565          6.079193           4.289880 36.15528</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 -2.281658       5.277404          5.837722           4.471639 29.11255</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   stat.distribution df1      df2      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                 f   1 17.03010 1.387480e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                 f   1 18.93934 3.347081e-05 1.268544e-02        down</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       regionId</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 region_02996</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 region_03590</span>

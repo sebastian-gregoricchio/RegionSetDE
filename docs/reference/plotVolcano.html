@@ -18,7 +18,8 @@
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/RegionSetDE.peaks.vignette.html">*RegionSetDE*: from peak calls to differential binding</a></li>
+    <li><a class="dropdown-item" href="../articles/RegionSetDE.vignette.html">*RegionSetDE*: differential chromatin signal over user-defined region sets</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -103,7 +104,7 @@
 
 
 <dt id="arg-log-fc">log2FC<a class="anchor" aria-label="anchor" href="#arg-log-fc"></a></dt>
-<dd><p>Numeric value with the absolute log2 fold change cut-off drawn as a line. Default: <code>NULL</code>, the threshold stored in the object.</p></dd>
+<dd><p>Numeric value with the absolute log2 fold change cut-off used to label the points, drawn as two dashed vertical lines at <code>-log2FC</code> and <code>log2FC</code> when above zero. Default: <code>NULL</code>, the threshold stored in the object, which is the <code>log2FC</code> given to <code><a href="testRegions.html">testRegions</a></code>.</p></dd>
 
 
 <dt id="arg-showcounts">showCounts<a class="anchor" aria-label="anchor" href="#arg-showcounts"></a></dt>

@@ -59,6 +59,11 @@ regions <- applyBlacklist(regions,
 
 regions@filtering.log
 
+## ----load_blacklist-----------------------------------------------------------
+availableRegionLists(type = "blacklist")
+
+loadBlacklist("hg38", verbose = FALSE)
+
 ## ----count_reads, eval = FALSE------------------------------------------------
 # counts <-
 #   countReads(regions,
@@ -143,7 +148,8 @@ table(SummarizedExperiment::rowData(counts)$region.set)
 plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 
 ## ----plot_correlation, fig.height = 4.5---------------------------------------
-plotSampleCorrelation(counts, groupBy = "condition")
+plotSampleCorrelation(counts, groupBy = "condition",
+                      annotationColumns = c("condition", "sex"))
 
 ## ----fit_regions--------------------------------------------------------------
 fit <- fitRegions(counts,

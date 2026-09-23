@@ -362,18 +362,26 @@ This package is under a GNU General Public License (version 3).
   : countReads
 - [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
   : countTable
+- [`countingLevel()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countingLevel.md)
+  : countingLevel
+- [`dispersionInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dispersionInfo.md)
+  : dispersionInfo
 - [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
   : estimateNullDispersion
 - [`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
   : exportResults
 - [`filterRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filterRegions.md)
   : filterRegions
+- [`filteringLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md)
+  : filteringLog
 - [`fitCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitCounts.md)
   : fitCounts
 - [`fitObject()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitObject.md)
   : fitObject
 - [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
   : fitRegions
+- [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md)
+  : genomeAssembly
 - [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
   : libInfo
 - [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md)
@@ -430,6 +438,8 @@ This package is under a GNU General Public License (version 3).
   : plotUniverseMatching
 - [`plotVolcano()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotVolcano.md)
   : plotVolcano
+- [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md)
+  : regionRanges
 - [`regionSetNames()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionSetNames.md)
   : regionSetNames
 - [`renameBedColumns()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/renameBedColumns.md)

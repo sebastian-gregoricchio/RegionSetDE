@@ -46,9 +46,9 @@ regions
 ## ----regions_accessors--------------------------------------------------------
 regionSetNames(regions)
 
-lengths(regions@regions)
+lengths(regionRanges(regions))
 
-head(regions@regions$promoterCpG, 3)
+head(regionRanges(regions)$promoterCpG, 3)
 
 ## ----apply_blacklist----------------------------------------------------------
 exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
@@ -57,7 +57,7 @@ regions <- applyBlacklist(regions,
                           blacklist = exclusionRegions,
                           verbose = FALSE)
 
-regions@filtering.log
+filteringLog(regions)
 
 ## ----load_blacklist-----------------------------------------------------------
 availableRegionLists(type = "blacklist")
@@ -100,9 +100,9 @@ head(SummarizedExperiment::rowData(counts), 3)
 table(SummarizedExperiment::rowData(counts)$region.set)
 
 ## ----counts_provenance--------------------------------------------------------
-counts@counting.level
+countingLevel(counts)
 
-counts@genome.assembly
+genomeAssembly(counts)
 
 ## ----count_background, eval = FALSE-------------------------------------------
 # counts <- countBackground(counts, binSize = 10000, nThreads = 4)
@@ -318,7 +318,7 @@ singleFit <- fitRegions(singleCounts,
 singleFit
 
 ## ----single_sample_dispersion_slot--------------------------------------------
-singleFit@dispersion[c("common", "fixed", "no.replicates", "source")]
+dispersionInfo(singleFit)[c("common", "fixed", "no.replicates", "source")]
 
 ## ----single_sample_dispersion-------------------------------------------------
 nullDispersion <- estimateNullDispersion(singleCounts,
@@ -347,7 +347,7 @@ singleCalibration <-
   checkNullCalibration(singleFit,
                        contrast = c("condition", "SHR", "BN"),
                        source = "background",
-                       index = singleFit@dispersion$holdout.index,
+                       index = dispersionInfo(singleFit)$holdout.index,
                        verbose = FALSE)
 
 plotNullCalibration(singleCalibration)

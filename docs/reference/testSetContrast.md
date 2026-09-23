@@ -132,11 +132,22 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-setContrast <- testSetContrast(fit, contrast = "conditionCOMBO",
-                               set1 = "enhancers", set2 = "tss")
+fit <- loadExampleData("fit", verbose = FALSE)
+
+setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
+                               set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE)
+resultsTable(setContrast)
+#>         set.1          set.2 n.regions.1 n.regions.2 n.shared.dropped
+#> 1 promoterCpG promoterNonCpG         269         277                0
+#>   mean.log2FC.1 mean.log2FC.2 delta.log2FC  CI.lower  CI.upper CI.type
+#> 1    -0.8336708   -0.02089479    -0.812776 -1.706428 0.4466904  sample
+#>   heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor.1
+#> 1              -2.518293              0.8927412           0.858368
+#>   inter.region.cor.2 camera.direction camera.p sample.delta.log2FC
+#> 1           0.443314             Down 0.393662           -0.629869
+#>   sample.delta.SE sample.delta.df sample.delta.p camera.FDR sample.delta.FDR
+#> 1       0.2502083               2      0.1281565   0.393662        0.1281565
 
 # Every pair at once
-allPairs <- testSetContrast(fit, contrast = "conditionCOMBO")
-} # }
+allPairs <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 ```

@@ -267,7 +267,7 @@ flagged and merged.</p>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="sc">&gt;</span>   input</span>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> input</span>
 <span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="sc">&gt;</span>                                                                               file</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">/</span>tmp<span class="sc">/</span>Rtmpbu3Lad<span class="sc">/</span>temp_libpath1963f75daeda0d<span class="sc">/</span>RegionSetDE<span class="sc">/</span>extdata<span class="sc">/</span>lncapAR<span class="sc">/</span>input.bam</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">/</span>tmp<span class="sc">/</span>RtmpyD3YoF<span class="sc">/</span>temp_libpath1cd751765fe589<span class="sc">/</span>RegionSetDE<span class="sc">/</span>extdata<span class="sc">/</span>lncapAR<span class="sc">/</span>input.bam</span>
 <span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="sc">&gt;</span>   fragments       mean      size threshold windows flagged.windows regions</span>
 <span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>      <span class="dv">5353</span> <span class="fl">0.09351198</span> <span class="fl">0.1836287</span>         <span class="dv">2</span>  <span class="dv">114488</span>             <span class="dv">362</span>     <span class="dv">161</span></span>
 <span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="sc">&gt;</span>   greylisted.bp</span>
@@ -491,7 +491,7 @@ agree.</p>
 <span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">109</span></span></code></pre></div>
 <p>Every region carries one logical column per group, plus the number of
 groups and of samples that called a peak on it.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">as.data.frame</span>(S4Vectors<span class="sc">::</span><span class="fu">mcols</span>(consensus<span class="sc">@</span>regions<span class="sc">$</span>consensus)) <span class="sc">%&gt;%</span></span>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">as.data.frame</span>(S4Vectors<span class="sc">::</span><span class="fu">mcols</span>(<span class="fu">regionRanges</span>(consensus)<span class="sc">$</span>consensus)) <span class="sc">%&gt;%</span></span>
 <span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(dplyr<span class="sc">::</span><span class="fu">starts_with</span>(<span class="st">"peak."</span>)) <span class="sc">%&gt;%</span></span>
 <span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">4</span>)</span>
 <span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="sc">&gt;</span>   peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups peak.samples</span>

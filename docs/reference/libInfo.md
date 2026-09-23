@@ -71,11 +71,29 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-sampleSheet <- loadExampleData("peakSheet")
-consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl")
-counts <- countReads(consensus, sampleSheet = sampleSheet)
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
+counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
 
 libInfo(counts, annotationColumns = "condition")
-} # }
+#>            sample condition paired.end bam.reads bam.mapped library.size
+#> 1      AR_DMSO_r1      DMSO       TRUE      7913       7913         3588
+#> 2      AR_DMSO_r2      DMSO       TRUE     12038      12038         5469
+#> 3      AR_DMSO_r3      DMSO       TRUE      9185       9185         4183
+#> 4  AR_R1881_4h_r1  R1881_4h       TRUE      7836       7836         3582
+#> 5  AR_R1881_4h_r2  R1881_4h       TRUE     11205      11205         5121
+#> 6  AR_R1881_4h_r3  R1881_4h       TRUE     12693      12693         5806
+#> 7 AR_R1881_24h_r1 R1881_24h       TRUE     14080      14080         6326
+#> 8 AR_R1881_24h_r2 R1881_24h       TRUE     10793      10793         4889
+#> 9 AR_R1881_24h_r3 R1881_24h       TRUE     10332      10332         4651
+#>   reads.in.regions   FRiP
+#> 1              116 0.0323
+#> 2              161 0.0294
+#> 3              131 0.0313
+#> 4              558 0.1558
+#> 5              881 0.1720
+#> 6              718 0.1237
+#> 7             1139 0.1801
+#> 8             1158 0.2369
+#> 9              839 0.1804
 ```

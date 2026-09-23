@@ -92,17 +92,38 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "condition" "SHR"       "BN"       </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">sampleSheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"peakSheet"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">sampleSheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"peakSheet"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Every pair of the three conditions</span></span></span>
 <span class="r-in"><span><span class="fu">pairwiseContrasts</span><span class="op">(</span><span class="va">sampleSheet</span>, column <span class="op">=</span> <span class="st">"condition"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $R1881_4h_vs_DMSO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "condition" "R1881_4h"  "DMSO"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $R1881_24h_vs_DMSO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "condition" "R1881_24h" "DMSO"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $R1881_24h_vs_R1881_4h</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "condition" "R1881_24h" "R1881_4h" </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Every treatment against the vehicle only</span></span></span>
 <span class="r-in"><span><span class="fu">pairwiseContrasts</span><span class="op">(</span><span class="va">sampleSheet</span>, column <span class="op">=</span> <span class="st">"condition"</span>, reference <span class="op">=</span> <span class="st">"DMSO"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $R1881_4h_vs_DMSO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "condition" "R1881_4h"  "DMSO"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $R1881_24h_vs_DMSO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "condition" "R1881_24h" "DMSO"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu">pairwiseContrasts</span><span class="op">(</span><span class="va">fit</span>, column <span class="op">=</span> <span class="st">"condition"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># The list goes straight into testRegions()</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu">pairwiseContrasts</span><span class="op">(</span><span class="va">fit</span>, column <span class="op">=</span> <span class="st">"condition"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">results</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.resultsList'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   contrasts       : 1 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       name             contrast n.regions up down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  SHR_vs_BN condition: SHR vs BN      1895  3    9</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

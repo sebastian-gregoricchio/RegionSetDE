@@ -181,10 +181,13 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>  lv-H3K4me3-SHR-male-bio2-tech1  lv-H3K4me3-SHR-male-bio3-tech1 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                       0.6487672                       1.8128070 </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Factors coming from a spike-in, or from any external estimate</span></span></span>
-<span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">normalizeCounts</span><span class="op">(</span><span class="va">counts</span>, scalingFactors <span class="op">=</span> <span class="va">spikeInFactors</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># Factors coming from a spike-in, or from any external estimate, named after the samples</span></span></span>
+<span class="r-in"><span><span class="va">spikeInFactors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.10</span>, <span class="fl">0.95</span>, <span class="fl">1.20</span>, <span class="fl">0.80</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">spikeInFactors</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">counts</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">manualCounts</span> <span class="op">&lt;-</span> <span class="fu">normalizeCounts</span><span class="op">(</span><span class="va">counts</span>, method <span class="op">=</span> <span class="st">"manual"</span>, scalingFactors <span class="op">=</span> <span class="va">spikeInFactors</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">SummarizedExperiment</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">colData</a></span><span class="op">(</span><span class="va">manualCounts</span><span class="op">)</span><span class="op">$</span><span class="va">scaling.factor</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.10 0.95 1.20 0.80</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

@@ -254,13 +254,14 @@ fit
 #>   set universe    : otherSets (matched on width and abundance) 
 #>   common disp.    : 0.139 (BCV 0.373)  
 
-# \donttest{
 # limma-voom on the same design
 voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
-# }
 
-if (FALSE) { # \dontrun{
 # Random effects need the dream engine and the formula given as such
-mixedFit <- fitRegions(counts, design = ~ condition + (1|donor), engine = "dream")
-} # }
+if (requireNamespace("variancePartition", quietly = TRUE)) {
+  mixedFit <- fitRegions(counts, design = ~ condition + (1|biologicalReplicate), engine = "dream", verbose = FALSE)
+}
+#> Warning: the ‘nobars’ function has moved to the reformulas package. Please update your imports, or ask an upstream package maintainer to do so.
+#> Error in .fitVarPartModel(exprObj, formula, data, REML = REML, useWeights = useWeights,     fxn = fxn, control = control, hideErrorsInBackend = hideErrorsInBackend,     BPPARAM = BPPARAM, ...): Initial model failed:
+#> Downdated VtV is not positive definite
 ```

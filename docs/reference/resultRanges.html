@@ -70,6 +70,96 @@
     <p>Sebastian Gregoricchio</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">resultRanges</span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> GRanges object with 1895 ranges and 15 metadata columns:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                               seqnames            ranges strand |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                  &lt;Rle&gt;         &lt;IRanges&gt;  &lt;Rle&gt; |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00012    chr12       26988-27987      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00017    chr12       39449-40448      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00019    chr12       44116-45115      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00020    chr12       46527-47526      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00026    chr12       89229-90228      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           ...      ...               ...    ... .</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03781    chr12 46595293-46596292      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03789    chr12 46646773-46647772      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03792    chr12 46684188-46685187      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03797    chr12 46721630-46722629      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03798    chr12 46728313-46729312      * |</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                   region.set    region.id   tile.id     log2FC</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                  &lt;character&gt;  &lt;character&gt; &lt;integer&gt;  &lt;numeric&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00012 promoterNonCpG region_00012      &lt;NA&gt; -0.4744875</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00017 promoterNonCpG region_00017      &lt;NA&gt; -1.6911510</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00019 promoterNonCpG region_00019      &lt;NA&gt;  0.1328365</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00020 promoterNonCpG region_00020      &lt;NA&gt;  1.3000608</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00026 promoterNonCpG region_00026      &lt;NA&gt; -0.0791789</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           ...            ...          ...       ...        ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03781    promoterCpG region_03781      &lt;NA&gt;  -0.912532</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03789    promoterCpG region_03789      &lt;NA&gt;  -1.066691</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03792    promoterCpG region_03792      &lt;NA&gt;  -0.999014</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03797    promoterCpG region_03797      &lt;NA&gt;  -1.278943</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03798    promoterCpG region_03798      &lt;NA&gt;  -0.638963</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                               average.signal average.signal.BN</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                    &lt;numeric&gt;         &lt;numeric&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00012        3.09870           3.15461</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00017        3.14197           3.51271</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00019        3.27334           3.14980</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00020        3.49069           2.93099</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00026        3.22088           3.15220</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           ...            ...               ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03781       10.11622          10.31085</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03789       10.15290          10.41427</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03792       10.14625          10.37415</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03797       10.17313          10.51121</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03798        7.03435           7.03222</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                               average.signal.SHR       stat stat.distribution</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                        &lt;numeric&gt;  &lt;numeric&gt;       &lt;character&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00012            3.07110 0.16629041                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00017            2.77439 2.33758830                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00019            3.39054 0.01002874                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00020            3.85473 2.08486536                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00026            3.29321 0.00711448                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           ...                ...        ...               ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03781            9.89195    0.95576                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03789            9.83439    1.26881                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03792            9.87635    1.13227                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03797            9.73201    1.80852                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03798            7.03908    1.80154                 f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     df1       df2   p.value       FDR</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                               &lt;numeric&gt; &lt;numeric&gt; &lt;numeric&gt; &lt;numeric&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00012         1   18.9454  0.688001  0.920086</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00017         1   18.7356  0.142993  0.799720</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00019         1   18.4527  0.921310  0.980729</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00020         1   20.6420  0.163773  0.799720</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00026         1   20.5652  0.933596  0.980729</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           ...       ...       ...       ...       ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03781         1   18.9037  0.340604   0.79972</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03789         1   18.9037  0.274087   0.79972</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03792         1   18.9037  0.300696   0.79972</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03797         1   18.9037  0.194600   0.79972</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03798         1   18.8988  0.195429   0.79972</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                               diff.status     regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                  &lt;factor&gt;  &lt;character&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00012        null region_00012</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00017        null region_00017</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00019        null region_00019</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00020        null region_00020</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG|region_00026        null region_00026</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           ...         ...          ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03781        null region_03781</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03789        null region_03789</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03792        null region_03792</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03797        null region_03797</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      promoterCpG|region_03798        null region_03798</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   -------</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   seqinfo: 1 sequence from rn4 genome</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

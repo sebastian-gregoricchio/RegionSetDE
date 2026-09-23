@@ -149,26 +149,60 @@
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="fitRegions.html">fitRegions</a></span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span> <span class="va">replicate</span> <span class="op">+</span> <span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"edgeR"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># A coefficient of the design</span></span></span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionSHR"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Two levels of a column, whichever of them the design took as reference</span></span></span>
-<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"COMBO"</span>, <span class="st">"DMSO"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">res</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.results'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   contrast        : condition: SHR vs BN </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   regions         : 1895 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   counts carried  : 4 samples</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   thresholds      : FDR &lt; 0.05 | |log2FC| &gt; 0 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   changing regions:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterNonCpG: 1 up, 2 down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     intergenic: 2 up, 3 down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     geneBody: 0 up, 3 down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterCpG: 0 up, 1 down</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Difference between two coefficients of the design</span></span></span>
-<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO - conditionEPZ"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># The opposite direction, the fold changes change sign</span></span></span>
+<span class="r-in"><span><span class="va">resReverse</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"BN"</span>, <span class="st">"SHR"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Several contrasts on the same fit</span></span></span>
-<span class="r-in"><span><span class="va">resList</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>combo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"COMBO"</span>, <span class="st">"DMSO"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                                            epz <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"EPZ"</span>, <span class="st">"DMSO"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">resList</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>shr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                                            bn <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"BN"</span>, <span class="st">"SHR"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                       verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">resList</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">resList</span>, contrast <span class="op">=</span> <span class="st">"combo"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.resultsList'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   contrasts       : 2 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  name             contrast n.regions up down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   shr condition: SHR vs BN      1895  3    9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    bn condition: BN vs SHR      1895  9    3</span>
+<span class="r-in"><span><span class="fu"><a href="topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">resList</span>, contrast <span class="op">=</span> <span class="st">"shr"</span>, FDR <span class="op">=</span> <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       region.set    region.id tile.id seqnames    start      end width</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2     intergenic region_03590      NA    chr12 44174500 44175499  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      log2FC average.signal average.signal.BN average.signal.SHR     stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 -5.203835       5.159079          6.078432           2.651961 84.13617</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -2.887100       5.237329          5.930447           4.057310 43.04577</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 -3.222630       4.816977          5.557234           3.451580 34.29977</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   stat.distribution df1      df2      p.value          FDR diff.status</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 region_02996</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 region_03590</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 region_00212</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Threshold inside the test rather than on the output</span></span></span>
-<span class="r-in"><span><span class="va">resStrict</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="st">"conditionCOMBO"</span>, lfcThreshold <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="va">resStrict</span> <span class="op">&lt;-</span> <span class="fu">testRegions</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, lfcThreshold <span class="op">=</span> <span class="fl">1</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

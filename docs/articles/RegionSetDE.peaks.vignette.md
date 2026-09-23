@@ -211,7 +211,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/Rtmpbu3Lad/temp_libpath1963f75daeda0d/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/RtmpyD3YoF/temp_libpath1cd751765fe589/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
 > 1      5353 0.09351198 0.1836287         2  114488             362     161
 >   greylisted.bp
@@ -436,7 +436,7 @@ Every region carries one logical column per group, plus the number of
 groups and of samples that called a peak on it.
 
 ``` r
-as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
+as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
   dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 >   peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups peak.samples

@@ -129,10 +129,23 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-results <- testRegions(fit, contrast = c("condition", "treated", "control"))
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  # AR binding without ligand and after 24 hours of R1881
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
 
-plotPeakOccupancy(results)
-plotPeakOccupancy(results, proportion = TRUE)
-} # }
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+
+  counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+  counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+  counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
+  fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+  results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+
+  plotPeakOccupancy(results)
+  plotPeakOccupancy(results, proportion = TRUE)
+}
+#> calcNormFactors has been renamed to normLibSizes
+
 ```

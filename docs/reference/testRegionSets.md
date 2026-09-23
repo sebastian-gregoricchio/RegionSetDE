@@ -280,16 +280,47 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
+fit <- loadExampleData("fit", verbose = FALSE)
 
 # The universe comes from the fit and travels into the result
-setRes <- testRegionSets(fit, contrast = "conditionCOMBO")
+setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+resultsTable(setRes)
+#>       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC
+#> 1    promoterCpG       269          314                        0 -0.83367077
+#> 2       geneBody       909          986                        0  0.29148227
+#> 3     intergenic       440         1354                        0  0.26499294
+#> 4 promoterNonCpG       277         1378                        0 -0.02089479
+#>   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower  CI.upper
+#> 1    -0.9443600             0.09704300  -0.93071378 -1.9314597 0.5607824
+#> 2     0.1692341            -0.11505923   0.40654151 -0.3328615 0.9187083
+#> 3     0.1740960             0.05862768   0.20636526 -0.1710428 0.3668162
+#> 4    -0.1571407             0.05781212  -0.07870691 -0.2633465 0.2509689
+#>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
+#> 1  sample              -2.547867              0.6864395        0.8583680
+#> 2  sample              -1.574041              2.3871240        0.2721337
+#> 3  sample              -1.761069              2.1737990        0.2733108
+#> 4  sample              -2.067061              1.9096471        0.4433140
+#>   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE
+#> 1                 0.3775802         1000        -0.685338676      0.28961692
+#> 2                 0.4530172         1000         0.292923395      0.14544165
+#> 3                 0.3815880         1000         0.097886686      0.06250318
+#> 4                 0.3504707         1000        -0.006188815      0.05976724
+#>   sample.delta.df sample.delta.p camera.direction  camera.p fry.direction
+#> 1               2      0.1416115             Down 0.3213638          Down
+#> 2               2      0.1816079               Up 0.5187249          Down
+#> 3               2      0.2578184               Up 0.7773973          Down
+#> 4               2      0.9269756             Down 0.9384488          Down
+#>       fry.p camera.FDR   fry.FDR sample.delta.FDR
+#> 1 0.2686203  0.9384488 0.5401741        0.3437579
+#> 2 0.5401741  0.9384488 0.5401741        0.3437579
+#> 3 0.4717232  0.9384488 0.5401741        0.3437579
+#> 4 0.4613130  0.9384488 0.5401741        0.9269756
 
 plotUniverseMatching(setRes)
+
 plotSetEffect(setRes)
 
+
 # Overriding it for one test
-setRes <- testRegionSets(fit, contrast = "conditionCOMBO", universe = "all")
-} # }
+setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), universe = "all", verbose = FALSE)
 ```

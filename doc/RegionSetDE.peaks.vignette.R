@@ -68,7 +68,7 @@ lengths(consensusInfo$groups)           # the consensus of every group
 length(consensusInfo$total)             # the pooled region set that will be counted
 
 ## ----occupancy_columns--------------------------------------------------------
-as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
+as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
   dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 

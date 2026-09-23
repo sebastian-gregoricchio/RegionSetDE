@@ -157,33 +157,34 @@ regions
 > Whitelist:  not applied
 ```
 
-The result is an S4 object of class `RegionSetDE`. Its slots are reached
-with `@`:
+The result is an S4 object of class `RegionSetDE`. The slots that matter
+in an analysis have an accessor:
 
-| Slot | Description |
-|---:|:---|
-| *regions* | `GRangesList` with one element per region set, named |
-| *blacklist* | the exclusion regions applied, `NULL` until [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md) runs |
-| *whitelist* | the regions kept, `NULL` until [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md) runs |
-| *genome.assembly* | assembly string, or `NULL` |
-| *seqlevels.style* | naming style the sets were harmonised to |
-| *filtering.log* | one row per filtering step, with how many regions each set lost |
-| *parameters* | the arguments of every call that touched the object |
-| *consensus* | the consensus data when the regions come from peaks through [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), empty otherwise |
+| Slot | Accessor | Description |
+|---:|:---|:---|
+| *regions* | [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md) | `GRangesList` with one element per region set, named |
+| *blacklist* |  | the exclusion regions applied, `NULL` until [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md) runs |
+| *whitelist* |  | the regions kept, `NULL` until [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md) runs |
+| *genome.assembly* | [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md) | assembly string, or `NULL` |
+| *seqlevels.style* |  | naming style the sets were harmonised to |
+| *filtering.log* | [`filteringLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md) | one row per filtering step, with how many regions each set lost |
+| *parameters* |  | the arguments of every call that touched the object |
+| *consensus* | [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md) | the consensus data when the regions come from peaks through [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), empty otherwise |
 
 The set names come back from
 [`regionSetNames()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionSetNames.md),
-and the regions themselves from the `regions` slot:
+and the regions themselves from
+[`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md):
 
 ``` r
 regionSetNames(regions)
 > [1] "promoterNonCpG" "intergenic"     "geneBody"       "promoterCpG"
 
-lengths(regions@regions)
+lengths(regionRanges(regions))
 > promoterNonCpG     intergenic       geneBody    promoterCpG 
 >            498           1500           1500            303
 
-head(regions@regions$promoterCpG, 3)
+head(regionRanges(regions)$promoterCpG, 3)
 > GRanges object with 3 ranges and 1 metadata column:
 >       seqnames          ranges strand |     regionId
 >          <Rle>       <IRanges>  <Rle> |  <character>
@@ -209,7 +210,7 @@ regions <- applyBlacklist(regions,
                           blacklist = exclusionRegions,
                           verbose = FALSE)
 
-regions@filtering.log
+filteringLog(regions)
 >        step     region.set n.before n.after n.removed
 > 1 blacklist promoterNonCpG      498     464        34
 > 2 blacklist     intergenic     1500    1112       388
@@ -416,14 +417,14 @@ table(SummarizedExperiment::rowData(counts)$region.set)
 >           1370           1112            278            464
 ```
 
-Whether the object is counted per region or per tile is recorded in its
-own slot, and the filters applied upstream are still there:
+Whether the object is counted per region or per tile is recorded with
+it, and so is what came from upstream:
 
 ``` r
-counts@counting.level
+countingLevel(counts)
 > [1] "region"
 
-counts@genome.assembly
+genomeAssembly(counts)
 > [1] "rn4"
 ```
 
@@ -1685,7 +1686,7 @@ What changed is inside, and the fit records it rather than leaving you
 to guess:
 
 ``` r
-singleFit@dispersion[c("common", "fixed", "no.replicates", "source")]
+dispersionInfo(singleFit)[c("common", "fixed", "no.replicates", "source")]
 > $common
 > [1] 0.03737481
 > 
@@ -1782,7 +1783,7 @@ singleCalibration <-
   checkNullCalibration(singleFit,
                        contrast = c("condition", "SHR", "BN"),
                        source = "background",
-                       index = singleFit@dispersion$holdout.index,
+                       index = dispersionInfo(singleFit)$holdout.index,
                        verbose = FALSE)
 
 plotNullCalibration(singleCalibration)

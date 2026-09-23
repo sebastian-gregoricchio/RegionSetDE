@@ -169,10 +169,21 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-counts <- countBigwig(regions,
-                      bigwigFiles = list.files("bigwig", pattern = "\\.bw$", full.names = TRUE),
-                      summaryFunction = "sum",
-                      nThreads = 4)
-} # }
+# The small bigWig shipped with rtracklayer, with a region set built on its own intervals
+bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
+
+if (file.exists(bigwigFile)) {
+  bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+  regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
+
+  signal <- countBigwig(regions,
+                        bigwigFiles = bigwigFile,
+                        sampleNames = "example",
+                        summaryFunction = "mean",
+                        verbose = FALSE)
+  SummarizedExperiment::assay(signal)
+}
+#>                         example
+#> covered|chr2:1-1500      -0.500
+#> covered|chr19:1501-2700   0.625
 ```

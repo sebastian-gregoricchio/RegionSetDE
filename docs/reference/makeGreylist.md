@@ -188,11 +188,10 @@ S4Vectors::metadata(greylist)$thresholds
 #>   greylisted.bp
 #> 1             0
 
-if (FALSE) { # \dontrun{
 # From a sample sheet, each distinct input once
-sampleSheet <- loadSampleSheet("samples.csv")
-greylist <- makeGreylist(sampleSheet, excludeChromosomes = c("chrM", "chrY"), nThreads = 4)
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+greylist <- makeGreylist(sampleSheet, binSize = 10000, verbose = FALSE)
 
-regions <- applyGreylist(regions, greylist = greylist)
-} # }
+peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
+peakRegions <- applyGreylist(peakRegions, greylist = greylist, verbose = FALSE)
 ```

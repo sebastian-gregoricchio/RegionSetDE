@@ -122,7 +122,7 @@ greylisted <- applyGreylist(regions, greylist = greylist)
 #>   intergenic: 1112/1500 regions retained (25.9% removed)
 #>   geneBody: 1370/1500 regions retained (8.7% removed)
 #>   promoterCpG: 278/303 regions retained (8.3% removed)
-greylisted@filtering.log
+filteringLog(greylisted)
 #>       step     region.set n.before n.after n.removed
 #> 1 greylist promoterNonCpG      498     464        34
 #> 2 greylist     intergenic     1500    1112       388

@@ -96,13 +96,30 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Regions built from peaks, counted, fitted and tested as usual
-results <- testRegions(fit, contrast = c("condition", "treated", "control"))
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  # AR binding without ligand and after 24 hours of R1881
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
 
-peakOccupancyTable(results)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 
-# The regions called in a single sample, whatever the group
-peakOccupancyTable(results, by = "samples")
-} # }
+  counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+  counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+  counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+
+  fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+  results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+
+  peakOccupancyTable(results)
+
+  # By number of samples calling a peak, whatever the group
+  peakOccupancyTable(results, by = "samples")
+}
+#> calcNormFactors has been renamed to normLibSizes
+#>   occupancy n.regions down null up percent.changed
+#> 1         2        25    0   15 10            40.0
+#> 2         3        61    0    8 53            86.9
+#> 3         4         5    0    1  4            80.0
+#> 4         5         2    0    0  2           100.0
+#> 5         6         9    0    1  8            88.9
 ```

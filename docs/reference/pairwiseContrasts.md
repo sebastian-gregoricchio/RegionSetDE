@@ -72,15 +72,36 @@ pairwiseContrasts(counts, column = "condition")
 #> [1] "condition" "SHR"       "BN"       
 #> 
 
-if (FALSE) { # \dontrun{
-sampleSheet <- loadExampleData("peakSheet")
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 
 # Every pair of the three conditions
 pairwiseContrasts(sampleSheet, column = "condition")
+#> $R1881_4h_vs_DMSO
+#> [1] "condition" "R1881_4h"  "DMSO"     
+#> 
+#> $R1881_24h_vs_DMSO
+#> [1] "condition" "R1881_24h" "DMSO"     
+#> 
+#> $R1881_24h_vs_R1881_4h
+#> [1] "condition" "R1881_24h" "R1881_4h" 
+#> 
 
 # Every treatment against the vehicle only
 pairwiseContrasts(sampleSheet, column = "condition", reference = "DMSO")
+#> $R1881_4h_vs_DMSO
+#> [1] "condition" "R1881_4h"  "DMSO"     
+#> 
+#> $R1881_24h_vs_DMSO
+#> [1] "condition" "R1881_24h" "DMSO"     
+#> 
 
-results <- testRegions(fit, contrast = pairwiseContrasts(fit, column = "condition"))
-} # }
+# The list goes straight into testRegions()
+fit <- loadExampleData("fit", verbose = FALSE)
+results <- testRegions(fit, contrast = pairwiseContrasts(fit, column = "condition"), verbose = FALSE)
+results
+#> An object of class 'RegionSetDE.resultsList'
+#>   contrasts       : 1 
+#> 
+#>       name             contrast n.regions up down
+#>  SHR_vs_BN condition: SHR vs BN      1895  3    9
 ```

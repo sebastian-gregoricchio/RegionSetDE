@@ -243,70 +243,80 @@ file.</p>
 <span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="er">&gt;</span> Blacklist<span class="sc">:</span>  not applied</span>
 <span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a><span class="sc">&gt;</span> Whitelist<span class="sc">:</span>  not applied</span></code></pre></div>
-<p>The result is an S4 object of class <code>RegionSetDE</code>. Its
-slots are reached with <code>@</code>:</p>
+<p>The result is an S4 object of class <code>RegionSetDE</code>. The
+slots that matter in an analysis have an accessor:</p>
 <table class="table">
 <colgroup>
-<col width="59%">
-<col width="40%">
+<col width="42%">
+<col width="28%">
+<col width="28%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">Slot</th>
+<th align="left">Accessor</th>
 <th align="left">Description</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="right"><em>regions</em></td>
+<td align="left"><code><a href="../reference/regionRanges.html">regionRanges()</a></code></td>
 <td align="left">
 <code>GRangesList</code> with one element per region
 set, named</td>
 </tr>
 <tr class="even">
 <td align="right"><em>blacklist</em></td>
+<td align="left"></td>
 <td align="left">the exclusion regions applied, <code>NULL</code> until
 <code><a href="../reference/applyBlacklist.html">applyBlacklist()</a></code> runs</td>
 </tr>
 <tr class="odd">
 <td align="right"><em>whitelist</em></td>
+<td align="left"></td>
 <td align="left">the regions kept, <code>NULL</code> until
 <code><a href="../reference/applyWhitelist.html">applyWhitelist()</a></code> runs</td>
 </tr>
 <tr class="even">
 <td align="right"><em>genome.assembly</em></td>
+<td align="left"><code><a href="../reference/genomeAssembly.html">genomeAssembly()</a></code></td>
 <td align="left">assembly string, or <code>NULL</code>
 </td>
 </tr>
 <tr class="odd">
 <td align="right"><em>seqlevels.style</em></td>
+<td align="left"></td>
 <td align="left">naming style the sets were harmonised to</td>
 </tr>
 <tr class="even">
 <td align="right"><em>filtering.log</em></td>
+<td align="left"><code><a href="../reference/filteringLog.html">filteringLog()</a></code></td>
 <td align="left">one row per filtering step, with how many regions each
 set lost</td>
 </tr>
 <tr class="odd">
 <td align="right"><em>parameters</em></td>
+<td align="left"></td>
 <td align="left">the arguments of every call that touched the
 object</td>
 </tr>
 <tr class="even">
 <td align="right"><em>consensus</em></td>
+<td align="left"><code><a href="../reference/consensusData.html">consensusData()</a></code></td>
 <td align="left">the consensus data when the regions come from peaks
 through <code><a href="../reference/loadConsensusPeaks.html">loadConsensusPeaks()</a></code>, empty otherwise</td>
 </tr>
 </tbody>
 </table>
 <p>The set names come back from <code><a href="../reference/regionSetNames.html">regionSetNames()</a></code>, and the
-regions themselves from the <code>regions</code> slot:</p>
+regions themselves from <code><a href="../reference/regionRanges.html">regionRanges()</a></code>:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">regionSetNames</span>(regions)</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"promoterNonCpG"</span> <span class="st">"intergenic"</span>     <span class="st">"geneBody"</span>       <span class="st">"promoterCpG"</span></span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">lengths</span>(regions<span class="sc">@</span>regions)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">lengths</span>(<span class="fu">regionRanges</span>(regions))</span>
 <span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="sc">&gt;</span> promoterNonCpG     intergenic       geneBody    promoterCpG </span>
 <span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="sc">&gt;</span>            <span class="dv">498</span>           <span class="dv">1500</span>           <span class="dv">1500</span>            <span class="dv">303</span></span>
 <span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="fu">head</span>(regions<span class="sc">@</span>regions<span class="sc">$</span>promoterCpG, <span class="dv">3</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">regionRanges</span>(regions)<span class="sc">$</span>promoterCpG, <span class="dv">3</span>)</span>
 <span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="sc">&gt;</span> GRanges object with <span class="dv">3</span> ranges and <span class="dv">1</span> metadata column<span class="sc">:</span></span>
 <span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="er">&gt;</span>       seqnames          ranges strand <span class="sc">|</span>     regionId</span>
 <span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="sc">&gt;</span>          <span class="er">&lt;</span>Rle<span class="sc">&gt;</span>       <span class="er">&lt;</span>IRanges<span class="sc">&gt;</span>  <span class="er">&lt;</span>Rle<span class="sc">&gt;</span> <span class="er">|</span>  <span class="er">&lt;</span>character<span class="sc">&gt;</span></span>
@@ -328,7 +338,7 @@ operation is recorded and can be read back later.</p>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                          <span class="at">blacklist =</span> exclusionRegions,</span>
 <span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                          <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>regions<span class="sc">@</span>filtering.log</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="fu">filteringLog</span>(regions)</span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="sc">&gt;</span>        step     region.set n.before n.after n.removed</span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> blacklist promoterNonCpG      <span class="dv">498</span>     <span class="dv">464</span>        <span class="dv">34</span></span>
 <span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> blacklist     intergenic     <span class="dv">1500</span>    <span class="dv">1112</span>       <span class="dv">388</span></span>
@@ -510,12 +520,12 @@ belong to which set:</p>
 <span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="er">&gt;</span>       geneBody     intergenic    promoterCpG promoterNonCpG </span>
 <span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="sc">&gt;</span>           <span class="dv">1370</span>           <span class="dv">1112</span>            <span class="dv">278</span>            <span class="dv">464</span></span></code></pre></div>
-<p>Whether the object is counted per region or per tile is recorded in
-its own slot, and the filters applied upstream are still there:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>counts<span class="sc">@</span>counting.level</span>
+<p>Whether the object is counted per region or per tile is recorded with
+it, and so is what came from upstream:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">countingLevel</span>(counts)</span>
 <span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"region"</span></span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>counts<span class="sc">@</span>genome.assembly</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="fu">genomeAssembly</span>(counts)</span>
 <span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"rn4"</span></span></code></pre></div>
 <p><br></p>
 <div class="section level3">
@@ -1742,7 +1752,7 @@ so the object is renormalised and refiltered from scratch.</p>
 <span id="cb53-14"><a href="#cb53-14" tabindex="-1"></a><span class="sc">&gt;</span>   replicates      <span class="sc">:</span> none, dispersion from background</span></code></pre></div>
 <p>What changed is inside, and the fit records it rather than leaving
 you to guess:</p>
-<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a>singleFit<span class="sc">@</span>dispersion[<span class="fu">c</span>(<span class="st">"common"</span>, <span class="st">"fixed"</span>, <span class="st">"no.replicates"</span>, <span class="st">"source"</span>)]</span>
+<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a><span class="fu">dispersionInfo</span>(singleFit)[<span class="fu">c</span>(<span class="st">"common"</span>, <span class="st">"fixed"</span>, <span class="st">"no.replicates"</span>, <span class="st">"source"</span>)]</span>
 <span id="cb54-2"><a href="#cb54-2" tabindex="-1"></a><span class="sc">&gt;</span> <span class="er">$</span>common</span>
 <span id="cb54-3"><a href="#cb54-3" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="fl">0.03737481</span></span>
 <span id="cb54-4"><a href="#cb54-4" tabindex="-1"></a><span class="sc">&gt;</span> </span>
@@ -1827,7 +1837,7 @@ has to be recomputed:</p>
 <span>  <span class="fu"><a href="../reference/checkNullCalibration.html">checkNullCalibration</a></span><span class="op">(</span><span class="va">singleFit</span>,</span>
 <span>                       contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span>
 <span>                       source <span class="op">=</span> <span class="st">"background"</span>,</span>
-<span>                       index <span class="op">=</span> <span class="va">singleFit</span><span class="op">@</span><span class="va">dispersion</span><span class="op">$</span><span class="va">holdout.index</span>,</span>
+<span>                       index <span class="op">=</span> <span class="fu"><a href="../reference/dispersionInfo.html">dispersionInfo</a></span><span class="op">(</span><span class="va">singleFit</span><span class="op">)</span><span class="op">$</span><span class="va">holdout.index</span>,</span>
 <span>                       verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/plotNullCalibration.html">plotNullCalibration</a></span><span class="op">(</span><span class="va">singleCalibration</span><span class="op">)</span></span></code></pre></div>

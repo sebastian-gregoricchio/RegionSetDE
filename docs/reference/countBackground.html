@@ -153,10 +153,15 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>   lv-H3K4me3-SHR-male-bio3-tech1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> colData names(2): bam.files totals</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Recomputing them needs the BAM files the object was counted from</span></span></span>
-<span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countBackground</span><span class="op">(</span><span class="va">counts</span>, binSize <span class="op">=</span> <span class="fl">10000</span>, nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># Counting them needs the BAM files the object was counted from</span></span></span>
+<span class="r-in"><span><span class="va">sampleSheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"peakSheet"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">peakRegions</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadRegions.html">loadRegions</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>peaks <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">peaks</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span>, genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">arCounts</span> <span class="op">&lt;-</span> <span class="fu"><a href="countReads.html">countReads</a></span><span class="op">(</span><span class="va">peakRegions</span>, sampleSheet <span class="op">=</span> <span class="va">sampleSheet</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">arCounts</span> <span class="op">&lt;-</span> <span class="fu">countBackground</span><span class="op">(</span><span class="va">arCounts</span>, binSize <span class="op">=</span> <span class="fl">10000</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu">S4Vectors</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/S4Vectors/man/Annotated-class.html" class="external-link">metadata</a></span><span class="op">(</span><span class="va">arCounts</span><span class="op">)</span><span class="op">$</span><span class="va">background</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1102    9</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

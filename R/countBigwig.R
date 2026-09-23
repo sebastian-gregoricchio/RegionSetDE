@@ -29,10 +29,12 @@
 #' The object therefore records where its values came from, and \code{\link{fitRegions}} refuses the count engines on it unless \code{countLike} says otherwise. The engine to reach for on bigWig input is \code{"limma"}, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting \code{countLike = TRUE} is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.
 #'
 #' @examples
-#' # The small bigWig shipped with rtracklayer, with a region set built on its own intervals
+#' # The small bigWig shipped with rtracklayer, with a region set built on its own intervals.
+#' # Current rtracklayer builds for Windows fail to open bigWig files given as a path with a
+#' # drive letter (lawremi/rtracklayer#151), so the example runs on the other platforms only
 #' bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
 #'
-#' if (file.exists(bigwigFile)) {
+#' if (file.exists(bigwigFile) & .Platform$OS.type != "windows") {
 #'   bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
 #'   regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
 #'

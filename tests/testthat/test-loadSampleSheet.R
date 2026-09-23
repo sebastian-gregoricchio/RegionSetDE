@@ -111,7 +111,12 @@ test_that("the names of the inputs must match their files one to one", {
 test_that("the sample names and the signal files are required", {
 
   expect_error(loadSampleSheet(data.frame(bam = "a.bam"), checkFiles = FALSE, verbose = FALSE), "No sample column")
-  expect_error(loadSampleSheet(data.frame(sample = "a", peaks = "a.bed"), checkFiles = FALSE, verbose = FALSE), "'bam' or a 'bigwig'")
+  expect_error(loadSampleSheet(data.frame(sample = "a", score = 1), checkFiles = FALSE, verbose = FALSE), "'bam', a 'bigwig' or a 'peaks'")
+
+  # Peaks alone are enough to build a consensus, and the sheet says what it cannot do
+  expect_message(peaksOnly <- loadSampleSheet(data.frame(sample = "a", peaks = "a.bed"), checkFiles = FALSE),
+                 "enough for a consensus")
+  expect_identical(nrow(peaksOnly), 1L)
   expect_error(loadSampleSheet(data.frame(sample = c("a", "a"), bam = c("a.bam", "b.bam")), checkFiles = FALSE, verbose = FALSE), "unique")
   expect_error(loadSampleSheet(data.frame(sample = c("a", "b"), bam = c("a.bam", NA)), checkFiles = FALSE, verbose = FALSE), "no signal file")
   expect_error(loadSampleSheet(file.path(tempdir(), "absent.csv")), "does not exist")

@@ -19,6 +19,7 @@ testRegions(
   log2FC = 0,
   adjustMethod = "BH",
   regionSets = NULL,
+  signalBy = NULL,
   extraColumns = TRUE,
   carryCounts = TRUE,
   verbose = TRUE
@@ -52,11 +53,16 @@ testRegions(
 
 - combineMethod:
 
-  String with the method used to combine the tiles, among those accepted
-  by
-  [`csaw::combineTests`](https://rdrr.io/pkg/csaw/man/combineTests.html):
-  `"simes"`, `"holm-min"`, `"wilcoxon"` and `"stouffer"`. Default:
-  `"simes"`.
+  String with the method used to combine the tiles into their region.
+  `"simes"`, through
+  [`csaw::combineTests`](https://rdrr.io/pkg/csaw/man/combineTests.html),
+  asks whether any part of the region changes, and a single strong tile
+  is enough. `"holm-min"`, through
+  [`csaw::minimalTests`](https://rdrr.io/pkg/csaw/man/minimalTests.html),
+  asks for several tiles to change together, three of them or 40% of the
+  region when that is more, and all of them in a region shorter than
+  three tiles, which suits broad domains where one tile moving on its
+  own is more likely noise than biology. Default: `"simes"`.
 
 - lfcThreshold:
 
@@ -91,6 +97,15 @@ testRegions(
   Character vector with the names of the region sets to keep in the
   output. Default: `NULL`, all of them.
 
+- signalBy:
+
+  String with a column of the `colData`: every level of it gets an
+  `average.signal.<level>` column in the results, the average signal
+  over the samples of that level alone. `FALSE` adds none. Default:
+  `NULL`, the column the contrast compares two levels of, which is known
+  for the three-element form and for most coefficients and expressions,
+  and none when it is not.
+
 - extraColumns:
 
   Annotation carried by the regions that must be appended to the result,
@@ -116,7 +131,47 @@ testRegions(
 
 ## Value
 
-A `RegionSetDE.results` object.
+A `RegionSetDE.results` object. Its table, read with
+[`resultsTable`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md),
+holds one row per region with the coordinates, then:
+
+- `log2FC`: the log2 fold change, first group of the contrast over the
+  second.
+
+- `average.signal`: the average abundance of the region over all the
+  samples, on the scale of the engine: the log2 counts per million of
+  [`edgeR::aveLogCPM`](https://rdrr.io/pkg/edgeR/man/aveLogCPM.html) for
+  edgeR, the average of the log2 values the linear model was fitted on
+  for voom, limma and dream, `log2(baseMean + 1)` for DESeq2.
+
+- `average.signal.<level>`: the same quantity computed on the samples of
+  one level of `signalBy` only, one column per level.
+
+- `stat`: the test statistic of the engine: the quasi-likelihood F of
+  edgeR, or its likelihood ratio when the dispersion was fixed, the
+  moderated t of voom, limma and dream, the Wald statistic of DESeq2.
+
+- `stat.distribution`: the distribution `stat` follows under the null
+  hypothesis, one among `"f"`, `"chisq"`, `"t"` and `"norm"`. `NA` for
+  the threshold tests run when `lfcThreshold > 0`, whose null is not
+  centred on zero.
+
+- `df1`, `df2`: the degrees of freedom of that distribution. For the F
+  of edgeR, `df1` is the numerator, the number of coefficients tested,
+  and `df2` the denominator, the residual degrees of freedom plus the
+  prior ones. For the likelihood ratio `df1` is the number of
+  coefficients tested. For the moderated t `df1` is the total degrees of
+  freedom, residual plus prior. The normal distribution of DESeq2 has
+  none. `NA` where the distribution does not use them.
+
+- `p.value`, `FDR`: the p-value and its adjustment over all the rows of
+  the contrast.
+
+- `diff.status`: `"up"`, `"down"` or `"null"`, from `FDR` and `log2FC`.
+
+On a tiled object the statistics, the degrees of freedom and the
+averages come from the tile carrying the p-value of the region, followed
+by the columns the combination adds.
 
 ## Details
 
@@ -126,14 +181,15 @@ afterwards. Correcting inside each set separately would make the FDR of
 a set depend on how many other sets were loaded, which is not a property
 anyone wants in a result.
 
-Two things follow from the combination step. The p-value of a tiled
-region is a Simes combination, so it answers "does any part of this
-region change" rather than "does the whole region change", and a long
-domain that moves over one tile out of forty will come out with a small
-p-value and a small overall fold change. The `log2FC` reported for a
-combined region is the fold change of the most significant tile, not an
-average, which is the quantity that matches the p-value. The tile level
-table stays available in the `tiles` slot, and
+Two things follow from the combination step. With the default
+`combineMethod` the p-value of a tiled region is a Simes combination, so
+it answers "does any part of this region change" rather than "does the
+whole region change", and a long domain that moves over one tile out of
+forty will come out with a small p-value and a small overall fold
+change. The `log2FC` reported for a combined region is the fold change
+of the most significant tile, not an average, which is the quantity that
+matches the p-value. The tile level table stays available in the `tiles`
+slot, and
 [`plotRegion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
 draws it.
 
@@ -158,6 +214,14 @@ something other than an identifier. On a tiled object the value is read
 off the tile the combination reported, the same one the fold change
 comes from, so a row describes one place rather than an average over
 several.
+
+The statistic, the distribution it follows and its degrees of freedom
+are in the table so that the test can be taken further, into a power or
+sample size analysis for instance.
+[`contrastInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
+gathers the rest of what such an analysis needs, the engine and the
+number of samples in each group of the contrast, which is also stored in
+the `n.samples` element of the `contrast.groups` slot.
 
 The `diff.status` column is a labelling convenience, not a claim. It is
 filled from `FDR` and `log2FC` and used by the plotting functions; the

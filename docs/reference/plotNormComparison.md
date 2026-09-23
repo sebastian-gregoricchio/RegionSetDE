@@ -36,8 +36,11 @@ plotNormComparison(
 
   Character vector with the methods to compare, among those accepted by
   [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
-  that need no extra input: `"librarySize"`, `"TMM"`, `"TMMwsp"`,
-  `"RLE"`, `"upperQuartile"` and `"background"`. Default:
+  that need no extra input: `"librarySize"`, `"readsInRegions"`,
+  `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"background"` and
+  `"greenlist"`, the last one requiring
+  [`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  to have been run. Default:
   `c("librarySize", "TMM", "RLE", "background")`.
 
 - plotType:
@@ -130,14 +133,10 @@ counts <- loadExampleData("counts", verbose = FALSE)
 # Scaling factors from four methods side by side, before committing to one
 plotNormComparison(counts)
 #> calcNormFactors has been renamed to normLibSizes
-#> calcNormFactors has been renamed to normLibSizes
-#> calcNormFactors has been renamed to normLibSizes
 
 
 # The numbers behind the panel
 head(plotNormComparison(counts, returnData = TRUE))
-#> calcNormFactors has been renamed to normLibSizes
-#> calcNormFactors has been renamed to normLibSizes
 #> calcNormFactors has been renamed to normLibSizes
 #>                            sample      method scaling.factor
 #> 1 lv-H3K4me3-BN-female-bio1-tech1 librarySize      0.8114696

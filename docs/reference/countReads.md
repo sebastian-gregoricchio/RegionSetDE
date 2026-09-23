@@ -1,17 +1,18 @@
 # countReads
 
 Counts the reads of a group of BAM files over the regions of a
-`RegionSetDE` object. Single-end reads are extended to the expected
-fragment length before the overlap is evaluated, while paired-end data
-are counted as fragments. The regions can be cut into tiles of fixed
-width, in which case each tile becomes a row of the resulting object.
+`RegionSetDE` object. Paired-end data are counted as fragments, while
+single-end reads are extended to the expected fragment length before the
+overlap is evaluated. The regions can be cut into tiles of fixed width,
+in which case each tile becomes a row of the resulting object.
 
 ## Usage
 
 ``` r
 countReads(
   regionSet,
-  bamFiles,
+  bamFiles = NULL,
+  sampleSheet = NULL,
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
@@ -23,8 +24,9 @@ countReads(
   maxFragmentLength = 1000,
   minMapq = 20,
   removeDuplicates = TRUE,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   discardRegions = NULL,
+  fullLibrarySize = TRUE,
   nThreads = 1,
   verbose = TRUE
 )
@@ -41,7 +43,17 @@ countReads(
 - bamFiles:
 
   Character vector with the paths of the BAM files. Each file must be
-  indexed.
+  indexed, and all of them must share the same header. Default: `NULL`,
+  taken from `sampleSheet`, or from the sample sheet a consensus was
+  built from by
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+
+- sampleSheet:
+
+  Data.frame returned by
+  [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
+  or the path to a sample sheet, providing the BAM files, the sample
+  names and the annotation in one go. Default: `NULL`.
 
 - sampleNames:
 
@@ -90,8 +102,8 @@ countReads(
 
 - maxFragmentLength:
 
-  Numeric value with the maximum insert size accepted for a pair.
-  Applied to the paired-end samples only. Default: `1000`.
+  Numeric value with the maximum length accepted for a paired-end
+  fragment. Applied to the paired-end samples only. Default: `1000`.
 
 - minMapq:
 
@@ -103,19 +115,39 @@ countReads(
   Logical value indicating whether the reads flagged as duplicates must
   be discarded. Default: `TRUE`.
 
-- restrictChromosomes:
+- excludeChromosomes:
 
-  Character vector with the chromosomes to read from the BAM files.
-  Default: `NULL`, all of them.
+  Character vector with the chromosomes left out of the library sizes,
+  written in either naming style, `chrM` and `MT` both reaching the
+  mitochondrial genome of a file naming it either way, for instance the
+  mitochondrial genome, chrY or the unplaced and alternative contigs. A
+  name matching no chromosome once converted raises a warning, since it
+  would leave that chromosome inside the library sizes without a word.
+  The regions lying on them are still counted: to leave those out as
+  well, filter the regions when loading them. The contigs can be
+  collected from the BAM header, e.g.
+  `grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)`.
+  Default: `NULL`, every chromosome enters the library sizes.
 
 - discardRegions:
 
   `GRanges` with regions whose reads must be ignored, for instance a
-  blacklist. Default: `NULL`.
+  blacklist. A fragment is dropped when one of its reads starts inside
+  them. Default: `NULL`.
+
+- fullLibrarySize:
+
+  Logical value: `TRUE` reads every chromosome that is not excluded,
+  even those without any region, so that the library sizes cover the
+  whole library; `FALSE` reads only the chromosomes carrying regions,
+  which is much faster for a few regions but leaves library sizes that
+  must not be used for normalisation. Default: `TRUE`.
 
 - nThreads:
 
-  Number of threads used to process the files in parallel. Default: `1`.
+  Number of threads. The files are cut into pieces of at most 50 Mb,
+  shared among the threads, so even a single file benefits from several
+  of them. Default: `1`.
 
 - verbose:
 
@@ -135,15 +167,37 @@ Regions shared by several sets are counted only once and the values are
 then copied to every set they belong to, which keeps the running time
 proportional to the number of distinct regions.
 
-Paired-end and single-end samples can be mixed in the same call. Each
-layout is counted in a separate pass, paired-end libraries as fragments
-and single-end ones as reads extended to `fragmentLength`, so that both
-end up with one count per sequenced fragment. Forcing a paired-end file
-through the single-end path counts each mate on its own and nearly
-doubles its values, while the opposite mistake keeps only the proper
-pairs and returns a column of zeros, which is why the layout is read
-from the files by default. The resolved layout of each sample is stored
-in the `paired.end` column of the `colData`.
+A paired-end fragment is counted in every region it overlaps, including
+the regions it spans with both reads outside them. The fragment is
+rebuilt from the first mate of each proper pair, whose position and
+template length (TLEN) give its start and width, so the two reads never
+have to be matched in memory. The pairs therefore have to be flagged as
+proper by the aligner, and those longer than `maxFragmentLength` are
+dropped. The mapping quality of the second mate is read from the `MQ`
+tag, which `samtools fixmate` and Picard write; on files without it only
+the first mate is checked, and a message says so.
+
+Counts and library sizes are kept apart. The counts only need the
+chromosomes carrying regions, and every region is counted, wherever it
+lies. The library size of a sample is the number of fragments that went
+through the same filters as the counts, on every chromosome of the BAM
+files except those in `excludeChromosomes`. Leaving out the
+mitochondrial genome matters in ATAC-seq, where its share of the reads
+changes from sample to sample. With `fullLibrarySize = FALSE` only the
+chromosomes carrying regions are read, and the library sizes are
+partial: the counts do not change, but the library sizes are not usable
+for normalisation, and
+[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+warns when a method relies on them.
+
+Paired-end and single-end samples can be mixed in the same call,
+paired-end libraries being counted as fragments and single-end ones as
+reads extended to `fragmentLength`, so that both end up with one count
+per sequenced fragment. Forcing a paired-end file through the single-end
+path counts each mate on its own and nearly doubles its values, while
+the opposite mistake finds no pair and returns a column of zeros, which
+is why the layout is read from the files by default. The resolved layout
+of each sample is stored in the `paired.end` column of the `colData`.
 
 Regions and BAM files do not need to share the same chromosome naming
 style. When no chromosome is shared, the regions are converted to the
@@ -173,5 +227,15 @@ counts <- countReads(regions,
                      nThreads = 4)
 
 countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
+
+# Mitochondrial genome, chrY and contigs out of the library sizes
+bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+countsAtac <- countReads(regions,
+                         bamFiles = bamPaths,
+                         excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+                         nThreads = 4)
+
+# A few regions counted in seconds, with library sizes that are not meant for normalisation
+countsQuick <- countReads(fewRegions, bamFiles = bamPaths, fullLibrarySize = FALSE)
 } # }
 ```

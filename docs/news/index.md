@@ -13,7 +13,79 @@ First version.
   and
   [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
   restrict the regions, and record what they removed in the
-  `filtering.log` slot.
+  `filtering.log` slot. A list carrying an assembly different from the
+  one of the regions is refused rather than overlapped, since rat chr1
+  and human chr1 share a name and nothing else.
+- [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md)
+  and
+  [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md)
+  return the region lists shipped with the package as `GRanges`, ready
+  for
+  [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  or for the counting: the ENCODE blacklist version 2 for hg19, hg38,
+  mm10, dm3, dm6, ce10 and ce11, the exclusion set of T2T-CHM13v2.0 from
+  `excluderanges`, which ENCODE never covered, and the greenlists and
+  high signal regions of the CUT&RUN greenlist paper for hg38 and mm39,
+  one list per assay. The assembly is named in whatever way it is
+  usually named, `"GRCh38"` or `"T2T"` for instance, and `source` picks
+  between lists when a genome carries more than one. The files travel
+  with the package, so nothing is downloaded and no hub has to be
+  reachable, and
+  [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md)
+  prints what is there with the source, the version and the size of each
+  list.
+- [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+  builds a greylist from the input libraries, following GreyListChIP:
+  windows of 1 kb overlapping by half, a negative binomial fitted to the
+  counts of each input, and the windows above its 0.99 quantile merged
+  when closer than 16 kb. The fit uses every window rather than
+  bootstrap samples, so the result does not depend on the random seed.
+  [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+  removes the regions it covers, or trims them with
+  `trimRegions = TRUE`, records the step as a greylist and leaves the
+  stored blacklist alone.
+- [`loadSampleSheet()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md)
+  reads a table with one row per sample: the BAM or bigWig file, the
+  peaks called on it and the input it was sequenced against, the last
+  two optional and shareable between samples, plus any annotation
+  column. A sheet holding peaks and no signal file is accepted, since it
+  is enough to build a consensus, and says so. A DiffBind sample sheet
+  is read as it is. Relative paths are resolved against the folder of
+  the sheet, and missing or unindexed files are reported together before
+  anything is counted.
+- [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  passes `seqlevelsStyle` on to
+  [`consensusRegions::runConsensus()`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html),
+  which renames the chromosomes to UCSC on its own. Without it a
+  consensus asked for in Ensembl style came back as `chr19` while the
+  peaks it was built from stayed `19`, and every overlap between the two
+  was empty: `peak.samples` counted zero everywhere, and an exclusion
+  list was applied to nothing.
+  [`.peakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-peakOccupancy.md)
+  now refuses two sets that share no chromosome rather than returning
+  zeros.
+- [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  builds the regions from the peaks of the samples: a consensus within
+  each group through `consensusRegions`, pooled into a total consensus
+  that becomes the region set. The peaks overlapping `excludeRegions`, a
+  blacklist or the greylist for instance, are removed before the
+  consensus, so that an artefact cannot merge with a genuine peak.
+  Regions of the user can split the consensus into sets
+  (`regionMode = "split"`) or replace it (`"replace"`). Every region
+  carries `peak.<group>`, `peak.groups` and `peak.samples`, which follow
+  it into the counts and the results, and the consensus data are kept in
+  the new `consensus` slot of `RegionSetDE`, read with
+  [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md).
+- [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md)
+  draws the occupancy of the regions as an UpSet plot through
+  `ComplexHeatmap`, one set per group or one per sample, with the
+  colours of the other plots of the package, and writes the sizes above
+  the bars horizontally. The plot is built with
+  [`ComplexHeatmap::Heatmap()`](https://rdrr.io/pkg/ComplexHeatmap/man/Heatmap.html)
+  on a plain matrix rather than with `UpSet()`: on R-devel
+  [`aperm()`](https://rdrr.io/r/base/aperm.html) keeps the class of its
+  input, and `ComplexHeatmap` then recurses without end inside
+  `comb_name()` until the node stack overflows.
 - [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   and
   [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
@@ -23,6 +95,16 @@ First version.
   [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
   recombines the tiles of a region instead of treating each of them as a
   region of its own.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  and
+  [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
+  take a `sampleSheet`, which brings the files, the sample names and the
+  annotation in one go, and fall back on the sheet the consensus was
+  built from when no file is given at all. Regions built by
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  are therefore counted, per region or per tile, without naming the
+  libraries a second time, and the occupancy columns follow them into
+  the counts, the tables and the results.
 - [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
   takes `countLike` and does not round. Rounding coverage to integers
   does not make it a fragment count, and the negative binomial and voom
@@ -32,18 +114,83 @@ First version.
   [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
   takes the same argument, for external matrices holding coverage rather
   than counts.
+- [`sampleInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/sampleInfo.md)
+  returns the sample table of a counts object, a fit or a results object
+  as a data.frame, the annotation of the sheet with the library sizes,
+  the layouts and the scaling factors the package added to it; `columns`
+  keeps the ones named. It is
+  [`SummarizedExperiment::colData()`](https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html)
+  in a form `dplyr` takes directly.
+- [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+  summarises the libraries of a counts object in one table: the records
+  of every BAM file, read from its index, the fragments that went
+  through the filters of the counting, the fragments in the regions and
+  the fraction of reads in regions (FRiP). A region shared by several
+  sets counts once.
 - [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
   counts genome-wide bins alongside the regions, for the normalisation
   and for the null estimates.
+- [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  counts the libraries over the greenlist regions, with the read filters
+  of
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  and keeps the result beside the counts for
+  `normalizeCounts(method = "greenlist")`.
+- `excludeChromosomes` is read in either naming style, so `"chrM"`
+  reaches the mitochondrial genome of a BAM that calls it `MT`, in
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
+  and
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md).
+  A name that still matches nothing raises a warning rather than a
+  message only visible with `verbose = TRUE`: the chromosomes left out
+  decide the library sizes, and the silence was paid for by the
+  normalisation.
+- The conversion of a UCSC name to the Ensembl style mapped `chrM` to
+  `M` instead of `MT`, because the prefix was taken off the name before
+  the substitution could see it. It only showed on assemblies that
+  `GenomeInfoDb` does not carry, where the manual path is the one that
+  runs.
+- The counting finds a CSI index as well as a BAI, looking for
+  `.bam.bai`, `.bai`, `.bam.csi` and `.csi` in that order and handing
+  the path to Rsamtools, which finds only the first two on its own. A
+  BAI cannot address a contig longer than 512 Mb at all, so an assembly
+  with large chromosomes has no other option than `samtools index -c`.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  and
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
+  rebuild each paired-end fragment from the first mate of the pair and
+  its template length, and read the BAM files in pieces shared among the
+  threads. `excludeChromosomes` keeps chromosomes such as chrM out of
+  the library sizes and of the background bins, while
+  `fullLibrarySize = FALSE` reads only the chromosomes carrying regions,
+  which is faster but gives library sizes that are not meant for
+  normalisation.
 
 ### Normalisation and filtering
 
 - [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
   estimates scaling factors from the background bins, from the regions
-  themselves, or takes them from outside, for instance from a spike-in
-  or a greenlist. `backgroundHoldout` keeps a fraction of the bins out
-  of that estimation, so that the rows used to check the calibration sit
-  outside the whole preprocessing chain.
+  themselves, or takes them from outside, for instance from a spike-in.
+  `backgroundHoldout` keeps a fraction of the bins out of that
+  estimation, so that the rows used to check the calibration sit outside
+  the whole preprocessing chain.
+- `method = "greenlist"` is the spike-in free reference of CUT&RUN and
+  CUT&Tag. The regions whose background is reproducible between
+  experiments are counted by
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),
+  and the factors come out of them by median of ratios, which is the
+  size factor the greenlist paper computed with DESeq2, or through TMM
+  or the plain total. Counts collected outside the package go in through
+  `greenlistCounts`.
+- `method = "readsInRegions"` takes the depth of a sample to be what it
+  put in the regions, the reads in peaks of DiffBind. What it assumes is
+  that the fraction of the library sitting in the regions belongs to the
+  protocol rather than to the biology, which a redistributed mark breaks
+  in the direction that hides the effect, and the documentation says so
+  next to the method.
+  [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
+  puts both new methods beside the others.
 - [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md)
   and
   [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
@@ -81,12 +228,85 @@ First version.
   the log2 signal, for values that are not counts.
 - [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
   tests a contrast, or a named list of them, and combines tiled regions
-  back to one row per region through
-  [`csaw::combineTests`](https://rdrr.io/pkg/csaw/man/combineTests.html).
+  back to one row per region: `combineMethod = "simes"` through
+  [`csaw::combineTests()`](https://rdrr.io/pkg/csaw/man/combineTests.html),
+  which asks whether any part of the region changed, and `"holm-min"`
+  through
+  [`csaw::minimalTests()`](https://rdrr.io/pkg/csaw/man/minimalTests.html),
+  which asks several tiles to change together. Every tiled test used to
+  fail, because `method` was handed to
+  [`csaw::combineTests()`](https://rdrr.io/pkg/csaw/man/combineTests.html),
+  which has no such argument in any release; csaw has one function per
+  procedure instead. `"wilcoxon"` and `"stouffer"`, which had no csaw
+  function behind them, are no longer accepted.
+- The tiles counted as moving up and down in a combined region,
+  `n.tiles.up` and `n.tiles.down`, were zero in every row. The
+  `fc.threshold` of csaw is a false discovery rate within the region,
+  not a fold change, and it was given the fold change threshold of the
+  test, zero by default. It now takes 0.05, the value csaw uses.
+- The results table carries the average signal of every level of the
+  column the contrast compares, `average.signal.<level>`, next to the
+  one over all the samples. Each is the same quantity as
+  `average.signal` computed on that level alone, so the columns read
+  side by side:
+  [`edgeR::aveLogCPM`](https://rdrr.io/pkg/edgeR/man/aveLogCPM.html) for
+  edgeR, the mean of the log2 values of the linear model for voom, limma
+  and dream, `log2(baseMean + 1)` for DESeq2. `signalBy` averages over
+  the levels of another column instead, and `signalBy = FALSE` leaves
+  them out. Every contrast of a list gets the same columns, in the order
+  of the levels in the sample table, so the stacked table lines up.
+- The results table says which distribution `stat` follows under the
+  null and with how many degrees of freedom, in `stat.distribution`,
+  `df1` and `df2`: an F with the coefficients tested over the residual
+  plus prior degrees of freedom for the quasi-likelihood test of edgeR,
+  a chi-squared for its likelihood ratio, a t with the total degrees of
+  freedom for voom, limma and dream, a standard normal for DESeq2.
+  Handed back to the distribution, the three give the p-value of the
+  engine, which the tests check for every engine. The threshold tests
+  run with `lfcThreshold > 0` have no such distribution and say `NA`.
+- [`contrastInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
+  describes the contrasts of a results object, one row per contrast: the
+  engine, the column and the two groups compared, the number of samples
+  in each, the distribution of the statistic and its degrees of freedom.
+  With the `stat` column it is what a power or sample size analysis
+  needs, with power4peaks for instance. The group sizes are also kept in
+  the `n.samples` element of the `contrast.groups` slot.
+- [`pairwiseContrasts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/pairwiseContrasts.md)
+  writes out the contrasts between the levels of a column, every pair or
+  every level against a `reference`, as the named list
+  [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
+  takes. The order of the levels sets the sign of the fold changes, and
+  is read from the data rather than sorted.
+- [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
+  on several contrasts labels the stacked rows with the name each
+  contrast was given, the string
+  [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md),
+  [`plotVolcano()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotVolcano.md)
+  and the other functions take through `contrast`, instead of its
+  description, so that the table is filtered with the same string. The
+  description follows in `contrast.description`.
+  [`tileTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md)
+  does the same.
 - Contrasts can be given as a coefficient name, an expression over the
   design columns, a numeric vector, or as
   `c("column", "groupA", "groupB")`, which works whatever the reference
   level is.
+- [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md)
+  crosses the consensus a region came from with what the test said about
+  it: how many of the regions called in both groups changed, how many of
+  the group-specific ones did, and in which direction, or the same
+  counts against the number of samples that carried a peak. It reads the
+  `peak.*` columns, which travel from
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  through the counts and into the results on their own. What it is not
+  is a test of occupancy, since whether a peak is called depends on the
+  depth of the library and on the threshold of the caller, and the
+  documentation says so where the table is printed.
+- `RegionSetDE.results` records in `contrast.groups` the column and the
+  two levels a contrast compares, as `RegionSetDE.setResults` already
+  did. A contrast written as a coefficient name, an expression or a
+  vector is assigned to the design variable it belongs to, never to a
+  column naming each sample on its own, such as the sample names.
 
 ### Region sets
 
@@ -191,11 +411,33 @@ First version.
 
 ### Plots
 
+- [`plotResultsMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotResultsMA.md)
+  draws the fold change cut-off of the labels as two dashed horizontal
+  lines, the way
+  [`plotVolcano()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotVolcano.md)
+  draws it as two vertical ones, and names its x axis after what the
+  engine reports: log2 counts per million, or the log2 of the mean
+  normalised count for DESeq2.
 - Per region:
   [`plotVolcano()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotVolcano.md),
   [`plotResultsMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotResultsMA.md),
   [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md),
   [`plotTopHeatmap()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotTopHeatmap.md).
+- [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md)
+  draws the table of
+  [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md)
+  as stacked bars, one per occupancy class and split by direction, with
+  `proportion = TRUE` for the composition of each class when the shared
+  regions outnumber the specific ones.
+- [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
+  draws brackets between the groups of `groupBy` through `pairwiseTest`.
+  With `"model"` each bracket carries the fold change and the FDR of a
+  fitted contrast comparing two of those groups. `"t.test"` and
+  `"wilcox.test"` test the plotted values instead, paired through a
+  `colData` column with `pairBy`, and `pAdjustMethod` corrects across
+  the brackets of the plot. The caption names the test, the function
+  warns when it runs on raw counts, and a message says when the groups
+  are too small for the exact Wilcoxon test to reach 0.05.
 - Per set:
   [`plotSetEffect()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetEffect.md),
   [`plotSetDistribution()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetDistribution.md),
@@ -209,9 +451,47 @@ First version.
   [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md)
   and
   [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md),
-  both able to draw the same figure with and without the normalisation
-  so that a grouping caused by the scaling factors can be told apart
-  from one in the data.
+  both working on the normalised values by default, with
+  `useOffsets = FALSE` for the library sizes alone and `compareOffsets`
+  drawing the two side by side, so that a grouping caused by the scaling
+  factors can be told apart from one in the data. A correlation does not
+  move when a library is scaled by a single factor, and the
+  documentation says where the comparison is worth making.
+- [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md)
+  draws the heatmap through `ComplexHeatmap`: any column of the sample
+  table can be added to the annotation bars with `annotationColumns`,
+  with the colours of the package or the ones given through
+  `annotationColours`, the samples are clustered on one minus the
+  correlation, and the order of the first panel is reused by the others
+  so that a comparison shows the values changing rather than the samples
+  moving.
+- [`computeSamplePCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md)
+  and
+  [`computeSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md)
+  return the numbers behind the two figures, the coordinates, the
+  variance explained and the loadings on one side, the correlation
+  matrix and the sample table on the other, and both plotting functions
+  take that output back as it is.
+
+### Example data
+
+- `loadExampleData("peakSheet")` returns the sheet of the androgen
+  receptor example, nine `.narrowPeak` files with the alignments they
+  were called from: AR ChIP-seq in LNCaP cells treated with DMSO or with
+  R1881 for four or twenty-four hours, three replicates each plus an
+  input, from GSE284522 (Eickhoff *et al.*, *Communications Biology*
+  2025). The alignments are a window of chromosome 19 subsampled to 12 %
+  of the read pairs, with the sequences, the qualities, the tags and the
+  read names removed, which leaves the counts equal to the real ones
+  scaled by a known factor and every ratio between samples intact; the
+  peaks are the calls of the complete libraries filtered to the same
+  window. `inst/extdata/lncapAR/SOURCES.md` records the provenance and
+  `inst/scripts/make-example-bams.sh` the commands.
+- The synthetic peak files derived from the EURATRANS counts are gone,
+  together with `inst/scripts/make-example-peaks.R`. The androgen
+  receptor data covers the peak-based workflow with real calls, and a
+  ligand that recruits its receptor to chromatin gives the normalisation
+  section something to be wrong about.
 
 ### Export
 
@@ -223,3 +503,13 @@ First version.
 - [`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
   writes the table, a BED coloured by direction, and every parameter the
   analysis was run with.
+- [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
+  returns the values of a counts, fit or results object as a table, raw
+  or normalised, with the coordinates and the annotation of each row.
+  `format = "long"` repeats every row once per sample and attaches the
+  `colData`, the shape `ggplot2` expects, and `format = "matrix"`
+  returns a plain matrix. On a tiled object `level = "region"` combines
+  the tiles back into their region, summing the reads and following
+  `summaryFunction` for bigWig signal. A fragment crossing the border
+  between two tiles is counted in both, so summed tiles come out higher
+  than the same region counted whole, and a message says so.

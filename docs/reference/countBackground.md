@@ -16,7 +16,7 @@ countBackground(
   binSize = 10000,
   excludeRegions = TRUE,
   minCount = 1,
-  restrictChromosomes = NULL,
+  excludeChromosomes = NULL,
   pairedEnd = NULL,
   fragmentLength = NULL,
   maxFragmentLength = NULL,
@@ -56,10 +56,13 @@ countBackground(
   Numeric value with the minimum total count required to keep a bin.
   Default: `1`.
 
-- restrictChromosomes:
+- excludeChromosomes:
 
-  Character vector with the chromosomes to read from the BAM files.
-  Default: `NULL`, the value used at the counting step.
+  Character vector with the chromosomes left out of the bins and of
+  their library sizes, written in either naming style, as in
+  [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md).
+  `character(0)` excludes nothing. Default: `NULL`, the value used at
+  the counting step.
 
 - pairedEnd:
 
@@ -89,7 +92,8 @@ countBackground(
 
 - nThreads:
 
-  Number of threads used to process the files in parallel. Default: `1`.
+  Number of threads. The files are cut into pieces of at most 50 Mb,
+  shared among the threads. Default: `1`.
 
 - verbose:
 
@@ -99,7 +103,8 @@ countBackground(
 ## Value
 
 The input `RegionSetDE.counts` object with the bin counts stored as a
-`RangedSummarizedExperiment` in `metadata(counts)$background`.
+`RangedSummarizedExperiment` in `metadata(counts)$background`. Its
+`totals` column holds the library sizes of the bins.
 
 ## Details
 
@@ -111,6 +116,14 @@ parameters of
 matters here: bins counted with a different mapping quality or duplicate
 policy would return factors that do not apply to the region counts. The
 parameters are taken from the object unless they are given explicitly.
+
+The bins cover every chromosome of the BAM files except those in
+`excludeChromosomes`, starting at the first base and with the last bin
+of each chromosome stopping at its end. Each fragment is counted once,
+in the bin holding its centre, or the 5' end of the read for single-end
+data, so a fragment lying across two bins is not counted twice. The
+whole genome is read whatever the value of `fullLibrarySize` used for
+the regions.
 
 ## See also
 
@@ -130,14 +143,14 @@ backgroundBins <- S4Vectors::metadata(counts)$background
 backgroundBins
 #> class: RangedSummarizedExperiment 
 #> dim: 1579 4 
-#> metadata(6): spacing width ... param final.ext
+#> metadata(4): spacing width shift bin
 #> assays(1): counts
 #> rownames: NULL
 #> rowData names(0):
 #> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 #>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 #>   lv-H3K4me3-SHR-male-bio3-tech1
-#> colData names(4): bam.files totals ext rlen
+#> colData names(2): bam.files totals
 
 if (FALSE) { # \dontrun{
 # Recomputing them needs the BAM files the object was counted from

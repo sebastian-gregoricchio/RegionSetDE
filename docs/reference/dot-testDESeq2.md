@@ -24,8 +24,8 @@ Runs the Wald test on a `DESeq2` fit.
 
 ## Value
 
-A data.frame with the `log2FC`, `average.signal`, `stat` and `p.value`
-columns.
+A data.frame with the `log2FC`, `average.signal`, `stat`,
+`stat.distribution`, `df1`, `df2` and `p.value` columns.
 
 ## Author
 

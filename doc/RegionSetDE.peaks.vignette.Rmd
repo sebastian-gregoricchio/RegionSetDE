@@ -158,8 +158,7 @@ artefactRegions <- c(GenomicRanges::granges(blacklist), GenomicRanges::granges(g
 consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 excludeRegions = artefactRegions,
-                                seqlevelsStyle = "Ensembl",
-                                genomeAssembly = "hg38")
+                                seqlevelsStyle = "Ensembl")
 
 consensus
 ```
@@ -242,7 +241,7 @@ as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
 
 `plotPeakUpset()` shows how the groups overlap before any counting happens.
 
-```{r upset, fig.height = 4}
+```{r upset}
 plotPeakUpset(consensus)
 ```
 
@@ -258,13 +257,12 @@ Most of the sites are shared by the two R1881 time points, and nearly all of tho
 
 ```{r counting}
 counts <- countReads(consensus,
-                     sampleSheet = sampleSheet,
-                     nThreads = 2)
+                     sampleSheet = sampleSheet)
 
 counts
 ```
 
-Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of which can be changed through `removeDuplicates` and `minMapq`. `excludeChromosomes` leaves chromosomes out of the library sizes, the mitochondrial genome in ATAC-seq above all, and accepts the names in either style.
+Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of which can be changed through `removeDuplicates` and `minMapq`. `excludeChromosomes` leaves chromosomes out of the library sizes, the mitochondrial genome in ATAC-seq above all, and accepts the names in either style. The files are read one after the other here, the slices being small; on whole-genome BAMs `nThreads` spreads them over several workers.
 
 <br>
 
@@ -318,7 +316,7 @@ Three to four per cent of the fragments fall in the consensus without ligand, ag
 `countBackground()` counts the same libraries over wide bins covering everything, and stores the result inside the counts object. It is needed for background normalisation and for the diagnostics that compare one normalisation against another.
 
 ```{r background}
-counts <- countBackground(counts, binSize = 10000, nThreads = 2)
+counts <- countBackground(counts, binSize = 10000)
 ```
 
 <br>

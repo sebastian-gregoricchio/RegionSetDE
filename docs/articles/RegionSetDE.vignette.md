@@ -37,6 +37,13 @@ Along the way each object is opened up, so that you know what it holds
 and how to pull the parts out. The last section is a decision guide:
 which function answers which question.
 
+Regions that come from a peak caller rather than from an annotation are
+the subject of a [second
+vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.md),
+which covers the sample sheet, the consensus of the peak calls, and the
+normalisation trap that a dataset with a global change in binding walks
+into.
+
   
 
 ### Installation
@@ -162,6 +169,7 @@ with `@`:
 | *seqlevels.style* | naming style the sets were harmonised to |
 | *filtering.log* | one row per filtering step, with how many regions each set lost |
 | *parameters* | the arguments of every call that touched the object |
+| *consensus* | the consensus data when the regions come from peaks through [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), empty otherwise |
 
 The set names come back from
 [`regionSetNames()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionSetNames.md),
@@ -219,6 +227,61 @@ blacklist. Rat rn4 has none, so it was assembled from the UCSC assembly
 gap track together with bins carrying implausible coverage in the input
 libraries. It is fine for an example and should not be reused elsewhere.
 
+For the assemblies that do have one,
+[`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md)
+returns it from the files that travel with the package, without anything
+to download:
+
+``` r
+availableRegionLists(type = "blacklist")
+>         type genome  assay        source version n.regions covered.bp
+> 1  blacklist   ce10    any        ENCODE      v2       100    2205200
+> 2  blacklist   ce11    any        ENCODE      v2        97     728500
+> 3  blacklist    dm3    any        ENCODE      v2       271    2689400
+> 4  blacklist    dm6    any        ENCODE      v2       182    3740300
+> 5  blacklist   hg19    any        ENCODE      v2       834  274970000
+> 6  blacklist   hg38    any        ENCODE      v2       636  227162400
+> 7  blacklist   hg38 cutrun       deMello      v1       832   10133493
+> 8  blacklist   hg38 cuttag       deMello      v1      2020    9183890
+> 9  blacklist    hs1    any excluderanges      v1      3565  275454700
+> 10 blacklist   mm10    any        ENCODE      v2      3435  238977200
+> 11 blacklist   mm39 cutrun       deMello      v1      1452   22330024
+>                                            reference
+> 1   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 2   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 3   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 4   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 5   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 6   Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 7  de Mello et al. (2024) Brief Bioinform 25:bbad538
+> 8  de Mello et al. (2024) Brief Bioinform 25:bbad538
+> 9   Dozmorov et al. (2023) Bioinformatics 39:btad198
+> 10  Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+> 11 de Mello et al. (2024) Brief Bioinform 25:bbad538
+
+loadBlacklist("hg38", verbose = FALSE)
+> GRanges object with 636 ranges and 1 metadata column:
+>         seqnames            ranges strand |               name
+>            <Rle>         <IRanges>  <Rle> |        <character>
+>     [1]    chr10           1-45700      * |    Low Mappability
+>     [2]    chr10 38481301-38596500      * | High Signal Region
+>     [3]    chr10 38782601-38967900      * | High Signal Region
+>     [4]    chr10 39901301-41712900      * | High Signal Region
+>     [5]    chr10 41838901-42107300      * | High Signal Region
+>     ...      ...               ...    ... .                ...
+>   [632]     chrY   4343801-4345800      * | High Signal Region
+>   [633]     chrY 10246201-11041200      * | High Signal Region
+>   [634]     chrY 11072101-11335300      * | High Signal Region
+>   [635]     chrY 11486601-11757800      * | High Signal Region
+>   [636]     chrY 26637301-57227400      * | High Signal Region
+>   -------
+>   seqinfo: 24 sequences from hg38 genome; no seqlengths
+```
+
+Naming an assay returns the high signal regions of that protocol
+instead, `loadBlacklist("hg38", assay = "cutrun")`, which is a different
+claim about the genome and is worth keeping apart from the ENCODE list.
+
   
 
 ------------------------------------------------------------------------
@@ -243,6 +306,41 @@ counts <-
              minMapq = 10,
              nThreads = 4)
 ```
+
+Paired-end libraries are counted as fragments: a fragment counts in
+every region it overlaps, the stretch between its two reads included.
+The BAM files are cut into pieces of at most 50 Mb, shared among the
+threads, so even a single file runs faster with a larger `nThreads`.
+
+The counts and the library sizes are two separate things. Every region
+is counted, wherever it lies, and the counts only need the chromosomes
+carrying regions. The library sizes, instead, are meant to measure the
+whole library, so by default every chromosome is read, including those
+without any region. Some chromosomes are better left out of that total:
+the mitochondrial genome in ATAC-seq, whose share of the reads changes
+from sample to sample, chrY when the samples differ in sex, or the
+unplaced and alternative contigs. `excludeChromosomes` takes them out of
+the library sizes, and later out of the background bins, while the
+regions lying on them are still counted. The names follow the BAM files,
+and the contigs can be collected from their header:
+
+``` r
+
+bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+
+counts <-
+  countReads(regions,
+             bamFiles = bamPaths,
+             excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+             nThreads = 4)
+```
+
+When only a few regions are needed, `fullLibrarySize = FALSE` limits the
+reading to the chromosomes carrying them. The counts stay the same and
+come back in seconds, but the library sizes cover those chromosomes
+only, and
+[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+warns if the chosen method depends on them.
 
 [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
 is the equivalent for coverage tracks, and
@@ -305,12 +403,12 @@ set:
 
 ``` r
 head(SummarizedExperiment::rowData(counts), 3)
-> DataFrame with 3 rows and 3 columns
->                                 region.set    region.id   tile.id
->                                <character>  <character> <integer>
-> promoterNonCpG|region_00002 promoterNonCpG region_00002        NA
-> promoterNonCpG|region_00003 promoterNonCpG region_00003        NA
-> promoterNonCpG|region_00005 promoterNonCpG region_00005        NA
+> DataFrame with 3 rows and 4 columns
+>                                 region.set    region.id   tile.id     regionId
+>                                <character>  <character> <integer>  <character>
+> promoterNonCpG|region_00002 promoterNonCpG region_00002        NA region_00002
+> promoterNonCpG|region_00003 promoterNonCpG region_00003        NA region_00003
+> promoterNonCpG|region_00005 promoterNonCpG region_00005        NA region_00005
 
 table(SummarizedExperiment::rowData(counts)$region.set)
 > 
@@ -335,10 +433,10 @@ counts@genome.assembly
 
 [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
 counts the same libraries over wide bins tiling the genome, by default
-10 kb, excluding the regions under analysis. Those bins are the closest
-thing available to a set of rows known to carry no biological effect,
-and three separate steps use them: normalisation, filtering, and the
-calibration checks.
+10 kb, excluding the regions under analysis and the chromosomes left out
+with `excludeChromosomes`. Those bins are the closest thing available to
+a set of rows known to carry no biological effect, and three separate
+steps use them: normalisation, filtering, and the calibration checks.
 
 ``` r
 
@@ -357,14 +455,14 @@ dim(backgroundBins)
 head(backgroundBins, 3)
 > class: RangedSummarizedExperiment 
 > dim: 3 4 
-> metadata(6): spacing width ... param final.ext
+> metadata(4): spacing width shift bin
 > assays(1): counts
 > rownames: NULL
 > rowData names(0):
 > colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 >   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 >   lv-H3K4me3-SHR-male-bio3-tech1
-> colData names(4): bam.files totals ext rlen
+> colData names(2): bam.files totals
 ```
 
   
@@ -377,7 +475,8 @@ The scaling factors decide what a fold change means, and in chromatin
 data they are rarely a detail.
 [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
 offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`,
-`"background"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
+`"readsInRegions"`, `"background"`, `"greenlist"`, `"loess"`,
+`"spikeIn"`, `"manual"` and `"none"`.
 
 The distinction that matters is what each method assumes:
 
@@ -389,9 +488,25 @@ The distinction that matters is what each method assumes:
 - **`"background"`** estimates them from the background bins instead.
   The assumption moves to the bins, which is where you want it: the
   regions under test are free to change as much as they like.
+- **`"librarySize"` and `"readsInRegions"`** scale by a depth, the whole
+  library for the first and the reads collected in the regions for the
+  second, which is what DiffBind calls reads in peaks. The second puts
+  every sample on the same total enrichment, so it assumes the fraction
+  of the library sitting in the regions comes from the protocol and not
+  from the treatment.
+- **`"greenlist"`** is the CUT&RUN and CUT&Tag answer to the same
+  problem without a spike-in. The greenlist is a set of regions whose
+  background is reproducible between experiments, so the reads landing
+  there follow the amount of material sequenced rather than the factor
+  being mapped.
+  [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md)
+  returns the published list for hg38 or mm39,
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  counts the libraries over it, and the factors come out by median of
+  ratios.
 - **`"spikeIn"` and `"manual"`** take the factors from outside
   altogether, which is the right answer whenever an exogenous reference
-  or a greenlist estimate exists.
+  exists.
 
 ``` r
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
@@ -429,6 +544,62 @@ A second assay is added and the original counts are left untouched:
 ``` r
 SummarizedExperiment::assayNames(counts)
 > [1] "counts"      "norm.counts"
+```
+
+[`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
+returns either of the two as a table, with the coordinates and the
+annotation of each row next to the values. The wide format has one
+column per sample. The long format repeats every row once per sample and
+attaches the `colData`, which is the shape `ggplot2` expects, and
+`format = "matrix"` hands a plain matrix to `ComplexHeatmap` or to any
+other tool.
+
+``` r
+head(countTable(counts, normalized = TRUE), 3)
+>                                 region.set    region.id seqnames start   end
+> promoterNonCpG|region_00002 promoterNonCpG region_00002    chr12  4041  5040
+> promoterNonCpG|region_00003 promoterNonCpG region_00003    chr12  6212  7211
+> promoterNonCpG|region_00005 promoterNonCpG region_00005    chr12 10685 11684
+>                             width     regionId lv-H3K4me3-BN-female-bio1-tech1
+> promoterNonCpG|region_00002  1000 region_00002                        0.000000
+> promoterNonCpG|region_00003  1000 region_00003                        0.000000
+> promoterNonCpG|region_00005  1000 region_00005                        1.840561
+>                             lv-H3K4me3-BN-male-bio2-tech1
+> promoterNonCpG|region_00002                             0
+> promoterNonCpG|region_00003                             0
+> promoterNonCpG|region_00005                             0
+>                             lv-H3K4me3-SHR-male-bio2-tech1
+> promoterNonCpG|region_00002                              0
+> promoterNonCpG|region_00003                              0
+> promoterNonCpG|region_00005                              0
+>                             lv-H3K4me3-SHR-male-bio3-tech1
+> promoterNonCpG|region_00002                      0.0000000
+> promoterNonCpG|region_00003                      0.0000000
+> promoterNonCpG|region_00005                      0.4276009
+
+longTable <- countTable(counts, normalized = TRUE, format = "long")
+
+head(longTable, 3)
+>       region.set    region.id seqnames start   end width     regionId
+> 1 promoterNonCpG region_00002    chr12  4041  5040  1000 region_00002
+> 2 promoterNonCpG region_00003    chr12  6212  7211  1000 region_00003
+> 3 promoterNonCpG region_00005    chr12 10685 11684  1000 region_00005
+>                            sample norm.counts
+> 1 lv-H3K4me3-BN-female-bio1-tech1    0.000000
+> 2 lv-H3K4me3-BN-female-bio1-tech1    0.000000
+> 3 lv-H3K4me3-BN-female-bio1-tech1    1.840561
+>                                                                                                                     bam.file
+> 1 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+> 2 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+> 3 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam
+>   condition    sex biologicalReplicate paired.end library.size norm.factor
+> 1        BN female                bio1      FALSE       386378   0.7959318
+> 2        BN female                bio1      FALSE       386378   0.7959318
+> 3        BN female                bio1      FALSE       386378   0.7959318
+>   scaling.factor
+> 1      0.5433126
+> 2      0.5433126
+> 3      0.5433126
 ```
 
 Before committing, it is worth seeing how much the choice actually moves
@@ -520,10 +691,29 @@ plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 
 ``` r
 
-plotSampleCorrelation(counts, groupBy = "condition")
+plotSampleCorrelation(counts, groupBy = "condition",
+                      annotationColumns = c("condition", "sex"))
 ```
 
 ![](RegionSetDE.vignette_files/figure-html/plot_correlation-1.png)
+
+The heatmap is drawn with `ComplexHeatmap`, so any column of the sample
+table can be added to the annotation bars, and the samples are clustered
+on one minus the correlation. Both figures work on the normalised
+values, `useOffsets = FALSE` asking for the library sizes alone, and
+`plotRegionPCA(compareOffsets = TRUE)` puts the two side by side, which
+is how a grouping produced by the scaling factors is told apart from one
+in the data. A correlation does not move when a library is scaled by a
+single factor, so there the comparison only says something once the
+normalisation holds one offset per region, as `method = "loess"` does.
+
+The numbers behind the two figures come from
+[`computeSamplePCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md)
+and
+[`computeSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md),
+which return the coordinates, the variance explained, the loadings and
+the correlation matrix, and can be handed back to the plotting functions
+as they are.
 
 If the samples do not separate by condition here, that is not
 necessarily fatal, since a real effect can be confined to a small class
@@ -589,11 +779,12 @@ Two accessors avoid reaching into the slots:
 fitCounts(fit)
 > class: RegionSetDE.counts 
 > dim: 1895 4 
-> metadata(4): signal.type background background.holdout normalization
+> metadata(5): signal.type count.like background background.holdout
+>   normalization
 > assays(2): counts norm.counts
 > rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 >   ... promoterCpG|region_03797 promoterCpG|region_03798
-> rowData names(3): region.set region.id tile.id
+> rowData names(4): region.set region.id tile.id regionId
 > colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 >   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 >   lv-H3K4me3-SHR-male-bio3-tech1
@@ -686,10 +877,14 @@ head(resultTable, 3)
 > 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744875
 > 2 promoterNonCpG region_00017      NA    chr12 39449 40448  1000 -1.6911510
 > 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328365
->   average.signal       stat   p.value       FDR diff.status
-> 1       3.098695 0.16629041 0.6880013 0.9200864        null
-> 2       3.141973 2.33758830 0.1429932 0.7997195        null
-> 3       3.273341 0.01002874 0.9213104 0.9807286        null
+>   average.signal average.signal.BN average.signal.SHR       stat
+> 1       3.098695          3.154609           3.071096 0.16629041
+> 2       3.141973          3.512708           2.774385 2.33758830
+> 3       3.273341          3.149796           3.390540 0.01002874
+>   stat.distribution df1      df2   p.value       FDR diff.status     regionId
+> 1                 f   1 18.94543 0.6880013 0.9200864        null region_00012
+> 2                 f   1 18.73556 0.1429932 0.7997195        null region_00017
+> 3                 f   1 18.45274 0.9213104 0.9807286        null region_00019
 ```
 
 | Column | Meaning |
@@ -717,7 +912,7 @@ contrastName(results)
 > [1] "condition: SHR vs BN"
 
 head(resultRanges(results), 2)
-> GRanges object with 2 ranges and 9 metadata columns:
+> GRanges object with 2 ranges and 15 metadata columns:
 >                               seqnames      ranges strand |     region.set
 >                                  <Rle>   <IRanges>  <Rle> |    <character>
 >   promoterNonCpG|region_00012    chr12 26988-27987      * | promoterNonCpG
@@ -726,21 +921,30 @@ head(resultRanges(results), 2)
 >                                <character> <integer> <numeric>      <numeric>
 >   promoterNonCpG|region_00012 region_00012      <NA> -0.474488        3.09870
 >   promoterNonCpG|region_00017 region_00017      <NA> -1.691151        3.14197
->                                    stat   p.value       FDR diff.status
->                               <numeric> <numeric> <numeric>    <factor>
->   promoterNonCpG|region_00012   0.16629  0.688001  0.920086        null
->   promoterNonCpG|region_00017   2.33759  0.142993  0.799720        null
+>                               average.signal.BN average.signal.SHR      stat
+>                                       <numeric>          <numeric> <numeric>
+>   promoterNonCpG|region_00012           3.15461            3.07110   0.16629
+>   promoterNonCpG|region_00017           3.51271            2.77439   2.33759
+>                               stat.distribution       df1       df2   p.value
+>                                     <character> <numeric> <numeric> <numeric>
+>   promoterNonCpG|region_00012                 f         1   18.9454  0.688001
+>   promoterNonCpG|region_00017                 f         1   18.7356  0.142993
+>                                     FDR diff.status     regionId
+>                               <numeric>    <factor>  <character>
+>   promoterNonCpG|region_00012  0.920086        null region_00012
+>   promoterNonCpG|region_00017  0.799720        null region_00017
 >   -------
 >   seqinfo: 1 sequence from rn4 genome
 
 resultCounts(results)
 > class: RegionSetDE.counts 
 > dim: 1895 4 
-> metadata(4): signal.type background background.holdout normalization
+> metadata(5): signal.type count.like background background.holdout
+>   normalization
 > assays(2): counts norm.counts
 > rownames(1895): promoterNonCpG|region_00012 promoterNonCpG|region_00017
 >   ... promoterCpG|region_03797 promoterCpG|region_03798
-> rowData names(3): region.set region.id tile.id
+> rowData names(4): region.set region.id tile.id regionId
 > colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 >   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 >   lv-H3K4me3-SHR-male-bio3-tech1
@@ -760,12 +964,24 @@ topRegions(results, n = 5, FDR = 1)
 > 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000
 > 4       geneBody region_02435      NA    chr12 29881730 29882729  1000
 > 5       geneBody region_02220      NA    chr12 27481625 27482624  1000
->      log2FC average.signal     stat      p.value          FDR diff.status
-> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down
-> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down
-> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
-> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
-> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+>      log2FC average.signal average.signal.BN average.signal.SHR     stat
+> 1 -5.203835       5.159079          6.078432           2.651961 84.13617
+> 2 -2.887100       5.237329          5.930447           4.057310 43.04577
+> 3 -3.222630       4.816977          5.557234           3.451580 34.29977
+> 4 -2.778908       5.406565          6.079193           4.289880 36.15528
+> 5 -2.281658       5.277404          5.837722           4.471639 29.11255
+>   stat.distribution df1      df2      p.value          FDR diff.status
+> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down
+> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down
+> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down
+> 4                 f   1 17.03010 1.387480e-05 6.573186e-03        down
+> 5                 f   1 18.93934 3.347081e-05 1.268544e-02        down
+>       regionId
+> 1 region_02996
+> 2 region_03590
+> 3 region_00212
+> 4 region_02435
+> 5 region_02220
 ```
 
 ``` r
@@ -774,10 +990,18 @@ topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
 > 1 promoterCpG region_03747      NA    chr12 46273309 46274308  1000  2.148719
 > 2 promoterCpG region_01273      NA    chr12 15719347 15720346  1000 -1.771521
 > 3 promoterCpG region_00824      NA    chr12 10369814 10370813  1000  1.635046
->   average.signal      stat      p.value        FDR diff.status
-> 1       4.113765  4.520231 0.0472100147 0.66268873        null
-> 2       5.933614 21.009851 0.0002058661 0.03901163        down
-> 3       4.658080  7.080136 0.0163032446 0.45433307        null
+>   average.signal average.signal.BN average.signal.SHR      stat
+> 1       4.113765          2.928469           4.669146  4.520231
+> 2       5.933614          6.369677           5.354945 21.009851
+> 3       4.658080          3.519312           5.233976  7.080136
+>   stat.distribution df1      df2      p.value        FDR diff.status
+> 1                 f   1 18.48302 0.0472100147 0.66268873        null
+> 2                 f   1 18.87993 0.0002058661 0.03901163        down
+> 3                 f   1 17.28329 0.0163032446 0.45433307        null
+>       regionId
+> 1 region_03747
+> 2 region_01273
+> 3 region_00824
 ```
 
   
@@ -802,6 +1026,14 @@ head(tileTable(tiledResults))
 On an object counted per region there are no tiles and
 [`tileTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md)
 says so rather than returning an empty table.
+
+The counts follow the same logic.
+`countTable(tiledResults, level = "tile")` returns them per tile, and
+`level = "region"` sums the tiles back into their region. That sum is
+higher than a count of the same region taken whole, since a fragment
+lying across two tiles is counted in both. It still compares between
+samples, but the number of fragments in a region only comes from
+counting it without tiles.
 
   
 
@@ -833,6 +1065,34 @@ plotRegion(results, region = topRegion, groupBy = "condition")
 ```
 
 ![](RegionSetDE.vignette_files/figure-html/plot_region-1.png)
+
+The same figure can carry a bracket between the groups. With
+`pairwiseTest = "model"` the bracket holds the fold change and the FDR
+the fit gave to this region, the same numbers
+[`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
+reports for it:
+
+``` r
+
+plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "model")
+```
+
+![](RegionSetDE.vignette_files/figure-html/plot_region_model-1.png)
+
+`pairwiseTest = "t.test"` and `"wilcox.test"` test the plotted values
+instead, paired through a `colData` column when `pairBy` names one.
+These tests see neither the offsets, nor the dispersion, nor the
+thousands of other regions, so their p-value and the FDR above rarely
+agree, and with two samples per group the Wilcoxon test cannot go below
+0.33. They are useful on counts that were never fitted, or between
+groups that no contrast compared. The caption says which test was run.
+
+``` r
+
+plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t.test")
+```
+
+![](RegionSetDE.vignette_files/figure-html/plot_region_ttest-1.png)
 
 ``` r
 
@@ -1751,6 +2011,7 @@ be reproduced and one that can only be repeated.
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md) | dispersion from the background, then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) | overlap of the two distributions |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) | the tile-level profile |
+| What are the counts behind a region, raw or normalised? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) | one column per sample, or `format = "long"` with the `colData` attached |
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md), then `fitRegions(dispersion = )` | see [Working without replicates](#no_replicates) |
 
   
@@ -1799,7 +2060,7 @@ sessionInfo()
 > other attached packages:
 >  [1] ggplot2_4.0.3        dplyr_1.2.1          RegionSetDE_0.99.0  
 >  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
->  [7] S4Vectors_0.50.2     BiocGenerics_0.58.1  generics_0.1.4      
+>  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
 > [10] BiocStyle_2.40.0    
 > 
 > loaded via a namespace (and not attached):
@@ -1815,7 +2076,7 @@ sessionInfo()
 >  [19] XVector_0.52.0              labeling_0.4.3             
 >  [21] Rsamtools_2.28.0            rmarkdown_2.32             
 >  [23] markdown_2.0                UCSC.utils_1.8.0           
->  [25] ragg_1.5.2                  xfun_0.60                  
+>  [25] ragg_1.5.2                  xfun_0.61                  
 >  [27] cachem_1.1.0                cigarillo_1.2.1            
 >  [29] litedown_0.11               GenomeInfoDb_1.48.0        
 >  [31] jsonlite_2.0.0              DelayedArray_0.38.2        

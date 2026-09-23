@@ -11,7 +11,8 @@ row of the resulting object.
 ``` r
 countBigwig(
   regionSet,
-  bigwigFiles,
+  bigwigFiles = NULL,
+  sampleSheet = NULL,
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
@@ -37,7 +38,17 @@ countBigwig(
 
 - bigwigFiles:
 
-  Character vector with the paths of the bigWig files.
+  Character vector with the paths of the bigWig files. Default: `NULL`,
+  taken from `sampleSheet`, or from the sample sheet a consensus was
+  built from by
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+
+- sampleSheet:
+
+  Data.frame returned by
+  [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
+  or the path to a sample sheet, providing the bigWig files, the sample
+  names and the annotation in one go. Default: `NULL`.
 
 - sampleNames:
 

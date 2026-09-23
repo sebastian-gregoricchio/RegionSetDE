@@ -68,11 +68,11 @@ names(byStrain)
 byStrain[[1]]
 #> class: RegionSetDE.counts 
 #> dim: 3224 2 
-#> metadata(2): signal.type background
+#> metadata(3): signal.type count.like background
 #> assays(1): counts
 #> rownames(3224): promoterNonCpG|region_00002 promoterNonCpG|region_00003
 #>   ... promoterCpG|region_03797 promoterCpG|region_03798
-#> rowData names(3): region.set region.id tile.id
+#> rowData names(4): region.set region.id tile.id regionId
 #> colnames(2): lv-H3K4me3-BN-female-bio1-tech1
 #>   lv-H3K4me3-BN-male-bio2-tech1
 #> colData names(7): sample bam.file ... paired.end library.size

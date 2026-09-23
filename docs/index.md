@@ -30,7 +30,7 @@ visible instead of being absorbed into a new set of peak boundaries.
 
   
 
-### Main features
+\### Main features
 
 - **No peak calling.** Regions are supplied as BED, narrowPeak,
   broadPeak, `GRanges` or data.frames, and are the same in every
@@ -50,8 +50,8 @@ visible instead of being absorbed into a new set of peak boundaries.
   promoters is not mistaken for a finding, and 30,000 regions are never
   mistaken for replicates.
 - **Normalisation you can defend.** Scaling factors from background
-  bins, from the regions themselves, or supplied from a spike-in or
-  greenlist, with
+  bins, from the regions themselves, from the CUT&RUN greenlist shipped
+  with the package, or supplied from a spike-in, with
   [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
   to show how far the choice moves the samples before anything is fitted
   on it.
@@ -83,9 +83,7 @@ visible instead of being absorbed into a new set of peak boundaries.
 
   
 
-### Citation
-
-If you use this package, please cite:
+\### Citation If you use this package, please cite:
 
 *RegionSetDE*: differential analysis of chromatin signal over
 user-defined genomic region sets.  
@@ -94,33 +92,25 @@ Gregoricchio S.
 
   
 
-## Installation
+\## Installation
 
-### Bioconductor
+\### Bioconductor \`\`\`r if (!requireNamespace(“BiocManager”, quietly =
+TRUE)) { install.packages(“BiocManager”) }
 
-``` r
+BiocManager::install(“RegionSetDE”)
 
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
-}
 
-BiocManager::install("RegionSetDE")
-```
+    ### Developmental version
+    ```r
+    ## Install remotes from CRAN (if not already installed)
+    if (!require("remotes", quietly = TRUE)) {
+      install.packages("remotes")
+    }
 
-### Developmental version
-
-``` r
-
-## Install remotes from CRAN (if not already installed)
-if (!require("remotes", quietly = TRUE)) {
-  install.packages("remotes")
-}
-
-# Install the RegionSetDE package
-remotes::install_github("sebastian-gregoricchio/RegionSetDE",
-                        build_manual = TRUE,
-                        build_vignettes = TRUE)
-```
+    # Install the RegionSetDE package
+    remotes::install_github("sebastian-gregoricchio/RegionSetDE",
+                            build_manual = TRUE,
+                            build_vignettes = TRUE)
 
 ### Possible installation issues
 
@@ -132,7 +122,7 @@ is able to resolve them:
 ``` r
 
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
+install.packages("BiocManager")
 }
 
 setRepositories(ind = 1:8)
@@ -155,7 +145,7 @@ BiocManager::install("DESeq2")
 
   
 
-## Quick start
+\## Quick start
 
 ``` r
 
@@ -163,18 +153,18 @@ library(RegionSetDE)
 
 # Region sets: a named list of BED files, GRanges or data.frames
 regions <- loadRegions(list(promoters = "annotation/promoters.bed",
-                            enhancers = "annotation/enhancers.bed",
-                            CTCF      = "peaks/CTCF.narrowPeak"),
-                       genomeAssembly = "hg38")
+                          enhancers = "annotation/enhancers.bed",
+                          CTCF      = "peaks/CTCF.narrowPeak"),
+                     genomeAssembly = "hg38")
 
-regions <- applyBlacklist(regions, blacklist = encodeBlacklist)
+regions <- applyBlacklist(regions, blacklist = loadBlacklist("hg38"))
 
 # Counting, plus the background bins used for the normalisation and the null
 counts <- countReads(regions,
-                     bamFiles = bamPaths,
-                     sampleMetadata = sampleTable,
-                     pairedEnd = TRUE,
-                     nThreads = 4)
+                   bamFiles = bamPaths,
+                   sampleMetadata = sampleTable,
+                   pairedEnd = TRUE,
+                   nThreads = 4)
 
 counts <- countBackground(counts, binSize = 10000, nThreads = 4)
 
@@ -190,7 +180,7 @@ setResults <- testRegionSets(fit,  contrast = c("condition", "treated", "control
 
 # Does one class respond differently from another, which is the redistribution question
 setContrast <- testSetContrast(fit, contrast = c("condition", "treated", "control"),
-                               set1 = "promoters", set2 = "enhancers")
+                             set1 = "promoters", set2 = "enhancers")
 
 topRegions(results, n = 20)
 resultsTable(setResults)
@@ -210,7 +200,7 @@ plotVolcano(results)
 
   
 
-## Which analysis for which question
+\## Which analysis for which question
 
 | Question | Function |
 |:---|:---|
@@ -224,11 +214,18 @@ plotVolcano(results)
 | Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md), then `fitRegions(dispersion = )` |
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 | Where inside the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) |
+| What are the raw and normalised counts of each region? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) |
+| Do the replicates agree, and do the conditions separate? | [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md), [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md) |
+| Do the inputs flag artefact regions? | [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md), then [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) |
+| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeCounts(method = "greenlist")` |
+| Where is the blacklist for my assembly, T2T included? | [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md), then [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md) |
+| Which peaks are shared between the groups? | [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), then [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md) |
+| Did the condition move the shared peaks, or gain and lose whole sites? | [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md), then [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md) |
 | More than what, exactly? | `makeSetUniverse(universeSets = )`, then [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) |
 
   
 
-## Three things the output does not say
+\## Three things the output does not say
 
 Worth reading once before the first result is interpreted.
 
@@ -263,35 +260,35 @@ or loci validated as invariant.
 
   
 
-## Documentation
-
-With the package there are available:
+\## Documentation With the package there are available:
 
 - [web-manual](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/index.html):
   technical manual of each function;
 - [overview
   vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html):
   presents the whole workflow, what each object contains, how to extract
-  its parts, and how to read the results.
+  its parts, and how to read the results;
+- [peaks
+  vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html):
+  starts from peak calls instead, with the sample sheet, the consensus,
+  the occupancy of the regions, and what a global change in binding does
+  to the usual normalisation defaults.
 
 Note that the vignette can be inspected on R as well by typing
 `browseVignettes("RegionSetDE")`.
 
   
 
-## Package history and releases
-
-A list of all releases and the respective description of the changes
-applied can be found
+\## Package history and releases A list of all releases and the
+respective description of the changes applied can be found
 [here](https://sebastian-gregoricchio.github.io/RegionSetDE/news/index.html).
 
   
 
 ------------------------------------------------------------------------
 
-## Contact
-
-For any suggestion, bug fixing or commentary please report it in the
+\## Contact For any suggestion, bug fixing or commentary please report
+it in the
 [issues](https://github.com/sebastian-gregoricchio/RegionSetDE/issues)/[request](https://github.com/sebastian-gregoricchio/RegionSetDE/pulls)
 tab of this repository.
 
@@ -301,8 +298,5 @@ This package is under a GNU General Public License (version 3).
 
   
 
-#### Contributors
-
+\#### Contributors
 ![contributors](https://badges.pufler.dev/contributors/sebastian-gregoricchio/RegionSetDE?size=50&padding=5&bots=true)
-
-contributors

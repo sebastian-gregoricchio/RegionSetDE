@@ -24,25 +24,41 @@
   : RegionSetDE.universe class
 - [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
   : applyBlacklist
+- [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+  : applyGreylist
 - [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
   : applyWhitelist
 - [`asDESeqDataSet()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/asDESeqDataSet.md)
   : asDESeqDataSet
 - [`asDGEList()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/asDGEList.md)
   : asDGEList
+- [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md)
+  : availableRegionLists
 - [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   : checkNullCalibration
 - [`coerce-RegionSetDE.counts-DGEList`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
   [`coerce,RegionSetDE.counts,DGEList-method`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
   : Coerce a counts object to a DGEList
+- [`computeSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md)
+  : computeSampleCorrelation
+- [`computeSamplePCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md)
+  : computeSamplePCA
+- [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md)
+  : consensusData
+- [`contrastInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
+  : contrastInfo
 - [`contrastName()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastName.md)
   : contrastName
 - [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
   : countBackground
 - [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
   : countBigwig
+- [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  : countGreenlist
 - [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   : countReads
+- [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
+  : countTable
 - [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
   : estimateNullDispersion
 - [`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
@@ -55,20 +71,40 @@
   : fitObject
 - [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
   : fitRegions
+- [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+  : libInfo
+- [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md)
+  : loadBlacklist
+- [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  : loadConsensusPeaks
 - [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
   : loadCounts
 - [`loadExampleData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadExampleData.md)
   : loadExampleData
+- [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md)
+  : loadGreenlist
 - [`loadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
   : loadRegions
+- [`loadSampleSheet()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md)
+  : loadSampleSheet
+- [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+  : makeGreylist
 - [`makeSetUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeSetUniverse.md)
   : makeSetUniverse
 - [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
   : normalizeCounts
+- [`pairwiseContrasts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/pairwiseContrasts.md)
+  : pairwiseContrasts
+- [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md)
+  : peakOccupancyTable
 - [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
   : plotNormComparison
 - [`plotNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNullCalibration.md)
   : plotNullCalibration
+- [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md)
+  : plotPeakOccupancy
+- [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md)
+  : plotPeakUpset
 - [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
   : plotRegion
 - [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md)
@@ -110,6 +146,8 @@
   : Accessors of RegionSetDE.resultsList
 - [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
   : resultsTable
+- [`sampleInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/sampleInfo.md)
+  : sampleInfo
 - [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md)
   : scoreRegionSets
 - [`scoreTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.md)

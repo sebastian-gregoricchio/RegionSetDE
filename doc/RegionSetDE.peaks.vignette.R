@@ -41,8 +41,7 @@ artefactRegions <- c(GenomicRanges::granges(blacklist), GenomicRanges::granges(g
 consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 excludeRegions = artefactRegions,
-                                seqlevelsStyle = "Ensembl",
-                                genomeAssembly = "hg38")
+                                seqlevelsStyle = "Ensembl")
 
 consensus
 
@@ -73,13 +72,12 @@ as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
   dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 
-## ----upset, fig.height = 4----------------------------------------------------
+## ----upset--------------------------------------------------------------------
 plotPeakUpset(consensus)
 
 ## ----counting-----------------------------------------------------------------
 counts <- countReads(consensus,
-                     sampleSheet = sampleSheet,
-                     nThreads = 2)
+                     sampleSheet = sampleSheet)
 
 counts
 
@@ -99,7 +97,7 @@ countTable(counts, format = "long") %>%
 libInfo(counts, annotationColumns = "condition")
 
 ## ----background---------------------------------------------------------------
-counts <- countBackground(counts, binSize = 10000, nThreads = 2)
+counts <- countBackground(counts, binSize = 10000)
 
 ## ----norm_comparison, fig.height = 5------------------------------------------
 plotNormComparison(counts,

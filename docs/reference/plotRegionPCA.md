@@ -34,7 +34,10 @@ plotRegionPCA(
 - object:
 
   `RegionSetDE.counts`, `RegionSetDE.fit` or any result object of the
-  package.
+  package, or the list returned by
+  [`computeSamplePCA`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md),
+  in which case `set`, `useOffsets`, `compareOffsets`, `facetBySet` and
+  `topRegions` are those of the computation.
 
 - set:
 
@@ -64,7 +67,8 @@ plotRegionPCA(
 - useOffsets:
 
   Logical value to indicate whether the normalisation stored in the
-  object must be applied. Default: `TRUE`.
+  object must be applied, `FALSE` scaling the samples by their library
+  sizes alone. Default: `TRUE`.
 
 - compareOffsets:
 
@@ -145,6 +149,7 @@ first, or use `facetBySet` when the sets themselves are the question.
 
 ## See also
 
+[`computeSamplePCA`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md),
 [`plotSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md),
 [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
 [`splitSamples`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitSamples.md)

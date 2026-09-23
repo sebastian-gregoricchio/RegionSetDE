@@ -11,7 +11,7 @@ Combines the tile level statistics into one row per region, through
   tileRanges,
   extraColumns = character(0),
   method = "simes",
-  lfcThreshold = 0,
+  directionFDR = 0.05,
   adjustMethod = "BH",
   verbose = TRUE
 )
@@ -37,9 +37,12 @@ Combines the tile level statistics into one row per region, through
 
   String with the combination method.
 
-- lfcThreshold:
+- directionFDR:
 
-  Numeric value used to count the tiles moving in each direction.
+  Numeric value with the false discovery rate, within each region, below
+  which a tile counts as moving up or down in `n.tiles.up` and
+  `n.tiles.down`. It is the `fc.threshold` of csaw, which despite its
+  name is not a fold change. Default: `0.05`.
 
 - adjustMethod:
 

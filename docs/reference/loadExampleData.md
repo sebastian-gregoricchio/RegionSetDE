@@ -15,7 +15,7 @@ loadExampleData(dataset = "counts", verbose = TRUE)
 - dataset:
 
   String indicating which object to load, one among `"counts"`, `"fit"`,
-  `"regions"`, `"exclusionRegions"`, `"sampleSheet"` and
+  `"regions"`, `"exclusionRegions"`, `"sampleSheet"`, `"peakSheet"` and
   `"buildMetadata"`. The string `"blacklist"` is accepted as a synonym
   of `"exclusionRegions"`. Default: `"counts"`.
 
@@ -34,17 +34,36 @@ and
 [`testRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md).
 `"regions"` returns a data.frame with one row per region and its set
 membership, `"exclusionRegions"` a `GRanges`, `"sampleSheet"` a
-data.frame describing every library of the source dataset, and
-`"buildMetadata"` a list with the parameters used to generate the
-others.
+data.frame describing every library of the source dataset, `"peakSheet"`
+the sheet of the nine peak files and BAM files of the androgen receptor
+example, read with
+[`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md)
+so that the paths point at the installed files, and `"buildMetadata"` a
+list with the parameters used to generate the others.
 
 ## Details
 
-The example data comes from the liver ChIP-seq libraries of the
-EURATRANS project, distributed by the `chromstaRData` package and
+Two datasets are installed with the package, one for each end of the
+workflow.
+
+Everything but `"peakSheet"` comes from the liver ChIP-seq libraries of
+the EURATRANS project, distributed by the `chromstaRData` package and
 aligned to rn4. The contrast is H3K4me3 in the spontaneously
 hypertensive (SHR) rat against the Brown Norway (BN) strain, two
-biological replicates each, restricted to chromosome 12.
+biological replicates each, restricted to chromosome 12. It starts from
+a counts object, which is where an analysis of fixed windows or of an
+existing count matrix begins.
+
+`"peakSheet"` points at the other one, which starts a step earlier, from
+peak files and alignments. It is a slice of the androgen receptor
+ChIP-seq of GSE284522: LNCaP cells treated with DMSO, or with the
+synthetic androgen R1881 for four or twenty-four hours, three replicates
+each, plus one input. The alignments are cut down to a window of
+chromosome 19 and subsampled, so the counts are the real ones scaled by
+a known fraction; the peaks are the calls of the full libraries filtered
+to the same window.
+`system.file("extdata", "lncapAR", "SOURCES.md", package = "RegionSetDE")`
+says exactly what was done to them.
 
 The regions are one kilobase windows split into four sets ordered by the
 amount of H3K4me3 they are expected to carry: promoters overlapping a
@@ -69,9 +88,9 @@ the UCSC assembly gap track and from bins carrying implausible coverage
 in the input libraries. It is not an ENCODE-grade exclusion list and
 should not be reused outside these examples.
 
-The script that generated the stored objects is installed with the
-package, at
-`system.file("scripts", "make-data.R", package = "RegionSetDE")`.
+The scripts that generated the stored objects and the peak files are
+installed with the package, at
+`system.file("scripts", package = "RegionSetDE")`.
 
 ## See also
 
@@ -94,11 +113,11 @@ counts <- loadExampleData("counts")
 counts
 #> class: RegionSetDE.counts 
 #> dim: 3224 4 
-#> metadata(2): signal.type background
+#> metadata(3): signal.type count.like background
 #> assays(1): counts
 #> rownames(3224): promoterNonCpG|region_00002 promoterNonCpG|region_00003
 #>   ... promoterCpG|region_03797 promoterCpG|region_03798
-#> rowData names(3): region.set region.id tile.id
+#> rowData names(4): region.set region.id tile.id regionId
 #> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
 #>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
 #>   lv-H3K4me3-SHR-male-bio3-tech1
@@ -113,10 +132,22 @@ topRegions(results, n = 5, FDR = 1)
 #> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000
 #> 4       geneBody region_02435      NA    chr12 29881730 29882729  1000
 #> 5       geneBody region_02220      NA    chr12 27481625 27482624  1000
-#>      log2FC average.signal     stat      p.value          FDR diff.status
-#> 1 -5.203835       5.159079 84.13617 1.148685e-08 2.176757e-05        down
-#> 2 -2.887100       5.237329 43.04577 2.743053e-06 2.599042e-03        down
-#> 3 -3.222630       4.816977 34.29977 1.370844e-05 6.573186e-03        down
-#> 4 -2.778908       5.406565 36.15528 1.387480e-05 6.573186e-03        down
-#> 5 -2.281658       5.277404 29.11255 3.347081e-05 1.268544e-02        down
+#>      log2FC average.signal average.signal.BN average.signal.SHR     stat
+#> 1 -5.203835       5.159079          6.078432           2.651961 84.13617
+#> 2 -2.887100       5.237329          5.930447           4.057310 43.04577
+#> 3 -3.222630       4.816977          5.557234           3.451580 34.29977
+#> 4 -2.778908       5.406565          6.079193           4.289880 36.15528
+#> 5 -2.281658       5.277404          5.837722           4.471639 29.11255
+#>   stat.distribution df1      df2      p.value          FDR diff.status
+#> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down
+#> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down
+#> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down
+#> 4                 f   1 17.03010 1.387480e-05 6.573186e-03        down
+#> 5                 f   1 18.93934 3.347081e-05 1.268544e-02        down
+#>       regionId
+#> 1 region_02996
+#> 2 region_03590
+#> 3 region_00212
+#> 4 region_02435
+#> 5 region_02220
 ```

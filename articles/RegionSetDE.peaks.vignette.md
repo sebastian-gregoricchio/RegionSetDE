@@ -434,7 +434,7 @@ Every region carries one logical column per group, plus the number of
 groups and of samples that called a peak on it.
 
 ``` r
-as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
+as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
   dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 >   peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups peak.samples

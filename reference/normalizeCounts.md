@@ -247,8 +247,11 @@ SummarizedExperiment::colData(tmmCounts)$scaling.factor
 #>  lv-H3K4me3-SHR-male-bio2-tech1  lv-H3K4me3-SHR-male-bio3-tech1 
 #>                       0.6487672                       1.8128070 
 
-if (FALSE) { # \dontrun{
-# Factors coming from a spike-in, or from any external estimate
-counts <- normalizeCounts(counts, scalingFactors = spikeInFactors)
-} # }
+# Factors coming from a spike-in, or from any external estimate, named after the samples
+spikeInFactors <- c(1.10, 0.95, 1.20, 0.80)
+names(spikeInFactors) <- colnames(counts)
+
+manualCounts <- normalizeCounts(counts, method = "manual", scalingFactors = spikeInFactors, verbose = FALSE)
+SummarizedExperiment::colData(manualCounts)$scaling.factor
+#> [1] 1.10 0.95 1.20 0.80
 ```

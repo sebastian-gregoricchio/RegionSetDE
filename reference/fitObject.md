@@ -26,3 +26,16 @@ The engine specific fit object.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+fit <- loadExampleData("fit", verbose = FALSE)
+
+# The example was fitted by edgeR, so the object is an edgeR quasi-likelihood fit
+engineFit <- fitObject(fit)
+class(engineFit)
+#> [1] "DGEGLM"
+#> attr(,"package")
+#> [1] "edgeR"
+```

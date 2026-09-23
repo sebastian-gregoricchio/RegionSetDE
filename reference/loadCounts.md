@@ -170,15 +170,43 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-counts <- loadCounts(regions,
-                     counts = "featureCounts/all_samples.txt",
-                     sampleMetadata = sampleSheet,
-                     librarySizes = c(2.3e7, 2.1e7, 1.9e7, 2.4e7))
+# A count table as an external tool would write it: coordinates first, one column per sample
+exampleCounts <- loadExampleData("counts", verbose = FALSE)
+regionRows <- SummarizedExperiment::rowRanges(exampleCounts)
 
+countMatrix <- data.frame(chr = as.character(GenomicRanges::seqnames(regionRows)),
+                          start = GenomicRanges::start(regionRows),
+                          end = GenomicRanges::end(regionRows),
+                          SummarizedExperiment::assay(exampleCounts, "counts"),
+                          check.names = FALSE)
+
+regions <- splitLoadRegions(regionRows, splitBy = "region.set", genomeAssembly = "rn4", verbose = FALSE)
+
+# The real library sizes, the column sums of the table only cover the regions
 counts <- loadCounts(regions,
-                     counts = bedtoolsMatrix,
-                     startsAt = 0,
-                     missingRegions = "zero")
-} # }
+                     counts = countMatrix,
+                     sampleMetadata = data.frame(sample = colnames(exampleCounts),
+                                                 condition = exampleCounts$condition),
+                     librarySizes = exampleCounts$library.size,
+                     verbose = FALSE)
+counts
+#> class: RegionSetDE.counts 
+#> dim: 3224 4 
+#> metadata(2): signal.type count.like
+#> assays(1): counts
+#> rownames(3224): promoterNonCpG|promoterNonCpG|region_00002
+#>   promoterNonCpG|promoterNonCpG|region_00003 ...
+#>   promoterCpG|promoterCpG|region_03797
+#>   promoterCpG|promoterCpG|region_03798
+#> rowData names(6): region.set region.id ... tile.id.original regionId
+#> colnames(4): lv-H3K4me3-BN-female-bio1-tech1
+#>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1
+#>   lv-H3K4me3-SHR-male-bio3-tech1
+#> colData names(4): sample source.column condition library.size
+
+# A BED-like table, 0-based, where some regions were never counted
+bedMatrix <- countMatrix[-(1:10), ]
+bedMatrix$start <- bedMatrix$start - 1
+
+counts <- loadCounts(regions, counts = bedMatrix, startsAt = 0, missingRegions = "zero", verbose = FALSE)
 ```

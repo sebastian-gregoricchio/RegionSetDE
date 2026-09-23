@@ -240,24 +240,58 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-fit <- fitRegions(counts, design = ~ replicate + condition, engine = "edgeR")
+fit <- loadExampleData("fit", verbose = FALSE)
 
-res <- testRegions(fit, contrast = "conditionCOMBO")
+# A coefficient of the design
+res <- testRegions(fit, contrast = "conditionSHR", verbose = FALSE)
 
 # Two levels of a column, whichever of them the design took as reference
-res <- testRegions(fit, contrast = c("condition", "COMBO", "DMSO"))
+res <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+res
+#> An object of class 'RegionSetDE.results'
+#>   contrast        : condition: SHR vs BN 
+#>   engine          : edgeR 
+#>   regions         : 1895 
+#>   counts carried  : 4 samples
+#>   thresholds      : FDR < 0.05 | |log2FC| > 0 
+#>   changing regions:
+#>     promoterNonCpG: 1 up, 2 down
+#>     intergenic: 2 up, 3 down
+#>     geneBody: 0 up, 3 down
+#>     promoterCpG: 0 up, 1 down
 
-# Difference between two coefficients of the design
-res <- testRegions(fit, contrast = "conditionCOMBO - conditionEPZ")
+# The opposite direction, the fold changes change sign
+resReverse <- testRegions(fit, contrast = c("condition", "BN", "SHR"), verbose = FALSE)
 
 # Several contrasts on the same fit
-resList <- testRegions(fit, contrast = list(combo = c("condition", "COMBO", "DMSO"),
-                                            epz = c("condition", "EPZ", "DMSO")))
+resList <- testRegions(fit, contrast = list(shr = c("condition", "SHR", "BN"),
+                                            bn = c("condition", "BN", "SHR")),
+                       verbose = FALSE)
 resList
-topRegions(resList, contrast = "combo")
+#> An object of class 'RegionSetDE.resultsList'
+#>   contrasts       : 2 
+#> 
+#>  name             contrast n.regions up down
+#>   shr condition: SHR vs BN      1895  3    9
+#>    bn condition: BN vs SHR      1895  9    3
+topRegions(resList, contrast = "shr", FDR = 1, n = 3)
+#>       region.set    region.id tile.id seqnames    start      end width
+#> 1 promoterNonCpG region_02996      NA    chr12 36842295 36843294  1000
+#> 2     intergenic region_03590      NA    chr12 44174500 44175499  1000
+#> 3 promoterNonCpG region_00212      NA    chr12  2500829  2501828  1000
+#>      log2FC average.signal average.signal.BN average.signal.SHR     stat
+#> 1 -5.203835       5.159079          6.078432           2.651961 84.13617
+#> 2 -2.887100       5.237329          5.930447           4.057310 43.04577
+#> 3 -3.222630       4.816977          5.557234           3.451580 34.29977
+#>   stat.distribution df1      df2      p.value          FDR diff.status
+#> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down
+#> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down
+#> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down
+#>       regionId
+#> 1 region_02996
+#> 2 region_03590
+#> 3 region_00212
 
 # Threshold inside the test rather than on the output
-resStrict <- testRegions(fit, contrast = "conditionCOMBO", lfcThreshold = 1)
-} # }
+resStrict <- testRegions(fit, contrast = c("condition", "SHR", "BN"), lfcThreshold = 1, verbose = FALSE)
 ```

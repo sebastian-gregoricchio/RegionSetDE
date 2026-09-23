@@ -170,26 +170,50 @@
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>,</span></span>
-<span class="r-in"><span>                     bamFiles <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="st">"bam"</span>, pattern <span class="op">=</span> <span class="st">"\\.bam$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                     sampleMetadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>sample <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ctrl1"</span>, <span class="st">"ctrl2"</span>, <span class="st">"treat1"</span>, <span class="st">"treat2"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                                                 condition <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ctrl"</span>, <span class="st">"ctrl"</span>, <span class="st">"treat"</span>, <span class="st">"treat"</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                     pairedEnd <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
-<span class="r-in"><span>                     nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># The peaks of one sample of the AR example stand in for a region set</span></span></span>
+<span class="r-in"><span><span class="va">sampleSheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"peakSheet"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">peakRegions</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadRegions.html">loadRegions</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>peaks <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">peaks</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span>, genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">countsTiled</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>, bamFiles <span class="op">=</span> <span class="va">bamPaths</span>, tileWidth <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># The sheet brings the BAM files, the sample names and the annotation</span></span></span>
+<span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">peakRegions</span>, sampleSheet <span class="op">=</span> <span class="va">sampleSheet</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">counts</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> class: RegionSetDE.counts </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> dim: 101 9 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> metadata(2): signal.type count.like</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> assays(1): counts</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rownames(101): peaks|chr19:46089737-46089961</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   peaks|chr19:46300828-46301307 ... peaks|chr19:57823680-57823967</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   peaks|chr19:57840110-57840669</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rowData names(9): region.set region.id ... V9 V10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> colnames(9): AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> colData names(11): sample bam.file ... paired.end library.size</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Mitochondrial genome, chrY and contigs out of the library sizes</span></span></span>
-<span class="r-in"><span><span class="va">bamChromosomes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu">Rsamtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Rsamtools/man/scanBam.html" class="external-link">scanBamHeader</a></span><span class="op">(</span><span class="va">bamPaths</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">targets</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">countsAtac</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">regions</span>,</span></span>
-<span class="r-in"><span>                         bamFiles <span class="op">=</span> <span class="va">bamPaths</span>,</span></span>
-<span class="r-in"><span>                         excludeChromosomes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"chrM"</span>, <span class="st">"chrY"</span>, <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"_|EBV"</span>, <span class="va">bamChromosomes</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                         nThreads <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># The same files given one by one, with the annotation as a table</span></span></span>
+<span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">peakRegions</span>,</span></span>
+<span class="r-in"><span>                     bamFiles <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">bam</span>,</span></span>
+<span class="r-in"><span>                     sampleNames <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">sample</span>,</span></span>
+<span class="r-in"><span>                     sampleMetadata <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sample"</span>, <span class="st">"condition"</span><span class="op">)</span><span class="op">]</span>,</span></span>
+<span class="r-in"><span>                     verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># A few regions counted in seconds, with library sizes that are not meant for normalisation</span></span></span>
-<span class="r-in"><span><span class="va">countsQuick</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">fewRegions</span>, bamFiles <span class="op">=</span> <span class="va">bamPaths</span>, fullLibrarySize <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># Tiles of 100 bp, one row each</span></span></span>
+<span class="r-in"><span><span class="va">tiledCounts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">peakRegions</span>, sampleSheet <span class="op">=</span> <span class="va">sampleSheet</span>, tileWidth <span class="op">=</span> <span class="fl">100</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">SummarizedExperiment</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">rowData</a></span><span class="op">(</span><span class="va">tiledCounts</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> DataFrame with 3 rows and 9 columns</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                      region.set              region.id</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     &lt;character&gt;            &lt;character&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1       peaks chr19:46089737-46089..</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2       peaks chr19:46089737-46089..</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3       peaks chr19:46089737-46089..</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                       tile.id                   name     score</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     &lt;integer&gt;            &lt;character&gt; &lt;integer&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1         1 AR_R1881_24h_r1_peak..       159</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2         2 AR_R1881_24h_r1_peak..       159</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3         3 AR_R1881_24h_r1_peak..       159</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                            V7        V8        V9       V10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     &lt;numeric&gt; &lt;numeric&gt; &lt;numeric&gt; &lt;integer&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1   9.71586   18.4847   15.9682       103</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2   9.71586   18.4847   15.9682       103</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3   9.71586   18.4847   15.9682       103</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

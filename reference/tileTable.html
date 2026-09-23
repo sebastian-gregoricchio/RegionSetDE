@@ -72,38 +72,53 @@
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Tiling splits each region into fixed-width windows, kept alongside the region</span></span></span>
-<span class="r-in"><span><span class="va">bamFile</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"ex1.bam"</span>, package <span class="op">=</span> <span class="st">"Rsamtools"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># The peaks of one sample of the AR example, cut into tiles of 100 bp</span></span></span>
+<span class="r-in"><span><span class="va">sampleSheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"peakSheet"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">peakRegions</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadRegions.html">loadRegions</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>peaks <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">peaks</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span>, genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">exampleRegions</span> <span class="op">&lt;-</span> <span class="fu">GenomicRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/GenomicRanges/man/GRanges-class.html" class="external-link">GRanges</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  seqnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seq1"</span>, <span class="st">"seq2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  ranges <span class="op">=</span> <span class="fu">IRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/IRanges/man/IRanges-constructor.html" class="external-link">IRanges</a></span><span class="op">(</span>start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">800</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>, width <span class="op">=</span> <span class="fl">400</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">tiledCounts</span> <span class="op">&lt;-</span> <span class="fu"><a href="countReads.html">countReads</a></span><span class="op">(</span><span class="va">peakRegions</span>, sampleSheet <span class="op">=</span> <span class="va">sampleSheet</span>, tileWidth <span class="op">=</span> <span class="fl">100</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">tiledCounts</span> <span class="op">&lt;-</span> <span class="fu"><a href="normalizeCounts.html">normalizeCounts</a></span><span class="op">(</span><span class="va">tiledCounts</span>, method <span class="op">=</span> <span class="st">"TMM"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">tiledFit</span> <span class="op">&lt;-</span> <span class="fu"><a href="fitRegions.html">fitRegions</a></span><span class="op">(</span><span class="va">tiledCounts</span>, design <span class="op">=</span> <span class="op">~</span> <span class="va">condition</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">exampleRegions</span><span class="op">$</span><span class="va">setName</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"firstSet"</span>, <span class="st">"secondSet"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">exampleSets</span> <span class="op">&lt;-</span> <span class="fu"><a href="splitLoadRegions.html">splitLoadRegions</a></span><span class="op">(</span><span class="va">exampleRegions</span>, splitBy <span class="op">=</span> <span class="st">"setName"</span>,</span></span>
-<span class="r-in"><span>                                seqlevelsStyle <span class="op">=</span> <span class="cn">NULL</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">tiledCounts</span> <span class="op">&lt;-</span> <span class="fu"><a href="countReads.html">countReads</a></span><span class="op">(</span><span class="va">exampleSets</span>, bamFiles <span class="op">=</span> <span class="va">bamFile</span>,</span></span>
-<span class="r-in"><span>                          sampleNames <span class="op">=</span> <span class="st">"example"</span>, tileWidth <span class="op">=</span> <span class="fl">100</span>,</span></span>
-<span class="r-in"><span>                          verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">SummarizedExperiment</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">rowData</a></span><span class="op">(</span><span class="va">tiledCounts</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> DataFrame with 6 rows and 3 columns</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                               region.set     region.id   tile.id</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              &lt;character&gt;   &lt;character&gt; &lt;integer&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:1-400|tile1       firstSet    seq1:1-400         1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:1-400|tile2       firstSet    seq1:1-400         2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:1-400|tile3       firstSet    seq1:1-400         3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:1-400|tile4       firstSet    seq1:1-400         4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:800-1199|tile1    firstSet seq1:800-1199         1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> firstSet|seq1:800-1199|tile2    firstSet seq1:800-1199         2</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># After testing, the per-tile statistics sit behind the combined ones</span></span></span>
-<span class="r-in"><span><span class="va">tiledResults</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">tiledFit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">tileTable</span><span class="op">(</span><span class="va">tiledResults</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># The tiles are combined into regions, and their own statistics sit behind the combined ones</span></span></span>
+<span class="r-in"><span><span class="va">tiledResults</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">tiledFit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"R1881_24h"</span>, <span class="st">"DMSO"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">tileTable</span><span class="op">(</span><span class="va">tiledResults</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                       log2FC average.signal      stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 2.594558       9.218571 0.9729137</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 3.470645       9.472299 1.9880706</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 3.233674       9.376084 1.6438457</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     stat.distribution df1  df2   p.value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1                 f   1 2712 0.3240426</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2                 f   1 2712 0.1586574</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3                 f   1 2712 0.1999082</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     average.signal.DMSO average.signal.R1881_4h</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1            8.822609                9.565452</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2            8.822609                9.805591</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3            8.822609                9.690221</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     average.signal.R1881_24h region.set</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1                 9.148300      peaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2                 9.565067      peaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3                 9.439105      peaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                   region.id tile.id</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 chr19:46089737-46089961       1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 chr19:46089737-46089961       2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 chr19:46089737-46089961       3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                        region.key seqnames</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 peaks|chr19:46089737-46089961    chr19</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 peaks|chr19:46089737-46089961    chr19</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 peaks|chr19:46089737-46089961    chr19</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                        start      end width</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 46089737 46089836   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 46089837 46089936   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 46089937 46089961    25</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                           name score      V7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 AR_R1881_24h_r1_peak_21400   159 9.71586</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 AR_R1881_24h_r1_peak_21400   159 9.71586</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 AR_R1881_24h_r1_peak_21400   159 9.71586</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                          V8      V9 V10       FDR</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 18.4847 15.9682 103 0.5503016</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 18.4847 15.9682 103 0.3900078</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 18.4847 15.9682 103 0.4290677</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

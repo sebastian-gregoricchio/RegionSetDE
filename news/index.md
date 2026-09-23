@@ -44,6 +44,11 @@ First version.
   removes the regions it covers, or trims them with
   `trimRegions = TRUE`, records the step as a greylist and leaves the
   stored blacklist alone.
+- A headerless BED4 or BED5 file gets its fourth column named `name`,
+  and its fifth `score`, so
+  [`splitLoadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.md)
+  finds its default `splitBy` column in it. They were left as `V4` and
+  `V5` before, and only BED6 files could be split by name.
 - [`loadSampleSheet()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md)
   reads a table with one row per sample: the BAM or bigWig file, the
   peaks called on it and the input it was sequenced against, the last
@@ -121,6 +126,15 @@ First version.
   keeps the ones named. It is
   [`SummarizedExperiment::colData()`](https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html)
   in a form `dplyr` takes directly.
+- [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md),
+  [`filteringLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md),
+  [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md),
+  [`countingLevel()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countingLevel.md)
+  and
+  [`dispersionInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dispersionInfo.md)
+  read the regions, the filtering record, the assembly, the counting
+  level and the dispersion summary of the objects, so neither the
+  examples nor the vignettes reach into the slots with `@` any more.
 - [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
   summarises the libraries of a counts object in one table: the records
   of every BAM file, read from its index, the fragments that went
@@ -307,6 +321,9 @@ First version.
   did. A contrast written as a coefficient name, an expression or a
   vector is assigned to the design variable it belongs to, never to a
   column naming each sample on its own, such as the sample names.
+- A contrast that cannot be read no longer comes back with a suggestion
+  about a reference level called `NA`: the hint is only given when a
+  level of the design was written in the contrast.
 
 ### Region sets
 

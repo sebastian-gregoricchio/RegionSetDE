@@ -147,12 +147,17 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> Blacklist:  not applied</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Whitelist:  not applied</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu">loadRegions</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>promoters <span class="op">=</span> <span class="st">"peaks/promoters.bed"</span>,</span></span>
-<span class="r-in"><span>                            enhancers <span class="op">=</span> <span class="va">grEnhancers</span>,</span></span>
-<span class="r-in"><span>                            <span class="st">"peaks/CTCF.narrowPeak"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                       genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># Files and GRanges can be mixed, and an unnamed file takes the name of the file</span></span></span>
+<span class="r-in"><span><span class="va">peakFiles</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"lncapAR"</span>, package <span class="op">=</span> <span class="st">"RegionSetDE"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                        pattern <span class="op">=</span> <span class="st">"R1881_24h_r[12]_peaks\\.narrowPeak$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">firstPeaks</span> <span class="op">&lt;-</span> <span class="fu">rtracklayer</span><span class="fu">::</span><span class="fu">import</span><span class="op">(</span><span class="va">peakFiles</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, format <span class="op">=</span> <span class="st">"narrowPeak"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu">loadRegions</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>firstReplicate <span class="op">=</span> <span class="va">firstPeaks</span>, <span class="va">peakFiles</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                       genomeAssembly <span class="op">=</span> <span class="st">"hg38"</span>,</span></span>
+<span class="r-in"><span>                       verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="regionSetNames.html">regionSetNames</a></span><span class="op">(</span><span class="va">regions</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "firstReplicate"        "AR_R1881_24h_r2_peaks"</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

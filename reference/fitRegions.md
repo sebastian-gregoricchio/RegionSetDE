@@ -254,13 +254,10 @@ fit
 #>   set universe    : otherSets (matched on width and abundance) 
 #>   common disp.    : 0.139 (BCV 0.373)  
 
-# \donttest{
 # limma-voom on the same design
 voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
-# }
 
-if (FALSE) { # \dontrun{
-# Random effects need the dream engine and the formula given as such
-mixedFit <- fitRegions(counts, design = ~ condition + (1|donor), engine = "dream")
-} # }
+# Random effects need the dream engine and the formula given as such, for instance
+# ~ condition + (1|donor) for repeated samples of the same donors. Four samples are
+# too few to estimate one, so the example data cannot show it.
 ```

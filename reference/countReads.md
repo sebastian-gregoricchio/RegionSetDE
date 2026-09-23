@@ -218,24 +218,48 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-counts <- countReads(regions,
-                     bamFiles = list.files("bam", pattern = "\\.bam$", full.names = TRUE),
-                     sampleMetadata = data.frame(sample = c("ctrl1", "ctrl2", "treat1", "treat2"),
-                                                 condition = c("ctrl", "ctrl", "treat", "treat")),
-                     pairedEnd = TRUE,
-                     nThreads = 4)
+# The peaks of one sample of the AR example stand in for a region set
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
-countsTiled <- countReads(regions, bamFiles = bamPaths, tileWidth = 500)
+# The sheet brings the BAM files, the sample names and the annotation
+counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
+counts
+#> class: RegionSetDE.counts 
+#> dim: 101 9 
+#> metadata(2): signal.type count.like
+#> assays(1): counts
+#> rownames(101): peaks|chr19:46089737-46089961
+#>   peaks|chr19:46300828-46301307 ... peaks|chr19:57823680-57823967
+#>   peaks|chr19:57840110-57840669
+#> rowData names(9): region.set region.id ... V9 V10
+#> colnames(9): AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3
+#> colData names(11): sample bam.file ... paired.end library.size
 
-# Mitochondrial genome, chrY and contigs out of the library sizes
-bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
-countsAtac <- countReads(regions,
-                         bamFiles = bamPaths,
-                         excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
-                         nThreads = 4)
+# The same files given one by one, with the annotation as a table
+counts <- countReads(peakRegions,
+                     bamFiles = sampleSheet$bam,
+                     sampleNames = sampleSheet$sample,
+                     sampleMetadata = sampleSheet[, c("sample", "condition")],
+                     verbose = FALSE)
 
-# A few regions counted in seconds, with library sizes that are not meant for normalisation
-countsQuick <- countReads(fewRegions, bamFiles = bamPaths, fullLibrarySize = FALSE)
-} # }
+# Tiles of 100 bp, one row each
+tiledCounts <- countReads(peakRegions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)
+head(SummarizedExperiment::rowData(tiledCounts), 3)
+#> DataFrame with 3 rows and 9 columns
+#>                                      region.set              region.id
+#>                                     <character>            <character>
+#> peaks|chr19:46089737-46089961|tile1       peaks chr19:46089737-46089..
+#> peaks|chr19:46089737-46089961|tile2       peaks chr19:46089737-46089..
+#> peaks|chr19:46089737-46089961|tile3       peaks chr19:46089737-46089..
+#>                                       tile.id                   name     score
+#>                                     <integer>            <character> <integer>
+#> peaks|chr19:46089737-46089961|tile1         1 AR_R1881_24h_r1_peak..       159
+#> peaks|chr19:46089737-46089961|tile2         2 AR_R1881_24h_r1_peak..       159
+#> peaks|chr19:46089737-46089961|tile3         3 AR_R1881_24h_r1_peak..       159
+#>                                            V7        V8        V9       V10
+#>                                     <numeric> <numeric> <numeric> <integer>
+#> peaks|chr19:46089737-46089961|tile1   9.71586   18.4847   15.9682       103
+#> peaks|chr19:46089737-46089961|tile2   9.71586   18.4847   15.9682       103
+#> peaks|chr19:46089737-46089961|tile3   9.71586   18.4847   15.9682       103
 ```

@@ -40,4 +40,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-*.zip
+
+# R CMD check output folder of the GitHub workflow
+/check/

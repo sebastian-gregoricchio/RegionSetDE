@@ -158,8 +158,7 @@ artefactRegions <- c(GenomicRanges::granges(blacklist), GenomicRanges::granges(g
 consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 excludeRegions = artefactRegions,
-                                seqlevelsStyle = "Ensembl",
-                                genomeAssembly = "hg38")
+                                seqlevelsStyle = "Ensembl")
 
 consensus
 ```
@@ -242,8 +241,22 @@ as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
 
 `plotPeakUpset()` shows how the groups overlap before any counting happens.
 
-```{r upset, fig.height = 4}
+```{r upset, eval = FALSE}
 plotPeakUpset(consensus)
+```
+
+```{r upset_figure, echo = FALSE, out.width = "100%"}
+# Drawn into its own file rather than through the chunk device: under R 4.6 the UpSet plot
+# overflows the node stack when knitr captures it during R CMD build, while drawing it
+# directly works everywhere
+upsetFile <- knitr::fig_path(".png")
+dir.create(dirname(upsetFile), recursive = TRUE, showWarnings = FALSE)
+
+grDevices::png(upsetFile, width = 7, height = 4, units = "in", res = 150)
+ComplexHeatmap::draw(plotPeakUpset(consensus))
+invisible(grDevices::dev.off())
+
+knitr::include_graphics(upsetFile)
 ```
 
 Most of the sites are shared by the two R1881 time points, and nearly all of those found without ligand are found with it too. Only one region is specific to DMSO.

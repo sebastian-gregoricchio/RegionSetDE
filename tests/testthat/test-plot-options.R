@@ -100,17 +100,23 @@ test_that("plotTopHeatmap draws each of its rankings and directions", {
 
 test_that("plotSampleCorrelation draws each correlation", {
 
+  skip_if_not_installed("ComplexHeatmap")
   counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
 
   for (correlationMethod in c("spearman", "pearson", "kendall")) {
-    expect_s3_class(plotSampleCorrelation(counts, method = correlationMethod), "ggplot")
+    expect_s4_class(plotSampleCorrelation(counts, method = correlationMethod,
+                                          verbose = FALSE), "Heatmap")
   }
 
-  expect_s3_class(plotSampleCorrelation(counts, cluster = FALSE,
-                                        showValues = FALSE), "ggplot")
-  expect_s3_class(plotSampleCorrelation(counts, set = "promoterCpG",
-                                        excludeDiagonal = TRUE), "ggplot")
-  expect_s3_class(plotSampleCorrelation(counts, facetBySet = TRUE), "ggplot")
+  expect_s4_class(plotSampleCorrelation(counts, cluster = FALSE, showValues = FALSE,
+                                        verbose = FALSE), "Heatmap")
+  expect_s4_class(plotSampleCorrelation(counts, set = "promoterCpG", excludeDiagonal = TRUE,
+                                        showDendrogram = FALSE, verbose = FALSE), "Heatmap")
+
+  # Several panels come back as a list of heatmaps, drawn side by side
+  expect_s4_class(plotSampleCorrelation(counts, facetBySet = TRUE, verbose = FALSE), "HeatmapList")
+  expect_s4_class(plotSampleCorrelation(counts, compareOffsets = TRUE, groupBy = "condition",
+                                        verbose = FALSE), "HeatmapList")
 })
 
 

@@ -10,6 +10,8 @@ normalizeCounts(
   scalingFactors = NULL,
   factorType = "division",
   spikeInCounts = NULL,
+  greenlistCounts = NULL,
+  greenlistEstimator = "medianRatio",
   useRegionSets = NULL,
   minCount = 1,
   referenceSample = NULL,
@@ -21,13 +23,17 @@ normalizeCounts(
 \arguments{
 \item{counts}{\code{RegionSetDE.counts} object returned by \code{\link{countReads}}, \code{\link{countBigwig}} or \code{\link{loadCounts}}.}
 
-\item{method}{String with the method used to estimate the factors, one among \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"}, \code{"librarySize"}, \code{"background"}, \code{"loess"}, \code{"spikeIn"}, \code{"manual"} or \code{"none"}. Default: \code{"TMM"}.}
+\item{method}{String with the method used to estimate the factors, one among \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"}, \code{"librarySize"}, \code{"readsInRegions"}, \code{"background"}, \code{"greenlist"}, \code{"loess"}, \code{"spikeIn"}, \code{"manual"} or \code{"none"}. Default: \code{"TMM"}.}
 
 \item{scalingFactors}{Numeric vector with one factor per sample, required by the \code{"manual"} method. Named vectors are matched to the sample names and may cover samples absent from the object, unnamed ones must follow the column order. Default: \code{NULL}.}
 
 \item{factorType}{String declaring how the values of \code{scalingFactors} must be applied, either \code{"division"} when the counts have to be divided by them, as for the size factors of DESeq2, or \code{"multiplication"} when they have to be multiplied, as for the scale factors of deeptools and of most spike-in protocols. Default: \code{"division"}.}
 
 \item{spikeInCounts}{Numeric vector with the number of reads assigned to the exogenous genome in each sample, required by the \code{"spikeIn"} method. Default: \code{NULL}.}
+
+\item{greenlistCounts}{Counts over the greenlist regions when they were collected outside the package, either a numeric vector with one total per sample or a matrix with one row per region and one column per sample. Default: \code{NULL}, the counts stored by \code{\link{countGreenlist}}.}
+
+\item{greenlistEstimator}{String with the way the greenlist counts become factors, one among \code{"medianRatio"}, the median of the ratios to the geometric mean of each region, which is the size factor of DESeq2 and what the greenlist paper used, \code{"TMM"}, and \code{"sum"}, the total signal over the list. Default: \code{"medianRatio"}.}
 
 \item{useRegionSets}{Character vector with the names of the region sets used to estimate the factors. Default: \code{NULL}, all of them.}
 
@@ -45,7 +51,7 @@ normalizeCounts(
 The input \code{RegionSetDE.counts} object with three additions: the \code{norm.factor} and \code{scaling.factor} columns in the \code{colData}, the normalised values in the assay named after \code{normalizedAssay}, and, for the \code{"loess"} method, the log offsets in the \code{offset} assay. With \code{backgroundHoldout} above zero the positions of the held-out bins are stored in the \code{background.holdout} entry of the metadata.
 }
 \description{
-Estimates the scaling factors of a \code{RegionSetDE.counts} object and stores them together with a normalised assay. The factors can be computed from the counts themselves, from the background bins collected by \code{\link{countBackground}}, from a spike-in, or supplied by the user.
+Estimates the scaling factors of a \code{RegionSetDE.counts} object and stores them together with a normalised assay. The factors can be computed from the counts themselves, from the background bins collected by \code{\link{countBackground}}, from the greenlist regions collected by \code{\link{countGreenlist}}, from a spike-in, or supplied by the user.
 }
 \details{
 The raw counts are never overwritten, the normalisation only adds an assay and the factors beside it, so that the testing functions can keep working on the counts and their offsets.
@@ -55,6 +61,10 @@ Whatever the method, \code{scaling.factor} always holds a divisor: the normalise
 A calibration check is only worth as much as the independence behind it. The background bins serve twice, once here to estimate the factors and once in \code{\link{estimateNullDispersion}} to estimate the dispersion, and a bin used in both has contributed to the model it is later asked to test. Splitting the bins here, through \code{backgroundHoldout}, keeps a fraction of them out of the factors, and \code{\link{estimateNullDispersion}} then picks up exactly that split rather than making its own. The held-out bins are outside the whole preprocessing chain, which is the version of the check that means what it appears to mean. Without it the check still works, but on bins that are holdouts of the dispersion alone.
 
 The choice of the method matters more than usual on region sets. \code{"TMM"} and \code{"RLE"} assume that most of the regions do not change, which is reasonable for a catalogue of thousands of peaks but not for a handful of hand-picked ones, and not for a mark that is globally redistributed by the treatment. \code{"background"} sidesteps that assumption by estimating the factors on the genome wide bins, where the signal of the experiment is diluted, and is the safest option when a global shift is expected. \code{"spikeIn"} relies on the exogenous genome alone and ignores the regions altogether. \code{"loess"} corrects a bias that changes with the abundance, which no single factor per sample can describe, so it returns a matrix of offsets rather than a vector and leaves \code{scaling.factor} empty.
+
+\code{"greenlist"} is the spike-in free reference of CUT&RUN and CUT&Tag. The greenlist regions carry the background of the protocol rather than the factor being mapped, reproducibly enough between experiments that the reads landing there measure how much material was sequenced. \code{\link{countGreenlist}} counts the libraries over them and this method turns those counts into factors, by default with the median of ratios, which is the size factor the greenlist paper computed with DESeq2. Unlike the endogenous methods it says nothing about the regions under study, and unlike a spike-in it needs nothing added to the experiment, but it does assume the list applies to the assay and the assembly at hand.
+
+\code{"librarySize"} and \code{"readsInRegions"} are the two depth-based options, and they differ in what they call depth. The first takes the whole library, so a sample where the immunoprecipitation worked better keeps that advantage, which is what makes it the honest choice when the question is how much signal each sample carries. The second takes the reads collected in the regions, the quantity DiffBind calls reads in peaks, so the samples are put on the same total enrichment before anything is compared. That assumes the fraction of the library sitting in the regions is a property of the protocol rather than of the biology, and a treatment that genuinely redistributes a mark violates it in the direction that hides the effect.
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
@@ -74,7 +84,7 @@ counts <- normalizeCounts(counts, scalingFactors = spikeInFactors)
 
 }
 \seealso{
-\code{\link{countReads}}, \code{\link{countBackground}}
+\code{\link{countReads}}, \code{\link{countBackground}}, \code{\link{countGreenlist}}
 }
 \author{
 Sebastian Gregoricchio

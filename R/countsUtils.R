@@ -305,6 +305,61 @@
 
 
 
+#' @title .matchChromosomeNames
+#'
+#' @description Renames a plain vector of chromosome names into the naming style of a signal file, the way \code{.matchSeqlevels} does for a set of ranges. What it is for is \code{excludeChromosomes}: a name that matches nothing is not an error, it simply excludes nothing, and since the chromosomes left out decide the library sizes the silence would be paid for by the normalisation.
+#'
+#' @param chromosomeNames Character vector with the chromosome names given by the user.
+#' @param targetSeqlevels Character vector with the chromosome names of the files.
+#' @param argumentName String with the name of the argument, used in the warning. Default: \code{"excludeChromosomes"}.
+#'
+#' @return The names, converted where a conversion was needed.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom utils head
+#'
+#' @keywords internal
+
+.matchChromosomeNames <-
+  function(chromosomeNames,
+           targetSeqlevels,
+           argumentName = "excludeChromosomes") {
+
+    if (length(chromosomeNames) == 0) {
+      return(chromosomeNames)
+    }
+
+    # Only the names that miss are touched, so a list mixing the two styles still works
+    missingNames <- setdiff(chromosomeNames, targetSeqlevels)
+
+    if (length(missingNames) > 0) {
+      converted <-
+        if (any(grepl("^chr", targetSeqlevels))) {
+          ifelse(grepl("^chr", chromosomeNames), chromosomeNames, paste0("chr", sub("^MT$", "M", chromosomeNames)))
+        } else {
+          ifelse(grepl("^chr", chromosomeNames),
+                 ifelse(chromosomeNames == "chrM", "MT", sub("^chr", "", chromosomeNames)),
+                 chromosomeNames)
+        }
+
+      chromosomeNames <- ifelse(chromosomeNames %in% targetSeqlevels, chromosomeNames, converted)
+    }
+
+    stillMissing <- setdiff(chromosomeNames, targetSeqlevels)
+
+    if (length(stillMissing) > 0) {
+      warning("The following names in '", argumentName, "' match no chromosome of the files and exclude nothing: ",
+              paste(stillMissing, collapse = ", "), ". The files use names such as ",
+              paste(utils::head(targetSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
+    }
+
+    return(chromosomeNames)
+  } # END function
+
+
+
+
 #' @title .matchSeqlevels
 #'
 #' @description Renames the chromosomes of a set of ranges so that they follow the naming style of a signal file, leaving them untouched when the two already agree. Only the copy used for the counting is renamed, so the object returned to the user keeps the style of the regions it was built from.
@@ -345,11 +400,15 @@
       error = function(e) {rep(NA_character_, length(currentSeqlevels))},
       warning = function(w) {rep(NA_character_, length(currentSeqlevels))})
 
+    # The mitochondrion is the one chromosome the two styles disagree on beyond the prefix, and the
+    # substitution has to see the name before the prefix is taken off it
     manualSeqlevels <-
       if (any(grepl("^chr", targetSeqlevels))) {
         ifelse(grepl("^chr", currentSeqlevels), currentSeqlevels, paste0("chr", sub("^MT$", "M", currentSeqlevels)))
       } else {
-        ifelse(grepl("^chr", currentSeqlevels), sub("^chrM$", "MT", sub("^chr", "", currentSeqlevels)), currentSeqlevels)
+        ifelse(grepl("^chr", currentSeqlevels),
+               ifelse(currentSeqlevels == "chrM", "MT", sub("^chr", "", currentSeqlevels)),
+               currentSeqlevels)
       }
 
     renamedSeqlevels[is.na(renamedSeqlevels)] <- manualSeqlevels[is.na(renamedSeqlevels)]

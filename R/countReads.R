@@ -5,7 +5,8 @@
 #' @description Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the expected fragment length before the overlap is evaluated. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.
 #'
 #' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.
-#' @param bamFiles Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header.
+#' @param bamFiles Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
+#' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files, the sample names and the annotation in one go. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bamFiles}. Default: \code{NULL}.
 #' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
@@ -17,7 +18,7 @@
 #' @param maxFragmentLength Numeric value with the maximum length accepted for a paired-end fragment. Applied to the paired-end samples only. Default: \code{1000}.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
-#' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, named as in the BAM files, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.
+#' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, written in either naming style, \code{chrM} and \code{MT} both reaching the mitochondrial genome of a file naming it either way, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. A name matching no chromosome once converted raises a warning, since it would leave that chromosome inside the library sizes without a word. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.
 #' @param discardRegions \code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.
 #' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.
 #' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.
@@ -73,7 +74,8 @@
 
 countReads <-
   function(regionSet,
-           bamFiles,
+           bamFiles = NULL,
+           sampleSheet = NULL,
            sampleNames = NULL,
            sampleMetadata = NULL,
            tileWidth = NULL,
@@ -94,6 +96,19 @@ countReads <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
+    # A sample sheet brings the files, the names and the annotation in one go
+    sheetInput <- .sheetCountingInput(regionSet = regionSet,
+                                      sampleSheet = sampleSheet,
+                                      files = bamFiles,
+                                      sampleNames = sampleNames,
+                                      sampleMetadata = sampleMetadata,
+                                      fileField = "bam",
+                                      verbose = verbose)
+
+    bamFiles <- sheetInput$files
+    sampleNames <- sheetInput$sampleNames
+    sampleMetadata <- sheetInput$sampleMetadata
+
     if (!is.character(bamFiles) | length(bamFiles) == 0) {
       stop("The 'bamFiles' parameter must be a character vector with at least one BAM file.", call. = FALSE)
     }
@@ -104,14 +119,7 @@ countReads <-
     }
 
     # Every chromosome is reached through the index, a file without one cannot be read by pieces
-    hasIndex <-
-      vapply(bamFiles,
-             function(bamFile) {
-               any(file.exists(c(paste0(bamFile, ".bai"),
-                                 paste0(bamFile, ".csi"),
-                                 sub("\\.bam$", ".bai", bamFile, ignore.case = TRUE))))
-             },
-             logical(1))
+    hasIndex <- .hasBamIndex(bamFiles)
 
     if (any(!hasIndex)) {
       stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
@@ -150,12 +158,9 @@ countReads <-
 
     bamSeqlevels <- names(Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets)
 
-    # A misspelt name would exclude nothing and go unnoticed
-    unknownChromosomes <- setdiff(excludeChromosomes, bamSeqlevels)
-    if (isTRUE(verbose) & length(unknownChromosomes) > 0) {
-      message("The following chromosomes in 'excludeChromosomes' are absent from the BAM files, which use names such as ",
-              paste(utils::head(bamSeqlevels, 3), collapse = ", "), ": ", paste(unknownChromosomes, collapse = ", "), ".")
-    }
+    # 'chrM' against a BAM naming it 'MT' would exclude nothing, and the library sizes would carry
+    # the mitochondrial reads into the normalisation without a word
+    excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = bamSeqlevels)
 
     #------------------------#
     # Samples and regions    #

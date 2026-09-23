@@ -9,7 +9,7 @@
 #' @param binSize Numeric value with the width of the bins, in base pairs. Default: \code{10000}.
 #' @param excludeRegions Logical value indicating whether the bins overlapping the regions of \code{counts} must be discarded. Default: \code{TRUE}.
 #' @param minCount Numeric value with the minimum total count required to keep a bin. Default: \code{1}.
-#' @param excludeChromosomes Character vector with the chromosomes left out of the bins and of their library sizes, named as in the BAM files. \code{character(0)} excludes nothing. Default: \code{NULL}, the value used at the counting step.
+#' @param excludeChromosomes Character vector with the chromosomes left out of the bins and of their library sizes, written in either naming style, as in \code{\link{countReads}}. \code{character(0)} excludes nothing. Default: \code{NULL}, the value used at the counting step.
 #' @param pairedEnd Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.
 #' @param fragmentLength Numeric value with the length to which single-end reads are extended. Default: \code{NULL}, the value used at the counting step.
 #' @param maxFragmentLength Numeric value with the maximum insert size accepted for a pair. Default: \code{NULL}, the value used at the counting step.
@@ -123,6 +123,9 @@ countBackground <-
     if (is.null(excludeChromosomes) & !is.null(countingParameters$restrictChromosomes)) {
       excludeChromosomes <- setdiff(names(chromosomeLengths), countingParameters$restrictChromosomes)
     }
+
+    # A name written in the other style would exclude nothing and the bins would cover it anyway
+    excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
 
     chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
 

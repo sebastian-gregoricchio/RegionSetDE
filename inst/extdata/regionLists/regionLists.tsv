@@ -1,0 +1,15 @@
+type	genome	assay	source	version	n.regions	covered.bp	file	reference
+blacklist	hg19	any	ENCODE	v2	834	274970000	blacklist/hg19_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	hg38	any	ENCODE	v2	636	227162400	blacklist/hg38_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	mm10	any	ENCODE	v2	3435	238977200	blacklist/mm10_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	dm3	any	ENCODE	v2	271	2689400	blacklist/dm3_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	dm6	any	ENCODE	v2	182	3740300	blacklist/dm6_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	ce10	any	ENCODE	v2	100	2205200	blacklist/ce10_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	ce11	any	ENCODE	v2	97	728500	blacklist/ce11_encode.v2.bed.gz	Amemiya, Kundaje and Boyle (2019) Sci Rep 9:9354
+blacklist	hs1	any	excluderanges	v1	3565	275454700	blacklist/hs1_excluderanges.v1.bed.gz	Dozmorov et al. (2023) Bioinformatics 39:btad198
+blacklist	hg38	cutrun	deMello	v1	832	10133493	blacklist/hg38_cutrun.v1.bed.gz	de Mello et al. (2024) Brief Bioinform 25:bbad538
+blacklist	hg38	cuttag	deMello	v1	2020	9183890	blacklist/hg38_cuttag.v1.bed.gz	de Mello et al. (2024) Brief Bioinform 25:bbad538
+blacklist	mm39	cutrun	deMello	v1	1452	22330024	blacklist/mm39_cutrun.v1.bed.gz	de Mello et al. (2024) Brief Bioinform 25:bbad538
+greenlist	hg38	cutrun	deMello	v1	869	1725126	greenlist/hg38_cutrun.v1.bed.gz	de Mello et al. (2024) Brief Bioinform 25:bbad538
+greenlist	hg38	cuttag	deMello	v1	2767	3811775	greenlist/hg38_cuttag.v1.bed.gz	de Mello et al. (2024) Brief Bioinform 25:bbad538
+greenlist	mm39	cutrun	deMello	v1	1694	6493000	greenlist/mm39_cutrun.v1.bed.gz	de Mello et al. (2024) Brief Bioinform 25:bbad538

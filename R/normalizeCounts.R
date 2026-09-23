@@ -2,13 +2,15 @@
 
 #' @title normalizeCounts
 #'
-#' @description Estimates the scaling factors of a \code{RegionSetDE.counts} object and stores them together with a normalised assay. The factors can be computed from the counts themselves, from the background bins collected by \code{\link{countBackground}}, from a spike-in, or supplied by the user.
+#' @description Estimates the scaling factors of a \code{RegionSetDE.counts} object and stores them together with a normalised assay. The factors can be computed from the counts themselves, from the background bins collected by \code{\link{countBackground}}, from the greenlist regions collected by \code{\link{countGreenlist}}, from a spike-in, or supplied by the user.
 #'
 #' @param counts \code{RegionSetDE.counts} object returned by \code{\link{countReads}}, \code{\link{countBigwig}} or \code{\link{loadCounts}}.
-#' @param method String with the method used to estimate the factors, one among \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"}, \code{"librarySize"}, \code{"background"}, \code{"loess"}, \code{"spikeIn"}, \code{"manual"} or \code{"none"}. Default: \code{"TMM"}.
+#' @param method String with the method used to estimate the factors, one among \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"}, \code{"librarySize"}, \code{"readsInRegions"}, \code{"background"}, \code{"greenlist"}, \code{"loess"}, \code{"spikeIn"}, \code{"manual"} or \code{"none"}. Default: \code{"TMM"}.
 #' @param scalingFactors Numeric vector with one factor per sample, required by the \code{"manual"} method. Named vectors are matched to the sample names and may cover samples absent from the object, unnamed ones must follow the column order. Default: \code{NULL}.
 #' @param factorType String declaring how the values of \code{scalingFactors} must be applied, either \code{"division"} when the counts have to be divided by them, as for the size factors of DESeq2, or \code{"multiplication"} when they have to be multiplied, as for the scale factors of deeptools and of most spike-in protocols. Default: \code{"division"}.
 #' @param spikeInCounts Numeric vector with the number of reads assigned to the exogenous genome in each sample, required by the \code{"spikeIn"} method. Default: \code{NULL}.
+#' @param greenlistCounts Counts over the greenlist regions when they were collected outside the package, either a numeric vector with one total per sample or a matrix with one row per region and one column per sample. Default: \code{NULL}, the counts stored by \code{\link{countGreenlist}}.
+#' @param greenlistEstimator String with the way the greenlist counts become factors, one among \code{"medianRatio"}, the median of the ratios to the geometric mean of each region, which is the size factor of DESeq2 and what the greenlist paper used, \code{"TMM"}, and \code{"sum"}, the total signal over the list. Default: \code{"medianRatio"}.
 #' @param useRegionSets Character vector with the names of the region sets used to estimate the factors. Default: \code{NULL}, all of them.
 #' @param minCount Numeric value with the minimum total count required for a region to take part in the estimation. Default: \code{1}.
 #' @param referenceSample String or numeric position of the sample used as reference by the \code{"TMM"} and \code{"TMMwsp"} methods. Default: \code{NULL}, chosen by edgeR.
@@ -25,6 +27,10 @@
 #' A calibration check is only worth as much as the independence behind it. The background bins serve twice, once here to estimate the factors and once in \code{\link{estimateNullDispersion}} to estimate the dispersion, and a bin used in both has contributed to the model it is later asked to test. Splitting the bins here, through \code{backgroundHoldout}, keeps a fraction of them out of the factors, and \code{\link{estimateNullDispersion}} then picks up exactly that split rather than making its own. The held-out bins are outside the whole preprocessing chain, which is the version of the check that means what it appears to mean. Without it the check still works, but on bins that are holdouts of the dispersion alone.
 #'
 #' The choice of the method matters more than usual on region sets. \code{"TMM"} and \code{"RLE"} assume that most of the regions do not change, which is reasonable for a catalogue of thousands of peaks but not for a handful of hand-picked ones, and not for a mark that is globally redistributed by the treatment. \code{"background"} sidesteps that assumption by estimating the factors on the genome wide bins, where the signal of the experiment is diluted, and is the safest option when a global shift is expected. \code{"spikeIn"} relies on the exogenous genome alone and ignores the regions altogether. \code{"loess"} corrects a bias that changes with the abundance, which no single factor per sample can describe, so it returns a matrix of offsets rather than a vector and leaves \code{scaling.factor} empty.
+#'
+#' \code{"greenlist"} is the spike-in free reference of CUT&RUN and CUT&Tag. The greenlist regions carry the background of the protocol rather than the factor being mapped, reproducibly enough between experiments that the reads landing there measure how much material was sequenced. \code{\link{countGreenlist}} counts the libraries over them and this method turns those counts into factors, by default with the median of ratios, which is the size factor the greenlist paper computed with DESeq2. Unlike the endogenous methods it says nothing about the regions under study, and unlike a spike-in it needs nothing added to the experiment, but it does assume the list applies to the assay and the assembly at hand.
+#'
+#' \code{"librarySize"} and \code{"readsInRegions"} are the two depth-based options, and they differ in what they call depth. The first takes the whole library, so a sample where the immunoprecipitation worked better keeps that advantage, which is what makes it the honest choice when the question is how much signal each sample carries. The second takes the reads collected in the regions, the quantity DiffBind calls reads in peaks, so the samples are put on the same total enrichment before anything is compared. That assumes the fraction of the library sitting in the regions is a property of the protocol rather than of the biology, and a treatment that genuinely redistributes a mark violates it in the direction that hides the effect.
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
@@ -44,7 +50,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{countReads}}, \code{\link{countBackground}}
+#' @seealso \code{\link{countReads}}, \code{\link{countBackground}}, \code{\link{countGreenlist}}
 #'
 #' @importFrom edgeR normLibSizes
 #' @importFrom csaw normFactors normOffsets
@@ -62,6 +68,8 @@ normalizeCounts <-
            scalingFactors = NULL,
            factorType = "division",
            spikeInCounts = NULL,
+           greenlistCounts = NULL,
+           greenlistEstimator = "medianRatio",
            useRegionSets = NULL,
            minCount = 1,
            referenceSample = NULL,
@@ -77,8 +85,13 @@ normalizeCounts <-
     }
 
     method <- method[1]
-    if (!(method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "background", "loess", "spikeIn", "manual", "none"))) {
-      stop("The 'method' parameter must be one among 'TMM', 'TMMwsp', 'RLE', 'upperQuartile', 'librarySize', 'background', 'loess', 'spikeIn', 'manual' or 'none'.", call. = FALSE)
+    if (!(method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "readsInRegions", "background", "greenlist", "loess", "spikeIn", "manual", "none"))) {
+      stop("The 'method' parameter must be one among 'TMM', 'TMMwsp', 'RLE', 'upperQuartile', 'librarySize', 'readsInRegions', 'background', 'greenlist', 'loess', 'spikeIn', 'manual' or 'none'.", call. = FALSE)
+    }
+
+    greenlistEstimator <- greenlistEstimator[1]
+    if (!(greenlistEstimator %in% c("medianRatio", "TMM", "sum"))) {
+      stop("The 'greenlistEstimator' parameter must be one among 'medianRatio', 'TMM' or 'sum'.", call. = FALSE)
     }
 
     factorType <- tolower(factorType[1])
@@ -148,12 +161,12 @@ normalizeCounts <-
       estimationRows <- dplyr::filter(estimationRows, .data$region.set %in% useRegionSets)
     }
 
-    if (nrow(estimationRows) == 0 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "loess")) {
+    if (nrow(estimationRows) == 0 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "readsInRegions", "loess")) {
       stop("No region passes 'minCount', the factors cannot be estimated.", call. = FALSE)
     }
 
     # A handful of regions gives a factor that reflects those regions rather than the experiment
-    if (nrow(estimationRows) < 100 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "loess")) {
+    if (nrow(estimationRows) < 100 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "readsInRegions", "loess")) {
       warning("Only ", nrow(estimationRows), " regions are used to estimate the factors, consider 'background' or 'spikeIn' normalisation.", call. = FALSE)
     }
 
@@ -182,6 +195,16 @@ normalizeCounts <-
     } else if (method == "librarySize") {
       scalingFactorVector <- librarySizes / mean(librarySizes)
 
+    } else if (method == "readsInRegions") {
+      # The depth of a sample is taken as what it put in the regions, the reads in peaks of DiffBind
+      regionTotals <- as.numeric(colSums(countMatrix[estimationRows$row.index, , drop = FALSE]))
+
+      if (any(regionTotals == 0)) {
+        stop("Some samples carry no read in the regions, their factors cannot be estimated this way.", call. = FALSE)
+      }
+
+      scalingFactorVector <- regionTotals / mean(regionTotals)
+
     } else if (method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile")) {
       edgeRMethod <- c("TMM" = "TMM", "TMMwsp" = "TMMwsp", "RLE" = "RLE", "upperQuartile" = "upperquartile")[method]
 
@@ -192,6 +215,11 @@ normalizeCounts <-
                                               refColumn = .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts)))
 
       scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
+
+    } else if (method == "greenlist") {
+      # The greenlist carries the noise of the protocol, so its counts follow the material sequenced and already hold the depth
+      scalingFactorVector <- .greenlistFactors(greenlistMatrix = .greenlistMatrix(counts = counts, greenlistCounts = greenlistCounts),
+                                               estimator = greenlistEstimator)
 
     } else if (method == "background") {
       backgroundBins <- S4Vectors::metadata(counts)$background

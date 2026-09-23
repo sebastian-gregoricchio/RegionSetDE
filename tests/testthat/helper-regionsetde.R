@@ -68,3 +68,32 @@ exampleSetResults <- function() {
                               contrast = exampleContrast(),
                               verbose = FALSE)
 }
+
+
+
+# A single-end BAM file on one contig: reads spread at random, plus an optional pile of reads over 1 kb.
+# An empty second contig can be added, standing in for a chromosome without reads such as chrY in a female sample.
+syntheticInput <- function(fileName,
+                           pileStart = NULL,
+                           emptyContig = FALSE,
+                           seed = 1L,
+                           chromosome = "chrT",
+                           contigLength = 200000L,
+                           readCount = 20000L) {
+  set.seed(seed)
+
+  positions <- sample.int(contigLength - 100L, readCount, replace = TRUE)
+  if (!is.null(pileStart)) {positions <- c(positions, pileStart + sample.int(900L, 3000L, replace = TRUE))}
+  positions <- sort(positions)
+
+  samHeader <- c("@HD\tVN:1.6\tSO:coordinate", paste0("@SQ\tSN:", chromosome, "\tLN:", contigLength))
+  if (isTRUE(emptyContig)) {samHeader <- c(samHeader, "@SQ\tSN:chrU\tLN:100000")}
+
+  samRecords <- paste(paste0("read", seq_along(positions)), sample(c(0L, 16L), length(positions), replace = TRUE),
+                      chromosome, positions, 60, "50M", "*", 0, 0, "*", "*", sep = "\t")
+
+  samFile <- file.path(tempdir(), paste0(fileName, ".sam"))
+  writeLines(c(samHeader, samRecords), samFile)
+
+  return(Rsamtools::asBam(samFile, destination = file.path(tempdir(), fileName), overwrite = TRUE, indexDestination = TRUE))
+}

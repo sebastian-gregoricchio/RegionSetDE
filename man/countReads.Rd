@@ -6,7 +6,8 @@
 \usage{
 countReads(
   regionSet,
-  bamFiles,
+  bamFiles = NULL,
+  sampleSheet = NULL,
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
@@ -28,7 +29,9 @@ countReads(
 \arguments{
 \item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.}
 
-\item{bamFiles}{Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header.}
+\item{bamFiles}{Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.}
+
+\item{sampleSheet}{Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files, the sample names and the annotation in one go. Default: \code{NULL}.}
 
 \item{sampleNames}{Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.}
 
@@ -52,7 +55,7 @@ countReads(
 
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.}
 
-\item{excludeChromosomes}{Character vector with the chromosomes left out of the library sizes, named as in the BAM files, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.}
+\item{excludeChromosomes}{Character vector with the chromosomes left out of the library sizes, written in either naming style, \code{chrM} and \code{MT} both reaching the mitochondrial genome of a file naming it either way, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. A name matching no chromosome once converted raises a warning, since it would leave that chromosome inside the library sizes without a word. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.}
 
 \item{discardRegions}{\code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.}
 

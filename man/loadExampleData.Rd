@@ -7,18 +7,22 @@
 loadExampleData(dataset = "counts", verbose = TRUE)
 }
 \arguments{
-\item{dataset}{String indicating which object to load, one among \code{"counts"}, \code{"fit"}, \code{"regions"}, \code{"exclusionRegions"}, \code{"sampleSheet"} and \code{"buildMetadata"}. The string \code{"blacklist"} is accepted as a synonym of \code{"exclusionRegions"}. Default: \code{"counts"}.}
+\item{dataset}{String indicating which object to load, one among \code{"counts"}, \code{"fit"}, \code{"regions"}, \code{"exclusionRegions"}, \code{"sampleSheet"}, \code{"peakSheet"} and \code{"buildMetadata"}. The string \code{"blacklist"} is accepted as a synonym of \code{"exclusionRegions"}. Default: \code{"counts"}.}
 
 \item{verbose}{Logical value to indicate whether the loading message must be printed. Default: \code{TRUE}.}
 }
 \value{
-The requested object. \code{"counts"} returns a \code{RegionSetDE.counts} object, unnormalised and unfiltered, with the background bins already stored in its metadata. \code{"fit"} returns a \code{RegionSetDE.fit} object ready for \code{\link{testRegions}} and \code{\link{testRegionSets}}. \code{"regions"} returns a data.frame with one row per region and its set membership, \code{"exclusionRegions"} a \code{GRanges}, \code{"sampleSheet"} a data.frame describing every library of the source dataset, and \code{"buildMetadata"} a list with the parameters used to generate the others.
+The requested object. \code{"counts"} returns a \code{RegionSetDE.counts} object, unnormalised and unfiltered, with the background bins already stored in its metadata. \code{"fit"} returns a \code{RegionSetDE.fit} object ready for \code{\link{testRegions}} and \code{\link{testRegionSets}}. \code{"regions"} returns a data.frame with one row per region and its set membership, \code{"exclusionRegions"} a \code{GRanges}, \code{"sampleSheet"} a data.frame describing every library of the source dataset, \code{"peakSheet"} the sheet of the nine peak files and BAM files of the androgen receptor example, read with \code{\link{loadSampleSheet}} so that the paths point at the installed files, and \code{"buildMetadata"} a list with the parameters used to generate the others.
 }
 \description{
 Loads one of the example objects installed with RegionSetDE. The objects cover the whole path from a collection of genomic regions to a fitted model, and are the ones used throughout the vignette and the examples.
 }
 \details{
-The example data comes from the liver ChIP-seq libraries of the EURATRANS project, distributed by the \code{chromstaRData} package and aligned to rn4. The contrast is H3K4me3 in the spontaneously hypertensive (SHR) rat against the Brown Norway (BN) strain, two biological replicates each, restricted to chromosome 12.
+Two datasets are installed with the package, one for each end of the workflow.
+
+Everything but \code{"peakSheet"} comes from the liver ChIP-seq libraries of the EURATRANS project, distributed by the \code{chromstaRData} package and aligned to rn4. The contrast is H3K4me3 in the spontaneously hypertensive (SHR) rat against the Brown Norway (BN) strain, two biological replicates each, restricted to chromosome 12. It starts from a counts object, which is where an analysis of fixed windows or of an existing count matrix begins.
+
+\code{"peakSheet"} points at the other one, which starts a step earlier, from peak files and alignments. It is a slice of the androgen receptor ChIP-seq of GSE284522: LNCaP cells treated with DMSO, or with the synthetic androgen R1881 for four or twenty-four hours, three replicates each, plus one input. The alignments are cut down to a window of chromosome 19 and subsampled, so the counts are the real ones scaled by a known fraction; the peaks are the calls of the full libraries filtered to the same window. \code{system.file("extdata", "lncapAR", "SOURCES.md", package = "RegionSetDE")} says exactly what was done to them.
 
 The regions are one kilobase windows split into four sets ordered by the amount of H3K4me3 they are expected to carry: promoters overlapping a CpG island, promoters without one, positions inside gene bodies away from any transcription start site, and intergenic positions that serve as the low-signal control. The sets are disjoint, and a window claimed by an earlier set is never reused by a later one.
 
@@ -26,7 +30,7 @@ Only the counts are stored on disk. Asking for \code{"fit"} runs \code{\link{nor
 
 rn4 has no curated blacklist, so \code{"exclusionRegions"} is assembled from the UCSC assembly gap track and from bins carrying implausible coverage in the input libraries. It is not an ENCODE-grade exclusion list and should not be reused outside these examples.
 
-The script that generated the stored objects is installed with the package, at \code{system.file("scripts", "make-data.R", package = "RegionSetDE")}.
+The scripts that generated the stored objects and the peak files are installed with the package, at \code{system.file("scripts", package = "RegionSetDE")}.
 }
 \examples{
 counts <- loadExampleData("counts")

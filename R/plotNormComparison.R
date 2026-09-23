@@ -5,7 +5,7 @@
 #' @description Compares the scaling factors that different normalisation methods give for the same object, without modifying it. The factors already stored in the object, whether estimated or supplied by hand, are shown alongside the others so that a manual set of factors can be checked against the automatic ones.
 #'
 #' @param counts \code{RegionSetDE.counts} object.
-#' @param methods Character vector with the methods to compare, among those accepted by \code{\link{normalizeCounts}} that need no extra input: \code{"librarySize"}, \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"} and \code{"background"}. Default: \code{c("librarySize", "TMM", "RLE", "background")}.
+#' @param methods Character vector with the methods to compare, among those accepted by \code{\link{normalizeCounts}} that need no extra input: \code{"librarySize"}, \code{"readsInRegions"}, \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"}, \code{"background"} and \code{"greenlist"}, the last one requiring \code{\link{countGreenlist}} to have been run. Default: \code{c("librarySize", "TMM", "RLE", "background")}.
 #' @param plotType String with the type of plot, either \code{"factors"} to show one point per sample and method, or \code{"ma"} to show the counts of each sample against a reference with the factors drawn as horizontal lines. Default: \code{"factors"}.
 #' @param referenceSample String or numeric position of the sample used as reference by the MA plot. Default: \code{NULL}, the sample with the median depth.
 #' @param useBackground Logical value indicating whether the MA plot must be drawn on the background bins rather than on the regions. Default: \code{FALSE}.
@@ -77,7 +77,7 @@ plotNormComparison <-
       stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
     }
 
-    availableMethods <- c("librarySize", "TMM", "TMMwsp", "RLE", "upperQuartile", "background")
+    availableMethods <- c("librarySize", "readsInRegions", "TMM", "TMMwsp", "RLE", "upperQuartile", "background", "greenlist")
     unknownMethods <- setdiff(methods, availableMethods)
     if (length(unknownMethods) > 0) {
       stop("The following methods cannot be compared here: ", paste(unknownMethods, collapse = ", "),

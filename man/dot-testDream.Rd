@@ -16,7 +16,7 @@
 \item{verbose}{Logical value to indicate whether the messages must be printed.}
 }
 \value{
-A data.frame with the \code{log2FC}, \code{average.signal}, \code{stat} and \code{p.value} columns.
+A data.frame with the \code{log2FC}, \code{average.signal}, \code{stat}, \code{stat.distribution}, \code{df1}, \code{df2} and \code{p.value} columns.
 }
 \description{
 Runs the test on a \code{dream} fit. A contrast that is not a single coefficient of the design needs the mixed model to be fitted again, since \code{dream} builds the contrast at fit time.

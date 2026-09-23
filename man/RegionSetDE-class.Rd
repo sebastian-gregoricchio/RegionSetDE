@@ -11,6 +11,8 @@ S4 class collecting a group of genomic region sets together with the filters app
 
 \describe{
 \item{\code{regions}}{\code{GRangesList} containing the region sets, one element per set.}
+
+\item{\code{consensus}}{List with the consensus data when the regions were built from peaks by \code{\link{loadConsensusPeaks}}: the consensus of every group, the peaks of every sample after the exclusion, the total consensus, the table of the samples and the sample sheet. Empty for regions loaded any other way. Read it with \code{\link{consensusData}}.}
 }}
 
 \author{

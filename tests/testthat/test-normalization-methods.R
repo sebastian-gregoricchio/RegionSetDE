@@ -7,7 +7,7 @@ test_that("each normalisation method returns usable factors", {
 
   # The methods needing no extra input
   for (normalizationMethod in c("TMM", "TMMwsp", "RLE", "upperQuartile",
-                                "librarySize", "background", "none")) {
+                                "librarySize", "readsInRegions", "background", "none")) {
 
     normalized <- normalizeCounts(counts, method = normalizationMethod, verbose = FALSE)
 
@@ -20,6 +20,27 @@ test_that("each normalisation method returns usable factors", {
     expect_true(all(scalingFactors > 0),
                 info = paste("non positive factors from", normalizationMethod))
   }
+})
+
+
+test_that("the reads in the regions give the factors of the 'readsInRegions' method", {
+
+  counts <- exampleCounts()
+  normalized <- normalizeCounts(counts, method = "readsInRegions", verbose = FALSE)
+
+  regionTotals <- colSums(SummarizedExperiment::assay(counts, "counts"))
+  expect_equal(normalized$scaling.factor, as.numeric(regionTotals / mean(regionTotals)))
+
+  # The whole library and the reads in the regions are two different depths
+  librarySizeFactors <- normalizeCounts(counts, method = "librarySize", verbose = FALSE)$scaling.factor
+  expect_false(isTRUE(all.equal(normalized$scaling.factor, librarySizeFactors)))
+
+  # Only the sets asked for take part in the total
+  oneSet <- normalizeCounts(counts, method = "readsInRegions", useRegionSets = "promoterCpG", verbose = FALSE)
+  setRows <- SummarizedExperiment::rowData(counts)$region.set == "promoterCpG"
+  setTotals <- colSums(SummarizedExperiment::assay(counts, "counts")[setRows, ])
+
+  expect_equal(oneSet$scaling.factor, as.numeric(setTotals / mean(setTotals)))
 })
 
 

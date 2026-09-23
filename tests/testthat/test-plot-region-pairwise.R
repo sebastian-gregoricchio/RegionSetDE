@@ -299,7 +299,11 @@ test_that("testRegions records the two levels a contrast compares", {
   byLevels <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
   byCoefficient <- testRegions(fit, contrast = "conditionSHR", verbose = FALSE)
 
-  expect_identical(byLevels@contrast.groups, list(column = "condition", groups = c("SHR", "BN")))
+  expect_identical(byLevels@contrast.groups[c("column", "groups")], list(column = "condition", groups = c("SHR", "BN")))
+
+  # The size of each group travels with it, for the power analyses
+  groupSizes <- table(as.character(SummarizedExperiment::colData(fit@counts)$condition))
+  expect_identical(byLevels@contrast.groups$n.samples, c(SHR = as.integer(groupSizes[["SHR"]]), BN = as.integer(groupSizes[["BN"]])))
 
   # The sample names separate any two samples too, the variable of the design is the one that counts
   expect_identical(byCoefficient@contrast.groups, byLevels@contrast.groups)

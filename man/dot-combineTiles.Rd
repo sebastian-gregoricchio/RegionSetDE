@@ -9,7 +9,7 @@
   tileRanges,
   extraColumns = character(0),
   method = "simes",
-  lfcThreshold = 0,
+  directionFDR = 0.05,
   adjustMethod = "BH",
   verbose = TRUE
 )
@@ -23,7 +23,7 @@
 
 \item{method}{String with the combination method.}
 
-\item{lfcThreshold}{Numeric value used to count the tiles moving in each direction.}
+\item{directionFDR}{Numeric value with the false discovery rate, within each region, below which a tile counts as moving up or down in \code{n.tiles.up} and \code{n.tiles.down}. It is the \code{fc.threshold} of csaw, which despite its name is not a fold change. Default: \code{0.05}.}
 
 \item{adjustMethod}{String with the multiple testing correction.}
 

@@ -43,7 +43,7 @@ plotVolcano(
 
 \item{FDR}{Numeric value with the adjusted p-value cut-off drawn as a line. Default: \code{NULL}, the threshold stored in the object.}
 
-\item{log2FC}{Numeric value with the absolute log2 fold change cut-off drawn as a line. Default: \code{NULL}, the threshold stored in the object.}
+\item{log2FC}{Numeric value with the absolute log2 fold change cut-off used to label the points, drawn as two dashed vertical lines at \code{-log2FC} and \code{log2FC} when above zero. Default: \code{NULL}, the threshold stored in the object, which is the \code{log2FC} given to \code{\link{testRegions}}.}
 
 \item{showCounts}{Logical value to indicate whether the number of changing regions must be written in the top corners of each panel. Default: \code{TRUE}.}
 

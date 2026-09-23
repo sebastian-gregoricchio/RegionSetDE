@@ -10,27 +10,28 @@ plotSampleCorrelation(
   contrast = NULL,
   method = "spearman",
   groupBy = NULL,
+  annotationColumns = NULL,
+  annotationColours = NULL,
   useOffsets = TRUE,
   compareOffsets = FALSE,
   facetBySet = FALSE,
   cluster = TRUE,
   clusteringMethod = "complete",
+  showDendrogram = TRUE,
   topRegions = NULL,
   excludeDiagonal = FALSE,
   palette = NULL,
   limits = NULL,
   showValues = TRUE,
   valuesColour = NULL,
-  valuesSize = 2.5,
   digits = 2,
   title = NULL,
-  subtitle = NULL,
-  legendPosition = "right",
-  baseSize = 12
+  fontSize = 9,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package.}
+\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSampleCorrelation}}.}
 
 \item{set}{Character vector with the names of the region sets used. Default: \code{NULL}, all of them.}
 
@@ -38,17 +39,23 @@ plotSampleCorrelation(
 
 \item{method}{String with the correlation, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}. Default: \code{"spearman"}.}
 
-\item{groupBy}{String with the name of a \code{colData} column defining the groups whose within and between correlations are summarised in the panel label. Default: \code{NULL}.}
+\item{groupBy}{String with the name of a \code{colData} column defining the groups whose within and between correlations are summarised in the title. Default: \code{NULL}.}
 
-\item{useOffsets}{Logical value to indicate whether the normalisation stored in the object must be applied. Default: \code{TRUE}.}
+\item{annotationColumns}{Character vector with the \code{colData} columns drawn as annotation bars above and beside the heatmap, for instance \code{c("condition", "replicate")}. Default: \code{NULL}, the \code{groupBy} column when there is one.}
 
-\item{compareOffsets}{Logical value to indicate whether the same matrix must be drawn twice, once with the normalisation and once on the library sizes alone. Default: \code{FALSE}.}
+\item{annotationColours}{Named list with the colours of the annotation columns, as \code{ComplexHeatmap} takes them: a named vector for a categorical column, a \code{circlize::colorRamp2} function for a numeric one. The columns left out take the palette of the package. Default: \code{NULL}.}
 
-\item{facetBySet}{Logical value to indicate whether each region set must get its own matrix. Default: \code{FALSE}.}
+\item{useOffsets}{Logical value to indicate whether the normalisation stored in the object must be applied, \code{FALSE} scaling the samples by their library sizes alone. Default: \code{TRUE}.}
+
+\item{compareOffsets}{Logical value to indicate whether the same heatmap must be drawn twice side by side, once with the normalisation and once on the library sizes alone. Default: \code{FALSE}.}
+
+\item{facetBySet}{Logical value to indicate whether each region set must get its own heatmap, side by side. Default: \code{FALSE}.}
 
 \item{cluster}{Logical value to indicate whether the samples must be ordered by hierarchical clustering rather than kept in the order of the object. Default: \code{TRUE}.}
 
 \item{clusteringMethod}{String with the agglomeration passed to \code{stats::hclust}. Default: \code{"complete"}.}
+
+\item{showDendrogram}{Logical value to indicate whether the dendrogram of the clustering must be drawn. Default: \code{TRUE}.}
 
 \item{topRegions}{Numeric value with the number of most variable regions the correlation is computed on. Default: \code{NULL}, all of them.}
 
@@ -62,47 +69,43 @@ plotSampleCorrelation(
 
 \item{valuesColour}{String with the colour of the written values. Default: \code{NULL}, black or white on each cell depending on how dark it is.}
 
-\item{valuesSize}{Numeric value with the font size of the written values. Default: \code{2.5}.}
-
 \item{digits}{Numeric value with the number of decimals written. Default: \code{2}.}
 
-\item{title}{String with the title of the plot, rendered as markdown. Default: \code{NULL}.}
+\item{title}{String with the title, written above the first heatmap. Default: \code{NULL}.}
 
-\item{subtitle}{String with the subtitle of the plot, rendered as markdown. Default: \code{NULL}.}
+\item{fontSize}{Numeric value with the font size of the names, the values being written slightly smaller. Default: \code{9}.}
 
-\item{legendPosition}{String with the position of the legend. Default: \code{"right"}.}
-
-\item{baseSize}{Numeric value with the base font size. Default: \code{12}.}
+\item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A \code{ggplot} object, carrying the correlation matrices as the \code{correlation} attribute.
+A \code{Heatmap} built by \code{ComplexHeatmap}, or a \code{HeatmapList} when \code{compareOffsets} or \code{facetBySet} draw several of them, drawn when printed. \code{ComplexHeatmap::draw} opens the layout, for instance \code{draw(x, heatmap_legend_side = "bottom")} or \code{draw(x, ht_gap = grid::unit(5, "mm"))} to push several panels apart. The matrices themselves come out of \code{\link{computeSampleCorrelation}}.
 }
 \description{
-Draws the pairwise correlation between the samples over the region signal, which with a handful of libraries often reads more clearly than an ordination: replicates of a condition should sit closer to each other than to anything else.
+Draws the correlation between the samples as a heatmap, clustered and annotated with any column of the sample table, such as the condition, the treatment or the replicate. The correlation can be computed on the normalised or on the raw signal, on every region or on the most variable ones.
 }
 \details{
-The scale runs over the values off the diagonal rather than from zero to one, because every sample correlates with itself perfectly and every pair of libraries from the same assay correlates highly. A scale anchored at zero turns the whole matrix one shade and hides the differences that matter. \code{limits} takes that decision back, and either end can be left as \code{NA} to be read from the data: \code{c(NA, 1)} fixes the top at one and lets the bottom follow the values.
-
-Values outside \code{limits} are drawn at the nearest end of the scale rather than left blank, so a cell that falls below the floor still shows as the extreme colour. That hides how far below it went, which is why the number of cells it happened to is reported.
+The scale runs over the values off the diagonal rather than from zero to one, because every sample correlates with itself perfectly and every pair of libraries from the same assay correlates highly. A scale anchored at zero turns the whole matrix one shade and hides the differences that matter. \code{limits} takes that decision back, and either end can be left as \code{NA} to be read from the data: \code{c(NA, 1)} fixes the top at one and lets the bottom follow the values. Values outside \code{limits} are drawn at the nearest end, which hides how far past it they went, so the number of cells concerned is reported.
 
 The palette is sequential, since a correlation has a low end and a high end and nothing meaningful in the middle. A diverging scale with white at the centre reads that midpoint as an absence, which on a matrix where everything sits between 0.9 and 1 is exactly wrong.
 
-With \code{groupBy}, the mean correlation within a group and between groups is written in the panel label. Within above between is what a usable experiment looks like; the two being equal says the condition effect is small next to the replicate noise, and that is the answer about whether to block, regardless of what an ordination suggests.
+With \code{groupBy}, the mean correlation within a group and between groups is written in the title. Within above between is what a usable experiment looks like; the two being equal says the condition effect is small next to the replicate noise, and that is the answer about whether to block, regardless of what an ordination suggests.
 
-The clustering order is taken from the first panel and reused in the others, so that a comparison across \code{compareOffsets} shows the values changing rather than the rows moving. No dendrogram is drawn for the same reason: a single dendrogram cannot describe several panels, and one per panel would defeat the comparison.
+The clustering, on one minus the correlation, comes from the first heatmap and is reused by the others, so a comparison across \code{compareOffsets} or \code{facetBySet} shows the values changing rather than the samples moving. The dendrogram on the side is drawn once for the same reason, and so are the sample names, the columns of every panel following the order of the rows. Numeric annotation columns get a grey gradient, and turning one into a factor colours it by level instead, which suits a replicate number.
+
+\code{compareOffsets} answers less here than it does on an ordination. A correlation does not see a single factor per sample, so the two panels come out identical unless the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. Whether the scaling factors are driving a grouping is a question for \code{\link{plotRegionPCA}}.
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
-plotSampleCorrelation(counts, groupBy = "condition")
+plotSampleCorrelation(counts, groupBy = "condition", annotationColumns = c("condition", "sex"))
 
-# Pearson on the CpG island promoters only
-plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson")
+# The same samples before and after the normalisation, on the CpG island promoters only
+plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson", compareOffsets = TRUE)
 
 }
 \seealso{
-\code{\link{plotRegionPCA}}, \code{\link{normalizeCounts}}
+\code{\link{computeSampleCorrelation}}, \code{\link{plotRegionPCA}}, \code{\link{normalizeCounts}}
 }
 \author{
 Sebastian Gregoricchio

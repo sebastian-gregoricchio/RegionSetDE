@@ -22,13 +22,13 @@ resultsTable(results)
 \S4method{resultsTable}{RegionSetDE.setScores}(results)
 }
 \arguments{
-\item{results}{\code{RegionSetDE.results} object.}
+\item{results}{\code{RegionSetDE.results} object, or one of the list classes holding several contrasts. A single contrast is taken out of a list by name, \code{results$name} or \code{results[["name"]]}.}
 }
 \value{
-A data.frame with one row per region.
+A data.frame with one row per region. For a list of contrasts the tables are stacked, and the first two columns say which contrast a row belongs to: \code{contrast}, the name the contrast was given, which is the string the \code{contrast} argument of \code{\link{topRegions}}, \code{\link{plotVolcano}} and the other functions takes, and \code{contrast.description}, what it compares.
 }
 \description{
-Returns the per-region table of a \code{RegionSetDE.results} object.
+Returns the per-region table of a \code{RegionSetDE.results} object, or the tables of every contrast of a list of them, stacked.
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)

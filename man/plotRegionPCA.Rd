@@ -25,7 +25,7 @@ plotRegionPCA(
 )
 }
 \arguments{
-\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package.}
+\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSamplePCA}}, in which case \code{set}, \code{useOffsets}, \code{compareOffsets}, \code{facetBySet} and \code{topRegions} are those of the computation.}
 
 \item{set}{Character vector with the names of the region sets used. Default: \code{NULL}, all of them.}
 
@@ -37,7 +37,7 @@ plotRegionPCA(
 
 \item{labelBy}{String with the name of a \code{colData} column written next to the points, or \code{"sample"}. Default: \code{"sample"}.}
 
-\item{useOffsets}{Logical value to indicate whether the normalisation stored in the object must be applied. Default: \code{TRUE}.}
+\item{useOffsets}{Logical value to indicate whether the normalisation stored in the object must be applied, \code{FALSE} scaling the samples by their library sizes alone. Default: \code{TRUE}.}
 
 \item{compareOffsets}{Logical value to indicate whether the same ordination must be drawn twice, once with the normalisation and once on the library sizes alone. Default: \code{FALSE}.}
 
@@ -83,7 +83,7 @@ plotRegionPCA(counts, set = "promoterCpG", colourBy = "condition")
 
 }
 \seealso{
-\code{\link{plotSampleCorrelation}}, \code{\link{normalizeCounts}}, \code{\link{splitSamples}}
+\code{\link{computeSamplePCA}}, \code{\link{plotSampleCorrelation}}, \code{\link{normalizeCounts}}, \code{\link{splitSamples}}
 }
 \author{
 Sebastian Gregoricchio

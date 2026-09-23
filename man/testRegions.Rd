@@ -14,6 +14,7 @@ testRegions(
   log2FC = 0,
   adjustMethod = "BH",
   regionSets = NULL,
+  signalBy = NULL,
   extraColumns = TRUE,
   carryCounts = TRUE,
   verbose = TRUE
@@ -26,7 +27,7 @@ testRegions(
 
 \item{combine}{Logical value to indicate whether the tile level p-values must be combined into one value per region. Ignored when the counts were not tiled. Default: \code{TRUE}.}
 
-\item{combineMethod}{String with the method used to combine the tiles, among those accepted by \code{csaw::combineTests}: \code{"simes"}, \code{"holm-min"}, \code{"wilcoxon"} and \code{"stouffer"}. Default: \code{"simes"}.}
+\item{combineMethod}{String with the method used to combine the tiles into their region. \code{"simes"}, through \code{csaw::combineTests}, asks whether any part of the region changes, and a single strong tile is enough. \code{"holm-min"}, through \code{csaw::minimalTests}, asks for several tiles to change together, three of them or 40\% of the region when that is more, and all of them in a region shorter than three tiles, which suits broad domains where one tile moving on its own is more likely noise than biology. Default: \code{"simes"}.}
 
 \item{lfcThreshold}{Numeric value with the log2 fold change against which the null hypothesis is tested. A value above zero moves the threshold inside the test, through \code{edgeR::glmTreat}, \code{limma::treat} or the \code{lfcThreshold} of \code{DESeq2::results}, which is stricter and better calibrated than filtering the output afterwards. Default: \code{0}.}
 
@@ -38,6 +39,8 @@ testRegions(
 
 \item{regionSets}{Character vector with the names of the region sets to keep in the output. Default: \code{NULL}, all of them.}
 
+\item{signalBy}{String with a column of the \code{colData}: every level of it gets an \code{average.signal.<level>} column in the results, the average signal over the samples of that level alone. \code{FALSE} adds none. Default: \code{NULL}, the column the contrast compares two levels of, which is known for the three-element form and for most coefficients and expressions, and none when it is not.}
+
 \item{extraColumns}{Annotation carried by the regions that must be appended to the result, at the end of the table. Either \code{TRUE} for every column of the \code{rowData} beyond the ones the package writes itself, \code{FALSE} for none, or a character vector naming the ones wanted. Default: \code{TRUE}.}
 
 \item{carryCounts}{Logical value to indicate whether the counts must travel inside the result, so that \code{\link{plotRegion}} and \code{\link{plotTopHeatmap}} can draw the values without being handed the counts object again. Several contrasts run on one fit share the same copy in memory. Default: \code{TRUE}.}
@@ -45,7 +48,18 @@ testRegions(
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A \code{RegionSetDE.results} object.
+A \code{RegionSetDE.results} object. Its table, read with \code{\link{resultsTable}}, holds one row per region with the coordinates, then:
+\itemize{
+  \item \code{log2FC}: the log2 fold change, first group of the contrast over the second.
+  \item \code{average.signal}: the average abundance of the region over all the samples, on the scale of the engine: the log2 counts per million of \code{edgeR::aveLogCPM} for edgeR, the average of the log2 values the linear model was fitted on for voom, limma and dream, \code{log2(baseMean + 1)} for DESeq2.
+  \item \code{average.signal.<level>}: the same quantity computed on the samples of one level of \code{signalBy} only, one column per level.
+  \item \code{stat}: the test statistic of the engine: the quasi-likelihood F of edgeR, or its likelihood ratio when the dispersion was fixed, the moderated t of voom, limma and dream, the Wald statistic of DESeq2.
+  \item \code{stat.distribution}: the distribution \code{stat} follows under the null hypothesis, one among \code{"f"}, \code{"chisq"}, \code{"t"} and \code{"norm"}. \code{NA} for the threshold tests run when \code{lfcThreshold > 0}, whose null is not centred on zero.
+  \item \code{df1}, \code{df2}: the degrees of freedom of that distribution. For the F of edgeR, \code{df1} is the numerator, the number of coefficients tested, and \code{df2} the denominator, the residual degrees of freedom plus the prior ones. For the likelihood ratio \code{df1} is the number of coefficients tested. For the moderated t \code{df1} is the total degrees of freedom, residual plus prior. The normal distribution of DESeq2 has none. \code{NA} where the distribution does not use them.
+  \item \code{p.value}, \code{FDR}: the p-value and its adjustment over all the rows of the contrast.
+  \item \code{diff.status}: \code{"up"}, \code{"down"} or \code{"null"}, from \code{FDR} and \code{log2FC}.
+}
+On a tiled object the statistics, the degrees of freedom and the averages come from the tile carrying the p-value of the region, followed by the columns the combination adds.
 }
 \description{
 Tests a contrast on a \code{RegionSetDE.fit} object and returns one row per region. When the counts were tiled, every tile is tested on its own and the p-values are then combined back to the region, so that the region stays the unit of inference even though the signal was measured at a finer scale.
@@ -53,11 +67,13 @@ Tests a contrast on a \code{RegionSetDE.fit} object and returns one row per regi
 \details{
 The multiple testing correction is applied over all the rows of the object, across the region sets, and \code{regionSets} subsets the output afterwards. Correcting inside each set separately would make the FDR of a set depend on how many other sets were loaded, which is not a property anyone wants in a result.
 
-Two things follow from the combination step. The p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, not an average, which is the quantity that matches the p-value. The tile level table stays available in the \code{tiles} slot, and \code{\link{plotRegion}} draws it.
+Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, not an average, which is the quantity that matches the p-value. The tile level table stays available in the \code{tiles} slot, and \code{\link{plotRegion}} draws it.
 
 A design written as \code{~ condition} spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what \code{c("column", "groupA", "groupB")} avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as \code{~ condition} or \code{~ 0 + condition}. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.
 
 Whatever the regions were loaded with travels through to the result. A gene name, a peak score or any other column attached to the \code{rowData} comes out at the end of the table, which is what makes \code{topRegions()} readable and lets \code{plotVolcano(labelColumn = )} label the points with something other than an identifier. On a tiled object the value is read off the tile the combination reported, the same one the fold change comes from, so a row describes one place rather than an average over several.
+
+The statistic, the distribution it follows and its degrees of freedom are in the table so that the test can be taken further, into a power or sample size analysis for instance. \code{\link{contrastInfo}} gathers the rest of what such an analysis needs, the engine and the number of samples in each group of the contrast, which is also stored in the \code{n.samples} element of the \code{contrast.groups} slot.
 
 The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
 }

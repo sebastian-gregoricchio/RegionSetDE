@@ -49,7 +49,9 @@ test_that("the counts level plots build", {
   expect_s3_class(plotNormComparison(exampleCounts()), "ggplot")
   expect_s3_class(plotSetMA(counts, groupBy = "condition"), "ggplot")
   expect_s3_class(plotRegionPCA(counts, colourBy = "condition"), "ggplot")
-  expect_s3_class(plotSampleCorrelation(counts, groupBy = "condition"), "ggplot")
+
+  skip_if_not_installed("ComplexHeatmap")
+  expect_s4_class(plotSampleCorrelation(counts, groupBy = "condition", verbose = FALSE), "Heatmap")
 })
 
 

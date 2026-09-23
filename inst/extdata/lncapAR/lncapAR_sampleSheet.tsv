@@ -1,0 +1,10 @@
+sample	bam	peaks	input	condition	treatment	time	replicate
+AR_DMSO_r1	AR_DMSO_r1.bam	AR_DMSO_r1_peaks.narrowPeak	input.bam	DMSO	DMSO	4h	r1
+AR_DMSO_r2	AR_DMSO_r2.bam	AR_DMSO_r2_peaks.narrowPeak	input.bam	DMSO	DMSO	4h	r2
+AR_DMSO_r3	AR_DMSO_r3.bam	AR_DMSO_r3_peaks.narrowPeak	input.bam	DMSO	DMSO	4h	r3
+AR_R1881_4h_r1	AR_R1881_4h_r1.bam	AR_R1881_4h_r1_peaks.narrowPeak	input.bam	R1881_4h	R1881	4h	r1
+AR_R1881_4h_r2	AR_R1881_4h_r2.bam	AR_R1881_4h_r2_peaks.narrowPeak	input.bam	R1881_4h	R1881	4h	r2
+AR_R1881_4h_r3	AR_R1881_4h_r3.bam	AR_R1881_4h_r3_peaks.narrowPeak	input.bam	R1881_4h	R1881	4h	r3
+AR_R1881_24h_r1	AR_R1881_24h_r1.bam	AR_R1881_24h_r1_peaks.narrowPeak	input.bam	R1881_24h	R1881	24h	r1
+AR_R1881_24h_r2	AR_R1881_24h_r2.bam	AR_R1881_24h_r2_peaks.narrowPeak	input.bam	R1881_24h	R1881	24h	r2
+AR_R1881_24h_r3	AR_R1881_24h_r3.bam	AR_R1881_24h_r3_peaks.narrowPeak	input.bam	R1881_24h	R1881	24h	r3

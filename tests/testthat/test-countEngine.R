@@ -143,10 +143,16 @@ test_that("excludeChromosomes changes the library sizes, never the counts", {
   expect_equal(SummarizedExperiment::assay(withoutFirst, "counts"), SummarizedExperiment::assay(allChromosomes, "counts"))
   expect_equal(withoutFirst$library.size, 1)
 
-  countingMessages <- testthat::capture_messages(RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy",
-                                                                         excludeChromosomes = c("chr1", "chrZ")))
+  countingMessages <- testthat::capture_messages(suppressWarnings(
+    RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy",
+                            excludeChromosomes = c("chr1", "chrZ"))))
   expect_true(any(grepl("they are counted", countingMessages)))
-  expect_true(any(grepl("absent from the BAM files", countingMessages)))
+
+  # A name that reaches no chromosome leaves it inside the library size, which the normalisation
+  # is then built on, so it is a warning rather than a message a quiet call would never show
+  expect_warning(RegionSetDE::countReads(toyEngineRegions(), bamFiles = bamFile, sampleNames = "toy",
+                                         excludeChromosomes = c("chr1", "chrZ"), verbose = FALSE),
+                 "exclude nothing")
 })
 
 

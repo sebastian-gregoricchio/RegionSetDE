@@ -39,7 +39,7 @@ plotResultsMA(
 
 \item{FDR}{Numeric value with the adjusted p-value cut-off used to label the points. Default: \code{NULL}, the threshold stored in the object.}
 
-\item{log2FC}{Numeric value with the absolute log2 fold change cut-off used to label the points. Default: \code{NULL}, the threshold stored in the object.}
+\item{log2FC}{Numeric value with the absolute log2 fold change cut-off used to label the points, drawn as two dashed horizontal lines when above zero. Default: \code{NULL}, the threshold stored in the object.}
 
 \item{showCounts}{Logical value to indicate whether the number of changing regions must be written in the corners of each panel, on the right hand side and on the same side of zero as the regions they count. Default: \code{TRUE}.}
 

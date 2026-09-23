@@ -25,7 +25,7 @@ Because no peak calling happens anywhere in the pipeline, the region definitions
   * **No peak calling.** Regions are supplied as BED, narrowPeak, broadPeak, `GRanges` or data.frames, and are the same in every condition.
 * **Two levels of testing from one fit.** `testRegions()` for individual regions, `testRegionSets()` for whole sets, and `testSetContrast()` for the difference between two sets.
 * **Effect sizes before p-values.** Set-level results carry two intervals side by side: a confidence interval on the condition effect, computed from one set score per library and the design of the experiment, and a region-heterogeneity interval describing how much the effect varies from locus to locus. A tiny shift over 30,000 promoters is not mistaken for a finding, and 30,000 regions are never mistaken for replicates.
-* **Normalisation you can defend.** Scaling factors from background bins, from the regions themselves, or supplied from a spike-in or greenlist, with `plotNormComparison()` to show how far the choice moves the samples before anything is fitted on it.
+* **Normalisation you can defend.** Scaling factors from background bins, from the regions themselves, from the CUT&RUN greenlist shipped with the package, or supplied from a spike-in, with `plotNormComparison()` to show how far the choice moves the samples before anything is fitted on it.
 * **Five engines.** `edgeR`, `limma-voom`, `variancePartition::dream` for random effects, `DESeq2`, and `limma`-trend for signal that is not count data.
 * **Counts and coverage kept apart.** An object built from bigWig files says so, and the negative binomial engines refuse it unless you assert that the coverage is count-like. Rounding coverage to integers does not make it counts, so it is not treated as if it did.
 * **Calibration you can check.** `checkNullCalibration()` runs the contrast on rows known to be null and shows whether the p-values come out uniform.
@@ -116,7 +116,7 @@ regions <- loadRegions(list(promoters = "annotation/promoters.bed",
                             CTCF      = "peaks/CTCF.narrowPeak"),
                        genomeAssembly = "hg38")
 
-regions <- applyBlacklist(regions, blacklist = encodeBlacklist)
+regions <- applyBlacklist(regions, blacklist = loadBlacklist("hg38"))
 
 # Counting, plus the background bins used for the normalisation and the null
 counts <- countReads(regions,
@@ -173,6 +173,12 @@ plotVolcano(results)
   | Is the competitive comparison fair? | `plotUniverseMatching()` |
   | Where inside the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` |
   | What are the raw and normalised counts of each region? | `countTable()` |
+  | Do the replicates agree, and do the conditions separate? | `plotRegionPCA()`, `plotSampleCorrelation()` |
+  | Do the inputs flag artefact regions? | `makeGreylist()`, then `applyGreylist()` |
+  | How do I normalise CUT&RUN or CUT&Tag without a spike-in? | `loadGreenlist()`, `countGreenlist()`, then `normalizeCounts(method = "greenlist")` |
+  | Where is the blacklist for my assembly, T2T included? | `availableRegionLists()`, then `loadBlacklist()` |
+  | Which peaks are shared between the groups? | `loadConsensusPeaks()`, then `plotPeakUpset()` |
+  | Did the condition move the shared peaks, or gain and lose whole sites? | `peakOccupancyTable()`, then `plotPeakOccupancy()` |
   | More than what, exactly? | `makeSetUniverse(universeSets = )`, then `plotUniverseMatching()` |
   
   <br>
@@ -195,7 +201,8 @@ plotVolcano(results)
   With the package there are available:
   
   * [web-manual](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/index.html): technical manual of each function;
-* [overview vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html): presents the whole workflow, what each object contains, how to extract its parts, and how to read the results.
+* [overview vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.html): presents the whole workflow, what each object contains, how to extract its parts, and how to read the results;
+* [peaks vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html): starts from peak calls instead, with the sample sheet, the consensus, the occupancy of the regions, and what a global change in binding does to the usual normalisation defaults.
 
 Note that the vignette can be inspected on R as well by typing `browseVignettes("RegionSetDE")`.
 

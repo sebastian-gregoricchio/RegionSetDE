@@ -1,5 +1,64 @@
 # Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
 
+#' @title .bamIndexPath
+#'
+#' @description Looks for the index of a BAM file under the four names one can go under: \code{file.bam.bai}, \code{file.bai}, \code{file.bam.csi} and \code{file.csi}.
+#'
+#' @param bamFile String with the path of the BAM file.
+#'
+#' @return String with the path of the first index found, \code{NA} when the file has none.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.bamIndexPath <-
+  function(bamFile) {
+
+    indexPaths <- c(paste0(bamFile, ".bai"),
+                    sub("\\.bam$", ".bai", bamFile, ignore.case = TRUE),
+                    paste0(bamFile, ".csi"),
+                    sub("\\.bam$", ".csi", bamFile, ignore.case = TRUE))
+
+    indexFound <- indexPaths[file.exists(indexPaths)]
+
+    if (length(indexFound) == 0) {
+      return(NA_character_)
+    }
+
+    indexFound[1]
+  }
+
+
+
+#' @title .bamWithIndex
+#'
+#' @description Opens a BAM file with its index, handing the path over explicitly. Rsamtools finds a BAI on its own and leaves a CSI alone, so a file indexed with \code{samtools index -c} cannot be read by region unless it is told where the index is. CSI is not an exotic case: BAI cannot address a contig longer than 512 Mb at all, which rules it out for several plant and amphibian assemblies.
+#'
+#' @param bamFile String with the path of the BAM file.
+#'
+#' @return A \code{BamFile} carrying the index that was found, or the path unchanged when there is none.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom Rsamtools BamFile
+#'
+#' @keywords internal
+
+.bamWithIndex <-
+  function(bamFile) {
+
+    indexPath <- .bamIndexPath(bamFile)
+
+    if (is.na(indexPath)) {
+      return(bamFile)
+    }
+
+    Rsamtools::BamFile(file = bamFile, index = indexPath)
+  }
+
+
+
 #' @title .countBamFragments
 #'
 #' @description Counts the fragments of a group of BAM files over a set of ranges. The chromosomes are cut into pieces of at most 50 Mb, and the pieces of all the files are shared among the threads, so that even a single file keeps every thread busy. Paired-end fragments are rebuilt from the first mate of each proper pair, whose position, mate position and template length (TLEN) give the start and the width of the fragment: the two reads never have to be matched. Single-end reads are extended to the fragment length from their 5' end.
@@ -233,7 +292,7 @@
                                                                             isDuplicate = if (isTRUE(removeDuplicates)) {FALSE} else {NA}))
 
     # All the pieces go in a single call: querying an open BamFile a second time returns no reads
-    readList <- Rsamtools::scanBam(bamFiles[job$file.index], param = readParameters)
+    readList <- Rsamtools::scanBam(.bamWithIndex(bamFiles[job$file.index]), param = readParameters)
     readList <- readList[paste0(pieces$chromosome, ":", pieces$start, "-", pieces$end)]
 
     for (i in seq_len(nrow(pieces))) {

@@ -23,7 +23,7 @@ plotNormComparison(
 \arguments{
 \item{counts}{\code{RegionSetDE.counts} object.}
 
-\item{methods}{Character vector with the methods to compare, among those accepted by \code{\link{normalizeCounts}} that need no extra input: \code{"librarySize"}, \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"} and \code{"background"}. Default: \code{c("librarySize", "TMM", "RLE", "background")}.}
+\item{methods}{Character vector with the methods to compare, among those accepted by \code{\link{normalizeCounts}} that need no extra input: \code{"librarySize"}, \code{"readsInRegions"}, \code{"TMM"}, \code{"TMMwsp"}, \code{"RLE"}, \code{"upperQuartile"}, \code{"background"} and \code{"greenlist"}, the last one requiring \code{\link{countGreenlist}} to have been run. Default: \code{c("librarySize", "TMM", "RLE", "background")}.}
 
 \item{plotType}{String with the type of plot, either \code{"factors"} to show one point per sample and method, or \code{"ma"} to show the counts of each sample against a reference with the factors drawn as horizontal lines. Default: \code{"factors"}.}
 

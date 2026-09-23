@@ -14,7 +14,7 @@
 \item{lfcThreshold}{Numeric value with the log2 fold change of the null hypothesis.}
 }
 \value{
-A data.frame with the \code{log2FC}, \code{average.signal}, \code{stat} and \code{p.value} columns.
+A data.frame with the \code{log2FC}, \code{average.signal}, \code{stat}, \code{stat.distribution}, \code{df1}, \code{df2} and \code{p.value} columns.
 }
 \description{
 Runs the quasi-likelihood F test, or the threshold test, on an \code{edgeR} fit.

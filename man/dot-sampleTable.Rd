@@ -4,22 +4,27 @@
 \alias{.sampleTable}
 \title{.sampleTable}
 \usage{
-.sampleTable(counts, colourBy = NULL, shapeBy = NULL, labelBy = "sample")
+.sampleTable(
+  sampleAnnotation,
+  colourBy = NULL,
+  shapeBy = NULL,
+  labelBy = "sample"
+)
 }
 \arguments{
-\item{counts}{\code{RegionSetDE.counts} object.}
+\item{sampleAnnotation}{Data.frame with a \code{sample} column and the annotation of the samples.}
 
-\item{colourBy}{String with a \code{colData} column, or \code{NULL}.}
+\item{colourBy}{String with a column of the annotation, or \code{NULL}.}
 
-\item{shapeBy}{String with a \code{colData} column, or \code{NULL}.}
+\item{shapeBy}{String with a column of the annotation, or \code{NULL}.}
 
-\item{labelBy}{String with a \code{colData} column, \code{"sample"}, or \code{NULL}.}
+\item{labelBy}{String with a column of the annotation, \code{"sample"}, or \code{NULL}.}
 }
 \value{
-A data.frame with one row per sample.
+A data.frame with the \code{sample}, \code{colour.group}, \code{shape.group} and \code{point.label} columns.
 }
 \description{
-Assembles the sample metadata a sample level plot maps onto colour, shape and labels.
+Builds the table of the points of an ordination, with the groups driving the colour and the shape and the labels.
 }
 \author{
 Sebastian Gregoricchio

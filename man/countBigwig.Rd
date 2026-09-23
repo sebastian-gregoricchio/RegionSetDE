@@ -6,7 +6,8 @@
 \usage{
 countBigwig(
   regionSet,
-  bigwigFiles,
+  bigwigFiles = NULL,
+  sampleSheet = NULL,
   sampleNames = NULL,
   sampleMetadata = NULL,
   tileWidth = NULL,
@@ -24,7 +25,9 @@ countBigwig(
 \arguments{
 \item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.}
 
-\item{bigwigFiles}{Character vector with the paths of the bigWig files.}
+\item{bigwigFiles}{Character vector with the paths of the bigWig files. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.}
+
+\item{sampleSheet}{Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the bigWig files, the sample names and the annotation in one go. Default: \code{NULL}.}
 
 \item{sampleNames}{Character vector with the sample names. Default: \code{NULL}, the bigWig file names are used.}
 

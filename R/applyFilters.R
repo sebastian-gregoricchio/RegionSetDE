@@ -88,7 +88,7 @@
 
 #' @title .applyRegionFilter
 #'
-#' @description Internal function handling the input/output classes, the loading of the reference regions and the logging shared by \code{applyBlacklist} and \code{applyWhitelist}.
+#' @description Internal function handling the input/output classes, the loading of the reference regions and the logging shared by \code{applyBlacklist}, \code{applyGreylist} and \code{applyWhitelist}.
 #'
 #' @param regionSet Object to filter.
 #' @param filterSet Reference regions, as a path, a \code{GRanges} or a data.frame.
@@ -100,13 +100,15 @@
 #' @param ignoreStrand Logical value to indicate whether the strand must be ignored.
 #' @param emptySets String indicating how to handle the emptied sets.
 #' @param verbose Logical value to indicate whether the messages must be printed.
+#' @param filterLabel String with the name of the filter in the messages and in the \code{filtering.log}, one among \code{"blacklist"}, \code{"greylist"} and \code{"whitelist"}. Default: \code{NULL}, \code{"whitelist"} or \code{"blacklist"} following \code{keepOverlapping}.
 #'
 #' @return An object of the same class as \code{regionSet}.
 #'
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom IRanges reduce
-#' @importFrom GenomeInfoDb seqlevels
+#' @importFrom GenomeInfoDb seqlevels genome
+#' @importFrom BiocGenerics width
 #' @importFrom methods is as validObject
 #'
 #' @keywords internal
@@ -122,9 +124,10 @@
            trimRegions,
            ignoreStrand,
            emptySets,
-           verbose) {
+           verbose,
+           filterLabel = NULL) {
 
-    filterLabel <- ifelse(keepOverlapping == TRUE, "whitelist", "blacklist")
+    if (is.null(filterLabel)) {filterLabel <- ifelse(keepOverlapping == TRUE, "whitelist", "blacklist")}
 
     #------------------------#
     # Check of the arguments #
@@ -155,7 +158,7 @@
       targetAssembly <- regionSet@genome.assembly
     } else if (methods::is(regionSet, "RegionSetDE.provenance")) {
       # Removing regions after the counting would leave the library sizes inconsistent with the rows
-      stop("The blacklist and the whitelist must be applied before the counting, on the RegionSetDE object returned by 'loadRegions'.", call. = FALSE)
+      stop("The ", filterLabel, " must be applied before the counting, on the RegionSetDE object returned by 'loadRegions'.", call. = FALSE)
     } else if (methods::is(regionSet, "GRangesList")) {
       regionSets <- as.list(regionSet)
       targetStyle <- NULL
@@ -177,6 +180,16 @@
     #----------------------------#
     # Load the reference regions #
     #----------------------------#
+    # A list built for another assembly matches chromosome names and nothing else, which is silent and wrong
+    filterAssembly <- if (methods::is(filterSet, "GRanges")) {unique(as.character(GenomeInfoDb::genome(filterSet)))} else {character(0)}
+    filterAssembly <- filterAssembly[!is.na(filterAssembly) & filterAssembly != ""]
+    regionAssembly <- if (is.null(targetAssembly)) {character(0)} else {targetAssembly[!is.na(targetAssembly) & targetAssembly != ""]}
+
+    if (length(filterAssembly) == 1 & length(regionAssembly) == 1 && filterAssembly != regionAssembly) {
+      stop("The ", filterLabel, " was built for ", filterAssembly, " and the regions for ", regionAssembly,
+           ". Overlapping them would match the chromosome names and nothing else. Clear the assembly with genome() on one of the two to force it.", call. = FALSE)
+    }
+
     # Reusing loadRegions keeps the chromosome style aligned with the sets, otherwise the overlaps silently return zero
     filterRegions <- loadRegions(regions = list(filterSet),
                                  keepMetadata = FALSE,
@@ -261,7 +274,15 @@
                                                 trimRegions = trimRegions,
                                                 ignoreStrand = ignoreStrand)
 
-    if (keepOverlapping == TRUE) {regionSet@whitelist <- filterRegions} else {regionSet@blacklist <- filterRegions}
+    # The greylist leaves the stored blacklist alone, its size is kept with the parameters instead
+    if (keepOverlapping == TRUE) {
+      regionSet@whitelist <- filterRegions
+    } else if (filterLabel == "blacklist") {
+      regionSet@blacklist <- filterRegions
+    } else {
+      regionSet@parameters[[filterLabel]]$n.regions <- length(filterRegions)
+      regionSet@parameters[[filterLabel]]$covered.bp <- sum(as.numeric(BiocGenerics::width(IRanges::reduce(filterRegions))))
+    }
 
     methods::validObject(regionSet)
     return(regionSet)
@@ -325,6 +346,72 @@ applyBlacklist <-
                               ignoreStrand = ignoreStrand,
                               emptySets = emptySets,
                               verbose = verbose))
+  } # END function
+
+
+
+
+#' @title applyGreylist
+#'
+#' @description Removes from every region set the regions overlapping a greylist, typically the one built from the input libraries by \code{\link{makeGreylist}}, or one exported by another tool as a BED-like file. It works as \code{\link{applyBlacklist}} does, but the step is recorded as a greylist and the blacklist already stored in the object is left as it is.
+#'
+#' @param regionSet A \code{RegionSetDE} object, a \code{GRangesList}, a named list of \code{GRanges} or a single \code{GRanges}.
+#' @param greylist \code{GRanges} returned by \code{\link{makeGreylist}}, string indicating the path to a BED-like file, or data.frame with the regions to exclude.
+#' @param overlapType String indicating the type of overlap required to greylist a region, one among \code{"any"}, \code{"within"}, \code{"start"}, \code{"end"} or \code{"equal"}. Default: \code{"any"}.
+#' @param minOverlapBp Numeric value indicating the minimum number of bases that must overlap the greylist for a region to be removed. Default: \code{1}.
+#' @param minOverlapFraction Numeric value between 0 and 1 indicating the minimum fraction of a region that must overlap the greylist for it to be removed. Default: \code{0}, any overlap is sufficient.
+#' @param trimRegions Logical value to indicate whether the greylisted portion must be subtracted from the regions instead of removing them entirely. Notice that trimming collapses the regions overlapping each other within the same set. Default: \code{FALSE}.
+#' @param ignoreStrand Logical value to indicate whether the strand must be ignored when computing the overlaps. Default: \code{TRUE}.
+#' @param emptySets String indicating how to handle the sets left without any region, one among \code{"stop"}, \code{"remove"} or \code{"keep"}. Default: \code{"stop"}.
+#' @param verbose Logical value to indicate whether the filtering messages must be printed. Default: \code{TRUE}.
+#'
+#' @return An object of the same class as \code{regionSet}. For a \code{RegionSetDE} object the step is added to the \code{filtering.log} as \code{"greylist"}, and the number of greylisted regions and the bases they cover are stored in \code{parameters$greylist}.
+#'
+#' @details A greylist removes what the inputs flag as artefacts, and for broad marks some of what it flags is genuine signal: heterochromatin marks such as H3K9me3 sit on satellites and repeats, where inputs pile up too. \code{trimRegions = TRUE} cuts the greylisted stretch out of a broad domain and keeps the rest of it, and \code{minOverlapFraction} removes only the regions mostly covered by the greylist. The messages report how many regions each set keeps, which is the number to look at before going further.
+#'
+#' @examples
+#' regionTable <- loadExampleData("regions", verbose = FALSE)
+#'
+#' regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+#'                             splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+#'
+#' # The exclusion list shipped with the package stands in for a greylist
+#' greylist <- loadExampleData("exclusionRegions", verbose = FALSE)
+#'
+#' greylisted <- applyGreylist(regions, greylist = greylist)
+#' greylisted@filtering.log
+#'
+#' # Broad domains lose the greylisted stretch only
+#' trimmed <- applyGreylist(regions, greylist = greylist, trimRegions = TRUE, verbose = FALSE)
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @seealso \code{\link{makeGreylist}}, \code{\link{applyBlacklist}}, \code{\link{applyWhitelist}}
+#'
+#' @export applyGreylist
+
+applyGreylist <-
+  function(regionSet,
+           greylist,
+           overlapType = "any",
+           minOverlapBp = 1,
+           minOverlapFraction = 0,
+           trimRegions = FALSE,
+           ignoreStrand = TRUE,
+           emptySets = "stop",
+           verbose = TRUE) {
+
+    return(.applyRegionFilter(regionSet = regionSet,
+                              filterSet = greylist,
+                              keepOverlapping = FALSE,
+                              overlapType = overlapType,
+                              minOverlapBp = minOverlapBp,
+                              minOverlapFraction = minOverlapFraction,
+                              trimRegions = trimRegions,
+                              ignoreStrand = ignoreStrand,
+                              emptySets = emptySets,
+                              verbose = verbose,
+                              filterLabel = "greylist"))
   } # END function
 
 

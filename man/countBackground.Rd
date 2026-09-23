@@ -31,7 +31,7 @@ countBackground(
 
 \item{minCount}{Numeric value with the minimum total count required to keep a bin. Default: \code{1}.}
 
-\item{excludeChromosomes}{Character vector with the chromosomes left out of the bins and of their library sizes, named as in the BAM files. \code{character(0)} excludes nothing. Default: \code{NULL}, the value used at the counting step.}
+\item{excludeChromosomes}{Character vector with the chromosomes left out of the bins and of their library sizes, written in either naming style, as in \code{\link{countReads}}. \code{character(0)} excludes nothing. Default: \code{NULL}, the value used at the counting step.}
 
 \item{pairedEnd}{Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.}
 

@@ -5,7 +5,8 @@
 #' @description Summarises the signal of a group of bigWig files over the regions of a \code{RegionSetDE} object. Useful when the BAM files are not available, or when the coverage has been produced by an external pipeline. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.
 #'
 #' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.
-#' @param bigwigFiles Character vector with the paths of the bigWig files.
+#' @param bigwigFiles Character vector with the paths of the bigWig files. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
+#' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the bigWig files, the sample names and the annotation in one go. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the bigWig file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bigwigFiles}. Default: \code{NULL}.
 #' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
@@ -50,7 +51,8 @@
 
 countBigwig <-
   function(regionSet,
-           bigwigFiles,
+           bigwigFiles = NULL,
+           sampleSheet = NULL,
            sampleNames = NULL,
            sampleMetadata = NULL,
            tileWidth = NULL,
@@ -67,6 +69,19 @@ countBigwig <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
+    # A sample sheet brings the files, the names and the annotation in one go
+    sheetInput <- .sheetCountingInput(regionSet = regionSet,
+                                      sampleSheet = sampleSheet,
+                                      files = bigwigFiles,
+                                      sampleNames = sampleNames,
+                                      sampleMetadata = sampleMetadata,
+                                      fileField = "bigwig",
+                                      verbose = verbose)
+
+    bigwigFiles <- sheetInput$files
+    sampleNames <- sheetInput$sampleNames
+    sampleMetadata <- sheetInput$sampleMetadata
+
     if (!is.character(bigwigFiles) | length(bigwigFiles) == 0) {
       stop("The 'bigwigFiles' parameter must be a character vector with at least one bigWig file.", call. = FALSE)
     }

@@ -53,15 +53,18 @@ setClass(Class = "RegionSetDE.provenance",
 #' @description S4 class collecting a group of genomic region sets together with the filters applied to them. The regions are stored as a \code{GRangesList}, so that any Bioconductor operation remains available through the \code{regions} slot.
 #'
 #' @slot regions \code{GRangesList} containing the region sets, one element per set.
+#' @slot consensus List with the consensus data when the regions were built from peaks by \code{\link{loadConsensusPeaks}}: the consensus of every group, the peaks of every sample after the exclusion, the total consensus, the table of the samples and the sample sheet. Empty for regions loaded any other way. Read it with \code{\link{consensusData}}.
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom methods setClass representation
+#' @importFrom methods setClass representation prototype
 #'
 #' @export
 setClass(Class = "RegionSetDE",
          contains = "RegionSetDE.provenance",
-         representation = representation(regions = "GRangesList"))
+         representation = representation(regions = "GRangesList",
+                                         consensus = "list"),
+         prototype = prototype(consensus = list()))
 
 
 #' @title RegionSetDE.counts class
@@ -173,6 +176,14 @@ setMethod(f = "show",
             if (nrow(object@filtering.log) > 0) {
               cat(paste0("\nFiltering steps: ", paste(unique(object@filtering.log$step), collapse = ", "), "\n"))
               cat("(see the 'filtering.log' slot for the details)\n")
+            }
+
+            # Regions built from peaks say so, together with the groups behind them
+            if (length(object@consensus) > 0) {
+              cat(paste0("\nConsensus:  ", nrow(object@consensus$samples), " samples in ", length(object@consensus$groups), " groups (",
+                         object@consensus$mode, " mode), ",
+                         format(length(object@consensus$total), big.mark = ",", trim = TRUE), " regions in the total consensus\n"))
+              cat("(see consensusData() for the details)\n")
             }
           })
 
@@ -336,7 +347,7 @@ setClass(Class = "RegionSetDE.fit",
 #' @slot regions \code{GRanges} with the coordinates of the rows of \code{results}.
 #' @slot contrast String describing the contrast that was tested.
 #' @slot contrast.vector Numeric vector with the coefficients of the contrast over the columns of the design.
-#' @slot contrast.groups List with the \code{column} of the \code{colData} the contrast separates and the two \code{groups} it compares, the first one being the level the fold change is positive for. Empty when the contrast is not a difference between two levels of one variable. \code{\link{plotRegion}} reads it to draw the model brackets.
+#' @slot contrast.groups List with the \code{column} of the \code{colData} the contrast separates and the two \code{groups} it compares, the first one being the level the fold change is positive for, and \code{n.samples}, the number of samples in each of the two. Empty when the contrast is not a difference between two levels of one variable. \code{\link{plotRegion}} reads it to draw the model brackets, and \code{\link{contrastInfo}} reports it.
 #' @slot engine String with the engine that produced the statistics.
 #' @slot counting.level String indicating whether the model was fitted on regions or on tiles.
 #' @slot combination List with the method used to combine the tiles and whether it was applied.

@@ -12,7 +12,7 @@
 #' @param facetScales String with the scales of the panels, one among \code{"fixed"}, \code{"free"}, \code{"free_x"} and \code{"free_y"}. Default: \code{"fixed"}.
 #' @param yValue String with the quantity on the y axis, either \code{"FDR"} or \code{"p.value"}. Default: \code{"FDR"}.
 #' @param FDR Numeric value with the adjusted p-value cut-off drawn as a line. Default: \code{NULL}, the threshold stored in the object.
-#' @param log2FC Numeric value with the absolute log2 fold change cut-off drawn as a line. Default: \code{NULL}, the threshold stored in the object.
+#' @param log2FC Numeric value with the absolute log2 fold change cut-off used to label the points, drawn as two dashed vertical lines at \code{-log2FC} and \code{log2FC} when above zero. Default: \code{NULL}, the threshold stored in the object, which is the \code{log2FC} given to \code{\link{testRegions}}.
 #' @param showCounts Logical value to indicate whether the number of changing regions must be written in the top corners of each panel. Default: \code{TRUE}.
 #' @param labelTop Numeric value with the number of top regions to label, per panel. Default: \code{0}.
 #' @param labelColumn String with the column holding the labels. Default: \code{"region.id"}.
@@ -197,7 +197,7 @@ plotVolcano <-
 #' @param facetBySet Logical value to indicate whether each region set must get its own panel. Default: \code{TRUE}.
 #' @param facetScales String with the scales of the panels, one among \code{"fixed"}, \code{"free"}, \code{"free_x"} and \code{"free_y"}. Default: \code{"fixed"}.
 #' @param FDR Numeric value with the adjusted p-value cut-off used to label the points. Default: \code{NULL}, the threshold stored in the object.
-#' @param log2FC Numeric value with the absolute log2 fold change cut-off used to label the points. Default: \code{NULL}, the threshold stored in the object.
+#' @param log2FC Numeric value with the absolute log2 fold change cut-off used to label the points, drawn as two dashed horizontal lines when above zero. Default: \code{NULL}, the threshold stored in the object.
 #' @param showCounts Logical value to indicate whether the number of changing regions must be written in the corners of each panel, on the right hand side and on the same side of zero as the regions they count. Default: \code{TRUE}.
 #' @param showTrend Logical value to indicate whether a loess trend must be drawn. Default: \code{TRUE}.
 #' @param colours Named character vector with the colours. Default: \code{NULL}.
@@ -287,13 +287,23 @@ plotResultsMA <-
                       mapping = ggplot2::aes(x = .data$average.signal, y = .data$log2FC, colour = .data[[colourBy]])) +
       ggplot2::geom_point(size = pointSize, alpha = 0.6, stroke = NA) +
       ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, colour = "black") +
-      ggplot2::labs(x = "Average signal (log<sub>2</sub> CPM)",
+      # DESeq2 reports the mean of the normalised counts, the other engines log2 counts per million
+      ggplot2::labs(x = if (identical(results@engine, "deseq2")) {"Average signal (log<sub>2</sub> normalised count + 1)"} else {"Average signal (log<sub>2</sub> CPM)"},
                     y = paste0("log<sub>2</sub> fold change (", results@contrast, ")"),
                     colour = if (colourBy == "diff.status") {"Status"} else {"Region set"},
                     title = if (is.null(title)) {results@contrast} else {title},
                     subtitle = subtitle) +
       ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3)), alpha = 1))) +
       .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+
+    # The fold change cut-off of the up and down labels, the same one the volcano draws as vertical lines
+    log2FCthreshold <- if (is.null(log2FC)) {results@thresholds$log2FC} else {log2FC}
+
+    if (isTRUE(log2FCthreshold > 0)) {
+      maPlot <- maPlot +
+        ggplot2::geom_hline(yintercept = c(-log2FCthreshold, log2FCthreshold),
+                            linetype = "dashed", linewidth = 0.3, colour = "black")
+    }
 
     if (colourBy == "diff.status") {
       maPlot <- maPlot + ggplot2::scale_colour_manual(values = statusColours, drop = FALSE)

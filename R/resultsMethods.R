@@ -129,12 +129,11 @@ topRegions <-
 
 #' @title resultsTable
 #'
-#' @description Returns the per-region table of a \code{RegionSetDE.results} object.
+#' @description Returns the per-region table of a \code{RegionSetDE.results} object, or the tables of every contrast of a list of them, stacked.
 #'
-#' @param results \code{RegionSetDE.results} object.
+#' @param results \code{RegionSetDE.results} object, or one of the list classes holding several contrasts. A single contrast is taken out of a list by name, \code{results$name} or \code{results[["name"]]}.
 #'
-#' @return A data.frame with one row per region.
-#'
+#' @return A data.frame with one row per region. For a list of contrasts the tables are stacked, and the first two columns say which contrast a row belongs to: \code{contrast}, the name the contrast was given, which is the string the \code{contrast} argument of \code{\link{topRegions}}, \code{\link{plotVolcano}} and the other functions takes, and \code{contrast.description}, what it compares.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -478,13 +477,12 @@ setMethod(f = "resultsTable",
 setMethod(f = "resultsTable",
           signature = "RegionSetDE.resultsList",
           definition = function(results) {
-            # The tables of every contrast, stacked and labelled
-            tableList <- lapply(results@results,
-                                function(singleResult) {
-                                  dplyr::relocate(
-                                    dplyr::mutate(resultsTable(singleResult),
-                                                  contrast = contrastName(singleResult)),
-                                    "contrast")
+            # The tables of every contrast, stacked and labelled with the name every other function takes
+            tableList <- lapply(names(results@results),
+                                function(contrastKey) {
+                                  .labelContrastTable(resultsTable(results@results[[contrastKey]]),
+                                                      contrastKey = contrastKey,
+                                                      singleResult = results@results[[contrastKey]])
                                 })
 
             return(dplyr::bind_rows(tableList))
@@ -500,12 +498,11 @@ setMethod(f = "resultsTable",
 setMethod(f = "resultsTable",
           signature = "RegionSetDE.setResultsList",
           definition = function(results) {
-            tableList <- lapply(results@results,
-                                function(singleResult) {
-                                  dplyr::relocate(
-                                    dplyr::mutate(resultsTable(singleResult),
-                                                  contrast = contrastName(singleResult)),
-                                    "contrast")
+            tableList <- lapply(names(results@results),
+                                function(contrastKey) {
+                                  .labelContrastTable(resultsTable(results@results[[contrastKey]]),
+                                                      contrastKey = contrastKey,
+                                                      singleResult = results@results[[contrastKey]])
                                 })
 
             return(dplyr::bind_rows(tableList))
@@ -583,18 +580,17 @@ setMethod(f = "resultRanges",
 setMethod(f = "tileTable",
           signature = "RegionSetDE.resultsList",
           definition = function(results) {
-            tableList <- lapply(results@results,
-                                function(singleResult) {
-                                  singleTable <- tileTable(singleResult)
+            tableList <- lapply(names(results@results),
+                                function(contrastKey) {
+                                  singleTable <- tileTable(results@results[[contrastKey]])
 
                                   if (is.null(singleTable) || nrow(singleTable) == 0) {
                                     return(NULL)
                                   }
 
-                                  dplyr::relocate(
-                                    dplyr::mutate(singleTable,
-                                                  contrast = contrastName(singleResult)),
-                                    "contrast")
+                                  .labelContrastTable(singleTable,
+                                                      contrastKey = contrastKey,
+                                                      singleResult = results@results[[contrastKey]])
                                 })
 
             return(dplyr::bind_rows(tableList))
@@ -738,3 +734,32 @@ setMethod(f = "regionSetNames",
           definition = function(object) {
             return(sort(unique(object@scores$region.set)))
           })
+
+
+#' @title .labelContrastTable
+#'
+#' @description Puts the name of a contrast in front of its table, the way the tables of several contrasts are stacked. The name is the one given to \code{testRegions} and taken back by the \code{contrast} argument of every other function, so that a stacked table can be filtered with the same string; the description of the contrast follows it.
+#'
+#' @param resultTable Data.frame with the results of one contrast.
+#' @param contrastKey String with the name of the contrast in the list.
+#' @param singleResult The results object of that contrast.
+#'
+#' @return The table with \code{contrast} and \code{contrast.description} as its first two columns.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom dplyr mutate relocate
+#'
+#' @keywords internal
+
+.labelContrastTable <-
+  function(resultTable,
+           contrastKey,
+           singleResult) {
+
+    resultTable <- dplyr::mutate(resultTable,
+                                 contrast = contrastKey,
+                                 contrast.description = contrastName(singleResult))
+
+    return(dplyr::relocate(resultTable, "contrast", "contrast.description"))
+  } # END function

@@ -149,7 +149,7 @@ countBigwig <-
     }
 
     signalList <-
-      .bplapplySameLibraries(X = bigwigFiles,
+      BiocParallel::bplapply(X = bigwigFiles,
                              BPPARAM = parallelParam,
                              FUN = function(bigwigFile) {
                                baseValues <- rtracklayer::import(con = rtracklayer::BigWigFile(bigwigFile),

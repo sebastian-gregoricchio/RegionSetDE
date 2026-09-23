@@ -246,17 +246,9 @@ plotPeakUpset(consensus)
 ```
 
 ```{r upset_figure, echo = FALSE, out.width = "100%"}
-# Drawn into its own file rather than through the chunk device: under R 4.6 the UpSet plot
-# overflows the node stack when knitr captures it during R CMD build, while drawing it
-# directly works everywhere
-upsetFile <- knitr::fig_path(".png")
-dir.create(dirname(upsetFile), recursive = TRUE, showWarnings = FALSE)
-
-grDevices::png(upsetFile, width = 7, height = 4, units = "in", res = 150)
-ComplexHeatmap::draw(plotPeakUpset(consensus))
-invisible(grDevices::dev.off())
-
-knitr::include_graphics(upsetFile)
+# Drawn once by inst/scripts/make-vignette-figures.R and shipped as an image: on the R-devel
+# builders ComplexHeatmap overflows the node stack while drawing this UpSet plot, and nowhere else
+knitr::include_graphics("figures/peakUpset.png")
 ```
 
 Most of the sites are shared by the two R1881 time points, and nearly all of those found without ligand are found with it too. Only one region is specific to DMSO.
@@ -271,13 +263,12 @@ Most of the sites are shared by the two R1881 time points, and nearly all of tho
 
 ```{r counting}
 counts <- countReads(consensus,
-                     sampleSheet = sampleSheet,
-                     nThreads = 2)
+                     sampleSheet = sampleSheet)
 
 counts
 ```
 
-Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of which can be changed through `removeDuplicates` and `minMapq`. `excludeChromosomes` leaves chromosomes out of the library sizes, the mitochondrial genome in ATAC-seq above all, and accepts the names in either style.
+Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of which can be changed through `removeDuplicates` and `minMapq`. `excludeChromosomes` leaves chromosomes out of the library sizes, the mitochondrial genome in ATAC-seq above all, and accepts the names in either style. The files are read one after the other here, the slices being small; on whole-genome BAMs `nThreads` spreads them over several workers.
 
 <br>
 
@@ -331,7 +322,7 @@ Three to four per cent of the fragments fall in the consensus without ligand, ag
 `countBackground()` counts the same libraries over wide bins covering everything, and stores the result inside the counts object. It is needed for background normalisation and for the diagnostics that compare one normalisation against another.
 
 ```{r background}
-counts <- countBackground(counts, binSize = 10000, nThreads = 2)
+counts <- countBackground(counts, binSize = 10000)
 ```
 
 <br>

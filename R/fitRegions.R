@@ -45,10 +45,9 @@
 #' # limma-voom on the same design
 #' voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
 #'
-#' # Random effects need the dream engine and the formula given as such
-#' if (requireNamespace("variancePartition", quietly = TRUE)) {
-#'   mixedFit <- fitRegions(counts, design = ~ condition + (1|biologicalReplicate), engine = "dream", verbose = FALSE)
-#' }
+#' # Random effects need the dream engine and the formula given as such, for instance
+#' # ~ condition + (1|donor) for repeated samples of the same donors. Four samples are
+#' # too few to estimate one, so the example data cannot show it.
 #'
 #' @author Sebastian Gregoricchio
 #'

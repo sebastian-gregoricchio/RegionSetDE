@@ -241,14 +241,8 @@ as.data.frame(S4Vectors::mcols(consensus@regions$consensus)) %>%
 
 `plotPeakUpset()` shows how the groups overlap before any counting happens.
 
-```{r upset, eval = FALSE}
+```{r upset}
 plotPeakUpset(consensus)
-```
-
-```{r upset_figure, echo = FALSE, out.width = "100%"}
-# Drawn once by inst/scripts/make-vignette-figures.R and shipped as an image: on the R-devel
-# builders ComplexHeatmap overflows the node stack while drawing this UpSet plot, and nowhere else
-knitr::include_graphics("figures/peakUpset.png")
 ```
 
 Most of the sites are shared by the two R1881 time points, and nearly all of those found without ligand are found with it too. Only one region is specific to DMSO.

@@ -277,6 +277,9 @@ importFrom(grDevices,
 )
 importFrom(grid,
   gpar,
+  grid.lines,
+  grid.points,
+  grid.rect,
   grid.text,
   unit
 )

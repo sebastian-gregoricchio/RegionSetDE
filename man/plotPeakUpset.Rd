@@ -30,7 +30,7 @@ plotPeakUpset(
 \item{title}{String with the title. Default: \code{NULL}, the number of regions described.}
 }
 \value{
-An UpSet plot built by \code{ComplexHeatmap::UpSet}, drawn when printed, and open to \code{ComplexHeatmap::draw} for the layout options.
+An UpSet plot, as a \code{Heatmap} object of \code{ComplexHeatmap} with one row per set and one column per intersection, drawn when printed and open to \code{ComplexHeatmap::draw} for the layout options.
 }
 \description{
 Draws an UpSet plot of the regions of a \code{RegionSetDE} object built from peaks, showing which groups have a consensus peak on each region, or which samples have a peak on it. It replaces the Venn diagram, which stops being readable beyond three or four sets.

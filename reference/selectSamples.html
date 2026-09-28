@@ -84,7 +84,7 @@
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Marks, and more generally experiments run on different antibodies or different assays, should not share a model. The dispersion, the dynamic range and the meaning of the scaling factors all differ between them, so a fit that pools them borrows information across rows that have nothing to say about each other. The selection therefore belongs upstream of <code><a href="normalizeCounts.html">normalizeCounts</a></code> rather than at test time, and this is why <code>dropNormalization</code> defaults to <code>TRUE</code>: factors estimated over a set of samples that no longer exists describe a library composition that no longer exists either. The raw counts are never modified, so re-normalising costs one call.</p>
-<p>The background bins stored in the metadata, when present, are subset along with the regions.</p>
+<p>The background bins and the greenlist counts stored in the metadata, when present, are subset along with the samples, and so are the files, the layouts and the fragment lengths recorded by the counting, so that <code><a href="countBackground.html">countBackground</a></code>, <code><a href="countGreenlist.html">countGreenlist</a></code>, <code><a href="libInfo.html">libInfo</a></code> and <code><a href="computeProfiles.html">computeProfiles</a></code> keep working on the selection.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

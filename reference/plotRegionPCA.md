@@ -12,6 +12,7 @@ plotRegionPCA(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   colourBy = NULL,
   shapeBy = NULL,
   labelBy = "sample",
@@ -36,8 +37,8 @@ plotRegionPCA(
   `RegionSetDE.counts`, `RegionSetDE.fit` or any result object of the
   package, or the list returned by
   [`computeSamplePCA`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md),
-  in which case `set`, `useOffsets`, `compareOffsets`, `facetBySet` and
-  `topRegions` are those of the computation.
+  in which case `set`, `samples`, `useOffsets`, `compareOffsets`,
+  `facetBySet` and `topRegions` are those of the computation.
 
 - set:
 
@@ -48,6 +49,15 @@ plotRegionPCA(
 
   String with the name of a contrast, or its position, when `object`
   holds several of them. Default: `NULL`.
+
+- samples:
+
+  Samples the ordination is computed on: a character vector with their
+  names, a numeric vector with their positions, or a logical vector with
+  one value per sample. The normalisation stored in the object is kept,
+  so the values are the ones of the whole analysis restricted to these
+  samples, and `useOffsets = FALSE` gives the library sizes alone.
+  Default: `NULL`, all of them.
 
 - colourBy:
 

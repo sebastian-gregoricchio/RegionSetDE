@@ -39,12 +39,16 @@
 - [`coerce-RegionSetDE.counts-DGEList`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
   [`coerce,RegionSetDE.counts,DGEList-method`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
   : Coerce a counts object to a DGEList
+- [`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
+  : computeProfiles
 - [`computeSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md)
   : computeSampleCorrelation
 - [`computeSamplePCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSamplePCA.md)
   : computeSamplePCA
 - [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md)
   : consensusData
+- [`consensusGroupList()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusGroupList.md)
+  : consensusGroupList
 - [`contrastInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
   : contrastInfo
 - [`contrastName()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastName.md)
@@ -63,6 +67,8 @@
   : countingLevel
 - [`dispersionInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dispersionInfo.md)
   : dispersionInfo
+- [`estimateFragmentLength()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md)
+  : estimateFragmentLength
 - [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
   : estimateNullDispersion
 - [`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
@@ -113,6 +119,8 @@
   : plotPeakOccupancy
 - [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md)
   : plotPeakUpset
+- [`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+  : plotProfile
 - [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
   : plotRegion
 - [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md)
@@ -194,3 +202,5 @@
   : tileTable
 - [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
   : topRegions
+- [`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md)
+  : updateThresholds

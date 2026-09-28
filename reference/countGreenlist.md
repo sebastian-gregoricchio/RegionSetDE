@@ -13,6 +13,7 @@ picks them up with `method = "greenlist"`.
 countGreenlist(
   counts,
   greenlist,
+  excludeCounted = TRUE,
   bamFiles = NULL,
   minCount = 1,
   pairedEnd = NULL,
@@ -38,6 +39,13 @@ countGreenlist(
   [`loadGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md),
   or the path to a BED file holding them.
 
+- excludeCounted:
+
+  Logical value to indicate whether the greenlist regions overlapping
+  the regions of `counts` must be left out, since the reads there carry
+  the signal under study rather than the background of the protocol.
+  Default: `TRUE`.
+
 - bamFiles:
 
   Character vector with the paths of the BAM files, in the same order as
@@ -58,8 +66,9 @@ countGreenlist(
 
 - fragmentLength:
 
-  Numeric value with the length to which single-end reads are extended.
-  Default: `NULL`, the value used at the counting step.
+  Numeric value with the length to which single-end reads are extended,
+  or one value per BAM file. Default: `NULL`, the lengths used at the
+  counting step, sample by sample.
 
 - maxFragmentLength:
 
@@ -89,7 +98,10 @@ countGreenlist(
 ## Value
 
 The input `RegionSetDE.counts` object with the greenlist counts stored
-as a `RangedSummarizedExperiment` in `metadata(counts)$greenlist`.
+as a `RangedSummarizedExperiment` in `metadata(counts)$greenlist`. Its
+`colData` describes every library over the list: `totals`, the fragments
+counted, `regions.covered`, the regions holding at least one of them,
+and `library.fraction`, the share of the library they represent.
 
 ## Details
 
@@ -103,10 +115,28 @@ describes a library that is not the one under study.
 Each fragment is counted once, in the region holding its centre, as the
 background bins do, so the totals stay a share of the library and two
 neighbouring regions never claim the same fragment. The list is merged
-beforehand for the same reason. Greenlist regions lying on chromosomes
+beforehand for the same reason. This is the quantification of the
+greenlist paper, which counted the lists with
+`multiBamSummary --centerReads`. Greenlist regions lying on chromosomes
 absent from the BAM files are dropped, and how many were is reported,
 which is what catches a list built for another assembly before it
 quietly halves the counts.
+
+The checks follow the conditions under which de Mello *et al.* built and
+validated the lists. The regions were chosen at least 5 kb away from
+genes so that no target binds there; a region of this experiment that
+overlaps one of them means the target does bind there, in these cells,
+and its reads would carry the biology into the factors, which is why
+`excludeCounted` drops it. The libraries used to build the lists had at
+least 1.5 million aligned reads for human CUT&RUN, 1 million for mouse
+CUT&RUN and 500,000 for human CUT&Tag, and a library below that depth,
+counted here in fragments, is reported. So is a library covering fewer
+than half as many greenlist regions as the median library, whose factor
+rests on a small part of the list. The paper sets no rule per group of
+samples: what matters for the factors is how many regions carry reads in
+every library, which
+[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+reports when it computes them.
 
 ## See also
 
@@ -131,8 +161,9 @@ greenlist <- GenomicRanges::GRanges("19", IRanges::IRanges(start = seq(46.5e6, 5
 
 counts <- countGreenlist(counts, greenlist = greenlist, verbose = FALSE)
 counts <- normalizeCounts(counts, method = "greenlist", verbose = FALSE)
+#> Warning: Only 4 greenlist regions carry a read in every sample, the factors rest on those alone.
 
 SummarizedExperiment::colData(counts)$scaling.factor
-#> [1] 0.7750514 1.2381243 0.8506867 0.6901982 0.9855020 1.1885779 1.2915125
-#> [8] 0.9845461 0.9958007
+#> [1] 0.8202319 1.2421577 0.8396263 0.8382576 0.9573529 1.2259310 1.1672375
+#> [8] 0.9747252 0.9344800
 ```

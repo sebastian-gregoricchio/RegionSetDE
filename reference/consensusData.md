@@ -24,15 +24,20 @@ consensusData(object)
 A list with `groups`, the consensus regions of every group; `objects`,
 the `consensusRegions` object behind each of them (`NULL` for the groups
 with a single sample); `total`, the pooled consensus; `peaks`, the peaks
-of every sample after the exclusion; `samples`, a data.frame with the
-group, the peak file and the number of peaks kept and excluded for every
-sample; `sheet`, the sample sheet the consensus was built from;
-`groupBy`; `mode`, one among `"consensus"`, `"split"` and `"replace"`;
-and `excluded`, the regions the peaks were cleaned against.
+of every sample after the blacklist and the greylist; `removed`, the
+peaks they took out, with the `sample` they came from and the list that
+removed them in `removed.by`; `samples`, a data.frame with the group,
+the peak file, the number of peaks read (`n.peaks`), removed by the
+blacklist (`n.blacklist`), by the greylist (`n.greylist`) and by both
+(`n.excluded`) for every sample; `sheet`, the sample sheet the consensus
+was built from; `groupBy`; `mode`, one among `"consensus"`, `"split"`
+and `"replace"`; and `blacklist` and `greylist`, the regions the peaks
+were cleaned against, `NULL` when a list was not given.
 
 ## See also
 
 [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+[`consensusGroupList`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusGroupList.md),
 [`plotPeakUpset`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md)
 
 ## Author

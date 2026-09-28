@@ -109,8 +109,9 @@ Nothing has to be declared about the layout.
 takes `pairedEnd = "auto"` by default and reads the flags of the first
 records of every file, so each library is counted the way it was
 sequenced. A paired-end fragment is rebuilt from the first mate of each
-proper pair and counts once; a single-end read is extended to
-`fragmentLength`, 150 bp by default, and counts once as well.
+proper pair and counts once; a single-end read is extended to the
+fragment length of its library, 150 bp unless said otherwise, and counts
+once as well.
 
 Libraries of both kinds can therefore sit in the same analysis. Each one
 ends up with one count per sequenced fragment, which is the scale the
@@ -123,6 +124,86 @@ values, while a single-end file forced through the paired-end path finds
 no pair and returns a column of zeros. A test of the package counts one
 of the libraries below next to a single-end copy of itself, and the two
 agree to within one per cent.
+
+  
+
+### Fragment length of single-end libraries
+
+A single-end read tells where a fragment starts and not how long it is,
+so the counting has to be told how far to extend it. A single value for
+every library is rarely right: fragment sizes change with the sonication
+and the size selection of each library, and a read extended too far
+spills into the neighbouring regions while one extended too little
+misses the centre of its own. `fragmentLength` therefore takes one value
+per sample, in three ways: a vector, a column of the sample sheet, or
+`"auto"`.
+
+A pipeline that already estimated the fragment length, with
+phantompeakqualtools for instance, can write it in the sheet, and the
+column is then named in the counting:
+
+``` r
+
+# A 'fragmentLength' column in the sheet, one value per library
+counts <- countReads(consensus,
+                     sampleSheet = sampleSheet,
+                     fragmentLength = "fragmentLength")
+```
+
+`"auto"` estimates it from the reads with
+[`estimateFragmentLength()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md),
+which can also be run on its own to look at what it finds. Every
+fragment leaves a read on the forward strand at its left end and one on
+the reverse strand at its right end, so the distance between the ends of
+forward and reverse reads piles up at the fragment length. The libraries
+here are paired-end and need none of this, but read as single-end, each
+mate on its own, they show what the estimate does and can be checked
+against the insert sizes the pairs give directly:
+
+``` r
+fragmentEstimate <- estimateFragmentLength(sampleSheet = sampleSheet,
+                                           pairedEnd = FALSE,
+                                           verbose = FALSE)
+
+insertSizes <- estimateFragmentLength(sampleSheet = sampleSheet,
+                                      verbose = FALSE)
+
+data.frame(sample = fragmentEstimate$table$sample,
+           crossCorrelation = fragmentEstimate$table$fragment.length,
+           insertSize = insertSizes$table$fragment.length)
+>            sample crossCorrelation insertSize
+> 1      AR_DMSO_r1              155        189
+> 2      AR_DMSO_r2              159        207
+> 3      AR_DMSO_r3              180        207
+> 4  AR_R1881_4h_r1              196        200
+> 5  AR_R1881_4h_r2              198        203
+> 6  AR_R1881_4h_r3              169        206
+> 7 AR_R1881_24h_r1              194        195
+> 8 AR_R1881_24h_r2              196        202
+> 9 AR_R1881_24h_r3              183        198
+
+fragmentEstimate$plot
+```
+
+![](RegionSetDE.peaks.vignette_files/figure-html/fragment_estimate-1.png)
+
+Five of the six treated libraries land within 15 bp of their median
+insert size. The DMSO ones come out 27 to 48 bp shorter, and the plot
+says why: with thirteen peaks in the window there are few fragments
+piled anywhere, and the cross-correlation is mostly background. The
+estimate needs enrichment to work on, which is why `"auto"` in
+[`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+reads the regions being counted rather than the whole genome. A second,
+narrow peak sits at the read length on most libraries; it comes from the
+parts of the genome where reads cannot be mapped on either strand, and
+the search starts past it.
+
+The lengths used end up in the `fragment.length` column of the sample
+table, `NA` for the paired-end samples, and
+[`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
+and
+[`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+reuse them sample by sample.
 
   
 
@@ -243,27 +324,31 @@ before trusting the list.
 
 ### Taking them out
 
-The two lists go in together, before the consensus is built, through
-`excludeRegions`. Removing the peaks first is better than removing the
-consensus regions afterwards: an artefact next to a genuine peak would
-otherwise be merged with it into one region, and the region would then
-be either kept with the artefact inside or thrown away with the peak.
+The two lists go in separately, before the consensus is built, through
+the `blacklist` and `greylist` arguments of
+[`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+below. Removing the peaks first is better than removing the consensus
+regions afterwards: an artefact next to a genuine peak would otherwise
+be merged with it into one region, and the region would then be either
+kept with the artefact inside or thrown away with the peak.
 
-``` r
-
-artefactRegions <- c(GenomicRanges::granges(blacklist), GenomicRanges::granges(greylist))
-```
-
-[`granges()`](https://rdrr.io/pkg/GenomicRanges/man/genomic-range-squeezers.html)
-drops the annotation columns, which differ between the two lists and
-would otherwise stop [`c()`](https://rdrr.io/r/base/c.html). Once the
-regions are built,
+They are kept apart because they say different things, the blacklist
+about the assembly and the greylist about the inputs of this experiment,
+and the object records them the same way
+[`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+and
+[`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+would: the blacklist in its `blacklist` slot, which follows the regions
+into the counts and the results and is written down by
+[`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md),
+the size of the greylist in its parameters, and the peaks each of them
+removed from every sample in the filtering log. Once the regions are
+built,
 [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
 [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
 and
 [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
-do the same job on the region set itself, and record what they removed
-in the object.
+do the same job on the region set itself.
 
   
 
@@ -279,8 +364,10 @@ set.
 ``` r
 consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
-                                excludeRegions = artefactRegions,
-                                seqlevelsStyle = "Ensembl")
+                                blacklist = blacklist,
+                                greylist = greylist,
+                                seqlevelsStyle = "Ensembl",
+                                nThreads = 1)
 
 consensus
 > ### RegionSetDE object ###
@@ -290,17 +377,38 @@ consensus
 > 
 >   consensus  109 regions  (54,721 bp)
 > 
-> Blacklist:  not applied
+> Blacklist:  applied (636 regions)
 > Whitelist:  not applied
+> 
+> Filtering steps: blacklist, greylist
+> (see the 'filtering.log' slot for the details)
 > 
 > Consensus:  9 samples in 3 groups (consensus mode), 109 regions in the total consensus
 > (see consensusData() for the details)
 ```
 
 In this window neither list touches a peak, which is what one hopes; the
-`n.excluded` column below says so for every sample. On a whole genome
-the blacklist alone typically takes a few per cent of the peaks of a
-transcription factor.
+`n.blacklist` and `n.greylist` columns below say so for every sample,
+and
+[`filteringLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md)
+gives the same numbers as a record of the steps, one row per sample and
+list:
+
+``` r
+filteringLog(consensus) %>% head(3)
+>        step       region.set n.before n.after n.removed
+> 1 blacklist AR_DMSO_r1 peaks       13      13         0
+> 2 blacklist AR_DMSO_r2 peaks       13      13         0
+> 3 blacklist AR_DMSO_r3 peaks       13      13         0
+```
+
+`consensusData(consensus)$removed` holds the peaks taken out, with the
+sample they came from and the list that removed them, empty here. On a
+whole genome the blacklist alone typically takes a few per cent of the
+peaks of a transcription factor; the greylist built with the default 1
+kb windows [above](#artefacts) would have taken 61 peak calls across the
+nine samples, genuine AR sites among them, which is the kind of loss
+this table is there to catch.
 
 `groupBy` names the column that decides which samples have to agree with
 each other. Choosing it is the one decision that matters here: a
@@ -334,9 +442,11 @@ or a percentage:
 ``` r
 strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       groupBy = "condition",
-                                      excludeRegions = artefactRegions,
+                                      blacklist = blacklist,
+                                      greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
+                                      nThreads = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -402,17 +512,17 @@ human chr1 share a name and nothing else.
 consensusInfo <- consensusData(consensus)
 
 consensusInfo$samples %>%
-  dplyr::select(sample, group, n.peaks, n.excluded)
->            sample     group n.peaks n.excluded
-> 1      AR_DMSO_r1      DMSO      13          0
-> 2      AR_DMSO_r2      DMSO      13          0
-> 3      AR_DMSO_r3      DMSO      13          0
-> 4  AR_R1881_4h_r1  R1881_4h      67          0
-> 5  AR_R1881_4h_r2  R1881_4h      80          0
-> 6  AR_R1881_4h_r3  R1881_4h      68          0
-> 7 AR_R1881_24h_r1 R1881_24h     101          0
-> 8 AR_R1881_24h_r2 R1881_24h     117          0
-> 9 AR_R1881_24h_r3 R1881_24h      97          0
+  dplyr::select(sample, group, n.peaks, n.blacklist, n.greylist)
+>            sample     group n.peaks n.blacklist n.greylist
+> 1      AR_DMSO_r1      DMSO      13           0          0
+> 2      AR_DMSO_r2      DMSO      13           0          0
+> 3      AR_DMSO_r3      DMSO      13           0          0
+> 4  AR_R1881_4h_r1  R1881_4h      67           0          0
+> 5  AR_R1881_4h_r2  R1881_4h      80           0          0
+> 6  AR_R1881_4h_r3  R1881_4h      68           0          0
+> 7 AR_R1881_24h_r1 R1881_24h     101           0          0
+> 8 AR_R1881_24h_r2 R1881_24h     117           0          0
+> 9 AR_R1881_24h_r3 R1881_24h      97           0          0
 ```
 
 Thirteen peaks without ligand against roughly a hundred after a day of
@@ -428,6 +538,25 @@ lengths(consensusInfo$groups)           # the consensus of every group
 >        12        70       101
 length(consensusInfo$total)             # the pooled region set that will be counted
 > [1] 109
+```
+
+[`consensusGroupList()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusGroupList.md)
+returns the consensus of every group as a named list of `GRanges`, the
+form the functions of *ChIPseeker* take for several peak sets, so the
+groups can be annotated one by one and compared.
+`seqlevelsStyle = "UCSC"` renames the chromosomes to match a UCSC
+`TxDb`, which would otherwise find no gene next to any region named
+`19`:
+
+``` r
+
+groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
+
+annotationList <- lapply(groupList,
+                         ChIPseeker::annotatePeak,
+                         TxDb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+ChIPseeker::plotAnnoBar(annotationList)
 ```
 
 Every region carries one logical column per group, plus the number of
@@ -460,6 +589,45 @@ is specific to DMSO.
 
   
 
+### How similar the peak sets are
+
+The UpSet plot counts regions by group.
+[`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md)
+with `method = "jaccard"` compares the samples themselves on where their
+peaks were called, before any read is counted, the occupancy heatmap
+*DiffBind* draws right after reading the peaks. The Jaccard index of two
+samples is the number of places where both called a peak over the number
+where either did, from zero for nothing in common to one for identical
+peak sets, and the samples are clustered on one minus it.
+
+``` r
+
+plotSampleCorrelation(consensus,
+                      method = "jaccard",
+                      groupBy = "condition",
+                      annotationColumns = c("condition", "replicate"))
+```
+
+![](RegionSetDE.peaks.vignette_files/figure-html/jaccard-1.png)
+
+The places are the regions of the union of all the peaks, so a broad
+peak and a narrow one on the same site count as a match.
+`jaccardLevel = "basepair"` counts the bases covered instead, as
+`bedtools jaccard` does, and then two samples calling the same sites
+with different widths come out less similar.
+
+The replicates of each condition share between half and three quarters
+of their peaks, and the two time points of R1881 overlap almost as much,
+0.50 to 0.65. DMSO stands apart from both, at 0.10 to 0.19, which is
+mostly a matter of numbers: thirteen peaks against a hundred cannot
+overlap much, even when, as here, nearly all of the thirteen are among
+the hundred. A sample with far fewer peaks than its replicates looks
+dissimilar to all of them for the same reason, and
+`consensusData(consensus)$samples` gives the number of peaks to read the
+index against.
+
+  
+
 ------------------------------------------------------------------------
 
 ## **Counting**
@@ -477,13 +645,32 @@ counts
 > class: RegionSetDE.counts 
 > dim: 109 9 
 > metadata(2): signal.type count.like
-> assays(1): counts
+> assays(2): counts input
 > rownames(109): consensus|19:46089709-46090037
 >   consensus|19:46182368-46182658 ... consensus|19:57823636-57824055
 >   consensus|19:57840011-57840689
 > rowData names(8): region.set region.id ... peak.groups peak.samples
 > colnames(9): AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3
-> colData names(11): sample bam.file ... paired.end library.size
+> colData names(13): sample bam.file ... library.size input.library.size
+```
+
+The sheet names an input for every sample, so the input is counted as
+well, over the same regions and with the same filters, into an assay of
+its own beside the counts. Each input file is read once, whatever the
+number of samples pointing to it, and every sample gets the counts of
+its own input in its column; a sample without input gets `NA`. Nothing
+subtracts the input from the counts, which stay the reads of the sample
+as the model needs them. The input is there to judge the enrichment of
+the regions, and to check that a change between conditions does not show
+in the input too, which would point to copy number rather than to
+binding. `countInput = FALSE` leaves it out.
+
+``` r
+countTable(counts, input = TRUE, format = "matrix")[1:3, 1:3]
+>                                AR_DMSO_r1 AR_DMSO_r2 AR_DMSO_r3
+> consensus|19:46089709-46090037          0          0          0
+> consensus|19:46182368-46182658          0          0          0
+> consensus|19:46300807-46301375          1          1          1
 ```
 
 Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of
@@ -499,8 +686,8 @@ workers.
 Every region is counted whole here, one row per region, which is the
 right choice for a transcription factor whose peaks are a few hundred
 base pairs wide and change as a block. Counting in tiles, and recentring
-the regions on the summits, are the two alternatives, and [their own
-section](#tiles) says when each is worth it.
+the regions on the summits as *DiffBind* does, are the two alternatives,
+and [their own section](#tiles) says when each is worth it.
 
   
 
@@ -580,26 +767,36 @@ puts the reads of every file next to the ones in the regions.
 
 ``` r
 libInfo(counts, annotationColumns = "condition")
->            sample condition paired.end bam.reads bam.mapped library.size
-> 1      AR_DMSO_r1      DMSO       TRUE      7913       7913         3588
-> 2      AR_DMSO_r2      DMSO       TRUE     12038      12038         5469
-> 3      AR_DMSO_r3      DMSO       TRUE      9185       9185         4183
-> 4  AR_R1881_4h_r1  R1881_4h       TRUE      7836       7836         3582
-> 5  AR_R1881_4h_r2  R1881_4h       TRUE     11205      11205         5121
-> 6  AR_R1881_4h_r3  R1881_4h       TRUE     12693      12693         5806
-> 7 AR_R1881_24h_r1 R1881_24h       TRUE     14080      14080         6326
-> 8 AR_R1881_24h_r2 R1881_24h       TRUE     10793      10793         4889
-> 9 AR_R1881_24h_r3 R1881_24h       TRUE     10332      10332         4651
->   reads.in.regions   FRiP
-> 1              147 0.0410
-> 2              187 0.0342
-> 3              150 0.0359
-> 4              605 0.1689
-> 5              931 0.1818
-> 6              751 0.1293
-> 7             1149 0.1816
-> 8             1197 0.2448
-> 9              872 0.1875
+>            sample condition paired.end fragment.length bam.reads bam.mapped
+> 1      AR_DMSO_r1      DMSO       TRUE              NA      7913       7913
+> 2      AR_DMSO_r2      DMSO       TRUE              NA     12038      12038
+> 3      AR_DMSO_r3      DMSO       TRUE              NA      9185       9185
+> 4  AR_R1881_4h_r1  R1881_4h       TRUE              NA      7836       7836
+> 5  AR_R1881_4h_r2  R1881_4h       TRUE              NA     11205      11205
+> 6  AR_R1881_4h_r3  R1881_4h       TRUE              NA     12693      12693
+> 7 AR_R1881_24h_r1 R1881_24h       TRUE              NA     14080      14080
+> 8 AR_R1881_24h_r2 R1881_24h       TRUE              NA     10793      10793
+> 9 AR_R1881_24h_r3 R1881_24h       TRUE              NA     10332      10332
+>   library.size reads.in.regions   FRiP input.id input.library.size
+> 1         3588              147 0.0410    input               5353
+> 2         5469              187 0.0342    input               5353
+> 3         4183              150 0.0359    input               5353
+> 4         3582              605 0.1689    input               5353
+> 5         5121              931 0.1818    input               5353
+> 6         5806              751 0.1293    input               5353
+> 7         6326             1149 0.1816    input               5353
+> 8         4889             1197 0.2448    input               5353
+> 9         4651              872 0.1875    input               5353
+>   input.in.regions input.FRiP
+> 1               38     0.0071
+> 2               38     0.0071
+> 3               38     0.0071
+> 4               38     0.0071
+> 5               38     0.0071
+> 6               38     0.0071
+> 7               38     0.0071
+> 8               38     0.0071
+> 9               38     0.0071
 ```
 
 The columns measure different things and are not expected to agree.
@@ -616,6 +813,15 @@ Three to four per cent of the fragments fall in the consensus without
 ligand, against thirteen to twenty-five per cent after it. This is the
 enrichment the experiment produced, and holding on to it through the
 normalisation is the whole difficulty of the next section.
+
+The input columns give the same numbers for the input of each sample.
+The input puts 0.7 % of its fragments in the consensus, which is what
+the regions collect with no enrichment at all, so even the samples
+without ligand are about five times enriched over it, and the treated
+ones eighteen to thirty-five times. A sample whose FRiP sits close to
+the one of its input carries little signal in the regions, however deep
+it was sequenced. `fragment.length` is empty here because every library
+is paired-end.
 
   
 
@@ -753,25 +959,44 @@ and `availableRegionLists(type = "greenlist")` prints them.
 [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
 stores its counts inside the object, where
 [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
-finds them. By default the factors are the median of ratios, the size
-factor DESeq2 computes and the one the greenlist paper used;
+finds them. The fragments are counted once each, at their centre, which
+is how the paper counted them with `multiBamSummary --centerReads`. By
+default the factors are the median of ratios, the size factor DESeq2
+computes and the one the greenlist paper used;
 `greenlistEstimator = "TMM"` or `"sum"` change that. Counts collected
 with another tool go in through `greenlistCounts`, as a total per sample
 or a matrix.
 
-Before trusting the factors, look at how much the greenlist actually
-holds in every library:
+[`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+holds the libraries to the conditions the lists were built under. The
+greenlist regions were kept at least 5 kb from genes so that no target
+binds there, and a greenlist region that one of the regions of the study
+falls on says the target does bind there in these cells: those are left
+out, and how many were is reported, unless `excludeCounted = FALSE`. A
+library below the depth the authors required of a library to enter the
+construction of the list, 1.5 million reads for human CUT&RUN, 1 million
+for mouse CUT&RUN and 500,000 for human CUT&Tag, raises a warning, and
+so does a library reaching fewer than half as many greenlist regions as
+the median one.
+[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+then says how many regions carry reads in every sample, which is what
+the median of ratios rests on, as it does in DESeq2. The paper sets no
+rule per group of samples; the number of regions shared by every library
+is the one that decides how steady the factors are.
+
+What each library holds over the list is kept beside the counts:
 
 ``` r
 
-greenlistCounts <- SummarizedExperiment::assay(S4Vectors::metadata(counts)$greenlist, "counts")
-colSums(greenlistCounts)
+SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
 ```
 
-The factor of a library is only as steady as the number of fragments
-behind it. A library holding a handful, which happens on shallow
-libraries or with a list built for another assay, gets a factor that is
-mostly noise, and one holding none gets no factor at all.
+`totals` is the number of fragments on the list, `regions.covered` the
+regions holding at least one of them, and `library.fraction` their share
+of the library. The factor of a library is only as steady as the number
+of fragments behind it. A library holding a handful, which happens on
+shallow libraries or with a list built for another assay, gets a factor
+that is mostly noise, and one holding none gets no factor at all.
 
   
 
@@ -928,6 +1153,24 @@ together. A component that lines up with the batch instead, or a
 replicate landing in the wrong group, is worth knowing about before it
 turns into a dispersion estimate.
 
+`samples` restricts either figure to some of the libraries, by name, by
+position or with a logical vector, which is how a difference hidden
+behind the largest one is brought out. The normalisation of the whole
+analysis is kept, so the values are the ones the model sees.
+
+``` r
+
+plotRegionPCA(counts,
+              samples = sampleInfo(counts)$treatment == "R1881",
+              colourBy = "condition")
+```
+
+![](RegionSetDE.peaks.vignette_files/figure-html/pca_treated-1.png)
+
+Without DMSO the two durations separate along the first component, which
+now carries 45 % of the variance, with one replicate of four hours
+further out than the others.
+
 ``` r
 
 plotSampleCorrelation(counts,
@@ -1040,12 +1283,15 @@ results
 `FDR` and `log2FC` set the cut-offs a region has to pass to be labelled
 `up` or `down`: an adjusted p-value below 0.05 and a fold change beyond
 two in either direction. They label the regions and do not touch the
-test; `lfcThreshold` is the argument that moves the fold change inside
-the test itself. `carryCounts = TRUE` keeps the counts inside the
-results, which is what lets the plots below draw signal without being
-handed the counts object again. The multiple testing correction is
-applied within each contrast, never across them, so every added contrast
-adds its own share of false positives.
+test, so
+[`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md)
+can change them later without testing again, for every contrast of the
+list or for the ones named in `contrast`; `lfcThreshold` is the argument
+that moves the fold change inside the test itself. `carryCounts = TRUE`
+keeps the counts inside the results, which is what lets the plots below
+draw signal without being handed the counts object again. The multiple
+testing correction is applied within each contrast, never across them,
+so every added contrast adds its own share of false positives.
 
 Four hours of androgen already recruit AR to most of its sites, and the
 second day adds a few more and loses one. The rest of this section uses
@@ -1232,6 +1478,110 @@ plotTopHeatmap(results, contrast = "R1881_24h_vs_DMSO", n = 30, annotationColumn
 
   
 
+### Signal around the regions
+
+A fold change is a single number per region.
+[`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+shows the reads behind it, in bins around the centre of every region
+that changed, as `dba.plotProfile()` does in *DiffBind*: one heatmap per
+condition, the regions going up and those going down as two groups of
+rows, and their mean profile on top.
+
+``` r
+
+plotProfile(results,
+            contrast = "R1881_24h_vs_DMSO",
+            groupBy = "condition")
+```
+
+![](RegionSetDE.peaks.vignette_files/figure-html/profile-1.png)
+
+The signal comes from the BAM files the counts were made from, with the
+same filters, and is scaled by the factors of the normalisation above,
+so the panels compare the way the normalised counts do. The rows are
+sorted by their mean signal and keep the same order in every panel, and
+the colour scale is shared, so a row read from left to right is one
+region gaining or losing receptor. Here the 82 regions going up are
+nearly empty in DMSO and already bound after four hours, with the pile
+centred on the region; the single region going down is the one site AR
+leaves.
+
+What the plot guards against is a change spread over the whole window
+rather than centred on the site, which points to background rather than
+binding, and a pile sitting away from the centre, which says the regions
+were not aligned on the signal. The centre here is the midpoint of each
+consensus region; counted with `summits`, [below](#summits), the regions
+carry their summit and the profiles are aligned on it.
+
+[`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+does two things in one call: it reads the signal through
+[`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md),
+and draws it. Reading is the slow part, since every BAM file is opened
+again, so when the same profiles are drawn more than once, or used for
+something else, it pays to compute them once and hand the result to
+[`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md):
+
+``` r
+profileData <- computeProfiles(results,
+                               contrast = "R1881_24h_vs_DMSO",
+                               groupBy = "condition")
+
+names(profileData$profiles)
+> [1] "DMSO"      "R1881_4h"  "R1881_24h"
+dim(profileData$profiles$DMSO)
+> [1] 89 60
+```
+
+`profiles` holds one matrix per condition, or per sample without
+`groupBy`, with one row per region and one column per bin; `regions`
+holds the window drawn for every row and the group it belongs to, and
+`bins` the distance of every bin from the centre. The arguments choosing
+the regions, the samples and the window all belong to
+[`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md),
+and
+[`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+passes them on when it is given an object rather than the profiles.
+`style = "lines"` draws the mean profiles alone, with their standard
+error:
+
+``` r
+
+plotProfile(profileData, style = "lines")
+```
+
+![](RegionSetDE.peaks.vignette_files/figure-html/profile_lines-1.png)
+
+The regions need not come from the test. `regions` takes any `GRanges`,
+a named list of them, one group of rows each, or a region set, and the
+object only supplies the reads and the normalisation. The consensus
+split by occupancy, for instance, the sites already bound without ligand
+against those found only after it:
+
+``` r
+
+consensusRanges <- regionRanges(consensus)$consensus
+
+plotProfile(counts,
+            regions = list(boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
+                           newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
+            groupBy = "condition",
+            style = "lines")
+```
+
+![](RegionSetDE.peaks.vignette_files/figure-html/profile_regions-1.png)
+
+`blacklist` leaves out the rows whose drawn window touches the list,
+`TRUE` taking the blacklist stored in the object, since a clean region
+can sit next to an artefact that the window then shows; `whitelist`
+keeps the regions overlapping a list, promoters for instance; `samples`
+draws some of the libraries only.
+
+A bigWig file per sample can take the place of the BAM files, through a
+`bigwig` column of the sample sheet or `signalFiles`; its signal is then
+drawn as it is, so it has to be normalised already.
+
+  
+
 ### Occupancy and the test, read together
 
 The point of keeping the peak calls around is to ask whether the two
@@ -1295,8 +1645,7 @@ every parameter the analysis ran with.
 The analysis above counts every consensus region whole. That is the
 classic choice and the right one for this dataset, but it is not the
 only way to turn a set of peaks into rows of a count matrix, and the
-other two are worth knowing about. The code of this section is shown,
-not run.
+other two are worth knowing about.
 
   
 
@@ -1316,7 +1665,7 @@ same site than a narrow one.
 ### Tiles
 
 `tileWidth` cuts every region into tiles of that width, and each tile
-becomes a row of its own.
+becomes a row of its own. The code of this part is shown, not run.
 
 ``` r
 
@@ -1371,6 +1720,9 @@ is more often noise than biology. The results table then reports
 significantly in each direction within the region. The `log2FC` of a
 tiled region is the one of the tile carrying the p-value, not an
 average, since that is the quantity the p-value is about.
+`mean.tile.log2FC` gives the average over the tiles of the region,
+weighted by their width, for when the region as a whole is what is being
+described.
 
 For a transcription factor like AR, tiles add rows without adding
 information: a peak of 400 bp cut into 200 bp tiles gives two tiles that
@@ -1383,40 +1735,81 @@ answer.
 
 The other answer to uneven widths goes the opposite way: instead of
 cutting the regions, rebuild them at a fixed width around the summit of
-the peak. `consensusRegions` does it with `recentre = TRUE`, and
-[`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
-passes the argument through.
+the signal. This is what *DiffBind* has done by default since version
+3.0, with windows of 401 bp, and `summits` in
+[`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+does the same: every region becomes a window of `2 * summits + 1` bp
+centred on its summit.
 
 ``` r
+summitCounts <- countReads(consensus,
+                           sampleSheet = sampleSheet,
+                           summits = 200,
+                           verbose = FALSE)
 
-recentredConsensus <- loadConsensusPeaks(sampleSheet,
-                                         groupBy = "condition",
-                                         excludeRegions = artefactRegions,
-                                         seqlevelsStyle = "Ensembl",
-                                         recentre = TRUE,
-                                         width = 400)
+head(SummarizedExperiment::rowRanges(summitCounts)[, c("region.id", "summit")], 3)
+> GRanges object with 3 ranges and 2 metadata columns:
+>                                  seqnames            ranges strand |
+>                                     <Rle>         <IRanges>  <Rle> |
+>   consensus|19:46089709-46090037       19 46089703-46090103      * |
+>   consensus|19:46182368-46182658       19 46182400-46182800      * |
+>   consensus|19:46300807-46301375       19 46300862-46301262      * |
+>                                             region.id    summit
+>                                           <character> <integer>
+>   consensus|19:46089709-46090037 19:46089709-46090037  46089903
+>   consensus|19:46182368-46182658 19:46182368-46182658  46182600
+>   consensus|19:46300807-46301375 19:46300807-46301375  46301062
+>   -------
+>   seqinfo: 1 sequence from an unspecified genome; no seqlengths
+
+table(BiocGenerics::width(SummarizedExperiment::rowRanges(summitCounts)))
+> 
+> 401 
+> 109
 ```
 
-Every consensus region of a group is replaced by a window of `width`
-base pairs centred on the summit of the most significant peak it holds,
-which the `.narrowPeak` files give in their tenth column; formats
-without a summit, broadPeak among them, fall back on the midpoint of
-that peak, with a warning. That puts every site on the same footing and
-centres the count on where the protein sits, which is what a
-transcription factor or ATAC-seq analysis usually wants, and it is what
-*DiffBind* has done by default since version 3.0, with windows of 401
-bp. Widths between 200 and 500 bp suit most factors. It is wrong for
-broad marks, whose summit is an arbitrary point in a domain: collapsing
-the domain to a point throws away the thing being measured, and tiles
-are the tool there.
+The summit is found in the reads, as *DiffBind* finds it: the highest
+point of the fragment pileup of each sample, averaged over the samples
+with weights proportional to the height of their pileup over their
+depth, so that the samples carrying the signal decide where it sits. A
+region with no fragment keeps its midpoint. `region.id` still holds the
+coordinates of the consensus region each window came from, and `summit`
+where it was centred. The inputs are counted over the same windows.
 
-One thing to expect: the width is exact within each group, but the
-groups are then pooled, and when the summits of two groups sit a few
-base pairs apart their windows overlap and are merged into one. The
-pooled regions are therefore close to `width` rather than equal to it,
-and the package says so with a warning. On this dataset, recentring at
-400 bp gives the same 109 regions, every group exactly 400 bp wide, and
-a pooled consensus between 400 and 689 bp with a median of 403.
+`summitSource = "peaks"` takes the summits the peak caller wrote in the
+tenth column of the narrowPeak files instead, averaged over the peaks
+overlapping the region with weights proportional to their significance.
+It needs no BAM file, and on this dataset the two place the summits a
+median of 26 bp apart. `summits = 0` locates the summits and leaves the
+regions alone, which keeps the counts of whole regions while letting
+[`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+align them on the signal.
+
+That puts every site on the same footing and centres the count on where
+the protein sits, which is what a transcription factor or ATAC-seq
+analysis usually wants. Widths between 200 and 500 bp suit most factors.
+It is wrong for broad marks, whose summit is an arbitrary point in a
+domain: collapsing the domain to a point throws away the thing being
+measured, and tiles are the tool there.
+
+On this dataset the summits sit a median of 32 bp from the midpoints of
+the consensus regions, and 236 bp at most, and none of the windows
+overlap. The test comes out the same as on whole regions, 82 regions up
+and one down against DMSO, which is what one expects from a factor whose
+peaks are narrow and centred already; on a consensus of wide merged
+regions the two can differ more.
+
+`consensusRegions` offers a recentring of its own, `recentre = TRUE`,
+which
+[`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+passes through. It works inside each group, on the summit of the most
+significant peak of every consensus region, before the groups are
+pooled; when the summits of two groups sit a few base pairs apart their
+windows overlap and are merged back, so the pooled regions are close to
+the width asked for rather than equal to it, and the package says so
+with a warning. `summits` in
+[`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+works on the pooled regions and gives them all the same width.
 
   
 
@@ -1477,19 +1870,19 @@ sessionInfo()
 >   [7] matrixStats_1.5.0           compiler_4.6.1             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
 >  [11] systemfonts_1.3.2           vctrs_0.7.3                
->  [13] stringr_1.6.0               pkgconfig_2.0.3            
->  [15] shape_1.4.6.1               crayon_1.5.3               
+>  [13] stringr_1.6.0               shape_1.4.6.1              
+>  [15] pkgconfig_2.0.3             crayon_1.5.3               
 >  [17] fastmap_1.2.0               XVector_0.52.0             
 >  [19] labeling_0.4.3              Rsamtools_2.28.0           
 >  [21] rmarkdown_2.32              markdown_2.0               
 >  [23] UCSC.utils_1.8.0            ragg_1.5.2                 
 >  [25] purrr_1.2.2                 xfun_0.61                  
->  [27] cachem_1.1.0                litedown_0.11              
->  [29] cigarillo_1.2.1             GenomeInfoDb_1.48.0        
+>  [27] cachem_1.1.0                cigarillo_1.2.1            
+>  [29] litedown_0.11               GenomeInfoDb_1.48.0        
 >  [31] jsonlite_2.0.0              DelayedArray_0.38.2        
 >  [33] BiocParallel_1.46.0         cluster_2.1.8.2            
 >  [35] parallel_4.6.1              R6_2.6.1                   
->  [37] stringi_1.8.9               bslib_0.12.0               
+>  [37] bslib_0.12.0                stringi_1.8.9              
 >  [39] RColorBrewer_1.1-3          limma_3.68.5               
 >  [41] rtracklayer_1.72.0          jquerylib_0.1.4            
 >  [43] Rcpp_1.1.2                  bookdown_0.48              
@@ -1511,16 +1904,16 @@ sessionInfo()
 >  [75] glue_1.8.1                  metapod_1.20.0             
 >  [77] tools_4.6.1                 BiocIO_1.22.0              
 >  [79] locfit_1.5-9.12             GenomicAlignments_1.48.0   
->  [81] fs_2.1.0                    XML_3.99-0.24              
+>  [81] fs_2.1.0                    XML_3.99-0.25              
 >  [83] grid_4.6.1                  tidyr_1.3.2                
->  [85] edgeR_4.10.5                colorspace_2.1-3           
->  [87] nlme_3.1-169                consensusRegions_0.99.0    
+>  [85] colorspace_2.1-3            edgeR_4.10.5               
+>  [87] nlme_3.1-169                consensusRegions_0.99.1    
 >  [89] restfulr_0.0.17             cli_3.6.6                  
 >  [91] textshaping_1.0.5           viridisLite_0.4.3          
->  [93] S4Arrays_1.12.0             ComplexHeatmap_2.28.0      
+>  [93] S4Arrays_1.12.1             ComplexHeatmap_2.28.0      
 >  [95] gtable_0.3.6                sass_0.4.10                
 >  [97] digest_0.6.39               ggrepel_0.9.8              
->  [99] SparseArray_1.12.2          rjson_0.2.23               
+>  [99] SparseArray_1.12.3          rjson_0.2.23               
 > [101] htmlwidgets_1.6.4           farver_2.1.2               
 > [103] htmltools_0.5.9             pkgdown_2.2.1              
 > [105] lifecycle_1.0.5             httr_1.4.9                 

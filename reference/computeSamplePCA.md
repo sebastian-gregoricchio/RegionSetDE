@@ -13,6 +13,7 @@ computeSamplePCA(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   useOffsets = TRUE,
   topRegions = 2000,
   verbose = TRUE
@@ -35,6 +36,15 @@ computeSamplePCA(
 
   String with the name of a contrast, or its position, when `object`
   holds several of them. Default: `NULL`.
+
+- samples:
+
+  Samples the ordination is computed on: a character vector with their
+  names, a numeric vector with their positions, or a logical vector with
+  one value per sample. The normalisation stored in the object is kept,
+  so the values are the ones of the whole analysis restricted to these
+  samples, and `useOffsets = FALSE` gives the library sizes alone.
+  Default: `NULL`, all of them.
 
 - useOffsets:
 
@@ -102,4 +112,10 @@ head(samplePCA$scores[, c("sample", "PC1", "PC2", "condition")])
 #> 2   lv-H3K4me3-BN-male-bio2-tech1 -14.40160   8.3444835        BN
 #> 3  lv-H3K4me3-SHR-male-bio2-tech1 -11.37325 -13.9150911       SHR
 #> 4  lv-H3K4me3-SHR-male-bio3-tech1  43.15508   0.9702203       SHR
+
+# Three of the four samples, with the normalisation of all four
+computeSamplePCA(counts, samples = colnames(counts)[1:3], topRegions = 1000)$variance
+#>   component standard.deviation variance.percent cumulative.percent
+#> 1       PC1           15.94641         56.67024           56.67024
+#> 2       PC2           13.94372         43.32976          100.00000
 ```

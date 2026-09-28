@@ -2,9 +2,12 @@
 
 Counts the reads of a group of BAM files over the regions of a
 `RegionSetDE` object. Paired-end data are counted as fragments, while
-single-end reads are extended to the expected fragment length before the
-overlap is evaluated. The regions can be cut into tiles of fixed width,
-in which case each tile becomes a row of the resulting object.
+single-end reads are extended to the fragment length before the overlap
+is evaluated. The regions can be recentred on the summit of the signal,
+as DiffBind does with the peaks of a consensus, or cut into tiles of
+fixed width, in which case each tile becomes a row of the resulting
+object. The input libraries of the samples, when there are any, are
+counted over the same rows and stored beside the counts.
 
 ## Usage
 
@@ -27,6 +30,10 @@ countReads(
   excludeChromosomes = NULL,
   discardRegions = NULL,
   fullLibrarySize = TRUE,
+  inputFiles = NULL,
+  countInput = TRUE,
+  summits = NULL,
+  summitSource = "reads",
   nThreads = 1,
   verbose = TRUE
 )
@@ -37,7 +44,9 @@ countReads(
 - regionSet:
 
   `RegionSetDE` object returned by
-  [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md),
+  [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+  or
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
   or a named `GRangesList`.
 
 - bamFiles:
@@ -52,8 +61,8 @@ countReads(
 
   Data.frame returned by
   [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
-  or the path to a sample sheet, providing the BAM files, the sample
-  names and the annotation in one go. Default: `NULL`.
+  or the path to a sample sheet, providing the BAM files, the input
+  files, the sample names and the annotation in one go. Default: `NULL`.
 
 - sampleNames:
 
@@ -68,8 +77,8 @@ countReads(
 
 - tileWidth:
 
-  Numeric value with the width of the tiles, in base pairs. Default:
-  `NULL`, one row per region.
+  Numeric value with the width of the tiles, in base pairs. Cannot be
+  combined with `summits`. Default: `NULL`, one row per region.
 
 - keepMetadata:
 
@@ -97,8 +106,15 @@ countReads(
 
 - fragmentLength:
 
-  Numeric value with the length to which single-end reads are extended.
-  Applied to the single-end samples only. Default: `150`.
+  Length to which single-end reads are extended. Either a number applied
+  to every single-end sample; one number per BAM file, matched to the
+  sample names when the vector is named; the name of a column of the
+  sample sheet or of `sampleMetadata` holding one value per sample, such
+  as the fragment length computed by phantompeakqualtools; or `"auto"`,
+  to estimate it from the reads with
+  [`estimateFragmentLength`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md).
+  Ignored for paired-end samples, whose fragments are rebuilt from the
+  pairs. Default: `150`.
 
 - maxFragmentLength:
 
@@ -143,6 +159,35 @@ countReads(
   which is much faster for a few regions but leaves library sizes that
   must not be used for normalisation. Default: `TRUE`.
 
+- inputFiles:
+
+  Character vector with the path of the input BAM file of every sample,
+  `NA` for a sample without input. One input can serve several samples
+  and is counted once. Default: `NULL`, the `input` column of the sample
+  sheet or of `sampleMetadata`, when there is one.
+
+- countInput:
+
+  Logical value to indicate whether the input files must be counted.
+  Default: `TRUE`.
+
+- summits:
+
+  Numeric value with the half width of the regions recentred on their
+  summit, which then span `2 * summits + 1` bp, as with the `summits`
+  argument of `DiffBind::dba.count`. `0` locates the summits and stores
+  them without moving the regions. Default: `NULL`, the regions are
+  counted as they are.
+
+- summitSource:
+
+  String with where the summits are taken from: `"reads"`, the highest
+  point of the fragment pileup of the samples, or `"peaks"`, the summits
+  written by the peak caller in the narrowPeak files of a consensus
+  built by
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+  Default: `"reads"`.
+
 - nThreads:
 
   Number of threads. The files are cut into pieces of at most 50 Mb,
@@ -159,7 +204,13 @@ countReads(
 A `RegionSetDE.counts` object with one row per region, or per tile, and
 one column per sample. The library sizes are stored in the
 `library.size` column of the `colData`, the set membership in the
-`region.set` column of the `rowData`.
+`region.set` column of the `rowData`, and the length the single-end
+reads were extended to in `fragment.length` (`NA` for paired-end
+samples). With inputs, the `input` assay holds for every sample the
+counts of its input over the same rows (`NA` for a sample without one),
+and the `colData` gains `input.id` and `input.library.size`. With
+`summits`, the `rowData` gains `summit`, the position of the summit of
+every region.
 
 ## Details
 
@@ -192,12 +243,52 @@ warns when a method relies on them.
 
 Paired-end and single-end samples can be mixed in the same call,
 paired-end libraries being counted as fragments and single-end ones as
-reads extended to `fragmentLength`, so that both end up with one count
-per sequenced fragment. Forcing a paired-end file through the single-end
-path counts each mate on its own and nearly doubles its values, while
-the opposite mistake finds no pair and returns a column of zeros, which
-is why the layout is read from the files by default. The resolved layout
-of each sample is stored in the `paired.end` column of the `colData`.
+reads extended to their fragment length, so that both end up with one
+count per sequenced fragment. Forcing a paired-end file through the
+single-end path counts each mate on its own and nearly doubles its
+values, while the opposite mistake finds no pair and returns a column of
+zeros, which is why the layout is read from the files by default. The
+resolved layout of each sample is stored in the `paired.end` column of
+the `colData`.
+
+Single-end libraries rarely share the same fragment length, and a read
+extended too far spills into the neighbouring regions while one extended
+too little misses the centre of its own. The length can come from the
+pipeline that produced the files, as a column of the sample sheet, or
+from `fragmentLength = "auto"`, which runs the strand cross-correlation
+of
+[`estimateFragmentLength`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md)
+over the regions being counted.
+[`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
+and
+[`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+reuse the lengths chosen here, sample by sample.
+
+The inputs are counted with the same filters as the samples, over the
+same rows, and a single-end input is extended to the mean fragment
+length of the samples it serves. Nothing downstream subtracts them: the
+counts of a sample stay the reads of that sample, as the count models
+need. The input assay is there to check the enrichment of the regions,
+and to see whether a change between conditions also shows in the inputs,
+which points to copy number rather than to binding.
+[`libInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+reports the inputs beside the libraries.
+
+A consensus of peaks has regions of every width, and a wide region
+collects more background than a narrow one around the same summit. With
+`summits`, every region is replaced by a window of fixed width centred
+on its summit, which is what DiffBind does by default. With
+`summitSource = "reads"` the summit is the middle of the highest stretch
+of fragment pileup in each sample, averaged over the samples with
+weights proportional to the height of their pileup, scaled by their
+depth, so that the samples carrying signal decide where it sits. With
+`summitSource = "peaks"` it is the average of the summits the peak
+caller wrote for the peaks overlapping the region, weighted by their
+significance, which needs no BAM file but works only for narrowPeak
+files. A region with neither reads nor peaks keeps its midpoint. The
+regions keep their identifiers, so each window can be traced back to the
+region it came from, and windows of neighbouring regions may overlap, as
+in DiffBind.
 
 Regions and BAM files do not need to share the same chromosome naming
 style. When no chromosome is shared, the regions are converted to the
@@ -207,9 +298,11 @@ names of the input sets.
 
 ## See also
 
+[`estimateFragmentLength`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md),
 [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md),
 [`loadCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md),
-[`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
+[`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+[`libInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
 
 ## Author
 
@@ -222,26 +315,66 @@ Sebastian Gregoricchio
 sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
-# The sheet brings the BAM files, the sample names and the annotation
+# The sheet brings the BAM files, the inputs, the sample names and the annotation
 counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
 counts
 #> class: RegionSetDE.counts 
 #> dim: 101 9 
 #> metadata(2): signal.type count.like
-#> assays(1): counts
+#> assays(2): counts input
 #> rownames(101): peaks|chr19:46089737-46089961
 #>   peaks|chr19:46300828-46301307 ... peaks|chr19:57823680-57823967
 #>   peaks|chr19:57840110-57840669
 #> rowData names(9): region.set region.id ... V9 V10
 #> colnames(9): AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3
-#> colData names(11): sample bam.file ... paired.end library.size
+#> colData names(13): sample bam.file ... library.size input.library.size
+head(SummarizedExperiment::assay(counts, "input"), 3)
+#>                               AR_DMSO_r1 AR_DMSO_r2 AR_DMSO_r3 AR_R1881_4h_r1
+#> peaks|chr19:46089737-46089961          0          0          0              0
+#> peaks|chr19:46300828-46301307          1          1          1              1
+#> peaks|chr19:46314001-46314455          0          0          0              0
+#>                               AR_R1881_4h_r2 AR_R1881_4h_r3 AR_R1881_24h_r1
+#> peaks|chr19:46089737-46089961              0              0               0
+#> peaks|chr19:46300828-46301307              1              1               1
+#> peaks|chr19:46314001-46314455              0              0               0
+#>                               AR_R1881_24h_r2 AR_R1881_24h_r3
+#> peaks|chr19:46089737-46089961               0               0
+#> peaks|chr19:46300828-46301307               1               1
+#> peaks|chr19:46314001-46314455               0               0
 
-# The same files given one by one, with the annotation as a table
+# The same files given one by one, with the annotation as a table and no input
 counts <- countReads(peakRegions,
                      bamFiles = sampleSheet$bam,
                      sampleNames = sampleSheet$sample,
                      sampleMetadata = sampleSheet[, c("sample", "condition")],
                      verbose = FALSE)
+
+# Windows of 401 bp centred on the summit of the reads, as DiffBind counts a consensus
+summitCounts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)
+head(SummarizedExperiment::rowRanges(summitCounts), 3)
+#> GRanges object with 3 ranges and 10 metadata columns:
+#>                                 seqnames            ranges strand |  region.set
+#>                                    <Rle>         <IRanges>  <Rle> | <character>
+#>   peaks|chr19:46089737-46089961    chr19 46089699-46090099      * |       peaks
+#>   peaks|chr19:46300828-46301307    chr19 46300862-46301262      * |       peaks
+#>   peaks|chr19:46314001-46314455    chr19 46313939-46314339      * |       peaks
+#>                                              region.id   tile.id
+#>                                            <character> <integer>
+#>   peaks|chr19:46089737-46089961 chr19:46089737-46089..      <NA>
+#>   peaks|chr19:46300828-46301307 chr19:46300828-46301..      <NA>
+#>   peaks|chr19:46314001-46314455 chr19:46314001-46314..      <NA>
+#>                                                   name     score        V7
+#>                                            <character> <integer> <numeric>
+#>   peaks|chr19:46089737-46089961 AR_R1881_24h_r1_peak..       159   9.71586
+#>   peaks|chr19:46300828-46301307 AR_R1881_24h_r1_peak..      1963  46.75880
+#>   peaks|chr19:46314001-46314455 AR_R1881_24h_r1_peak..       149   8.12502
+#>                                        V8        V9       V10    summit
+#>                                 <numeric> <numeric> <integer> <integer>
+#>   peaks|chr19:46089737-46089961   18.4847   15.9682       103  46089899
+#>   peaks|chr19:46300828-46301307  199.8470  196.3410       236  46301062
+#>   peaks|chr19:46314001-46314455   17.4005   14.9008       186  46314139
+#>   -------
+#>   seqinfo: 1 sequence from hg38 genome; no seqlengths
 
 # Tiles of 100 bp, one row each
 tiledCounts <- countReads(peakRegions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)

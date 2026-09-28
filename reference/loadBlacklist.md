@@ -2,7 +2,7 @@
 
 Returns a blacklist shipped with the package, ready for
 [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
-or for the `excludeRegions` argument of
+or for the `blacklist` argument of
 [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
 The files travel with the package, so nothing is downloaded and nothing
 depends on a hub being reachable.

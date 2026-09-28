@@ -5,7 +5,7 @@ Turns a matrix of greenlist counts into one scaling factor per sample.
 ## Usage
 
 ``` r
-.greenlistFactors(greenlistMatrix, estimator = "medianRatio")
+.greenlistFactors(greenlistMatrix, estimator = "medianRatio", verbose = FALSE)
 ```
 
 ## Arguments
@@ -19,6 +19,11 @@ Turns a matrix of greenlist counts into one scaling factor per sample.
 
   String with the estimator, one among `"medianRatio"`, `"TMM"` and
   `"sum"`.
+
+- verbose:
+
+  Logical value to indicate whether the number of regions behind the
+  median of ratios must be reported. Default: `FALSE`.
 
 ## Value
 

@@ -72,8 +72,9 @@ countBackground(
 
 - fragmentLength:
 
-  Numeric value with the length to which single-end reads are extended.
-  Default: `NULL`, the value used at the counting step.
+  Numeric value with the length to which single-end reads are extended,
+  or one value per BAM file. Default: `NULL`, the lengths used at the
+  counting step, sample by sample.
 
 - maxFragmentLength:
 

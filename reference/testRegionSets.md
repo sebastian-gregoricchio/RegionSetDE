@@ -24,6 +24,8 @@ testRegionSets(
   interRegionCor = NULL,
   tileHandling = "collapse",
   overlapPolicy = "drop",
+  overlapWithinSet = "warn",
+  fryInput = "auto",
   useRanks = FALSE,
   FDR = 0.05,
   adjustMethod = "BH",
@@ -101,6 +103,22 @@ testRegionSets(
   the genome, one among `"allow"`, `"drop"` and `"stop"`. Default:
   `"drop"`.
 
+- overlapWithinSet:
+
+  String with what to do when regions of the same set overlap each other
+  in the genome, one among `"allow"`, `"warn"` and `"stop"`. The number
+  of such regions is reported in `n.overlapping.within` whatever the
+  choice. Default: `"warn"`.
+
+- fryInput:
+
+  String with the values `fry` is run on, either `"auto"` or `"logCPM"`.
+  With `"auto"` the `edgeR` and `DESeq2` fits are tested on the z-scores
+  of their own negative binomial model, and the other engines on the log
+  values they were fitted on. `"logCPM"` runs every engine on the
+  log-CPM matrix, which is what the test did before this option existed.
+  Default: `"auto"`.
+
 - useRanks:
 
   Logical value to indicate whether `camera` must work on the ranks
@@ -142,6 +160,8 @@ when `contrast` is a named list. The table carries `CI.lower` and
 `CI.upper` for the interval selected by `effectMethod`, `CI.type` naming
 which one that is, and `heterogeneity.CI.lower` and
 `heterogeneity.CI.upper` for the region-level one, always.
+`n.overlapping.within` counts the regions of the set overlapping another
+region of the same set.
 
 ## Details
 
@@ -149,6 +169,20 @@ The effect size, not the p-value, is the primary output here. A set of
 30,000 promoters tested as if its regions were independent returns a
 p-value below anything a computer will print for a mean shift of 0.05
 log2, which says nothing about whether the shift matters.
+
+`mean.log2FC` is the mean of the per-region log2 fold changes, every
+region counting once whatever its width or its signal. It is not the
+fold change of the signal pooled over the set: a set holding a few
+strong and many weak regions can have its summed signal driven by the
+strong ones, while the mean of the fold changes is driven by the many.
+The two agree when the regions respond alike, and part ways when the
+response depends on the width or on the baseline signal of the region.
+`delta.log2FC` is the difference between that mean and the one of the
+comparison rows, and `sample.delta.log2FC` the same difference read from
+one score per library, the mean log2 signal over the set minus the one
+over its comparison. Neither of the two tests returns an effect size:
+`camera` says whether the set ranks apart from its comparison, and `fry`
+whether it moved away from zero.
 
 Two different intervals can be put around that effect and they answer
 different questions, so both are reported and `effectMethod` decides
@@ -237,6 +271,17 @@ region identifier is shared, and `overlapPolicy` decides what happens
 next. The number of comparison rows removed, or left in place, is
 reported in `n.comparison.overlapping`.
 
+Regions of the same set can overlap each other too, for instance windows
+recentred on nearby summits or an annotation listing alternative
+promoters of one gene. The bases they share are then counted in two
+rows, so the set leans towards those loci, and the rows move together
+for a reason the correlation between regions was not estimated for. When
+the question is the average response per region this can be what is
+wanted, and `overlapWithinSet = "allow"` keeps quiet about it. The
+default warns, and `"stop"` refuses the set. The count is in
+`n.overlapping.within`, and `loadRegions(reduceRegions = TRUE)` merges
+such regions before counting.
+
 On a tiled fit the row is a tile, and a set assembled from tiles weights
 each region by how many tiles it was cut into: a 40 kb domain would
 count forty times a 2 kb one. That changes the question from the average
@@ -260,11 +305,21 @@ hand from a replicated experiment on the same assay when one exists. The
 competitive test runs through
 [`limma::cameraPR`](https://rdrr.io/pkg/limma/man/camera.html) on the
 per-region statistics, which is what makes it work identically for the
-four engines. The self-contained test needs the values themselves and is
-computed on the log-CPM matrix of the fit; for `edgeR` and `DESeq2` that
-matrix is a transformation of the counts rather than the quantity the
-model was fitted on, so the two are close but not identical, and the
-competitive test is the one to lead with.
+five engines. The self-contained test needs the values themselves. For
+`voom`, `limma` and `dream` they are the log values the model was fitted
+on. For `edgeR` and `DESeq2` the counts are turned into z-scores under
+the null model of the fit, with its offsets and its dispersion of every
+region, which is what `edgeR` does for its own `fry` method, and `fry`
+runs on those without standardising them again. The test then rests on
+the negative binomial model the regions were tested with rather than on
+a log-CPM approximation of it. For `DESeq2` the null model is refitted
+by [`edgeR::glmFit`](https://rdrr.io/pkg/edgeR/man/glmfit.html) with the
+dispersions and normalisation factors of `DESeq2`, the same model fitted
+by another routine. On a fit collapsed from tiles the z-scores of a
+region are pooled as `sum(z) / sqrt(n.tiles)`, which keeps them on the
+scale of a single z-score. `fryInput = "logCPM"` brings back the earlier
+behaviour, which is worth keeping for comparing results with an older
+analysis.
 
 ## See also
 
@@ -285,36 +340,41 @@ fit <- loadExampleData("fit", verbose = FALSE)
 # The universe comes from the fit and travels into the result
 setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 resultsTable(setRes)
-#>       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC
-#> 1    promoterCpG       269          314                        0 -0.83367077
-#> 2       geneBody       909          986                        0  0.29148227
-#> 3     intergenic       440         1354                        0  0.26499294
-#> 4 promoterNonCpG       277         1378                        0 -0.02089479
-#>   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower  CI.upper
-#> 1    -0.9443600             0.09704300  -0.93071378 -1.9314597 0.5607824
-#> 2     0.1692341            -0.11505923   0.40654151 -0.3328615 0.9187083
-#> 3     0.1740960             0.05862768   0.20636526 -0.1710428 0.3668162
-#> 4    -0.1571407             0.05781212  -0.07870691 -0.2633465 0.2509689
-#>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
-#> 1  sample              -2.547867              0.6864395        0.8583680
-#> 2  sample              -1.574041              2.3871240        0.2721337
-#> 3  sample              -1.761069              2.1737990        0.2733108
-#> 4  sample              -2.067061              1.9096471        0.4433140
-#>   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE
-#> 1                 0.3775802         1000        -0.685338676      0.28961692
-#> 2                 0.4530172         1000         0.292923395      0.14544165
-#> 3                 0.3815880         1000         0.097886686      0.06250318
-#> 4                 0.3504707         1000        -0.006188815      0.05976724
-#>   sample.delta.df sample.delta.p camera.direction  camera.p fry.direction
-#> 1               2      0.1416115             Down 0.3213638          Down
-#> 2               2      0.1816079               Up 0.5187249          Down
-#> 3               2      0.2578184               Up 0.7773973          Down
-#> 4               2      0.9269756             Down 0.9384488          Down
-#>       fry.p camera.FDR   fry.FDR sample.delta.FDR
-#> 1 0.2686203  0.9384488 0.5401741        0.3437579
-#> 2 0.5401741  0.9384488 0.5401741        0.3437579
-#> 3 0.4717232  0.9384488 0.5401741        0.3437579
-#> 4 0.4613130  0.9384488 0.5401741        0.9269756
+#>       region.set n.regions n.comparison n.comparison.overlapping
+#> 1    promoterCpG       269          314                        0
+#> 2       geneBody       909          986                        0
+#> 3     intergenic       440         1354                        0
+#> 4 promoterNonCpG       277         1378                        0
+#>   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
+#> 1                    0 -0.83367077    -0.9443600             0.09704300
+#> 2                    0  0.29148227     0.1692341            -0.11505923
+#> 3                    0  0.26499294     0.1740960             0.05862768
+#> 4                    0 -0.02089479    -0.1571407             0.05781212
+#>   delta.log2FC   CI.lower  CI.upper CI.type heterogeneity.CI.lower
+#> 1  -0.93071378 -1.9314597 0.5607824  sample              -2.547867
+#> 2   0.40654151 -0.3328615 0.9187083  sample              -1.574041
+#> 3   0.20636526 -0.1710428 0.3668162  sample              -1.761069
+#> 4  -0.07870691 -0.2633465 0.2509689  sample              -2.067061
+#>   heterogeneity.CI.upper inter.region.cor inter.region.cor.universe
+#> 1              0.6864395        0.8583680                 0.3775802
+#> 2              2.3871240        0.2721337                 0.4530172
+#> 3              2.1737990        0.2733108                 0.3815880
+#> 4              1.9096471        0.4433140                 0.3504707
+#>   median.width sample.delta.log2FC sample.delta.SE sample.delta.df
+#> 1         1000        -0.685338676      0.28961692               2
+#> 2         1000         0.292923395      0.14544165               2
+#> 3         1000         0.097886686      0.06250318               2
+#> 4         1000        -0.006188815      0.05976724               2
+#>   sample.delta.p camera.direction  camera.p fry.direction     fry.p camera.FDR
+#> 1      0.1416115             Down 0.3213638          Down 0.2396483  0.9384488
+#> 2      0.1816079               Up 0.5187249            Up 0.1814759  0.9384488
+#> 3      0.2578184               Up 0.7773973            Up 0.6689405  0.9384488
+#> 4      0.9269756             Down 0.9384488          Down 0.5189608  0.9384488
+#>     fry.FDR sample.delta.FDR
+#> 1 0.4792965        0.3437579
+#> 2 0.4792965        0.3437579
+#> 3 0.6689405        0.3437579
+#> 4 0.6689405        0.9269756
 
 plotUniverseMatching(setRes)
 

@@ -60,11 +60,11 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with <code>groups</code>, the consensus regions of every group; <code>objects</code>, the <code>consensusRegions</code> object behind each of them (<code>NULL</code> for the groups with a single sample); <code>total</code>, the pooled consensus; <code>peaks</code>, the peaks of every sample after the exclusion; <code>samples</code>, a data.frame with the group, the peak file and the number of peaks kept and excluded for every sample; <code>sheet</code>, the sample sheet the consensus was built from; <code>groupBy</code>; <code>mode</code>, one among <code>"consensus"</code>, <code>"split"</code> and <code>"replace"</code>; and <code>excluded</code>, the regions the peaks were cleaned against.</p>
+    <p>A list with <code>groups</code>, the consensus regions of every group; <code>objects</code>, the <code>consensusRegions</code> object behind each of them (<code>NULL</code> for the groups with a single sample); <code>total</code>, the pooled consensus; <code>peaks</code>, the peaks of every sample after the blacklist and the greylist; <code>removed</code>, the peaks they took out, with the <code>sample</code> they came from and the list that removed them in <code>removed.by</code>; <code>samples</code>, a data.frame with the group, the peak file, the number of peaks read (<code>n.peaks</code>), removed by the blacklist (<code>n.blacklist</code>), by the greylist (<code>n.greylist</code>) and by both (<code>n.excluded</code>) for every sample; <code>sheet</code>, the sample sheet the consensus was built from; <code>groupBy</code>; <code>mode</code>, one among <code>"consensus"</code>, <code>"split"</code> and <code>"replace"</code>; and <code>blacklist</code> and <code>greylist</code>, the regions the peaks were cleaned against, <code>NULL</code> when a list was not given.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>, <code><a href="plotPeakUpset.html">plotPeakUpset</a></code></p></div>
+    <div class="dont-index"><p><code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>, <code><a href="consensusGroupList.html">consensusGroupList</a></code>, <code><a href="plotPeakUpset.html">plotPeakUpset</a></code></p></div>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

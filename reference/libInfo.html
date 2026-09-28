@@ -65,13 +65,14 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A data.frame with one row per sample: <code>sample</code>, the <code>annotationColumns</code>, <code>paired.end</code>, <code>bam.reads</code> (every record of the BAM file), <code>bam.mapped</code> (the mapped ones), <code>library.size</code> (the fragments that went through the filters of the counting), <code>reads.in.regions</code> and <code>FRiP</code>, the ratio of the last two.</p>
+    <p>A data.frame with one row per sample: <code>sample</code>, the <code>annotationColumns</code>, <code>paired.end</code>, <code>fragment.length</code> (the length single-end reads were extended to, <code>NA</code> for paired-end samples), <code>bam.reads</code> (every record of the BAM file), <code>bam.mapped</code> (the mapped ones), <code>library.size</code> (the fragments that went through the filters of the counting), <code>reads.in.regions</code> and <code>FRiP</code>, the ratio of the last two. When the inputs were counted, <code>input.id</code>, <code>input.library.size</code>, <code>input.in.regions</code> and <code>input.FRiP</code> give the same numbers for the input of each sample.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The three counts measure different things and are not expected to agree. <code>bam.reads</code> and <code>bam.mapped</code> come from the index of each file, so they are read in an instant, and they count alignment records: a paired-end fragment is two of them. <code>library.size</code> and <code>reads.in.regions</code> come from the counting, where a paired-end fragment counts once and only after the mapping quality, duplicate and proper pair filters. On paired-end data <code>bam.mapped</code> is therefore about twice <code>library.size</code>, less what the filters removed.</p>
 <p><code>reads.in.regions</code> counts a fragment once per region it overlaps, the way the counting does. A region shared by several sets is counted once, but a fragment lying across two neighbouring regions, or two tiles of the same region, is counted in both, so on a tiled object the FRiP comes out slightly high.</p>
 <p>The FRiP is computed on <code>library.size</code>, the reads that went through the same filters as the counts. Computed on <code>bam.reads</code> it would mix fragments with alignment records and mapped with filtered reads.</p>
+<p>The FRiP of the input is the share of the input library falling in the regions, which is what the regions would collect with no enrichment at all. A sample whose FRiP sits close to the one of its input carries little signal in the regions, however many reads it has.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -89,26 +90,36 @@
 <span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="countReads.html">countReads</a></span><span class="op">(</span><span class="va">peakRegions</span>, sampleSheet <span class="op">=</span> <span class="va">sampleSheet</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">libInfo</span><span class="op">(</span><span class="va">counts</span>, annotationColumns <span class="op">=</span> <span class="st">"condition"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            sample condition paired.end bam.reads bam.mapped library.size</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1      AR_DMSO_r1      DMSO       TRUE      7913       7913         3588</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2      AR_DMSO_r2      DMSO       TRUE     12038      12038         5469</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3      AR_DMSO_r3      DMSO       TRUE      9185       9185         4183</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4  AR_R1881_4h_r1  R1881_4h       TRUE      7836       7836         3582</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  AR_R1881_4h_r2  R1881_4h       TRUE     11205      11205         5121</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6  AR_R1881_4h_r3  R1881_4h       TRUE     12693      12693         5806</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7 AR_R1881_24h_r1 R1881_24h       TRUE     14080      14080         6326</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8 AR_R1881_24h_r2 R1881_24h       TRUE     10793      10793         4889</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9 AR_R1881_24h_r3 R1881_24h       TRUE     10332      10332         4651</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   reads.in.regions   FRiP</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1              116 0.0323</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2              161 0.0294</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3              131 0.0313</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4              558 0.1558</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5              881 0.1720</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6              718 0.1237</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7             1139 0.1801</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8             1158 0.2369</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9              839 0.1804</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            sample condition paired.end fragment.length bam.reads bam.mapped</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      AR_DMSO_r1      DMSO       TRUE              NA      7913       7913</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2      AR_DMSO_r2      DMSO       TRUE              NA     12038      12038</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3      AR_DMSO_r3      DMSO       TRUE              NA      9185       9185</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  AR_R1881_4h_r1  R1881_4h       TRUE              NA      7836       7836</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  AR_R1881_4h_r2  R1881_4h       TRUE              NA     11205      11205</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6  AR_R1881_4h_r3  R1881_4h       TRUE              NA     12693      12693</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7 AR_R1881_24h_r1 R1881_24h       TRUE              NA     14080      14080</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8 AR_R1881_24h_r2 R1881_24h       TRUE              NA     10793      10793</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9 AR_R1881_24h_r3 R1881_24h       TRUE              NA     10332      10332</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   library.size reads.in.regions   FRiP input.id input.library.size</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1         3588              116 0.0323    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2         5469              161 0.0294    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3         4183              131 0.0313    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4         3582              558 0.1558    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5         5121              881 0.1720    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6         5806              718 0.1237    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7         6326             1139 0.1801    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8         4889             1158 0.2369    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9         4651              839 0.1804    input               5353</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   input.in.regions input.FRiP</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8               26     0.0049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9               26     0.0049</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

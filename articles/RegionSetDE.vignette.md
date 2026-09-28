@@ -481,20 +481,20 @@ offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`,
 
 The distinction that matters is what each method assumes:
 
-- **`"TMM"`, `"RLE"`, `"upperQuartile"`** estimate the factors from the
-  regions themselves, and assume most of them do not change. That
-  assumption is safe when the regions are a broad sample of the genome
-  and unsafe when they are a curated set chosen because it is expected
-  to respond.
+- **`"TMM"`**, **`"RLE"`**, **`"upperQuartile"`** estimate the factors
+  from the regions themselves, and assume most of them do not change.
+  That assumption is safe when the regions are a broad sample of the
+  genome and unsafe when they are a curated set chosen because it is
+  expected to respond.
 - **`"background"`** estimates them from the background bins instead.
   The assumption moves to the bins, which is where you want it: the
   regions under test are free to change as much as they like.
-- **`"librarySize"` and `"readsInRegions"`** scale by a depth, the whole
-  library for the first and the reads collected in the regions for the
-  second, which is what DiffBind calls reads in peaks. The second puts
-  every sample on the same total enrichment, so it assumes the fraction
-  of the library sitting in the regions comes from the protocol and not
-  from the treatment.
+- **`"librarySize"`** and **`"readsInRegions"`** scale by a depth, the
+  whole library for the first and the reads collected in the regions for
+  the second, which is what DiffBind calls reads in peaks. The second
+  puts every sample on the same total enrichment, so it assumes the
+  fraction of the library sitting in the regions comes from the protocol
+  and not from the treatment.
 - **`"greenlist"`** is the CUT&RUN and CUT&Tag answer to the same
   problem without a spike-in. The greenlist is a set of regions whose
   background is reproducible between experiments, so the reads landing
@@ -505,7 +505,7 @@ The distinction that matters is what each method assumes:
   [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
   counts the libraries over it, and the factors come out by median of
   ratios.
-- **`"spikeIn"` and `"manual"`** take the factors from outside
+- **`"spikeIn"`** and **`"manual"`** take the factors from outside
   altogether, which is the right answer whenever an exogenous reference
   exists.
 
@@ -906,6 +906,34 @@ Correcting inside each set separately would make the FDR of one set
 depend on how many other sets you happened to load, which is not a
 property anyone wants in a result.
 
+The labels of `diff.status` come from the `FDR` and `log2FC` given to
+[`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md),
+0.05 and 0 by default. They decide nothing in the test, so they can be
+changed afterwards with
+[`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md),
+which fills the column again and replaces the cut-offs stored in the
+object, the ones the plots draw and
+[`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
+writes down:
+
+``` r
+strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+
+table(resultsTable(results)$diff.status)
+> 
+> down null   up 
+>    9 1883    3
+table(resultsTable(strictResults)$diff.status)
+> 
+> down null   up 
+>    4 1891    0
+```
+
+`lfcThreshold` is the exception: it moves the fold change inside the
+test and changes the p-values, and only a new call to
+[`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
+can change it.
+
 Other accessors reach the rest of the object:
 
 ``` r
@@ -1015,7 +1043,12 @@ change* rather than *does the whole region change*, and the distinction
 matters for wide domains: a long region that moves over one tile in
 forty comes out with a small p-value and a small overall fold change.
 The `log2FC` reported is the fold change of the most significant tile,
-not an average, because that is the quantity matching the p-value.
+not an average, because that is the quantity matching the p-value;
+`rep.tile.start` and `rep.tile.end` say where that tile is.
+`mean.tile.log2FC` beside it averages the tiles over the whole region,
+weighted by their width, and is the number to quote for the region as a
+whole. A large gap between the two means that only part of the region
+moved.
 
 The tile-level table stays available:
 
@@ -1133,60 +1166,66 @@ setResults
 >      intergenic       440      0.2650       0.2060   -0.171    0.367  sample
 >  promoterNonCpG       277     -0.0209      -0.0787   -0.263    0.251  sample
 >  camera.FDR fry.FDR inter.region.cor.universe
->       0.938    0.54                     0.378
->       0.938    0.54                     0.453
->       0.938    0.54                     0.382
->       0.938    0.54                     0.350
+>       0.938   0.479                     0.378
+>       0.938   0.479                     0.453
+>       0.938   0.669                     0.382
+>       0.938   0.669                     0.350
 ```
 
 ``` r
 setTable <- resultsTable(setResults)
 
 setTable
->       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC
-> 1    promoterCpG       269          314                        0 -0.83367077
-> 2       geneBody       909          986                        0  0.29148227
-> 3     intergenic       440         1354                        0  0.26499294
-> 4 promoterNonCpG       277         1378                        0 -0.02089479
->   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower  CI.upper
-> 1    -0.9443600             0.09704300  -0.93071378 -1.9314597 0.5607824
-> 2     0.1692341            -0.11505923   0.40654151 -0.3328615 0.9187083
-> 3     0.1740960             0.05862768   0.20636526 -0.1710428 0.3668162
-> 4    -0.1571407             0.05781212  -0.07870691 -0.2633465 0.2509689
->   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
-> 1  sample              -2.547867              0.6864395        0.8583680
-> 2  sample              -1.574041              2.3871240        0.2721337
-> 3  sample              -1.761069              2.1737990        0.2733108
-> 4  sample              -2.067061              1.9096471        0.4433140
->   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE
-> 1                 0.3775802         1000        -0.685338676      0.28961692
-> 2                 0.4530172         1000         0.292923395      0.14544165
-> 3                 0.3815880         1000         0.097886686      0.06250318
-> 4                 0.3504707         1000        -0.006188815      0.05976724
->   sample.delta.df sample.delta.p camera.direction  camera.p fry.direction
-> 1               2      0.1416115             Down 0.3213638          Down
-> 2               2      0.1816079               Up 0.5187249          Down
-> 3               2      0.2578184               Up 0.7773973          Down
-> 4               2      0.9269756             Down 0.9384488          Down
->       fry.p camera.FDR   fry.FDR sample.delta.FDR
-> 1 0.2686203  0.9384488 0.5401741        0.3437579
-> 2 0.5401741  0.9384488 0.5401741        0.3437579
-> 3 0.4717232  0.9384488 0.5401741        0.3437579
-> 4 0.4613130  0.9384488 0.5401741        0.9269756
+>       region.set n.regions n.comparison n.comparison.overlapping
+> 1    promoterCpG       269          314                        0
+> 2       geneBody       909          986                        0
+> 3     intergenic       440         1354                        0
+> 4 promoterNonCpG       277         1378                        0
+>   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
+> 1                    0 -0.83367077    -0.9443600             0.09704300
+> 2                    0  0.29148227     0.1692341            -0.11505923
+> 3                    0  0.26499294     0.1740960             0.05862768
+> 4                    0 -0.02089479    -0.1571407             0.05781212
+>   delta.log2FC   CI.lower  CI.upper CI.type heterogeneity.CI.lower
+> 1  -0.93071378 -1.9314597 0.5607824  sample              -2.547867
+> 2   0.40654151 -0.3328615 0.9187083  sample              -1.574041
+> 3   0.20636526 -0.1710428 0.3668162  sample              -1.761069
+> 4  -0.07870691 -0.2633465 0.2509689  sample              -2.067061
+>   heterogeneity.CI.upper inter.region.cor inter.region.cor.universe
+> 1              0.6864395        0.8583680                 0.3775802
+> 2              2.3871240        0.2721337                 0.4530172
+> 3              2.1737990        0.2733108                 0.3815880
+> 4              1.9096471        0.4433140                 0.3504707
+>   median.width sample.delta.log2FC sample.delta.SE sample.delta.df
+> 1         1000        -0.685338676      0.28961692               2
+> 2         1000         0.292923395      0.14544165               2
+> 3         1000         0.097886686      0.06250318               2
+> 4         1000        -0.006188815      0.05976724               2
+>   sample.delta.p camera.direction  camera.p fry.direction     fry.p camera.FDR
+> 1      0.1416115             Down 0.3213638          Down 0.2396483  0.9384488
+> 2      0.1816079               Up 0.5187249            Up 0.1814759  0.9384488
+> 3      0.2578184               Up 0.7773973            Up 0.6689405  0.9384488
+> 4      0.9269756             Down 0.9384488          Down 0.5189608  0.9384488
+>     fry.FDR sample.delta.FDR
+> 1 0.4792965        0.3437579
+> 2 0.4792965        0.3437579
+> 3 0.6689405        0.3437579
+> 4 0.6689405        0.9269756
 ```
 
 | Column | Meaning |
 |---:|:---|
 | *region.set* | the set |
 | *n.regions* | how many of its regions survived filtering |
-| *mean.log2FC* | mean fold change of the set |
-| *mean.log2FC.comparison* | mean fold change of the comparison rows |
+| *mean.log2FC* | mean of the per-region fold changes of the set, every region counting once |
+| *mean.log2FC.comparison* | the same mean over the comparison rows |
 | *delta.log2FC* | the difference between the two, the effect size |
 | *CI.lower*, *CI.upper* | interval selected by `effectMethod`, sample-based by default |
 | *CI.type* | which of the two intervals the columns above hold |
 | *heterogeneity.CI.lower/upper* | spread of the effect between the loci of the set |
 | *sample.delta.log2FC* | the same effect estimated from one score per library |
 | *n.comparison.overlapping* | comparison rows overlapping the set in the genome |
+| *n.overlapping.within* | regions of the set overlapping another region of the same set |
 | *camera.FDR* | competitive test, adjusted |
 | *fry.FDR* | self-contained test, adjusted |
 
@@ -1198,6 +1237,25 @@ setTable
 tested as if its regions were independent returns a p-value below
 anything a computer will print for a mean shift of 0.05 log2, which
 tells you nothing about whether the shift matters.
+
+**Know which effect size it is.** `mean.log2FC` is the average of the
+fold changes of the regions, each region weighted once. It is not the
+fold change of the signal summed over the set. Take a set of 100 strong
+promoters and 900 weak ones: the summed signal is mostly the strong
+ones, the mean of the fold changes mostly the weak ones, and the two
+numbers only agree when the response does not depend on width or
+baseline signal. Write “the regions of the set changed by X on average”
+rather than “the set changed X-fold”, and look at
+[`plotSetDistribution()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetDistribution.md)
+before trusting either. `camera` and `fry` do not estimate an effect at
+all, they rank and test.
+
+In the `setResults` table no set reaches significance, which is the
+honest outcome for four libraries on one chromosome. The informative
+part is `promoterCpG`: a `delta.log2FC` around -0.9 with an interval
+that only just includes zero, in the direction H3K4me3 biology would
+predict, and in the one set where a promoter effect belongs. The
+intergenic control sits near zero, as it should.
 
 **Two intervals, answering two questions.** The default `CI.lower` and
 `CI.upper` come from `effectMethod = "sample"`. One number is computed
@@ -1251,9 +1309,14 @@ a spike-in.
 The competitive test is the one to lead with. It runs on the per-region
 statistics through
 [`limma::cameraPR`](https://rdrr.io/pkg/limma/man/camera.html), which
-makes it behave identically across the engines, whereas the
-self-contained test is computed on the log-CPM matrix and is therefore a
-transformation away from what `edgeR` and `DESeq2` actually fitted.
+makes it behave identically across the engines. The self-contained test
+needs values rather than statistics. With `voom`, `limma` and `dream` it
+reads the log values the model was fitted on. With `edgeR` and `DESeq2`
+it reads the counts turned into z-scores under the null model of the
+fit, with the same offsets and dispersions, the way `edgeR` runs `fry`
+on its own objects, so both tests stay on the model the regions were
+tested with. `fryInput = "logCPM"` goes back to the log-CPM matrix,
+which only matters when comparing with an older analysis.
 
 **“More” means more than the sets you loaded.** The comparison universe
 is drawn from the other region sets in the object, so a competitive
@@ -1269,12 +1332,35 @@ and
 fixes the pool explicitly, and the sets forming it are printed with the
 universe object.
 
-In the table above no set reaches significance, which is the honest
-outcome for four libraries on one chromosome. The informative part is
-`promoterCpG`: a `delta.log2FC` around -0.9 with an interval that only
-just includes zero, in the direction H3K4me3 biology would predict, and
-in the one set where a promoter effect belongs. The intergenic control
-sits near zero, as it should.
+For a result that goes into a paper, naming the comparison is worth the
+extra line. Here the two promoter sets are compared with the intergenic
+regions only, which makes the question *did promoters respond more than
+regions with no gene around*:
+
+``` r
+promoterResults <- testRegionSets(fit,
+                                  contrast = c("condition", "SHR", "BN"),
+                                  regionSets = c("promoterCpG", "promoterNonCpG"),
+                                  universeSets = "intergenic",
+                                  verbose = FALSE)
+
+resultsTable(promoterResults)[, c("region.set", "n.comparison", "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR")]
+>       region.set n.comparison delta.log2FC   CI.lower  CI.upper camera.FDR
+> 1    promoterCpG          274   -1.1855763 -2.1710078 0.6674211  0.4902984
+> 2 promoterNonCpG          440   -0.2858877 -0.5198742 0.3213950  0.7871227
+```
+
+The numbers differ from those of `setResults` because the comparison
+did. `plotUniverseMatching(promoterResults)` shows how closely the
+intergenic rows match the promoters on width and abundance.
+
+**Overlapping regions inside a set.** Two regions of one set sharing
+bases count those bases twice. `n.overlapping.within` reports how many
+regions are in that situation, and the test warns about it
+(`overlapWithinSet = "warn"`). Merging them with
+`loadRegions(reduceRegions = TRUE)` is the usual fix;
+`overlapWithinSet = "allow"` keeps them when the average per region,
+overlaps included, is what the question is about.
 
   
 
@@ -1816,31 +1902,31 @@ singleSetResults <- testRegionSets(singleFit,
                                    verbose = FALSE)
 
 resultsTable(singleSetResults)
->       region.set n.regions n.comparison n.comparison.overlapping mean.log2FC
-> 1    promoterCpG       273          322                        0 -0.34574769
-> 2       geneBody      1178         1420                        0  0.20023317
-> 3 promoterNonCpG       371         1855                        0  0.13289085
-> 4     intergenic       776         1813                        0  0.04786937
->   median.log2FC mean.log2FC.comparison delta.log2FC   CI.lower   CI.upper
-> 1   -0.35028835            0.287725959  -0.63347365 -1.1543354 -0.1126119
-> 2    0.04587859           -0.005591536   0.20582471 -0.4605448  0.8721942
-> 3    0.04333004            0.071712042   0.06117881 -0.6135756  0.7359332
-> 4    0.04333004            0.108141759  -0.06027239 -0.7616854  0.6411406
->   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
-> 1  region             -1.1543354             -0.1126119             0.01
-> 2  region             -0.4605448              0.8721942             0.01
-> 3  region             -0.6135756              0.7359332             0.01
-> 4  region             -0.7616854              0.6411406             0.01
->   inter.region.cor.universe median.width camera.direction     camera.p
-> 1                      0.01         1000             Down 1.650640e-12
-> 2                      0.01         1000               Up 7.329599e-02
-> 3                      0.01         1000               Up 4.546972e-01
-> 4                      0.01         1000               Up 5.513550e-01
->     camera.FDR
-> 1 6.602561e-12
-> 2 1.465920e-01
-> 3 5.513550e-01
-> 4 5.513550e-01
+>       region.set n.regions n.comparison n.comparison.overlapping
+> 1    promoterCpG       273          322                        0
+> 2       geneBody      1178         1420                        0
+> 3 promoterNonCpG       371         1855                        0
+> 4     intergenic       776         1813                        0
+>   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
+> 1                    0 -0.34574769   -0.35028835            0.287725959
+> 2                    0  0.20023317    0.04587859           -0.005591536
+> 3                    0  0.13289085    0.04333004            0.071712042
+> 4                    0  0.04786937    0.04333004            0.108141759
+>   delta.log2FC   CI.lower   CI.upper CI.type heterogeneity.CI.lower
+> 1  -0.63347365 -1.1543354 -0.1126119  region             -1.1543354
+> 2   0.20582471 -0.4605448  0.8721942  region             -0.4605448
+> 3   0.06117881 -0.6135756  0.7359332  region             -0.6135756
+> 4  -0.06027239 -0.7616854  0.6411406  region             -0.7616854
+>   heterogeneity.CI.upper inter.region.cor inter.region.cor.universe
+> 1             -0.1126119             0.01                      0.01
+> 2              0.8721942             0.01                      0.01
+> 3              0.7359332             0.01                      0.01
+> 4              0.6411406             0.01                      0.01
+>   median.width camera.direction     camera.p   camera.FDR
+> 1         1000             Down 1.650640e-12 6.602561e-12
+> 2         1000               Up 7.329599e-02 1.465920e-01
+> 3         1000               Up 4.546972e-01 5.513550e-01
+> 4         1000               Up 5.513550e-01 5.513550e-01
 ```
 
   
@@ -1903,9 +1989,11 @@ corr_plot <-
            label = annotationLabel, size = 3.5, lineheight = 1.1) +
   labs(x = "log2FC, two replicates per strain",
        y = "log2FC, one library per strain") +
-  theme_bw(base_size = 10) +
+  theme_classic(base_size = 10) +
   theme(aspect.ratio = 1,
-        axis.text = element_text(color = "black"))
+        axis.text = element_text(color = "black"),
+        panel.border = element_rect(fill = NA, color = "black", linewidth = 1),
+        axis.line = element_blank())
 
 corr_plot
 ```
@@ -2103,14 +2191,14 @@ sessionInfo()
 >  [75] metapod_1.20.0              tools_4.6.1                
 >  [77] BiocIO_1.22.0               locfit_1.5-9.12            
 >  [79] GenomicAlignments_1.48.0    fs_2.1.0                   
->  [81] XML_3.99-0.24               grid_4.6.1                 
+>  [81] XML_3.99-0.25               grid_4.6.1                 
 >  [83] colorspace_2.1-3            edgeR_4.10.5               
 >  [85] nlme_3.1-169                restfulr_0.0.17            
 >  [87] cli_3.6.6                   textshaping_1.0.5          
->  [89] viridisLite_0.4.3           S4Arrays_1.12.0            
+>  [89] viridisLite_0.4.3           S4Arrays_1.12.1            
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
->  [95] SparseArray_1.12.2          ggrepel_0.9.8              
+>  [95] SparseArray_1.12.3          ggrepel_0.9.8              
 >  [97] rjson_0.2.23                htmlwidgets_1.6.4          
 >  [99] farver_2.1.2                htmltools_0.5.9            
 > [101] pkgdown_2.2.1               lifecycle_1.0.5            

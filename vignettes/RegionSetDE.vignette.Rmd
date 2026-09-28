@@ -464,6 +464,17 @@ head(resultTable, 3)
 
 Notice that the correction is applied over all the rows of the object, across the sets, and `regionSets` subsets the output afterwards. Correcting inside each set separately would make the FDR of one set depend on how many other sets you happened to load, which is not a property anyone wants in a result.
 
+The labels of `diff.status` come from the `FDR` and `log2FC` given to `testRegions()`, 0.05 and 0 by default. They decide nothing in the test, so they can be changed afterwards with `updateThresholds()`, which fills the column again and replaces the cut-offs stored in the object, the ones the plots draw and `exportResults()` writes down:
+
+```{r update_thresholds}
+strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+
+table(resultsTable(results)$diff.status)
+table(resultsTable(strictResults)$diff.status)
+```
+
+`lfcThreshold` is the exception: it moves the fold change inside the test and changes the p-values, and only a new call to `testRegions()` can change it.
+
 Other accessors reach the rest of the object:
 
 ```{r results_accessors}

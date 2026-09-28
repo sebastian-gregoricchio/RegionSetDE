@@ -36,7 +36,7 @@ plotProfile(
 
 \item{legendPosition}{String with the position of the legend of the \code{"lines"} style. Default: \code{"right"}.}
 
-\item{...}{Arguments passed to \code{\link{computeProfiles}} when \code{object} is not already a set of profiles, such as \code{groupBy}, \code{contrast}, \code{distance} or \code{signalFiles}.}
+\item{...}{Arguments passed to \code{\link{computeProfiles}} when \code{object} is not already a set of profiles, such as \code{groupBy}, \code{contrast}, \code{distance} or \code{signalFiles}. They are ignored when \code{object} is the list returned by \code{\link{computeProfiles}}, which already holds them.}
 }
 \value{
 A \code{HeatmapList} built by \code{ComplexHeatmap}, drawn when printed, for the \code{"heatmap"} style, or a \code{ggplot} object for the \code{"lines"} style. \code{ComplexHeatmap::draw} opens the layout of the heatmaps, for instance \code{draw(x, column_title = "R1881 against DMSO", heatmap_legend_side = "bottom")}.
@@ -45,6 +45,8 @@ A \code{HeatmapList} built by \code{ComplexHeatmap}, drawn when printed, for the
 Draws the signal around the centre of a group of regions, by default the regions going up and those going down in a contrast, as DiffBind does with \code{dba.plotProfile}. The \code{"heatmap"} style draws one heatmap per sample or group, one row per region and the mean profile on top; the \code{"lines"} style draws the mean profiles alone, with their standard error.
 }
 \details{
+Given a results, counts or fit object, \code{plotProfile()} calls \code{\link{computeProfiles}} and draws what it returns. The reading of the files is the slow part, so profiles drawn in both styles, or with different colours, are better computed once with \code{\link{computeProfiles}} and handed over as they are.
+
 The rows of each group are sorted by their mean signal over all the samples, strongest on top, so that the same row holds the same region in every heatmap, and the eye can run across the panels to see a region gain or lose signal. The colour scale is shared by the panels for the same reason. The profile on top of each heatmap is the mean of the rows of every group, drawn on a common axis.
 
 A change found by the test should show here as a difference in height between the conditions, centred on the summit. A difference spread evenly across the whole window points to background rather than binding, and a profile whose peak sits away from the centre says the regions were not aligned on the signal, which recentring with \code{countReads(summits = )} fixes.
@@ -61,8 +63,10 @@ results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verb
 # The regions going up and down, one heatmap per condition
 plotProfile(results, groupBy = "condition", distance = 1000, verbose = FALSE)
 
-# The mean profiles alone
-plotProfile(results, style = "lines", groupBy = "condition", distance = 1000, verbose = FALSE)
+# Computed once, drawn twice: the BAM files are read a single time
+profileData <- computeProfiles(results, groupBy = "condition", distance = 1000, verbose = FALSE)
+plotProfile(profileData)
+plotProfile(profileData, style = "lines")
 
 }
 \seealso{

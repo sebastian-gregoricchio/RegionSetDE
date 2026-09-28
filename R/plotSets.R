@@ -209,7 +209,7 @@ plotSetEffect <-
 #'
 #' @seealso \code{\link{testRegionSets}}, \code{\link{plotSetEffect}}, \code{\link{plotSetSignal}}
 #'
-#' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot stat_ecdf geom_hline geom_vline geom_text labs theme element_blank scale_colour_manual scale_fill_manual
+#' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot stat_ecdf geom_hline geom_vline geom_text labs theme element_blank scale_colour_manual scale_fill_manual expand_limits
 #' @importFrom dplyr filter mutate
 #' @importFrom rlang .data
 #' @importFrom methods is
@@ -294,13 +294,20 @@ plotSetDistribution <-
       #-------------------------------#
       # Annotation over each set      #
       #-------------------------------#
+      # The two lines of text sit above the highest fold change, and the axis is stretched to hold them:
+      # a label outside the range of the axis is cut by the panel, whatever the background or the border
       if (isTRUE(annotate) & setResults@test == "set") {
+        valueRange <- range(plotTable$log2FC, na.rm = TRUE)
+        valueSpan <- max(diff(valueRange), 1e-6)
+        labelPosition <- valueRange[2] + 0.04 * valueSpan
+
         distributionPlot <- distributionPlot +
           ggplot2::geom_text(data = .setAnnotation(setResults = setResults,
                                                    setNames = unique(plotTable$region.set),
-                                                   yPosition = max(plotTable$log2FC, na.rm = TRUE) * 1.05),
+                                                   yPosition = labelPosition),
                              mapping = ggplot2::aes(x = .data$region.set, y = .data$y.position, label = .data$label),
-                             inherit.aes = FALSE, size = baseSize / 4.5, colour = "grey20", vjust = 0)
+                             inherit.aes = FALSE, size = baseSize / 4.5, colour = "grey20", vjust = 0, lineheight = 0.9) +
+          ggplot2::expand_limits(y = labelPosition + 0.16 * valueSpan)
       }
     }
 

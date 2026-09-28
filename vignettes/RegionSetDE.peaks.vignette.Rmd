@@ -612,7 +612,7 @@ results <- testRegions(fit,
 results
 ```
 
-`FDR` and `log2FC` set the cut-offs a region has to pass to be labelled `up` or `down`: an adjusted p-value below 0.05 and a fold change beyond two in either direction. They label the regions and do not touch the test; `lfcThreshold` is the argument that moves the fold change inside the test itself. `carryCounts = TRUE` keeps the counts inside the results, which is what lets the plots below draw signal without being handed the counts object again. The multiple testing correction is applied within each contrast, never across them, so every added contrast adds its own share of false positives.
+`FDR` and `log2FC` set the cut-offs a region has to pass to be labelled `up` or `down`: an adjusted p-value below 0.05 and a fold change beyond two in either direction. They label the regions and do not touch the test, so `updateThresholds()` can change them later without testing again, for every contrast of the list or for the ones named in `contrast`; `lfcThreshold` is the argument that moves the fold change inside the test itself. `carryCounts = TRUE` keeps the counts inside the results, which is what lets the plots below draw signal without being handed the counts object again. The multiple testing correction is applied within each contrast, never across them, so every added contrast adds its own share of false positives.
 
 Four hours of androgen already recruit AR to most of its sites, and the second day adds a few more and loses one. The rest of this section uses the twenty-four hour comparison, and shows how to reach the others.
 
@@ -715,13 +715,23 @@ plotProfile(results,
 
 The signal comes from the BAM files the counts were made from, with the same filters, and is scaled by the factors of the normalisation above, so the panels compare the way the normalised counts do. The rows are sorted by their mean signal and keep the same order in every panel, and the colour scale is shared, so a row read from left to right is one region gaining or losing receptor. Here the 82 regions going up are nearly empty in DMSO and already bound after four hours, with the pile centred on the region; the single region going down is the one site AR leaves.
 
-What the plot guards against is a change spread over the whole window rather than centred on the site, which points to background rather than binding, and a pile sitting away from the centre, which says the regions were not aligned on the signal. The centre here is the midpoint of each consensus region; counted with `summits`, [below](#summits), the regions carry their summit and the profiles are aligned on it. `style = "lines"` draws the mean profiles alone, with their standard error:
+What the plot guards against is a change spread over the whole window rather than centred on the site, which points to background rather than binding, and a pile sitting away from the centre, which says the regions were not aligned on the signal. The centre here is the midpoint of each consensus region; counted with `summits`, [below](#summits), the regions carry their summit and the profiles are aligned on it.
+
+`plotProfile()` does two things in one call: it reads the signal through `computeProfiles()`, and draws it. Reading is the slow part, since every BAM file is opened again, so when the same profiles are drawn more than once, or used for something else, it pays to compute them once and hand the result to `plotProfile()`:
+
+```{r profile_compute}
+profileData <- computeProfiles(results,
+                               contrast = "R1881_24h_vs_DMSO",
+                               groupBy = "condition")
+
+names(profileData$profiles)
+dim(profileData$profiles$DMSO)
+```
+
+`profiles` holds one matrix per condition, or per sample without `groupBy`, with one row per region and one column per bin; `regions` holds the window drawn for every row and the group it belongs to, and `bins` the distance of every bin from the centre. The arguments choosing the regions, the samples and the window all belong to `computeProfiles()`, and `plotProfile()` passes them on when it is given an object rather than the profiles. `style = "lines"` draws the mean profiles alone, with their standard error:
 
 ```{r profile_lines, fig.height = 3.5}
-plotProfile(results,
-            contrast = "R1881_24h_vs_DMSO",
-            groupBy = "condition",
-            style = "lines")
+plotProfile(profileData, style = "lines")
 ```
 
 The regions need not come from the test. `regions` takes any `GRanges`, a named list of them, one group of rows each, or a region set, and the object only supplies the reads and the normalisation. The consensus split by occupancy, for instance, the sites already bound without ligand against those found only after it:

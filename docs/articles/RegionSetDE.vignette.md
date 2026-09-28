@@ -481,20 +481,20 @@ offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`,
 
 The distinction that matters is what each method assumes:
 
-- **`"TMM"`, `"RLE"`, `"upperQuartile"`** estimate the factors from the
-  regions themselves, and assume most of them do not change. That
-  assumption is safe when the regions are a broad sample of the genome
-  and unsafe when they are a curated set chosen because it is expected
-  to respond.
+- **`"TMM"`**, **`"RLE"`**, **`"upperQuartile"`** estimate the factors
+  from the regions themselves, and assume most of them do not change.
+  That assumption is safe when the regions are a broad sample of the
+  genome and unsafe when they are a curated set chosen because it is
+  expected to respond.
 - **`"background"`** estimates them from the background bins instead.
   The assumption moves to the bins, which is where you want it: the
   regions under test are free to change as much as they like.
-- **`"librarySize"` and `"readsInRegions"`** scale by a depth, the whole
-  library for the first and the reads collected in the regions for the
-  second, which is what DiffBind calls reads in peaks. The second puts
-  every sample on the same total enrichment, so it assumes the fraction
-  of the library sitting in the regions comes from the protocol and not
-  from the treatment.
+- **`"librarySize"`** and **`"readsInRegions"`** scale by a depth, the
+  whole library for the first and the reads collected in the regions for
+  the second, which is what DiffBind calls reads in peaks. The second
+  puts every sample on the same total enrichment, so it assumes the
+  fraction of the library sitting in the regions comes from the protocol
+  and not from the treatment.
 - **`"greenlist"`** is the CUT&RUN and CUT&Tag answer to the same
   problem without a spike-in. The greenlist is a set of regions whose
   background is reproducible between experiments, so the reads landing
@@ -505,7 +505,7 @@ The distinction that matters is what each method assumes:
   [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
   counts the libraries over it, and the factors come out by median of
   ratios.
-- **`"spikeIn"` and `"manual"`** take the factors from outside
+- **`"spikeIn"`** and **`"manual"`** take the factors from outside
   altogether, which is the right answer whenever an exogenous reference
   exists.
 
@@ -905,6 +905,34 @@ across the sets, and `regionSets` subsets the output afterwards.
 Correcting inside each set separately would make the FDR of one set
 depend on how many other sets you happened to load, which is not a
 property anyone wants in a result.
+
+The labels of `diff.status` come from the `FDR` and `log2FC` given to
+[`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md),
+0.05 and 0 by default. They decide nothing in the test, so they can be
+changed afterwards with
+[`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md),
+which fills the column again and replaces the cut-offs stored in the
+object, the ones the plots draw and
+[`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
+writes down:
+
+``` r
+strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+
+table(resultsTable(results)$diff.status)
+> 
+> down null   up 
+>    9 1883    3
+table(resultsTable(strictResults)$diff.status)
+> 
+> down null   up 
+>    4 1891    0
+```
+
+`lfcThreshold` is the exception: it moves the fold change inside the
+test and changes the p-values, and only a new call to
+[`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
+can change it.
 
 Other accessors reach the rest of the object:
 
@@ -1903,9 +1931,11 @@ corr_plot <-
            label = annotationLabel, size = 3.5, lineheight = 1.1) +
   labs(x = "log2FC, two replicates per strain",
        y = "log2FC, one library per strain") +
-  theme_bw(base_size = 10) +
+  theme_classic(base_size = 10) +
   theme(aspect.ratio = 1,
-        axis.text = element_text(color = "black"))
+        axis.text = element_text(color = "black"),
+        panel.border = element_rect(fill = NA, color = "black", linewidth = 1),
+        axis.line = element_blank())
 
 corr_plot
 ```

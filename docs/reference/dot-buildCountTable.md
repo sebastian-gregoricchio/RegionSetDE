@@ -10,6 +10,7 @@ object.
   counts,
   level = "region",
   normalized = FALSE,
+  input = FALSE,
   format = "wide",
   set = NULL,
   tileSummary = NULL,
@@ -31,6 +32,10 @@ object.
 - normalized:
 
   Logical value indicating whether the normalised assay must be read.
+
+- input:
+
+  Logical value indicating whether the input assay must be read.
 
 - format:
 

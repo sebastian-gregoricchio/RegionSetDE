@@ -48,6 +48,7 @@
 <span>  <span class="va">object</span>,</span>
 <span>  set <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  contrast <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  samples <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  colourBy <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  shapeBy <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  labelBy <span class="op">=</span> <span class="st">"sample"</span>,</span>
@@ -70,7 +71,7 @@
 
 
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
-<dd><p><code>RegionSetDE.counts</code>, <code>RegionSetDE.fit</code> or any result object of the package, or the list returned by <code><a href="computeSamplePCA.html">computeSamplePCA</a></code>, in which case <code>set</code>, <code>useOffsets</code>, <code>compareOffsets</code>, <code>facetBySet</code> and <code>topRegions</code> are those of the computation.</p></dd>
+<dd><p><code>RegionSetDE.counts</code>, <code>RegionSetDE.fit</code> or any result object of the package, or the list returned by <code><a href="computeSamplePCA.html">computeSamplePCA</a></code>, in which case <code>set</code>, <code>samples</code>, <code>useOffsets</code>, <code>compareOffsets</code>, <code>facetBySet</code> and <code>topRegions</code> are those of the computation.</p></dd>
 
 
 <dt id="arg-set">set<a class="anchor" aria-label="anchor" href="#arg-set"></a></dt>
@@ -79,6 +80,10 @@
 
 <dt id="arg-contrast">contrast<a class="anchor" aria-label="anchor" href="#arg-contrast"></a></dt>
 <dd><p>String with the name of a contrast, or its position, when <code>object</code> holds several of them. Default: <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-samples">samples<a class="anchor" aria-label="anchor" href="#arg-samples"></a></dt>
+<dd><p>Samples the ordination is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples, and <code>useOffsets = FALSE</code> gives the library sizes alone. Default: <code>NULL</code>, all of them.</p></dd>
 
 
 <dt id="arg-colourby">colourBy<a class="anchor" aria-label="anchor" href="#arg-colourby"></a></dt>

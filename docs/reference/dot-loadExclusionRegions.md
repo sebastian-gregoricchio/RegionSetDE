@@ -6,7 +6,11 @@ ranges, in the chromosome style of the peaks.
 ## Usage
 
 ``` r
-.loadExclusionRegions(excludeRegions, seqlevelsStyle = "UCSC")
+.loadExclusionRegions(
+  excludeRegions,
+  seqlevelsStyle = "UCSC",
+  listLabel = "blacklist"
+)
 ```
 
 ## Arguments
@@ -18,6 +22,11 @@ ranges, in the chromosome style of the peaks.
 - seqlevelsStyle:
 
   String with the chromosome naming style, or `NULL`.
+
+- listLabel:
+
+  String with the name of the parameter the list came from, used in the
+  messages. Default: `"blacklist"`.
 
 ## Value
 

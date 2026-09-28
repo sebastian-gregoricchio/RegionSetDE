@@ -63,8 +63,15 @@ to `TRUE`: factors estimated over a set of samples that no longer exists
 describe a library composition that no longer exists either. The raw
 counts are never modified, so re-normalising costs one call.
 
-The background bins stored in the metadata, when present, are subset
-along with the regions.
+The background bins and the greenlist counts stored in the metadata,
+when present, are subset along with the samples, and so are the files,
+the layouts and the fragment lengths recorded by the counting, so that
+[`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+[`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),
+[`libInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+and
+[`computeProfiles`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
+keep working on the selection.
 
 ## See also
 

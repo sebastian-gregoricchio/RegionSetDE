@@ -4,7 +4,8 @@ Draws the correlation between the samples as a heatmap, clustered and
 annotated with any column of the sample table, such as the condition,
 the treatment or the replicate. The correlation can be computed on the
 normalised or on the raw signal, on every region or on the most variable
-ones.
+ones. With `method = "jaccard"` the heatmap shows instead how similar
+the peak sets of the samples are, before any read is counted.
 
 ## Usage
 
@@ -13,7 +14,9 @@ plotSampleCorrelation(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   method = "spearman",
+  jaccardLevel = "region",
   groupBy = NULL,
   annotationColumns = NULL,
   annotationColours = NULL,
@@ -43,6 +46,10 @@ plotSampleCorrelation(
   `RegionSetDE.counts`, `RegionSetDE.fit` or any result object of the
   package, or the list returned by
   [`computeSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md).
+  For `method = "jaccard"`, the `RegionSetDE` object returned by
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  or a named `GRangesList` or list of `GRanges` with the peaks of every
+  sample.
 
 - set:
 
@@ -54,10 +61,23 @@ plotSampleCorrelation(
   String with the name of a contrast, or its position, when `object`
   holds several of them. Default: `NULL`.
 
+- samples:
+
+  Samples drawn, see
+  [`computeSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md).
+  Default: `NULL`, all of them.
+
 - method:
 
-  String with the correlation, one of `"spearman"`, `"pearson"` and
-  `"kendall"`. Default: `"spearman"`.
+  String with the measure, one of `"spearman"`, `"pearson"` and
+  `"kendall"`, computed on the signal, or `"jaccard"`, the Jaccard index
+  of the peak calls. Default: `"spearman"`.
+
+- jaccardLevel:
+
+  String, either `"region"` or `"basepair"`, see
+  [`computeSampleCorrelation`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeSampleCorrelation.md).
+  Only for `method = "jaccard"`. Default: `"region"`.
 
 - groupBy:
 
@@ -210,6 +230,13 @@ following the order of the rows. Numeric annotation columns get a grey
 gradient, and turning one into a factor colours it by level instead,
 which suits a replicate number.
 
+With `method = "jaccard"` the cells hold the Jaccard index of the peak
+sets, and the samples are clustered on the Jaccard distance, one minus
+the index. The panels of `facetBySet` compare the peaks overlapping each
+set, while `useOffsets`, `compareOffsets` and `topRegions` have no
+counts to act on and are ignored. The sample annotation comes from the
+sample sheet the consensus was built from.
+
 `compareOffsets` answers less here than it does on an ordination. A
 correlation does not see a single factor per sample, so the two panels
 come out identical unless the normalisation holds one offset per region,
@@ -239,5 +266,14 @@ plotSampleCorrelation(counts, groupBy = "condition", annotationColumns = c("cond
 
 # The same samples before and after the normalisation, on the CpG island promoters only
 plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson", compareOffsets = TRUE)
+
+
+# Occupancy of the peak calls, as the Jaccard index
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+
+  plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
+}
 
 ```

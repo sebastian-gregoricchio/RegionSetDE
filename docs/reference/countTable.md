@@ -16,6 +16,7 @@ countTable(
   object,
   level = "region",
   normalized = FALSE,
+  input = FALSE,
   format = "wide",
   set = NULL,
   tileSummary = NULL,
@@ -65,6 +66,15 @@ countTable(object, ...)
   Logical value to indicate whether the normalised values must be
   returned instead of the raw ones. Default: `FALSE`.
 
+- input:
+
+  Logical value to indicate whether the counts of the inputs must be
+  returned instead of those of the samples, one column per sample
+  holding the counts of its input, as stored by
+  [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md).
+  The inputs are never normalised, so it cannot be combined with
+  `normalized = TRUE`. Default: `FALSE`.
+
 - format:
 
   String with the shape of the output: `"wide"` gives one column per
@@ -105,10 +115,11 @@ annotation of the regions and by one column per sample. When the tiles
 have been combined, `n.tiles` reports how many of them each region was
 built from. With `format = "long"`, a data.frame with the same
 description repeated for every sample, a `sample` column, the values in
-a column named after the assay they were read from (`counts`, or
-`norm.counts` for the normalised ones), and the `colData` of the
-samples. With `format = "matrix"`, a numeric matrix with one column per
-sample and the rows named `"set|id"`, or `"set|id|tileN"` for the tiles.
+a column named after the assay they were read from (`counts`,
+`norm.counts` for the normalised ones, or `input`), and the `colData` of
+the samples. With `format = "matrix"`, a numeric matrix with one column
+per sample and the rows named `"set|id"`, or `"set|id|tileN"` for the
+tiles.
 
 ## Details
 

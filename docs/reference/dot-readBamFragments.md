@@ -37,7 +37,8 @@ by every thread of `.countBamFragments`.
 
 - fragmentLength:
 
-  Numeric value with the length to which single-end reads are extended.
+  Integer vector with the length to which single-end reads are extended,
+  one value per BAM file.
 
 - maxFragmentLength:
 

@@ -147,7 +147,7 @@ table(SummarizedExperiment::rowData(counts)$region.set)
 ## ----plot_qc, fig.height = 4--------------------------------------------------
 plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 
-## ----plot_correlation, fig.height = 4.5---------------------------------------
+## ----plot_correlation, fig.height = 5.5---------------------------------------
 plotSampleCorrelation(counts, groupBy = "condition",
                       annotationColumns = c("condition", "sex"))
 
@@ -184,6 +184,12 @@ results
 resultTable <- resultsTable(results)
 
 head(resultTable, 3)
+
+## ----update_thresholds--------------------------------------------------------
+strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+
+table(resultsTable(results)$diff.status)
+table(resultsTable(strictResults)$diff.status)
 
 ## ----results_accessors--------------------------------------------------------
 contrastName(results)
@@ -237,7 +243,7 @@ setTable
 ## ----plot_set_effect, fig.height = 4------------------------------------------
 plotSetEffect(setResults)
 
-## ----plot_set_distribution, fig.height = 5------------------------------------
+## ----plot_set_distribution, fig.height = 5.5----------------------------------
 plotSetDistribution(setResults)
 
 ## ----plot_set_signal, fig.height = 6.5----------------------------------------
@@ -262,7 +268,7 @@ setScores
 ## ----score_tables-------------------------------------------------------------
 head(scoreTable(setScores))
 
-## ----plot_set_scores, fig.height = 4.5----------------------------------------
+## ----plot_set_scores, fig.height = 5------------------------------------------
 plotSetSignal(setScores, groupBy = "condition")
 
 ## ----null_dispersion----------------------------------------------------------
@@ -410,9 +416,11 @@ corr_plot <-
            label = annotationLabel, size = 3.5, lineheight = 1.1) +
   labs(x = "log2FC, two replicates per strain",
        y = "log2FC, one library per strain") +
-  theme_bw(base_size = 10) +
+  theme_classic(base_size = 10) +
   theme(aspect.ratio = 1,
-        axis.text = element_text(color = "black"))
+        axis.text = element_text(color = "black"),
+        panel.border = element_rect(fill = NA, color = "black", linewidth = 1),
+        axis.line = element_blank())
 
 corr_plot
 

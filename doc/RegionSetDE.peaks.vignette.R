@@ -16,6 +16,26 @@ sampleSheet %>%
 ## ----sheet_columns------------------------------------------------------------
 colnames(sampleSheet)
 
+## ----fragment_column, eval = FALSE--------------------------------------------
+# # A 'fragmentLength' column in the sheet, one value per library
+# counts <- countReads(consensus,
+#                      sampleSheet = sampleSheet,
+#                      fragmentLength = "fragmentLength")
+
+## ----fragment_estimate, fig.height = 5----------------------------------------
+fragmentEstimate <- estimateFragmentLength(sampleSheet = sampleSheet,
+                                           pairedEnd = FALSE,
+                                           verbose = FALSE)
+
+insertSizes <- estimateFragmentLength(sampleSheet = sampleSheet,
+                                      verbose = FALSE)
+
+data.frame(sample = fragmentEstimate$table$sample,
+           crossCorrelation = fragmentEstimate$table$fragment.length,
+           insertSize = insertSizes$table$fragment.length)
+
+fragmentEstimate$plot
+
 ## ----available_lists----------------------------------------------------------
 availableRegionLists(genome = "hg38")
 
@@ -34,21 +54,24 @@ greylist <- makeGreylist(sampleSheet, binSize = 10000)
 S4Vectors::metadata(greylist)$thresholds %>%
   dplyr::select(input, fragments, mean, threshold, regions, greylisted.bp)
 
-## ----artefacts----------------------------------------------------------------
-artefactRegions <- c(GenomicRanges::granges(blacklist), GenomicRanges::granges(greylist))
-
 ## ----consensus----------------------------------------------------------------
 consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
-                                excludeRegions = artefactRegions,
+                                blacklist = blacklist,
+                                greylist = greylist,
                                 seqlevelsStyle = "Ensembl")
 
 consensus
 
+## ----filtering_log------------------------------------------------------------
+filteringLog(consensus) %>%
+  head(3)
+
 ## ----min_replicates-----------------------------------------------------------
 strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       groupBy = "condition",
-                                      excludeRegions = artefactRegions,
+                                      blacklist = blacklist,
+                                      greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
                                       verbose = FALSE)
@@ -61,11 +84,20 @@ data.frame(group = names(consensusData(consensus)$groups),
 consensusInfo <- consensusData(consensus)
 
 consensusInfo$samples %>%
-  dplyr::select(sample, group, n.peaks, n.excluded)
+  dplyr::select(sample, group, n.peaks, n.blacklist, n.greylist)
 
 ## ----consensus_parts----------------------------------------------------------
 lengths(consensusInfo$groups)           # the consensus of every group
 length(consensusInfo$total)             # the pooled region set that will be counted
+
+## ----group_list, eval = FALSE-------------------------------------------------
+# groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
+# 
+# annotationList <- lapply(groupList,
+#                          ChIPseeker::annotatePeak,
+#                          TxDb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene)
+# 
+# ChIPseeker::plotAnnoBar(annotationList)
 
 ## ----occupancy_columns--------------------------------------------------------
 as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
@@ -75,11 +107,20 @@ as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
 ## ----upset--------------------------------------------------------------------
 plotPeakUpset(consensus)
 
+## ----jaccard, fig.height = 5.5------------------------------------------------
+plotSampleCorrelation(consensus,
+                      method = "jaccard",
+                      groupBy = "condition",
+                      annotationColumns = c("condition", "replicate"))
+
 ## ----counting-----------------------------------------------------------------
 counts <- countReads(consensus,
                      sampleSheet = sampleSheet)
 
 counts
+
+## ----input_assay--------------------------------------------------------------
+countTable(counts, input = TRUE, format = "matrix")[1:3, 1:3]
 
 ## ----count_table_wide---------------------------------------------------------
 countTable(counts) %>%
@@ -128,8 +169,7 @@ dplyr::bind_rows(normalisationEffect)
 # counts <- normalizeCounts(counts, method = "greenlist")
 
 ## ----greenlist_check, eval = FALSE--------------------------------------------
-# greenlistCounts <- SummarizedExperiment::assay(S4Vectors::metadata(counts)$greenlist, "counts")
-# colSums(greenlistCounts)
+# SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
 
 ## ----manual_factors-----------------------------------------------------------
 backgroundCounts <- normalizeCounts(counts, method = "background", verbose = FALSE)
@@ -159,6 +199,11 @@ countTable(counts, normalized = TRUE) %>%
 
 ## ----pca, fig.height = 4.5----------------------------------------------------
 plotRegionPCA(counts, colourBy = "condition", shapeBy = "time")
+
+## ----pca_treated, fig.height = 4.5--------------------------------------------
+plotRegionPCA(counts,
+              samples = sampleInfo(counts)$treatment == "R1881",
+              colourBy = "condition")
 
 ## ----correlation, fig.height = 5.5--------------------------------------------
 plotSampleCorrelation(counts,
@@ -219,6 +264,31 @@ plotResultsMA(results, contrast = "R1881_24h_vs_DMSO")
 ## ----heatmap, fig.height = 6--------------------------------------------------
 plotTopHeatmap(results, contrast = "R1881_24h_vs_DMSO", n = 30, annotationColumns = "condition")
 
+## ----profile, fig.height = 6, fig.width = 8-----------------------------------
+plotProfile(results,
+            contrast = "R1881_24h_vs_DMSO",
+            groupBy = "condition")
+
+## ----profile_compute----------------------------------------------------------
+profileData <- computeProfiles(results,
+                               contrast = "R1881_24h_vs_DMSO",
+                               groupBy = "condition")
+
+names(profileData$profiles)
+dim(profileData$profiles$DMSO)
+
+## ----profile_lines, fig.height = 3.5------------------------------------------
+plotProfile(profileData, style = "lines")
+
+## ----profile_regions, fig.height = 3.5----------------------------------------
+consensusRanges <- regionRanges(consensus)$consensus
+
+plotProfile(counts,
+            regions = list(boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
+                           newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
+            groupBy = "condition",
+            style = "lines")
+
 ## ----occupancy_table----------------------------------------------------------
 peakOccupancyTable(results, contrast = "R1881_24h_vs_DMSO")
 
@@ -249,13 +319,15 @@ plotPeakOccupancy(results, contrast = "R1881_24h_vs_DMSO")
 # resultsTable(tiledResults)     # one row per region
 # tileTable(tiledResults)        # one row per tile
 
-## ----recentre, eval = FALSE---------------------------------------------------
-# recentredConsensus <- loadConsensusPeaks(sampleSheet,
-#                                          groupBy = "condition",
-#                                          excludeRegions = artefactRegions,
-#                                          seqlevelsStyle = "Ensembl",
-#                                          recentre = TRUE,
-#                                          width = 400)
+## ----summits------------------------------------------------------------------
+summitCounts <- countReads(consensus,
+                           sampleSheet = sampleSheet,
+                           summits = 200,
+                           verbose = FALSE)
+
+head(SummarizedExperiment::rowRanges(summitCounts)[, c("region.id", "summit")], 3)
+
+table(BiocGenerics::width(SummarizedExperiment::rowRanges(summitCounts)))
 
 ## ----session_info-------------------------------------------------------------
 sessionInfo()

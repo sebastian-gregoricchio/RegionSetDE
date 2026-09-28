@@ -13,7 +13,8 @@ its place.
 loadConsensusPeaks(
   sampleSheet,
   groupBy = NULL,
-  excludeRegions = NULL,
+  blacklist = NULL,
+  greylist = NULL,
   regionSets = NULL,
   regionMode = "split",
   unassignedSet = "other",
@@ -40,13 +41,23 @@ loadConsensusPeaks(
   instance `"condition"`. Default: `NULL`, all the samples form a single
   group.
 
-- excludeRegions:
+- blacklist:
 
-  Regions whose peaks must be dropped before any consensus is built,
-  typically a blacklist and the greylist returned by
-  [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md).
+  Regions of the assembly whose peaks must be dropped before any
+  consensus is built, typically the list returned by
+  [`loadBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md).
   Either a `GRanges`, a path to a BED-like file, a data.frame, or a list
-  of them. Default: `NULL`.
+  of them, which are pooled. The list is stored in the `blacklist` slot
+  of the object, as
+  [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  does. Default: `NULL`.
+
+- greylist:
+
+  Regions of this experiment whose peaks must be dropped before any
+  consensus is built, typically the list built from the inputs by
+  [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md).
+  Accepts the same forms as `blacklist`. Default: `NULL`.
 
 - regionSets:
 
@@ -103,12 +114,17 @@ number of groups with a consensus peak on it, and `peak.samples`, the
 number of samples with a peak on it. The `consensus` slot, read with
 [`consensusData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md),
 keeps the consensus of every group, the `consensusRegions` object behind
-it, the peaks of every sample after the exclusion, the total consensus,
-the table of the samples and the sample sheet itself, which
+it, the peaks of every sample after the blacklist and the greylist, the
+peaks they removed, the two lists, the total consensus, the table of the
+samples and the sample sheet itself, which
 [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
 and
 [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
-read when no file is given to them.
+read when no file is given to them. The blacklist goes to the
+`blacklist` slot, the size of the greylist to `parameters$greylist`, and
+the peaks each of them removed from every sample to the `filtering.log`,
+read with
+[`filteringLog`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md).
 
 ## Details
 
@@ -126,10 +142,27 @@ chromosomes only, as
 defines them: scaffolds, patches and unplaced contigs are dropped, and
 so are chromosomes whose names it does not recognise.
 
-The peaks overlapping `excludeRegions` are removed before the consensus,
-not after it. An artefact lying next to a genuine peak would otherwise
-merge with it, and removing the merged region afterwards would take the
-genuine peak away as well.
+The peaks overlapping `blacklist` and `greylist` are removed before the
+consensus, not after it. An artefact lying next to a genuine peak would
+otherwise merge with it, and removing the merged region afterwards would
+take the genuine peak away as well. The blacklist is applied first and
+the greylist to the peaks left, so a peak lying on both is counted as
+blacklisted. The two lists are kept apart because they say different
+things: a blacklist describes the assembly and is the same for every
+experiment, a greylist describes the inputs of this one. Both are
+recorded the way
+[`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+and
+[`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+record them, so the counts, the fit and the results built from the
+object carry the blacklist with them and
+[`exportResults`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
+writes it down. `consensusData(x)$removed` holds the peaks taken out,
+with the sample they came from and the list that removed them, and
+`consensusData(x)$samples` their number per sample. A blacklist built
+for another assembly than `genomeAssembly` is refused, as
+[`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+refuses it.
 
 With `regionMode = "split"` the consensus regions are assigned to the
 sets of `regionSets` in the order they are given, a region overlapping
@@ -151,6 +184,7 @@ selection.
 [`plotPeakUpset`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md),
 [`consensusData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md),
 [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
+[`loadBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md),
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
 
 ## Author

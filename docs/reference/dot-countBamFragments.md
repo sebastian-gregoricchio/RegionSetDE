@@ -47,8 +47,8 @@ from their 5' end.
 
 - fragmentLength:
 
-  Numeric value with the length to which single-end reads are extended.
-  Default: `150`.
+  Numeric value with the length to which single-end reads are extended,
+  or one value per BAM file. Default: `150`.
 
 - maxFragmentLength:
 

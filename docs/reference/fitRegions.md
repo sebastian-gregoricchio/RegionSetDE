@@ -199,19 +199,25 @@ flexible on the design, and it is the one that can absorb a
 repeated-measures structure through `block` without spending a
 coefficient on it. `"dream"` extends the same machinery to explicit
 random effects, which is what a design with several samples per donor
-asks for. `"deseq2"` is included for comparison and for the shrunken
-fold changes; on a few thousand regions it agrees with edgeR almost
-everywhere. Four of the five are count models and the fifth is not,
-which is the distinction that decides the choice on bigWig input.
-`edgeR`, `DESeq2`, `voom` and `dream` all describe the number of
-fragments falling in an interval: the first two through a negative
-binomial likelihood, the other two through a mean-variance trend
-estimated on the count scale. Coverage read out of a bigWig is not that
-number, and rounding it to an integer does not make it one. `"limma"`
-models the log2 signal with an abundance trend on the residual variance
-and asks nothing of the values beyond their being continuous, which is
-what an already normalised track can supply. An object counted from BAM
-files may use any of the five; one built by
+asks for. `"deseq2"` is included for comparison. It runs the Wald test
+on the maximum likelihood fold changes (`betaPrior = FALSE`) and does
+not call
+[`DESeq2::lfcShrink`](https://rdrr.io/pkg/DESeq2/man/lfcShrink.html), so
+its fold changes are unshrunken like those of the other engines;
+shrunken ones can be computed from the object returned by
+[`asDESeqDataSet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/asDESeqDataSet.md).
+On a few thousand regions it agrees with edgeR almost everywhere. Four
+of the five are count models and the fifth is not, which is the
+distinction that decides the choice on bigWig input. `edgeR`, `DESeq2`,
+`voom` and `dream` all describe the number of fragments falling in an
+interval: the first two through a negative binomial likelihood, the
+other two through a mean-variance trend estimated on the count scale.
+Coverage read out of a bigWig is not that number, and rounding it to an
+integer does not make it one. `"limma"` models the log2 signal with an
+abundance trend on the residual variance and asks nothing of the values
+beyond their being continuous, which is what an already normalised track
+can supply. An object counted from BAM files may use any of the five;
+one built by
 [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
 is refused by the count engines unless it was declared `countLike`, or
 unless `assumeCountLike` overrides it here. The comparison universe of
@@ -257,11 +263,7 @@ fit
 # limma-voom on the same design
 voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
 
-# Random effects need the dream engine and the formula given as such
-if (requireNamespace("variancePartition", quietly = TRUE)) {
-  mixedFit <- fitRegions(counts, design = ~ condition + (1|biologicalReplicate), engine = "dream", verbose = FALSE)
-}
-#> Warning: the ‘nobars’ function has moved to the reformulas package. Please update your imports, or ask an upstream package maintainer to do so.
-#> Error in .fitVarPartModel(exprObj, formula, data, REML = REML, useWeights = useWeights,     fxn = fxn, control = control, hideErrorsInBackend = hideErrorsInBackend,     BPPARAM = BPPARAM, ...): Initial model failed:
-#> Downdated VtV is not positive definite
+# Random effects need the dream engine and the formula given as such, for instance
+# ~ condition + (1|donor) for repeated samples of the same donors. Four samples are
+# too few to estimate one, so the example data cannot show it.
 ```

@@ -38,7 +38,7 @@ loadConsensusPeaks(
 
 \item{genomeAssembly}{String indicating the genome assembly to store with the regions, e.g. \code{"hg38"}. Default: \code{NULL}.}
 
-\item{nThreads}{Number of threads used by the consensus. Default: \code{1}.}
+\item{nThreads}{Number of threads. The groups with more than one sample are built side by side, one worker per group, and the threads left over go to the calibration of the threshold inside each group when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Default: \code{1}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 
@@ -60,6 +60,8 @@ The peaks overlapping \code{blacklist} and \code{greylist} are removed before th
 With \code{regionMode = "split"} the consensus regions are assigned to the sets of \code{regionSets} in the order they are given, a region overlapping two sets going to the first one. The sets then describe classes of peaks, such as promoter and distal ones, and \code{\link{testRegionSets}} can compare them. With \code{regionMode = "replace"} the counted regions are those of \code{regionSets}, and the peaks only tell which of them are occupied in each group.
 
 The occupancy columns describe where the peaks were called, and they are a poor basis for a set of regions to test. A set of the regions found in one group only was selected on the signal of that group, so a test of its change between the groups answers a question already settled by the selection.
+
+The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident. The random numbers of the calibration come from \code{BiocParallel}, which gives each group a stream of its own, so a \code{set.seed()} before the call returns the same consensus whatever the number of threads.
 }
 \examples{
 if (requireNamespace("consensusRegions", quietly = TRUE)) {

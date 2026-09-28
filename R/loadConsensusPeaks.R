@@ -13,7 +13,7 @@
 #' @param unassignedSet String with the name of the set collecting the consensus regions that overlap none of \code{regionSets} in \code{"split"} mode. \code{NULL} drops them. Default: \code{"other"}.
 #' @param seqlevelsStyle String indicating the chromosome naming style, one among \code{"UCSC"}, \code{"Ensembl"} or \code{"NCBI"}, or \code{NULL} to keep the names as they are. Default: \code{"UCSC"}.
 #' @param genomeAssembly String indicating the genome assembly to store with the regions, e.g. \code{"hg38"}. Default: \code{NULL}.
-#' @param nThreads Number of threads used by the consensus. Default: \code{1}.
+#' @param nThreads Number of threads. The groups with more than one sample are built side by side, one worker per group, and the threads left over go to the calibration of the threshold inside each group when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Default: \code{1}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #' @param ... Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.
 #'
@@ -28,6 +28,8 @@
 #' With \code{regionMode = "split"} the consensus regions are assigned to the sets of \code{regionSets} in the order they are given, a region overlapping two sets going to the first one. The sets then describe classes of peaks, such as promoter and distal ones, and \code{\link{testRegionSets}} can compare them. With \code{regionMode = "replace"} the counted regions are those of \code{regionSets}, and the peaks only tell which of them are occupied in each group.
 #'
 #' The occupancy columns describe where the peaks were called, and they are a poor basis for a set of regions to test. A set of the regions found in one group only was selected on the signal of that group, so a test of its change between the groups answers a question already settled by the selection.
+#'
+#' The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident. The random numbers of the calibration come from \code{BiocParallel}, which gives each group a stream of its own, so a \code{set.seed()} before the call returns the same consensus whatever the number of threads.
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
@@ -65,6 +67,7 @@
 #' @importFrom IRanges reduce overlapsAny IRanges
 #' @importFrom BiocGenerics width
 #' @importFrom S4Vectors mcols mcols<-
+#' @importFrom BiocParallel bplapply
 #' @importFrom methods is validObject
 #'
 #' @export loadConsensusPeaks
@@ -236,49 +239,79 @@ loadConsensusPeaks <-
     groupConsensus <- list()
     consensusObjects <- list()
 
-    for (groupName in groupLevels) {
+    groupSizes <- vapply(groupLevels, function(groupName) {sum(sampleTable$group == groupName)}, integer(1))
+    multiGroups <- groupLevels[groupSizes > 1]
+
+    # A single sample has no replicate to agree with, its peaks stand for the group
+    for (groupName in groupLevels[groupSizes == 1]) {
       groupSamples <- sampleTable$sample[sampleTable$group == groupName]
+      groupConsensus[[groupName]] <- IRanges::reduce(peakList[[groupSamples]], ignore.strand = TRUE)
+      consensusObjects[groupName] <- list(NULL)
+    }
 
-      # A single sample has no replicate to agree with, its peaks stand for the group
-      if (length(groupSamples) == 1) {
-        groupConsensus[[groupName]] <- IRanges::reduce(peakList[[groupSamples]], ignore.strand = TRUE)
-        consensusObjects[groupName] <- list(NULL)
+    # How the threads are shared between the groups and the calibration inside each of them
+    workerPlan <- .consensusWorkers(nThreads = nThreads,
+                                    nGroups = length(multiGroups),
+                                    calibrate = isTRUE(consensusArguments$calibrate),
+                                    userBPPARAM = consensusArguments$BPPARAM)
 
-        if (isTRUE(verbose)) {
-          message("Group ", groupName, ": a single sample, its ", length(groupConsensus[[groupName]]), " peaks are taken as they are.")
-        }
-        next
-      }
+    groupArgumentList <-
+      lapply(multiGroups,
+             function(groupName) {
+               groupSamples <- sampleTable$sample[sampleTable$group == groupName]
 
-      groupArguments <- consensusArguments
-      if (is.null(groupArguments$BPPARAM)) {groupArguments$BPPARAM <- nThreads}
-      if (is.null(groupArguments$verbose)) {groupArguments$verbose <- FALSE}
+               groupArguments <- consensusArguments
+               if (is.null(groupArguments$BPPARAM)) {groupArguments$BPPARAM <- workerPlan$inner}
+               if (is.null(groupArguments$verbose)) {groupArguments$verbose <- FALSE}
 
-      # runConsensus renames the chromosomes to UCSC on its own, which would leave the consensus in
-      # one style and the peaks it came from in another, and every overlap between the two empty
-      if (!("seqlevelsStyle" %in% names(groupArguments))) {
-        groupArguments["seqlevelsStyle"] <- list(seqlevelsStyle)
-      }
+               # runConsensus renames the chromosomes to UCSC on its own, which would leave the consensus in
+               # one style and the peaks it came from in another, and every overlap between the two empty
+               if (!("seqlevelsStyle" %in% names(groupArguments))) {
+                 groupArguments["seqlevelsStyle"] <- list(seqlevelsStyle)
+               }
 
-      # Weights from the libraries need the BAM files, which the sheet already lists
-      weightMethod <- groupArguments$weightMethod
-      if (!is.null(weightMethod) && weightMethod[1] %in% c("frip", "librarySize") &
-          is.null(groupArguments$bamFiles) & is.null(groupArguments$frip) & is.null(groupArguments$librarySize)) {
-        groupArguments$bamFiles <- sampleTable$bam[match(groupSamples, sampleTable$sample)]
-      }
+               # Weights from the libraries need the BAM files, which the sheet already lists
+               weightMethod <- groupArguments$weightMethod
+               if (!is.null(weightMethod) && weightMethod[1] %in% c("frip", "librarySize") &
+                   is.null(groupArguments$bamFiles) & is.null(groupArguments$frip) & is.null(groupArguments$librarySize)) {
+                 groupArguments$bamFiles <- sampleTable$bam[match(groupSamples, sampleTable$sample)]
+               }
 
-      consensusObject <- do.call(what = consensusRegions::runConsensus,
-                                 args = c(list(peaks = peakList[groupSamples], sampleNames = groupSamples), groupArguments))
+               return(c(list(peaks = peakList[groupSamples], sampleNames = groupSamples), groupArguments))
+             })
+    names(groupArgumentList) <- multiGroups
 
-      consensusRanges <- consensusRegions::consensusRanges(consensusObject)
+    if (isTRUE(verbose) & length(multiGroups) > 1 & workerPlan$outer > 1) {
+      message("Building the consensus of ", length(multiGroups), " groups on ", workerPlan$outer, " workers",
+              if (workerPlan$inner > 1) {paste(",", workerPlan$inner, "threads each for the calibration")} else {""}, ".")
+    }
+
+    # The groups do not depend on each other, so they run side by side
+    groupObjects <- BiocParallel::bplapply(X = groupArgumentList,
+                                           FUN = .runGroupConsensus,
+                                           BPPARAM = .makeParallelParam(nThreads = workerPlan$outer,
+                                                                        tasks = length(multiGroups)))
+
+    for (groupName in multiGroups) {
+      consensusRanges <- consensusRegions::consensusRanges(groupObjects[[groupName]])
 
       # The statistics of one group mean nothing for the others, only the coordinates are pooled
       S4Vectors::mcols(consensusRanges) <- NULL
       groupConsensus[[groupName]] <- consensusRanges
-      consensusObjects[[groupName]] <- consensusObject
+      consensusObjects[[groupName]] <- groupObjects[[groupName]]
+    }
 
-      if (isTRUE(verbose)) {
-        message("Group ", groupName, ": ", length(groupSamples), " samples, ", length(consensusRanges), " consensus regions.")
+    # Back in the order of the groups, whatever order they were computed in
+    groupConsensus <- groupConsensus[groupLevels]
+    consensusObjects <- consensusObjects[groupLevels]
+
+    if (isTRUE(verbose)) {
+      for (groupName in groupLevels) {
+        if (groupSizes[[groupName]] == 1) {
+          message("Group ", groupName, ": a single sample, its ", length(groupConsensus[[groupName]]), " peaks are taken as they are.")
+        } else {
+          message("Group ", groupName, ": ", groupSizes[[groupName]], " samples, ", length(groupConsensus[[groupName]]), " consensus regions.")
+        }
       }
     }
 
@@ -379,6 +412,69 @@ loadConsensusPeaks <-
 
     methods::validObject(regionSet)
     return(regionSet)
+  } # END function
+
+
+
+
+#' @title .consensusWorkers
+#'
+#' @description Shares the threads between the groups built in parallel and the calibration run inside each group.
+#'
+#' @param nThreads Number of threads asked for.
+#' @param nGroups Number of groups needing a consensus, the groups of a single sample left out.
+#' @param calibrate Logical value to indicate whether the threshold is calibrated inside each group.
+#' @param userBPPARAM The \code{BPPARAM} passed by the user to \code{consensusRegions::runConsensus}, or \code{NULL}.
+#'
+#' @return A list with \code{outer}, the number of groups run at once, and \code{inner}, the number of threads each group gets for its permutations.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.consensusWorkers <-
+  function(nThreads,
+           nGroups,
+           calibrate = FALSE,
+           userBPPARAM = NULL) {
+
+    nThreads <- as.integer(nThreads[1])
+    if (is.na(nThreads) | nThreads < 1) {
+      stop("The 'nThreads' parameter must be a positive integer.", call. = FALSE)
+    }
+
+    # A back end chosen by the user goes to every group untouched, and the groups wait for each other
+    if (!is.null(userBPPARAM)) {
+      return(list(outer = 1L, inner = userBPPARAM))
+    }
+
+    outerWorkers <- as.integer(max(1L, min(nThreads, nGroups)))
+
+    # Without calibration a consensus runs on one thread, so the spare threads would only sit idle
+    innerWorkers <- if (isTRUE(calibrate)) {as.integer(max(1L, nThreads %/% outerWorkers))} else {1L}
+
+    return(list(outer = outerWorkers, inner = innerWorkers))
+  } # END function
+
+
+
+
+#' @title .runGroupConsensus
+#'
+#' @description Builds the consensus of one group through \code{consensusRegions::runConsensus}, called by the workers of \code{\link{loadConsensusPeaks}}.
+#'
+#' @param groupArguments List with the arguments of \code{consensusRegions::runConsensus} for the group, the peaks included.
+#'
+#' @return A \code{consensusRegions} object.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.runGroupConsensus <-
+  function(groupArguments) {
+
+    return(do.call(what = consensusRegions::runConsensus, args = groupArguments))
   } # END function
 
 

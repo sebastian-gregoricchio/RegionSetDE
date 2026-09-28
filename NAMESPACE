@@ -237,6 +237,7 @@ importFrom(edgeR,
   estimateDisp,
   estimateGLMCommonDisp,
   filterByExpr,
+  getDispersion,
   getOffset,
   glmFit,
   glmLRT,
@@ -245,7 +246,8 @@ importFrom(edgeR,
   glmTreat,
   normLibSizes,
   scaleOffset,
-  topTags
+  topTags,
+  zscoreNBinom
 )
 importFrom(farver,get_channel)
 importFrom(ggplot2,
@@ -311,6 +313,7 @@ importFrom(grid,
 )
 importFrom(limma,
   cameraPR,
+  contrastAsCoef,
   contrasts.fit,
   duplicateCorrelation,
   eBayes,

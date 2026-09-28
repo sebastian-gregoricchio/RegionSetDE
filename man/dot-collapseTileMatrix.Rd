@@ -4,12 +4,14 @@
 \alias{.collapseTileMatrix}
 \title{.collapseTileMatrix}
 \usage{
-.collapseTileMatrix(expressionMatrix, tileMap)
+.collapseTileMatrix(expressionMatrix, tileMap, pooling = "mean")
 }
 \arguments{
 \item{expressionMatrix}{Numeric matrix with one row per tile.}
 
 \item{tileMap}{Integer vector giving the collapsed row of every tile, as returned by \code{.collapseTileStats}.}
+
+\item{pooling}{String with how the tiles are pooled, either \code{"mean"}, their average, or \code{"stouffer"}, their sum divided by the square root of their number, which keeps z-scores on the scale of a single one. Default: \code{"mean"}.}
 }
 \value{
 A numeric matrix with one row per region.

@@ -29,11 +29,11 @@
 #'   \item \code{p.value}, \code{FDR}: the p-value and its adjustment over all the rows of the contrast.
 #'   \item \code{diff.status}: \code{"up"}, \code{"down"} or \code{"null"}, from \code{FDR} and \code{log2FC}.
 #' }
-#' On a tiled object the statistics, the degrees of freedom and the averages come from the tile carrying the p-value of the region, followed by the columns the combination adds.
+#' On a tiled object the statistics, the degrees of freedom and the averages come from the tile carrying the p-value of the region, followed by the columns the combination adds: \code{n.tiles}, \code{n.tiles.up}, \code{n.tiles.down}, \code{direction}, \code{rep.tile.start} and \code{rep.tile.end}, the coordinates of that tile, and \code{mean.tile.log2FC}, the fold change of the tiles averaged over the region and weighted by their width.
 #'
 #' @details The multiple testing correction is applied over all the rows of the object, across the region sets, and \code{regionSets} subsets the output afterwards. Correcting inside each set separately would make the FDR of a set depend on how many other sets were loaded, which is not a property anyone wants in a result.
 #'
-#' Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, not an average, which is the quantity that matches the p-value. The tile level table stays available in the \code{tiles} slot, and \code{\link{plotRegion}} draws it.
+#' Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, the one between \code{rep.tile.start} and \code{rep.tile.end}, not an average, which is the quantity that matches the p-value and the one \code{diff.status} is read from. It describes that tile, and a sentence such as "the domain gained 3-fold" needs \code{mean.tile.log2FC} instead, which is the closer thing to a fold change of the whole region. When the two are far apart, only part of the region moved. The tile level table stays available in the \code{tiles} slot, and \code{\link{plotRegion}} draws it.
 #'
 #' A design written as \code{~ condition} spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what \code{c("column", "groupA", "groupB")} avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as \code{~ condition} or \code{~ 0 + condition}. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.
 #'
@@ -268,7 +268,7 @@ testRegions <-
     statisticColumns <- c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width",
                           "log2FC", "average.signal", groupSignalColumns,
                           "stat", "stat.distribution", "df1", "df2", "p.value", "FDR", "diff.status")
-    combinationColumns <- c("n.tiles", "n.tiles.up", "n.tiles.down", "direction", "rep.tile.start", "rep.tile.end")
+    combinationColumns <- c("n.tiles", "n.tiles.up", "n.tiles.down", "direction", "rep.tile.start", "rep.tile.end", "mean.tile.log2FC")
 
     annotationColumns <- setdiff(colnames(resultTable),
                                  c(statisticColumns, combinationColumns, "region.key"))
@@ -849,7 +849,7 @@ testRegions <-
 #'
 #' @importFrom csaw combineTests minimalTests
 #' @importFrom GenomicRanges split
-#' @importFrom BiocGenerics unlist
+#' @importFrom BiocGenerics unlist width start end
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom stats p.adjust
 #' @importFrom dplyr mutate arrange
@@ -908,6 +908,12 @@ testRegions <-
     representativeIndex <- combinedTable$rep.test
     keySplit <- strsplit(regionKeys, split = "|", fixed = TRUE)
 
+    # The whole region, every tile weighted by its width, so a narrow trailing tile does not count as a full one
+    tileWidths <- as.numeric(BiocGenerics::width(tileRanges))
+    weightedSum <- rowsum(x = tileTable$log2FC * tileWidths, group = as.character(tileGroups))
+    widthSum <- rowsum(x = tileWidths, group = as.character(tileGroups))
+    meanTileFC <- (weightedSum[, 1] / widthSum[, 1])[regionKeys]
+
     resultTable <- data.frame(region.set = vapply(keySplit, function(x) {x[1]}, character(1)),
                               region.id = vapply(keySplit, function(x) {paste(x[-1], collapse = "|")}, character(1)),
                               region.key = regionKeys,
@@ -925,6 +931,7 @@ testRegions <-
                               direction = combinedTable$direction,
                               rep.tile.start = BiocGenerics::start(tileRanges)[representativeIndex],
                               rep.tile.end = BiocGenerics::end(tileRanges)[representativeIndex],
+                              mean.tile.log2FC = as.numeric(meanTileFC),
                               stringsAsFactors = FALSE)
 
     # The statistics come from the representative tile, so its annotation is the one that describes the row
@@ -959,7 +966,7 @@ testRegions <-
 
     return(c("log2FC", "average.signal", "stat", "stat.distribution", "df1", "df2", "p.value", "FDR", "diff.status",
              "n.tiles", "n.tiles.up", "n.tiles.down", "direction",
-             "rep.tile.start", "rep.tile.end"))
+             "rep.tile.start", "rep.tile.end", "mean.tile.log2FC"))
   } # END function
 
 

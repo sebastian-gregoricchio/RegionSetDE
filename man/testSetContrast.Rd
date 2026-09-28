@@ -13,6 +13,7 @@ testSetContrast(
   interRegionCor = NULL,
   useRanks = FALSE,
   sharedRegions = "drop",
+  overlapWithinSet = "warn",
   FDR = 0.05,
   adjustMethod = "BH",
   carryCounts = TRUE,
@@ -36,6 +37,8 @@ testSetContrast(
 
 \item{sharedRegions}{String with what to do with the regions the two sets share in the genome, either \code{"drop"} or \code{"stop"}. Default: \code{"drop"}.}
 
+\item{overlapWithinSet}{String with what to do when regions on the same side of the pair overlap each other in the genome, one among \code{"allow"}, \code{"warn"} and \code{"stop"}. The counts are reported in \code{n.overlapping.within.1} and \code{n.overlapping.within.2}. Default: \code{"warn"}.}
+
 \item{FDR}{Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.}
 
 \item{adjustMethod}{String with the multiple testing correction across the pairs. Default: \code{"BH"}.}
@@ -51,11 +54,13 @@ A \code{RegionSetDE.setResults} object with one row per pair of sets, or a \code
 Asks whether a contrast affects one region set differently from another. This is the comparison behind questions of the kind "does the treatment reduce the mark more at Polycomb promoters than at active enhancers", and it is the one claim that a global normalisation error cannot manufacture, since a scaling factor that is wrong for one set is wrong for the other in the same way.
 }
 \details{
-The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with the interval selected by \code{effectMethod} beside it and the region-heterogeneity one always reported next to it.
+The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with the interval selected by \code{effectMethod} beside it and the region-heterogeneity one always reported next to it. As in \code{\link{testRegionSets}}, \code{mean.log2FC.1} and \code{mean.log2FC.2} are means of per-region fold changes, every region counting once, and not the fold changes of the signal pooled over each set.
 
 This is the function for the redistribution question. A set gaining what another set lost is a claim about two sets, and it is the one claim a global normalisation error cannot manufacture, since a scaling factor that is wrong for one set is wrong for the other in the same way. Asking it through the pattern of a competitive and a self-contained test on a single set does not work, because failing to reject a self-contained null is not evidence that the absolute change was zero.
 
 A region shared by the two sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Sharing is measured on the genome and not on the identifiers: chr1:1000-2000 in one set and chr1:1500-2500 in the other are half the same chromatin even though neither region identifier appears twice. Overlapping regions are removed from both sides by default and the number removed is reported in \code{n.shared.dropped}; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
+
+Overlaps within one side of the pair are a separate matter, measured after the shared regions are removed and handled by \code{overlapWithinSet} as \code{\link{testRegionSets}} handles them.
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)

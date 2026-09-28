@@ -16,6 +16,8 @@ testRegionSets(
   interRegionCor = NULL,
   tileHandling = "collapse",
   overlapPolicy = "drop",
+  overlapWithinSet = "warn",
+  fryInput = "auto",
   useRanks = FALSE,
   FDR = 0.05,
   adjustMethod = "BH",
@@ -47,6 +49,10 @@ testRegionSets(
 
 \item{overlapPolicy}{String with what to do about comparison rows overlapping the set in the genome, one among \code{"allow"}, \code{"drop"} and \code{"stop"}. Default: \code{"drop"}.}
 
+\item{overlapWithinSet}{String with what to do when regions of the same set overlap each other in the genome, one among \code{"allow"}, \code{"warn"} and \code{"stop"}. The number of such regions is reported in \code{n.overlapping.within} whatever the choice. Default: \code{"warn"}.}
+
+\item{fryInput}{String with the values \code{fry} is run on, either \code{"auto"} or \code{"logCPM"}. With \code{"auto"} the \code{edgeR} and \code{DESeq2} fits are tested on the z-scores of their own negative binomial model, and the other engines on the log values they were fitted on. \code{"logCPM"} runs every engine on the log-CPM matrix, which is what the test did before this option existed. Default: \code{"auto"}.}
+
 \item{useRanks}{Logical value to indicate whether \code{camera} must work on the ranks rather than on the statistics, which is more robust and less powerful. Default: \code{FALSE}.}
 
 \item{FDR}{Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.}
@@ -60,13 +66,15 @@ testRegionSets(
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always.
+A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always. \code{n.overlapping.within} counts the regions of the set overlapping another region of the same set.
 }
 \description{
 Asks whether a region set responds to a contrast as a whole. Two questions are answered side by side: whether the regions of the set move away from zero, which is a self-contained claim, and whether they move more than the regions they are compared against, which is a competitive one. Both are computed from the per-region statistics of the same fit, so they never disagree with \code{\link{testRegions}} on the design, the offsets or the dispersion.
 }
 \details{
 The effect size, not the p-value, is the primary output here. A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which says nothing about whether the shift matters.
+
+\code{mean.log2FC} is the mean of the per-region log2 fold changes, every region counting once whatever its width or its signal. It is not the fold change of the signal pooled over the set: a set holding a few strong and many weak regions can have its summed signal driven by the strong ones, while the mean of the fold changes is driven by the many. The two agree when the regions respond alike, and part ways when the response depends on the width or on the baseline signal of the region. \code{delta.log2FC} is the difference between that mean and the one of the comparison rows, and \code{sample.delta.log2FC} the same difference read from one score per library, the mean log2 signal over the set minus the one over its comparison. Neither of the two tests returns an effect size: \code{camera} says whether the set ranks apart from its comparison, and \code{fry} whether it moved away from zero.
 
 Two different intervals can be put around that effect and they answer different questions, so both are reported and \code{effectMethod} decides which one is called the confidence interval. The \code{"sample"} interval is the default and is the one to quote as a biological result. One number is computed per library, the mean signal over the set minus the mean signal over its comparison, and those numbers are then run through the design of the experiment. The replication is the biological samples, which is where it comes from in the experiment, and adding regions to a set makes that interval more stable without ever making it narrower than four libraries can support.
 
@@ -87,10 +95,12 @@ Both intervals carry the uncertainty of both sides. The regions of the compariso
 
 A set that overlaps its own comparison in the genome shares reads with it and drags the difference towards zero. Overlap is measured on the coordinates rather than on the identifiers, so two sets holding chr1:1000-2000 and chr1:1500-2500 are seen as overlapping even though no region identifier is shared, and \code{overlapPolicy} decides what happens next. The number of comparison rows removed, or left in place, is reported in \code{n.comparison.overlapping}.
 
+Regions of the same set can overlap each other too, for instance windows recentred on nearby summits or an annotation listing alternative promoters of one gene. The bases they share are then counted in two rows, so the set leans towards those loci, and the rows move together for a reason the correlation between regions was not estimated for. When the question is the average response per region this can be what is wanted, and \code{overlapWithinSet = "allow"} keeps quiet about it. The default warns, and \code{"stop"} refuses the set. The count is in \code{n.overlapping.within}, and \code{loadRegions(reduceRegions = TRUE)} merges such regions before counting.
+
 On a tiled fit the row is a tile, and a set assembled from tiles weights each region by how many tiles it was cut into: a 40 kb domain would count forty times a 2 kb one. That changes the question from the average response of the regions in the set to the average response of the base pairs in it. \code{tileHandling = "collapse"} averages the tiles of a region back together first, which keeps the region as the unit and matches what \code{\link{testRegions}} does at its own level. \code{"keep"} is the base-pair version, and is a deliberate choice rather than a default.
 
 A fit with no replicates loses the self-contained test. \code{fry} builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value \code{limma} uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and \code{interRegionCor} is worth setting by hand from a replicated experiment on the same assay when one exists.
-The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the four engines. The self-contained test needs the values themselves and is computed on the log-CPM matrix of the fit; for \code{edgeR} and \code{DESeq2} that matrix is a transformation of the counts rather than the quantity the model was fitted on, so the two are close but not identical, and the competitive test is the one to lead with.
+The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the five engines. The self-contained test needs the values themselves. For \code{voom}, \code{limma} and \code{dream} they are the log values the model was fitted on. For \code{edgeR} and \code{DESeq2} the counts are turned into z-scores under the null model of the fit, with its offsets and its dispersion of every region, which is what \code{edgeR} does for its own \code{fry} method, and \code{fry} runs on those without standardising them again. The test then rests on the negative binomial model the regions were tested with rather than on a log-CPM approximation of it. For \code{DESeq2} the null model is refitted by \code{edgeR::glmFit} with the dispersions and normalisation factors of \code{DESeq2}, the same model fitted by another routine. On a fit collapsed from tiles the z-scores of a region are pooled as \code{sum(z) / sqrt(n.tiles)}, which keeps them on the scale of a single z-score. \code{fryInput = "logCPM"} brings back the earlier behaviour, which is worth keeping for comparing results with an older analysis.
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)

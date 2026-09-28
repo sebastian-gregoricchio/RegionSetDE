@@ -179,7 +179,7 @@ makeSetUniverse <-
 
       # One line per set rather than a printed table, so nothing is written outside a show method
       for (i in seq_len(nrow(diagnosticsTable))) {
-        message("  ", diagnosticsTable$region.set[i], ": ", diagnosticsTable$n.regions, " regions vs ",
+        message("  ", diagnosticsTable$region.set[i], ": ", diagnosticsTable$n.regions[i], " regions vs ",
                 diagnosticsTable$n.comparison[i], " compared against, median abundance ",
                 diagnosticsTable$median.abundance[i], " vs ", diagnosticsTable$median.abundance.comparison[i])
       }

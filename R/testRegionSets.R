@@ -15,6 +15,8 @@
 #' @param interRegionCor Numeric value with the correlation between regions, used to inflate the variance of the region-heterogeneity interval of both the set and the rows it is compared against. Default: \code{NULL}, estimated separately for each of the two from the residuals of the fit, or held at 0.01 when the design leaves no residual to estimate it from.
 #' @param tileHandling String with what to do when the fit was built on tiles, either \code{"collapse"}, which averages the tiles of a region back into one row before the set is assembled, or \code{"keep"}, which lets every tile count on its own. Default: \code{"collapse"}.
 #' @param overlapPolicy String with what to do about comparison rows overlapping the set in the genome, one among \code{"allow"}, \code{"drop"} and \code{"stop"}. Default: \code{"drop"}.
+#' @param overlapWithinSet String with what to do when regions of the same set overlap each other in the genome, one among \code{"allow"}, \code{"warn"} and \code{"stop"}. The number of such regions is reported in \code{n.overlapping.within} whatever the choice. Default: \code{"warn"}.
+#' @param fryInput String with the values \code{fry} is run on, either \code{"auto"} or \code{"logCPM"}. With \code{"auto"} the \code{edgeR} and \code{DESeq2} fits are tested on the z-scores of their own negative binomial model, and the other engines on the log values they were fitted on. \code{"logCPM"} runs every engine on the log-CPM matrix, which is what the test did before this option existed. Default: \code{"auto"}.
 #' @param useRanks Logical value to indicate whether \code{camera} must work on the ranks rather than on the statistics, which is more robust and less powerful. Default: \code{FALSE}.
 #' @param FDR Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.
 #' @param adjustMethod String with the multiple testing correction across the sets. Default: \code{"BH"}.
@@ -22,9 +24,11 @@
 #' @param carryCounts Logical value to indicate whether the counts must travel inside the result, so that \code{\link{plotSetSignal}} can draw the signal without being handed the counts object again. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always.
+#' @return A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always. \code{n.overlapping.within} counts the regions of the set overlapping another region of the same set.
 #'
 #' @details The effect size, not the p-value, is the primary output here. A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which says nothing about whether the shift matters.
+#'
+#' \code{mean.log2FC} is the mean of the per-region log2 fold changes, every region counting once whatever its width or its signal. It is not the fold change of the signal pooled over the set: a set holding a few strong and many weak regions can have its summed signal driven by the strong ones, while the mean of the fold changes is driven by the many. The two agree when the regions respond alike, and part ways when the response depends on the width or on the baseline signal of the region. \code{delta.log2FC} is the difference between that mean and the one of the comparison rows, and \code{sample.delta.log2FC} the same difference read from one score per library, the mean log2 signal over the set minus the one over its comparison. Neither of the two tests returns an effect size: \code{camera} says whether the set ranks apart from its comparison, and \code{fry} whether it moved away from zero.
 #'
 #' Two different intervals can be put around that effect and they answer different questions, so both are reported and \code{effectMethod} decides which one is called the confidence interval. The \code{"sample"} interval is the default and is the one to quote as a biological result. One number is computed per library, the mean signal over the set minus the mean signal over its comparison, and those numbers are then run through the design of the experiment. The replication is the biological samples, which is where it comes from in the experiment, and adding regions to a set makes that interval more stable without ever making it narrower than four libraries can support.
 #'
@@ -45,10 +49,12 @@
 #'
 #' A set that overlaps its own comparison in the genome shares reads with it and drags the difference towards zero. Overlap is measured on the coordinates rather than on the identifiers, so two sets holding chr1:1000-2000 and chr1:1500-2500 are seen as overlapping even though no region identifier is shared, and \code{overlapPolicy} decides what happens next. The number of comparison rows removed, or left in place, is reported in \code{n.comparison.overlapping}.
 #'
+#' Regions of the same set can overlap each other too, for instance windows recentred on nearby summits or an annotation listing alternative promoters of one gene. The bases they share are then counted in two rows, so the set leans towards those loci, and the rows move together for a reason the correlation between regions was not estimated for. When the question is the average response per region this can be what is wanted, and \code{overlapWithinSet = "allow"} keeps quiet about it. The default warns, and \code{"stop"} refuses the set. The count is in \code{n.overlapping.within}, and \code{loadRegions(reduceRegions = TRUE)} merges such regions before counting.
+#'
 #' On a tiled fit the row is a tile, and a set assembled from tiles weights each region by how many tiles it was cut into: a 40 kb domain would count forty times a 2 kb one. That changes the question from the average response of the regions in the set to the average response of the base pairs in it. \code{tileHandling = "collapse"} averages the tiles of a region back together first, which keeps the region as the unit and matches what \code{\link{testRegions}} does at its own level. \code{"keep"} is the base-pair version, and is a deliberate choice rather than a default.
 #'
 #' A fit with no replicates loses the self-contained test. \code{fry} builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value \code{limma} uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and \code{interRegionCor} is worth setting by hand from a replicated experiment on the same assay when one exists.
-#' The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the four engines. The self-contained test needs the values themselves and is computed on the log-CPM matrix of the fit; for \code{edgeR} and \code{DESeq2} that matrix is a transformation of the counts rather than the quantity the model was fitted on, so the two are close but not identical, and the competitive test is the one to lead with.
+#' The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the five engines. The self-contained test needs the values themselves. For \code{voom}, \code{limma} and \code{dream} they are the log values the model was fitted on. For \code{edgeR} and \code{DESeq2} the counts are turned into z-scores under the null model of the fit, with its offsets and its dispersion of every region, which is what \code{edgeR} does for its own \code{fry} method, and \code{fry} runs on those without standardising them again. The test then rests on the negative binomial model the regions were tested with rather than on a log-CPM approximation of it. For \code{DESeq2} the null model is refitted by \code{edgeR::glmFit} with the dispersions and normalisation factors of \code{DESeq2}, the same model fitted by another routine. On a fit collapsed from tiles the z-scores of a region are pooled as \code{sum(z) / sqrt(n.tiles)}, which keeps them on the scale of a single z-score. \code{fryInput = "logCPM"} brings back the earlier behaviour, which is worth keeping for comparing results with an older analysis.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -70,7 +76,7 @@
 #' @importFrom SummarizedExperiment colData rowData rowRanges
 #' @importFrom BiocGenerics width
 #' @importFrom GenomicRanges GRanges
-#' @importFrom IRanges IRanges overlapsAny
+#' @importFrom IRanges IRanges overlapsAny countOverlaps
 #' @importFrom limma cameraPR fry
 #' @importFrom stats p.adjust median
 #' @importFrom dplyr mutate filter arrange desc
@@ -91,6 +97,8 @@ testRegionSets <-
            interRegionCor = NULL,
            tileHandling = "collapse",
            overlapPolicy = "drop",
+           overlapWithinSet = "warn",
+           fryInput = "auto",
            useRanks = FALSE,
            FDR = 0.05,
            adjustMethod = "BH",
@@ -120,6 +128,13 @@ testRegionSets <-
       stop("The 'overlapPolicy' parameter must be one among 'allow', 'drop' or 'stop'.", call. = FALSE)
     }
 
+    overlapWithinSet <- .checkWithinSetPolicy(overlapWithinSet)
+
+    fryInput <- tolower(as.character(fryInput[1]))
+    if (!(fryInput %in% c("auto", "logcpm"))) {
+      stop("The 'fryInput' parameter must be either 'auto' or 'logCPM'.", call. = FALSE)
+    }
+
     #-------------------------------#
     # Several contrasts at once     #
     #-------------------------------#
@@ -146,6 +161,7 @@ testRegionSets <-
                                        universe = universe, matchOn = matchOn, universeRatio = universeRatio,
                                        universeSets = universeSets, effectMethod = effectMethod, interRegionCor = interRegionCor,
                                        tileHandling = tileHandling, overlapPolicy = overlapPolicy,
+                                       overlapWithinSet = overlapWithinSet, fryInput = fryInput,
                                        useRanks = useRanks, FDR = FDR, adjustMethod = adjustMethod,
                                        regionSets = regionSets, carryCounts = carryCounts, verbose = verbose))
                })
@@ -256,9 +272,9 @@ testRegionSets <-
       message("Testing ", length(setNames), " region sets for '", contrastObject$label, "'.")
     }
 
-    # fry, the correlation and the sample level effect read the values themselves; the competitive test
+    # The correlation and the sample level effect read the values themselves, the competitive test
     # reads the statistics only
-    expressionMatrix <- if ("fry" %in% method | is.null(interRegionCor) | effectMethod == "sample") {
+    expressionMatrix <- if (is.null(interRegionCor) | effectMethod == "sample") {
       .expressionMatrix(fit = fit)
     } else {
       NULL
@@ -267,6 +283,17 @@ testRegionSets <-
     # The values have to sit at the level the statistics do, or the two describe different rows
     if (!is.null(tileMap) & !is.null(expressionMatrix)) {
       expressionMatrix <- .collapseTileMatrix(expressionMatrix = expressionMatrix, tileMap = tileMap)
+    }
+
+    # fry gets the values of the model the regions were tested with, z-scores for the count engines
+    fryList <- NULL
+    if ("fry" %in% method) {
+      fryList <- .fryValues(fit = fit, contrastVector = contrastObject$vector, fryInput = fryInput)
+
+      if (!is.null(tileMap)) {
+        fryList$values <- .collapseTileMatrix(expressionMatrix = fryList$values, tileMap = tileMap,
+                                              pooling = if (fryList$standardize == "none") {"stouffer"} else {"mean"})
+      }
     }
 
     #-------------------------------#
@@ -279,6 +306,14 @@ testRegionSets <-
 
                if (length(setIndex) < 2) {
                  stop("The set '", setName, "' holds fewer than 2 regions, a set level test needs more.", call. = FALSE)
+               }
+
+               # Regions of the set sharing bases count those bases twice
+               withinOverlap <- .withinSetOverlap(regionStats = regionStats, index = setIndex)
+
+               if (withinOverlap > 0 & overlapWithinSet == "stop") {
+                 stop(withinOverlap, " regions of the set '", setName, "' overlap another region of the same set. ",
+                      "Merge them with loadRegions(reduceRegions = TRUE), or set 'overlapWithinSet' to 'warn' or 'allow'.", call. = FALSE)
                }
 
                # The universe holds the set as well, the comparison is what is left once it is taken out
@@ -356,6 +391,7 @@ testRegionSets <-
                                     n.regions = length(setIndex),
                                     n.comparison = length(backgroundIndex),
                                     n.comparison.overlapping = length(overlappingRows),
+                                    n.overlapping.within = withinOverlap,
                                     mean.log2FC = heterogeneity$mean.set,
                                     median.log2FC = stats::median(regionStats$log2FC[setIndex]),
                                     mean.log2FC.comparison = heterogeneity$mean.background,
@@ -397,10 +433,11 @@ testRegionSets <-
                # Self-contained test           #
                #-------------------------------#
                if ("fry" %in% method) {
-                 fryTable <- limma::fry(y = expressionMatrix,
+                 fryTable <- limma::fry(y = fryList$values,
                                         index = list(set = setIndex),
                                         design = fit@design,
                                         contrast = contrastObject$vector,
+                                        standardize = fryList$standardize,
                                         sort = FALSE)
 
                  setRow$fry.direction <- as.character(fryTable$Direction[1])
@@ -411,6 +448,10 @@ testRegionSets <-
              })
 
     resultTable <- do.call(what = rbind, args = resultList)
+
+    # One warning for every set involved rather than one per set
+    .warnWithinSetOverlap(setTable = resultTable, setColumns = "region.set",
+                          countColumns = "n.overlapping.within", policy = overlapWithinSet)
 
     #-------------------------------#
     # Correct across the sets       #
@@ -455,6 +496,8 @@ testRegionSets <-
                                                                 interRegionCor = interRegionCor,
                                                                 tileHandling = tileHandling,
                                                                 overlapPolicy = overlapPolicy,
+                                                                overlapWithinSet = overlapWithinSet,
+                                                                fryInput = if (is.null(fryList)) {NA_character_} else {fryList$input},
                                                                 useRanks = useRanks,
                                                                 adjustMethod = adjustMethod,
                                                                 carryCounts = carryCounts))))
@@ -487,6 +530,7 @@ testRegionSets <-
 #' @param useRanks Logical value to indicate whether the test must work on the ranks rather than on the statistics. Default: \code{FALSE}.
 #' @param effectMethod String with what the confidence interval on the difference is computed from, either \code{"sample"} or \code{"region"}. Default: \code{"sample"}.
 #' @param sharedRegions String with what to do with the regions the two sets share in the genome, either \code{"drop"} or \code{"stop"}. Default: \code{"drop"}.
+#' @param overlapWithinSet String with what to do when regions on the same side of the pair overlap each other in the genome, one among \code{"allow"}, \code{"warn"} and \code{"stop"}. The counts are reported in \code{n.overlapping.within.1} and \code{n.overlapping.within.2}. Default: \code{"warn"}.
 #' @param FDR Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.
 #' @param adjustMethod String with the multiple testing correction across the pairs. Default: \code{"BH"}.
 #' @param carryCounts Logical value to indicate whether the counts must travel inside the result. Default: \code{TRUE}.
@@ -494,11 +538,13 @@ testRegionSets <-
 #'
 #' @return A \code{RegionSetDE.setResults} object with one row per pair of sets, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list.
 #'
-#' @details The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with the interval selected by \code{effectMethod} beside it and the region-heterogeneity one always reported next to it.
+#' @details The test restricts the universe to the two sets and runs the competitive test of \code{\link{testRegionSets}} on the first of them, which is exactly a comparison of the first set against the second. The effect size is the difference between the two mean log2 fold changes, with the interval selected by \code{effectMethod} beside it and the region-heterogeneity one always reported next to it. As in \code{\link{testRegionSets}}, \code{mean.log2FC.1} and \code{mean.log2FC.2} are means of per-region fold changes, every region counting once, and not the fold changes of the signal pooled over each set.
 #'
 #' This is the function for the redistribution question. A set gaining what another set lost is a claim about two sets, and it is the one claim a global normalisation error cannot manufacture, since a scaling factor that is wrong for one set is wrong for the other in the same way. Asking it through the pattern of a competitive and a self-contained test on a single set does not work, because failing to reject a self-contained null is not evidence that the absolute change was zero.
 #'
 #' A region shared by the two sets carries the same reads into both sides of the comparison and pulls the difference towards zero. Sharing is measured on the genome and not on the identifiers: chr1:1000-2000 in one set and chr1:1500-2500 in the other are half the same chromatin even though neither region identifier appears twice. Overlapping regions are removed from both sides by default and the number removed is reported in \code{n.shared.dropped}; \code{sharedRegions = "stop"} refuses to run instead, which is the safer setting when the overlap is unexpected.
+#'
+#' Overlaps within one side of the pair are a separate matter, measured after the shared regions are removed and handled by \code{overlapWithinSet} as \code{\link{testRegionSets}} handles them.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -515,7 +561,7 @@ testRegionSets <-
 #' @seealso \code{\link{testRegionSets}}, \code{\link{plotSetEffect}}
 #'
 #' @importFrom SummarizedExperiment colData
-#' @importFrom IRanges overlapsAny
+#' @importFrom IRanges overlapsAny countOverlaps
 #' @importFrom limma cameraPR
 #' @importFrom stats p.adjust median
 #' @importFrom dplyr arrange desc
@@ -533,6 +579,7 @@ testSetContrast <-
            interRegionCor = NULL,
            useRanks = FALSE,
            sharedRegions = "drop",
+           overlapWithinSet = "warn",
            FDR = 0.05,
            adjustMethod = "BH",
            carryCounts = TRUE,
@@ -561,7 +608,8 @@ testSetContrast <-
                  }
                  return(testSetContrast(fit = fit, contrast = contrast[[contrastName]], set1 = set1, set2 = set2,
                                         effectMethod = effectMethod, interRegionCor = interRegionCor, useRanks = useRanks,
-                                        sharedRegions = sharedRegions, FDR = FDR, adjustMethod = adjustMethod,
+                                        sharedRegions = sharedRegions, overlapWithinSet = overlapWithinSet,
+                                        FDR = FDR, adjustMethod = adjustMethod,
                                         carryCounts = carryCounts, verbose = verbose))
                })
 
@@ -575,6 +623,8 @@ testSetContrast <-
     if (!(sharedRegions %in% c("drop", "stop"))) {
       stop("The 'sharedRegions' parameter must be either 'drop' or 'stop'.", call. = FALSE)
     }
+
+    overlapWithinSet <- .checkWithinSetPolicy(overlapWithinSet)
 
     effectMethod <- tolower(as.character(effectMethod[1]))
     if (!(effectMethod %in% c("sample", "region"))) {
@@ -664,6 +714,16 @@ testSetContrast <-
                       "' versus '", pairTable$set.2[i], "'.", call. = FALSE)
                }
 
+               # Overlaps inside each side, once the regions shared by the two sides are gone
+               firstWithin <- .withinSetOverlap(regionStats = regionStats, index = firstIndex)
+               secondWithin <- .withinSetOverlap(regionStats = regionStats, index = secondIndex)
+
+               if ((firstWithin + secondWithin) > 0 & overlapWithinSet == "stop") {
+                 stop(firstWithin + secondWithin, " regions of the pair '", pairTable$set.1[i], "' versus '", pairTable$set.2[i],
+                      "' overlap another region on their own side. Merge them with loadRegions(reduceRegions = TRUE), ",
+                      "or set 'overlapWithinSet' to 'warn' or 'allow'.", call. = FALSE)
+               }
+
                #-------------------------------#
                # Correlation and effect size   #
                #-------------------------------#
@@ -708,6 +768,8 @@ testSetContrast <-
                                      n.regions.1 = length(firstIndex),
                                      n.regions.2 = length(secondIndex),
                                      n.shared.dropped = sharedNumber,
+                                     n.overlapping.within.1 = firstWithin,
+                                     n.overlapping.within.2 = secondWithin,
                                      mean.log2FC.1 = heterogeneity$mean.set,
                                      mean.log2FC.2 = heterogeneity$mean.background,
                                      delta.log2FC = heterogeneity$delta,
@@ -733,6 +795,11 @@ testSetContrast <-
              })
 
     resultTable <- do.call(what = rbind, args = resultList)
+
+    .warnWithinSetOverlap(setTable = resultTable, setColumns = c("set.1", "set.2"),
+                          countColumns = c("n.overlapping.within.1", "n.overlapping.within.2"),
+                          policy = overlapWithinSet)
+
     resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
     if ("sample.delta.p" %in% colnames(resultTable)) {
       resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
@@ -766,6 +833,7 @@ testSetContrast <-
                                                           set2 = set2,
                                                           effectMethod = effectMethod,
                                                           sharedRegions = sharedRegions,
+                                                          overlapWithinSet = overlapWithinSet,
                                                           useRanks = useRanks,
                                                           adjustMethod = adjustMethod,
                                                           carryCounts = carryCounts)))))
@@ -873,6 +941,203 @@ testSetContrast <-
     dimnames(logMatrix) <- dimnames(countMatrix)
 
     return(logMatrix)
+  } # END function
+
+
+
+
+#' @title .fryValues
+#'
+#' @description Returns the values the self-contained test is run on: the log values of the fit for the linear engines, and the z-scores of the counts under the null model of the fit for \code{edgeR} and \code{DESeq2}.
+#'
+#' @param fit \code{RegionSetDE.fit} object.
+#' @param contrastVector Numeric vector with the contrast, in the columns of the design.
+#' @param fryInput String, either \code{"auto"} or \code{"logcpm"}. Default: \code{"auto"}.
+#'
+#' @return A list with \code{values}, a numeric matrix with one row per region and one column per sample, \code{standardize}, the value to pass to \code{limma::fry}, and \code{input}, a label of what the values are.
+#'
+#' @details The z-scores follow \code{edgeR}: the null model is the design with the contrast taken out, fitted with the offsets and the dispersion of every region, and each count is turned into the normal deviate of its negative binomial probability under that model (\code{edgeR::zscoreNBinom}). They are computed once for the contrast and shared by all the sets, where \code{fry} on a \code{DGEList} would refit the whole null model for every set. For \code{DESeq2} the offsets are the logarithm of its normalisation or size factors and the dispersions its final ones, so the null model is the one \code{DESeq2} fitted, estimated here by \code{edgeR::glmFit}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom edgeR glmFit zscoreNBinom getDispersion getOffset
+#' @importFrom limma contrastAsCoef
+#' @importFrom stats median
+#'
+#' @keywords internal
+
+.fryValues <-
+  function(fit,
+           contrastVector,
+           fryInput = "auto") {
+
+    # The linear engines were fitted on log values, fry reads them as they are
+    if (fryInput == "logcpm" | !(fit@engine %in% c("edgeR", "deseq2"))) {
+      return(list(values = .expressionMatrix(fit = fit),
+                  standardize = "posterior.sd",
+                  input = if (fit@engine %in% c("edgeR", "deseq2")) {"logCPM"} else {"model log values"}))
+    }
+
+    #-------------------------------#
+    # Counts, offsets, dispersions  #
+    #-------------------------------#
+    if (fit@engine == "edgeR") {
+      dgeList <- fit@fit$dge
+      countMatrix <- as.matrix(dgeList$counts)
+      offsetValues <- edgeR::getOffset(dgeList)
+      dispersionValues <- edgeR::getDispersion(dgeList)
+    } else {
+      if (!requireNamespace("DESeq2", quietly = TRUE)) {
+        stop("The 'DESeq2' package is needed to read the dispersions of this fit.", call. = FALSE)
+      }
+      ddsObject <- fit@fit$object
+      countMatrix <- as.matrix(DESeq2::counts(ddsObject, normalized = FALSE))
+      normFactors <- DESeq2::normalizationFactors(ddsObject)
+      offsetValues <- if (is.null(normFactors)) {log(DESeq2::sizeFactors(ddsObject))} else {log(as.matrix(normFactors))}
+      dispersionValues <- DESeq2::dispersions(ddsObject)
+    }
+
+    if (is.null(dispersionValues)) {
+      stop("No dispersion is stored in the fit, the z-scores for fry cannot be computed. Use fryInput = 'logCPM'.", call. = FALSE)
+    }
+
+    # A region DESeq2 left without dispersion (all counts zero) takes the typical one
+    dispersionValues[!is.finite(dispersionValues)] <- stats::median(dispersionValues, na.rm = TRUE)
+
+    #-------------------------------#
+    # Null model of the contrast    #
+    #-------------------------------#
+    # The contrast becomes the last coefficient, and dropping it leaves the model without the effect tested
+    contrastDesign <- limma::contrastAsCoef(design = fit@design, contrast = contrastVector, first = FALSE)$design
+    nullDesign <- contrastDesign[, -ncol(contrastDesign), drop = FALSE]
+
+    nullFit <- edgeR::glmFit(y = countMatrix,
+                             design = nullDesign,
+                             offset = offsetValues,
+                             dispersion = dispersionValues,
+                             prior.count = 0)
+
+    zMatrix <- edgeR::zscoreNBinom(q = countMatrix,
+                                   size = 1 / dispersionValues,
+                                   mu = pmax(nullFit$fitted.values, 1e-17))
+    dimnames(zMatrix) <- dimnames(countMatrix)
+
+    return(list(values = zMatrix,
+                standardize = "none",
+                input = "NB z-scores"))
+  } # END function
+
+
+
+
+#' @title .checkWithinSetPolicy
+#'
+#' @description Checks the value of \code{overlapWithinSet}.
+#'
+#' @param overlapWithinSet Value passed by the user.
+#'
+#' @return The value in lower case.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkWithinSetPolicy <-
+  function(overlapWithinSet) {
+
+    overlapWithinSet <- tolower(as.character(overlapWithinSet[1]))
+    if (!(overlapWithinSet %in% c("allow", "warn", "stop"))) {
+      stop("The 'overlapWithinSet' parameter must be one among 'allow', 'warn' or 'stop'.", call. = FALSE)
+    }
+
+    return(overlapWithinSet)
+  } # END function
+
+
+
+
+#' @title .withinSetOverlap
+#'
+#' @description Counts the rows of a set that overlap another row of the same set in the genome.
+#'
+#' @param regionStats Data.frame returned by \code{.setStatistics}.
+#' @param index Integer vector with the rows of the set.
+#'
+#' @return An integer value.
+#'
+#' @details Adjacent tiles of one region touch without sharing a base, so a tiled set kept at the tile level is not reported here.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom IRanges countOverlaps
+#'
+#' @keywords internal
+
+.withinSetOverlap <-
+  function(regionStats,
+           index) {
+
+    if (length(index) < 2 | is.null(regionStats$seqnames)) {
+      return(0L)
+    }
+
+    setRanges <- .statsRanges(regionStats = regionStats, index = index)
+
+    # Every row overlaps itself, so a count above one means another row shares bases with it
+    overlapCounts <- IRanges::countOverlaps(query = setRanges, subject = setRanges, ignore.strand = TRUE)
+
+    return(as.integer(sum(overlapCounts > 1)))
+  } # END function
+
+
+
+
+#' @title .warnWithinSetOverlap
+#'
+#' @description Raises one warning listing every set with regions overlapping each other, when the policy asks for it.
+#'
+#' @param setTable Data.frame of the results, one row per set or per pair.
+#' @param setColumns Character vector with the columns naming the sets.
+#' @param countColumns Character vector with the columns holding the counts, in the order of \code{setColumns}.
+#' @param policy String with the value of \code{overlapWithinSet}.
+#'
+#' @return Nothing, called for the warning.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom dplyr filter distinct
+#' @importFrom rlang .data
+#'
+#' @keywords internal
+
+.warnWithinSetOverlap <-
+  function(setTable,
+           setColumns,
+           countColumns,
+           policy) {
+
+    if (policy != "warn") {
+      return(invisible(NULL))
+    }
+
+    # The same set shows up in several pairs, it is listed once
+    overlapTable <- do.call(what = rbind,
+                            args = lapply(seq_along(setColumns),
+                                          function(i) {
+                                            data.frame(set = as.character(setTable[[setColumns[i]]]),
+                                                       n = as.integer(setTable[[countColumns[i]]]),
+                                                       stringsAsFactors = FALSE)
+                                          }))
+    overlapTable <- dplyr::distinct(dplyr::filter(overlapTable, .data$n > 0))
+
+    if (nrow(overlapTable) > 0) {
+      warning("Regions of the same set overlap each other, so the bases they share count twice in the set: ",
+              paste(sprintf("%s (%d)", overlapTable$set, overlapTable$n), collapse = ", "),
+              ". Merge them with loadRegions(reduceRegions = TRUE), or set overlapWithinSet = 'allow' if the ",
+              "average per region is what is meant.", call. = FALSE)
+    }
+
+    return(invisible(NULL))
   } # END function
 
 
@@ -1192,6 +1457,7 @@ testSetContrast <-
 #'
 #' @param expressionMatrix Numeric matrix with one row per tile.
 #' @param tileMap Integer vector giving the collapsed row of every tile, as returned by \code{.collapseTileStats}.
+#' @param pooling String with how the tiles are pooled, either \code{"mean"}, their average, or \code{"stouffer"}, their sum divided by the square root of their number, which keeps z-scores on the scale of a single one. Default: \code{"mean"}.
 #'
 #' @return A numeric matrix with one row per region.
 #'
@@ -1201,10 +1467,16 @@ testSetContrast <-
 
 .collapseTileMatrix <-
   function(expressionMatrix,
-           tileMap) {
+           tileMap,
+           pooling = "mean") {
 
     summedMatrix <- rowsum(x = expressionMatrix, group = tileMap, reorder = TRUE)
     tileNumber <- as.numeric(table(tileMap))
+
+    # An average of k z-scores has a variance of 1/k, which fry would read as a quieter region
+    if (pooling == "stouffer") {
+      return(summedMatrix / sqrt(tileNumber))
+    }
 
     return(summedMatrix / tileNumber)
   } # END function

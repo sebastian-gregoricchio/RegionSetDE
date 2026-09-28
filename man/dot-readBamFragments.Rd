@@ -22,7 +22,7 @@
 
 \item{pairedEnd}{Logical vector with one value per BAM file.}
 
-\item{fragmentLength}{Numeric value with the length to which single-end reads are extended.}
+\item{fragmentLength}{Integer vector with the length to which single-end reads are extended, one value per BAM file.}
 
 \item{maxFragmentLength}{Numeric value with the maximum length of a paired-end fragment.}
 

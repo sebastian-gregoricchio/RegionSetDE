@@ -16,6 +16,7 @@ countTable(object, ...)
   object,
   level = "region",
   normalized = FALSE,
+  input = FALSE,
   format = "wide",
   set = NULL,
   tileSummary = NULL,
@@ -42,6 +43,8 @@ countTable(object, ...)
 
 \item{normalized}{Logical value to indicate whether the normalised values must be returned instead of the raw ones. Default: \code{FALSE}.}
 
+\item{input}{Logical value to indicate whether the counts of the inputs must be returned instead of those of the samples, one column per sample holding the counts of its input, as stored by \code{\link{countReads}}. The inputs are never normalised, so it cannot be combined with \code{normalized = TRUE}. Default: \code{FALSE}.}
+
 \item{format}{String with the shape of the output: \code{"wide"} gives one column per sample, \code{"long"} one row per row of the object and sample, with the \code{colData} of the samples attached, and \code{"matrix"} a numeric matrix with the rows named after the regions. Default: \code{"wide"}.}
 
 \item{set}{Character vector with the names of the region sets to keep. Default: \code{NULL}, all of them.}
@@ -53,7 +56,7 @@ countTable(object, ...)
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-With \code{format = "wide"}, a data.frame with one row per region, or per tile, described by the \code{region.set}, \code{region.id}, \code{tile.id} (tiles only), \code{seqnames}, \code{start}, \code{end} and \code{width} columns, followed by the annotation of the regions and by one column per sample. When the tiles have been combined, \code{n.tiles} reports how many of them each region was built from. With \code{format = "long"}, a data.frame with the same description repeated for every sample, a \code{sample} column, the values in a column named after the assay they were read from (\code{counts}, or \code{norm.counts} for the normalised ones), and the \code{colData} of the samples. With \code{format = "matrix"}, a numeric matrix with one column per sample and the rows named \code{"set|id"}, or \code{"set|id|tileN"} for the tiles.
+With \code{format = "wide"}, a data.frame with one row per region, or per tile, described by the \code{region.set}, \code{region.id}, \code{tile.id} (tiles only), \code{seqnames}, \code{start}, \code{end} and \code{width} columns, followed by the annotation of the regions and by one column per sample. When the tiles have been combined, \code{n.tiles} reports how many of them each region was built from. With \code{format = "long"}, a data.frame with the same description repeated for every sample, a \code{sample} column, the values in a column named after the assay they were read from (\code{counts}, \code{norm.counts} for the normalised ones, or \code{input}), and the \code{colData} of the samples. With \code{format = "matrix"}, a numeric matrix with one column per sample and the rows named \code{"set|id"}, or \code{"set|id|tileN"} for the tiles.
 }
 \description{
 Returns the values of a counts object as a table, one row per region or per tile, with the coordinates and the annotation of each row next to the values of the samples. The values can be raw or normalised, and come in wide or long format, or as a plain matrix. On a tiled object the tiles can be combined back into their region.

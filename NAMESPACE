@@ -7,9 +7,11 @@ export(asDESeqDataSet)
 export(asDGEList)
 export(availableRegionLists)
 export(checkNullCalibration)
+export(computeProfiles)
 export(computeSampleCorrelation)
 export(computeSamplePCA)
 export(consensusData)
+export(consensusGroupList)
 export(contrastInfo)
 export(contrastName)
 export(countBackground)
@@ -19,6 +21,7 @@ export(countReads)
 export(countTable)
 export(countingLevel)
 export(dispersionInfo)
+export(estimateFragmentLength)
 export(estimateNullDispersion)
 export(exportResults)
 export(filterRegions)
@@ -44,6 +47,7 @@ export(plotNormComparison)
 export(plotNullCalibration)
 export(plotPeakOccupancy)
 export(plotPeakUpset)
+export(plotProfile)
 export(plotRegion)
 export(plotRegionPCA)
 export(plotResultsMA)
@@ -125,11 +129,13 @@ importFrom(BiocParallel,
 )
 importFrom(GenomeInfoDb,
   "genome<-",
+  "seqlengths<-",
   "seqlevels<-",
   "seqlevelsStyle<-",
   genome,
   mapSeqlevels,
   seqinfo,
+  seqlengths,
   seqlevels,
   seqlevelsStyle,
   seqnames
@@ -137,21 +143,30 @@ importFrom(GenomeInfoDb,
 importFrom(GenomicRanges,
   GRanges,
   GRangesList,
+  coverage,
   findOverlaps,
   granges,
+  intersect,
   makeGRangesFromDataFrame,
   setdiff,
-  split
+  split,
+  union
 )
 importFrom(IRanges,
+  "ranges<-",
   IRanges,
+  Views,
   countOverlaps,
   coverage,
+  findOverlaps,
   overlapsAny,
   pintersect,
   ranges,
   reduce,
-  slidingWindows
+  slidingWindows,
+  viewMaxs,
+  viewMeans,
+  viewRangeMaxs
 )
 importFrom(Rsamtools,
   BamFile,
@@ -364,6 +379,7 @@ importFrom(stats,
 importFrom(utils,
   combn,
   head,
+  modifyList,
   read.delim,
   read.table,
   write.table

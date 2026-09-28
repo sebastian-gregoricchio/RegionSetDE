@@ -8,20 +8,26 @@ computeSampleCorrelation(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   method = "spearman",
+  jaccardLevel = "region",
   useOffsets = TRUE,
   topRegions = NULL,
   verbose = TRUE
 )
 }
 \arguments{
-\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package.}
+\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package. For \code{method = "jaccard"}, the \code{RegionSetDE} object returned by \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList} or list of \code{GRanges} with the peaks of every sample.}
 
-\item{set}{Character vector with the names of the region sets used. Default: \code{NULL}, all of them.}
+\item{set}{Character vector with the names of the region sets used. For \code{method = "jaccard"}, only the peaks overlapping the regions of these sets are compared. Default: \code{NULL}, all of them.}
 
 \item{contrast}{String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.}
 
-\item{method}{String with the correlation, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}. Default: \code{"spearman"}.}
+\item{samples}{Samples the correlation is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples. For \code{method = "jaccard"} the samples whose peaks are compared. Default: \code{NULL}, all of them.}
+
+\item{method}{String with the measure, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}, computed on the signal, or \code{"jaccard"}, computed on the peak calls. Default: \code{"spearman"}.}
+
+\item{jaccardLevel}{String with what the Jaccard index counts, either \code{"region"}, the regions of the union of all the peaks occupied by both samples over those occupied by either, or \code{"basepair"}, the base pairs covered by the peaks of both samples over those covered by either. Only for \code{method = "jaccard"}. Default: \code{"region"}.}
 
 \item{useOffsets}{Logical value to indicate whether the normalisation stored in the object must be applied, \code{FALSE} scaling the samples by their library sizes alone. Default: \code{TRUE}.}
 
@@ -30,15 +36,17 @@ computeSampleCorrelation(
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A list with \code{correlation}, the matrix of the correlations between the samples; \code{samples}, the \code{colData} of the object with a \code{sample} column in the order of the matrix; and \code{parameters}, with the method, the normalisation, the region sets and the number of regions used.
+A list with \code{correlation}, the matrix of the correlations between the samples, or of the Jaccard indices; \code{samples}, the \code{colData} of the object with a \code{sample} column in the order of the matrix, or the sample sheet the peaks were read from; and \code{parameters}, with the method, the normalisation, the region sets and the number of regions used.
 }
 \description{
-Computes the correlation between the samples of an object on the log2 signal of its regions, normalised or raw, and returns it together with the annotation of the samples, ready for \code{\link{plotSampleCorrelation}} or for any other use.
+Computes the correlation between the samples of an object on the log2 signal of its regions, normalised or raw, and returns it together with the annotation of the samples, ready for \code{\link{plotSampleCorrelation}} or for any other use. With \code{method = "jaccard"} the samples are compared on where their peaks were called rather than on their signal, as the Jaccard index of their peak sets.
 }
 \details{
 The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeCounts}} applied. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised correlations of one object are computed on the same rows.
 
 A correlation does not see a single factor per sample. Scaling a library moves its log values by a constant, which leaves the three correlations exactly where they were, so \code{useOffsets} changes the matrix only when the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. An ordination is a different matter, and \code{\link{plotRegionPCA}} does move with the factors.
+
+The Jaccard index is the occupancy counterpart of the correlation, what DiffBind draws before counting any read. It goes from zero, for two samples with no peak in common, to one, for two identical peak sets, and one minus it is the Jaccard distance the samples are clustered on by \code{\link{plotSampleCorrelation}}. At the \code{"region"} level the union of the peaks of all the samples is the list of places, and each sample either has a peak on a place or not, so that a broad peak and a narrow one on the same site count as a match. At the \code{"basepair"} level the widths count, as in \code{bedtools jaccard}, and two samples calling the same sites with different widths come out less similar. The peaks are those kept by \code{\link{loadConsensusPeaks}} after its \code{blacklist} and \code{greylist}, so the artefacts weigh on neither sample. The index says nothing about how strong the signal is, and a sample with far fewer peaks than the others is dissimilar to all of them even when its peaks are a subset of theirs: the number of peaks of every sample, in \code{consensusData(x)$samples}, is worth reading next to it. \code{useOffsets} and \code{topRegions} do not apply.
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
@@ -46,6 +54,19 @@ counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
 sampleCorrelation <- computeSampleCorrelation(counts, method = "pearson")
 round(sampleCorrelation$correlation, 3)
+
+# The samples of one strain only
+brownNorway <- SummarizedExperiment::colData(counts)$condition == "BN"
+round(computeSampleCorrelation(counts, samples = brownNorway, method = "pearson")$correlation, 3)
+
+# Occupancy: the Jaccard index of the peak sets of the AR example
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+
+  peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
+  round(peakJaccard$correlation, 2)
+}
 
 }
 \seealso{

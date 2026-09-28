@@ -7,7 +7,8 @@
 loadConsensusPeaks(
   sampleSheet,
   groupBy = NULL,
-  excludeRegions = NULL,
+  blacklist = NULL,
+  greylist = NULL,
   regionSets = NULL,
   regionMode = "split",
   unassignedSet = "other",
@@ -23,7 +24,9 @@ loadConsensusPeaks(
 
 \item{groupBy}{String with the column of the sample sheet defining the groups, for instance \code{"condition"}. Default: \code{NULL}, all the samples form a single group.}
 
-\item{excludeRegions}{Regions whose peaks must be dropped before any consensus is built, typically a blacklist and the greylist returned by \code{\link{makeGreylist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them. Default: \code{NULL}.}
+\item{blacklist}{Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.}
+
+\item{greylist}{Regions of this experiment whose peaks must be dropped before any consensus is built, typically the list built from the inputs by \code{\link{makeGreylist}}. Accepts the same forms as \code{blacklist}. Default: \code{NULL}.}
 
 \item{regionSets}{Regions of interest of the user, in any form accepted by \code{\link{loadRegions}}: a named list of paths, \code{GRanges} or data.frames. Default: \code{NULL}, the total consensus is the only set.}
 
@@ -42,7 +45,7 @@ loadConsensusPeaks(
 \item{...}{Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.}
 }
 \value{
-A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the exclusion, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them.
+A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot, the size of the greylist to \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}.
 }
 \description{
 Builds the regions of an analysis from the peaks called on each sample. The peaks are combined into a consensus within each group of samples through \code{consensusRegions}, and the group consensus are pooled into a total one, which becomes the region set counted downstream. Regions supplied by the user can split the total consensus into sets, or take its place.
@@ -52,7 +55,7 @@ The consensus is built group by group and then pooled, rather than once over all
 
 The peaks are read by \code{consensusRegions}, which keeps the standard chromosomes only, as \code{GenomeInfoDb::keepStandardChromosomes} defines them: scaffolds, patches and unplaced contigs are dropped, and so are chromosomes whose names it does not recognise.
 
-The peaks overlapping \code{excludeRegions} are removed before the consensus, not after it. An artefact lying next to a genuine peak would otherwise merge with it, and removing the merged region afterwards would take the genuine peak away as well.
+The peaks overlapping \code{blacklist} and \code{greylist} are removed before the consensus, not after it. An artefact lying next to a genuine peak would otherwise merge with it, and removing the merged region afterwards would take the genuine peak away as well. The blacklist is applied first and the greylist to the peaks left, so a peak lying on both is counted as blacklisted. The two lists are kept apart because they say different things: a blacklist describes the assembly and is the same for every experiment, a greylist describes the inputs of this one. Both are recorded the way \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} record them, so the counts, the fit and the results built from the object carry the blacklist with them and \code{\link{exportResults}} writes it down. \code{consensusData(x)$removed} holds the peaks taken out, with the sample they came from and the list that removed them, and \code{consensusData(x)$samples} their number per sample. A blacklist built for another assembly than \code{genomeAssembly} is refused, as \code{\link{applyBlacklist}} refuses it.
 
 With \code{regionMode = "split"} the consensus regions are assigned to the sets of \code{regionSets} in the order they are given, a region overlapping two sets going to the first one. The sets then describe classes of peaks, such as promoter and distal ones, and \code{\link{testRegionSets}} can compare them. With \code{regionMode = "replace"} the counted regions are those of \code{regionSets}, and the peaks only tell which of them are occupied in each group.
 
@@ -86,7 +89,7 @@ if (requireNamespace("consensusRegions", quietly = TRUE)) {
 
 }
 \seealso{
-\code{\link{plotPeakUpset}}, \code{\link{consensusData}}, \code{\link{loadSampleSheet}}, \code{\link{makeGreylist}}
+\code{\link{plotPeakUpset}}, \code{\link{consensusData}}, \code{\link{loadSampleSheet}}, \code{\link{loadBlacklist}}, \code{\link{makeGreylist}}
 }
 \author{
 Sebastian Gregoricchio

@@ -109,7 +109,7 @@ test_that("a list built for another assembly is refused", {
 test_that("countGreenlist stores the counts beside the regions", {
 
   counts <- greenlistCountsObject()
-  counts <- countGreenlist(counts, greenlist = toyGreenlist(), pairedEnd = FALSE, verbose = FALSE)
+  counts <- countGreenlist(counts, greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
 
   greenlistCounts <- S4Vectors::metadata(counts)$greenlist
 
@@ -135,7 +135,7 @@ test_that("countGreenlist stores the counts beside the regions", {
 test_that("the greenlist factors follow the median of ratios", {
 
   counts <- greenlistCountsObject()
-  countedCounts <- countGreenlist(counts, greenlist = toyGreenlist(), pairedEnd = FALSE, verbose = FALSE)
+  countedCounts <- countGreenlist(counts, greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
 
   # Two copies of one library have nothing to scale between them
   normalized <- normalizeCounts(countedCounts, method = "greenlist", verbose = FALSE)
@@ -168,10 +168,68 @@ test_that("the greenlist factors follow the median of ratios", {
 
 test_that("the greenlist joins the other methods in the normalisation comparison", {
 
-  counts <- countGreenlist(greenlistCountsObject(), greenlist = toyGreenlist(), pairedEnd = FALSE, verbose = FALSE)
+  counts <- countGreenlist(greenlistCountsObject(), greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
 
   comparisonTable <- plotNormComparison(counts, methods = c("librarySize", "greenlist"), returnData = TRUE)
 
   expect_s3_class(comparisonTable, "data.frame")
   expect_setequal(unique(comparisonTable$method), c("librarySize", "greenlist"))
+})
+
+
+test_that("countGreenlist leaves out the greenlist regions the regions of the study fall on", {
+
+  counts <- greenlistCountsObject()
+
+  # The toy regions cover the first four greenlist regions of each contig, only the last one is clear of them
+  keptCounts <- countGreenlist(counts, greenlist = toyGreenlist(), pairedEnd = FALSE, verbose = FALSE)
+
+  expect_identical(nrow(S4Vectors::metadata(keptCounts)$greenlist), 2L)
+  expect_identical(keptCounts@parameters$countGreenlist$n.excluded.regions, 8L)
+  expect_true(all(BiocGenerics::start(SummarizedExperiment::rowRanges(S4Vectors::metadata(keptCounts)$greenlist)) == 1300L))
+
+  # A list made of the regions themselves has nothing left to normalise on
+  expect_error(countGreenlist(counts, greenlist = SummarizedExperiment::rowRanges(counts), pairedEnd = FALSE, verbose = FALSE),
+               "Every greenlist region overlaps")
+})
+
+
+test_that("countGreenlist describes every library over the list", {
+
+  counts <- countGreenlist(greenlistCountsObject(), greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
+  libraryTable <- SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
+
+  expect_true(all(c("totals", "regions.covered", "library.fraction") %in% colnames(libraryTable)))
+  expect_identical(libraryTable$regions.covered, c(10L, 10L))
+  expect_equal(libraryTable$library.fraction, libraryTable$totals / SummarizedExperiment::colData(counts)$library.size)
+})
+
+
+test_that("thin libraries are reported against the conditions the lists were built under", {
+
+  greenlistExperiment <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(counts = matrix(1, nrow = 5, ncol = 3, dimnames = list(NULL, c("a", "b", "c")))),
+    colData = S4Vectors::DataFrame(regions.covered = c(100L, 90L, 20L), row.names = c("a", "b", "c")))
+
+  # A library reaching a fifth of the regions of the others
+  expect_warning(RegionSetDE:::.checkGreenlistLibraries(greenlistExperiment, librarySizes = rep(1e7, 3)),
+                 "fewer than half as many greenlist regions")
+
+  # Below the depth of the libraries the human CUT&RUN list was built from
+  expect_warning(RegionSetDE:::.checkGreenlistLibraries(greenlistExperiment, librarySizes = c(1e7, 1e7, 1e6),
+                                                        greenlistInfo = list(genome = "hg38", assay = "cutrun")),
+                 "1,500,000")
+
+  # The same depth is enough for CUT&Tag
+  expect_warning(RegionSetDE:::.checkGreenlistLibraries(greenlistExperiment, librarySizes = c(1e7, 1e7, 1e6),
+                                                        greenlistInfo = list(genome = "hg38", assay = "cuttag")),
+                 "fewer than half")
+})
+
+
+test_that("the median of ratios says how many regions it rests on", {
+
+  counts <- countGreenlist(greenlistCountsObject(), greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
+
+  expect_message(normalizeCounts(counts, method = "greenlist", verbose = TRUE), "greenlist regions with reads in every sample, out of 10")
 })

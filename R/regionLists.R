@@ -2,7 +2,7 @@
 
 #' @title loadBlacklist
 #'
-#' @description Returns a blacklist shipped with the package, ready for \code{\link{applyBlacklist}} or for the \code{excludeRegions} argument of \code{\link{loadConsensusPeaks}}. The files travel with the package, so nothing is downloaded and nothing depends on a hub being reachable.
+#' @description Returns a blacklist shipped with the package, ready for \code{\link{applyBlacklist}} or for the \code{blacklist} argument of \code{\link{loadConsensusPeaks}}. The files travel with the package, so nothing is downloaded and nothing depends on a hub being reachable.
 #'
 #' @param genome String with the genome assembly, such as \code{"hg38"}, \code{"mm10"} or \code{"hs1"} for T2T-CHM13v2.0. The usual aliases are understood, \code{"GRCh38"} and \code{"T2T"} for instance. Run \code{\link{availableRegionLists}} for the whole list.
 #' @param assay String with the assay the list was built for, \code{"cutrun"} or \code{"cuttag"}. Default: \code{NULL}, the ENCODE blacklist, which is not tied to an assay.

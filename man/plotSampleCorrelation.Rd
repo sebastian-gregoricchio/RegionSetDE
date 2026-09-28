@@ -8,7 +8,9 @@ plotSampleCorrelation(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   method = "spearman",
+  jaccardLevel = "region",
   groupBy = NULL,
   annotationColumns = NULL,
   annotationColours = NULL,
@@ -31,13 +33,17 @@ plotSampleCorrelation(
 )
 }
 \arguments{
-\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSampleCorrelation}}.}
+\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSampleCorrelation}}. For \code{method = "jaccard"}, the \code{RegionSetDE} object returned by \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList} or list of \code{GRanges} with the peaks of every sample.}
 
 \item{set}{Character vector with the names of the region sets used. Default: \code{NULL}, all of them.}
 
 \item{contrast}{String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.}
 
-\item{method}{String with the correlation, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}. Default: \code{"spearman"}.}
+\item{samples}{Samples drawn, see \code{\link{computeSampleCorrelation}}. Default: \code{NULL}, all of them.}
+
+\item{method}{String with the measure, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}, computed on the signal, or \code{"jaccard"}, the Jaccard index of the peak calls. Default: \code{"spearman"}.}
+
+\item{jaccardLevel}{String, either \code{"region"} or \code{"basepair"}, see \code{\link{computeSampleCorrelation}}. Only for \code{method = "jaccard"}. Default: \code{"region"}.}
 
 \item{groupBy}{String with the name of a \code{colData} column defining the groups whose within and between correlations are summarised in the title. Default: \code{NULL}.}
 
@@ -81,7 +87,7 @@ plotSampleCorrelation(
 A \code{Heatmap} built by \code{ComplexHeatmap}, or a \code{HeatmapList} when \code{compareOffsets} or \code{facetBySet} draw several of them, drawn when printed. \code{ComplexHeatmap::draw} opens the layout, for instance \code{draw(x, heatmap_legend_side = "bottom")} or \code{draw(x, ht_gap = grid::unit(5, "mm"))} to push several panels apart. The matrices themselves come out of \code{\link{computeSampleCorrelation}}.
 }
 \description{
-Draws the correlation between the samples as a heatmap, clustered and annotated with any column of the sample table, such as the condition, the treatment or the replicate. The correlation can be computed on the normalised or on the raw signal, on every region or on the most variable ones.
+Draws the correlation between the samples as a heatmap, clustered and annotated with any column of the sample table, such as the condition, the treatment or the replicate. The correlation can be computed on the normalised or on the raw signal, on every region or on the most variable ones. With \code{method = "jaccard"} the heatmap shows instead how similar the peak sets of the samples are, before any read is counted.
 }
 \details{
 The scale runs over the values off the diagonal rather than from zero to one, because every sample correlates with itself perfectly and every pair of libraries from the same assay correlates highly. A scale anchored at zero turns the whole matrix one shade and hides the differences that matter. \code{limits} takes that decision back, and either end can be left as \code{NA} to be read from the data: \code{c(NA, 1)} fixes the top at one and lets the bottom follow the values. Values outside \code{limits} are drawn at the nearest end, which hides how far past it they went, so the number of cells concerned is reported.
@@ -91,6 +97,8 @@ The palette is sequential, since a correlation has a low end and a high end and 
 With \code{groupBy}, the mean correlation within a group and between groups is written in the title. Within above between is what a usable experiment looks like; the two being equal says the condition effect is small next to the replicate noise, and that is the answer about whether to block, regardless of what an ordination suggests.
 
 The clustering, on one minus the correlation, comes from the first heatmap and is reused by the others, so a comparison across \code{compareOffsets} or \code{facetBySet} shows the values changing rather than the samples moving. The dendrogram on the side is drawn once for the same reason, and so are the sample names, the columns of every panel following the order of the rows. Numeric annotation columns get a grey gradient, and turning one into a factor colours it by level instead, which suits a replicate number.
+
+With \code{method = "jaccard"} the cells hold the Jaccard index of the peak sets, and the samples are clustered on the Jaccard distance, one minus the index. The panels of \code{facetBySet} compare the peaks overlapping each set, while \code{useOffsets}, \code{compareOffsets} and \code{topRegions} have no counts to act on and are ignored. The sample annotation comes from the sample sheet the consensus was built from.
 
 \code{compareOffsets} answers less here than it does on an ordination. A correlation does not see a single factor per sample, so the two panels come out identical unless the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. Whether the scaling factors are driving a grouping is a question for \code{\link{plotRegionPCA}}.
 }
@@ -102,6 +110,14 @@ plotSampleCorrelation(counts, groupBy = "condition", annotationColumns = c("cond
 
 # The same samples before and after the normalisation, on the CpG island promoters only
 plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson", compareOffsets = TRUE)
+
+# Occupancy of the peak calls, as the Jaccard index
+if (requireNamespace("consensusRegions", quietly = TRUE)) {
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+
+  plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
+}
 
 }
 \seealso{

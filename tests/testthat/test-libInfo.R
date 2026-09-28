@@ -12,7 +12,8 @@ test_that("libInfo puts the reads of the files next to the ones of the regions",
   infoTable <- libInfo(counts, annotationColumns = "condition")
 
   expect_identical(colnames(infoTable),
-                   c("sample", "condition", "paired.end", "bam.reads", "bam.mapped", "library.size", "reads.in.regions", "FRiP"))
+                   c("sample", "condition", "paired.end", "fragment.length", "bam.reads", "bam.mapped", "library.size", "reads.in.regions", "FRiP",
+                     "input.id", "input.library.size", "input.in.regions", "input.FRiP"))
   expect_identical(infoTable$sample, colnames(counts))
   expect_identical(infoTable$condition, sampleSheet$condition)
 

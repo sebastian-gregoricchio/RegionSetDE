@@ -4,9 +4,10 @@
 #'
 #' @description Places the samples on the first principal components of the region signal, which is the fastest way to see whether the conditions separate, whether the replicates pair, and whether either of those is really the sequencing depth in disguise.
 #'
-#' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSamplePCA}}, in which case \code{set}, \code{useOffsets}, \code{compareOffsets}, \code{facetBySet} and \code{topRegions} are those of the computation.
+#' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSamplePCA}}, in which case \code{set}, \code{samples}, \code{useOffsets}, \code{compareOffsets}, \code{facetBySet} and \code{topRegions} are those of the computation.
 #' @param set Character vector with the names of the region sets used. Default: \code{NULL}, all of them.
 #' @param contrast String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.
+#' @param samples Samples the ordination is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples, and \code{useOffsets = FALSE} gives the library sizes alone. Default: \code{NULL}, all of them.
 #' @param colourBy String with the name of a \code{colData} column driving the colour. Default: \code{NULL}.
 #' @param shapeBy String with the name of a \code{colData} column driving the shape. Default: \code{NULL}.
 #' @param labelBy String with the name of a \code{colData} column written next to the points, or \code{"sample"}. Default: \code{"sample"}.
@@ -57,6 +58,7 @@ plotRegionPCA <-
   function(object,
            set = NULL,
            contrast = NULL,
+           samples = NULL,
            colourBy = NULL,
            shapeBy = NULL,
            labelBy = "sample",
@@ -97,7 +99,7 @@ plotRegionPCA <-
       nameOffsets <- isFALSE(object$parameters$useOffsets)
       colTable <- .sampleTable(sampleAnnotation = object$scores, colourBy = colourBy, shapeBy = shapeBy, labelBy = labelBy)
     } else {
-      counts <- .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts
+      counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
 
       if (ncol(counts) < 3) {
         stop("At least three samples are needed for an ordination.", call. = FALSE)
@@ -229,6 +231,7 @@ plotRegionPCA <-
 #' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package.
 #' @param set Character vector with the names of the region sets used. Default: \code{NULL}, all of them.
 #' @param contrast String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.
+#' @param samples Samples the ordination is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples, and \code{useOffsets = FALSE} gives the library sizes alone. Default: \code{NULL}, all of them.
 #' @param useOffsets Logical value to indicate whether the normalisation stored in the object must be applied, \code{FALSE} scaling the samples by their library sizes alone. Default: \code{TRUE}.
 #' @param topRegions Numeric value with the number of most variable regions the ordination is computed on. Default: \code{2000}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
@@ -245,6 +248,9 @@ plotRegionPCA <-
 #' samplePCA$variance
 #' head(samplePCA$scores[, c("sample", "PC1", "PC2", "condition")])
 #'
+#' # Three of the four samples, with the normalisation of all four
+#' computeSamplePCA(counts, samples = colnames(counts)[1:3], topRegions = 1000)$variance
+#'
 #' @author Sebastian Gregoricchio
 #'
 #' @seealso \code{\link{plotRegionPCA}}, \code{\link{computeSampleCorrelation}}
@@ -258,6 +264,7 @@ computeSamplePCA <-
   function(object,
            set = NULL,
            contrast = NULL,
+           samples = NULL,
            useOffsets = TRUE,
            topRegions = 2000,
            verbose = TRUE) {
@@ -265,7 +272,7 @@ computeSamplePCA <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
-    counts <- .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts
+    counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
 
     if (ncol(counts) < 3) {
       stop("At least three samples are needed for an ordination.", call. = FALSE)
@@ -321,21 +328,25 @@ computeSamplePCA <-
 
 #' @title computeSampleCorrelation
 #'
-#' @description Computes the correlation between the samples of an object on the log2 signal of its regions, normalised or raw, and returns it together with the annotation of the samples, ready for \code{\link{plotSampleCorrelation}} or for any other use.
+#' @description Computes the correlation between the samples of an object on the log2 signal of its regions, normalised or raw, and returns it together with the annotation of the samples, ready for \code{\link{plotSampleCorrelation}} or for any other use. With \code{method = "jaccard"} the samples are compared on where their peaks were called rather than on their signal, as the Jaccard index of their peak sets.
 #'
-#' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package.
-#' @param set Character vector with the names of the region sets used. Default: \code{NULL}, all of them.
+#' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package. For \code{method = "jaccard"}, the \code{RegionSetDE} object returned by \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList} or list of \code{GRanges} with the peaks of every sample.
+#' @param set Character vector with the names of the region sets used. For \code{method = "jaccard"}, only the peaks overlapping the regions of these sets are compared. Default: \code{NULL}, all of them.
 #' @param contrast String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.
-#' @param method String with the correlation, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}. Default: \code{"spearman"}.
+#' @param samples Samples the correlation is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples. For \code{method = "jaccard"} the samples whose peaks are compared. Default: \code{NULL}, all of them.
+#' @param method String with the measure, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}, computed on the signal, or \code{"jaccard"}, computed on the peak calls. Default: \code{"spearman"}.
+#' @param jaccardLevel String with what the Jaccard index counts, either \code{"region"}, the regions of the union of all the peaks occupied by both samples over those occupied by either, or \code{"basepair"}, the base pairs covered by the peaks of both samples over those covered by either. Only for \code{method = "jaccard"}. Default: \code{"region"}.
 #' @param useOffsets Logical value to indicate whether the normalisation stored in the object must be applied, \code{FALSE} scaling the samples by their library sizes alone. Default: \code{TRUE}.
 #' @param topRegions Numeric value with the number of most variable regions the correlation is computed on. Default: \code{NULL}, all of them.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A list with \code{correlation}, the matrix of the correlations between the samples; \code{samples}, the \code{colData} of the object with a \code{sample} column in the order of the matrix; and \code{parameters}, with the method, the normalisation, the region sets and the number of regions used.
+#' @return A list with \code{correlation}, the matrix of the correlations between the samples, or of the Jaccard indices; \code{samples}, the \code{colData} of the object with a \code{sample} column in the order of the matrix, or the sample sheet the peaks were read from; and \code{parameters}, with the method, the normalisation, the region sets and the number of regions used.
 #'
 #' @details The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeCounts}} applied. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised correlations of one object are computed on the same rows.
 #'
 #' A correlation does not see a single factor per sample. Scaling a library moves its log values by a constant, which leaves the three correlations exactly where they were, so \code{useOffsets} changes the matrix only when the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. An ordination is a different matter, and \code{\link{plotRegionPCA}} does move with the factors.
+#'
+#' The Jaccard index is the occupancy counterpart of the correlation, what DiffBind draws before counting any read. It goes from zero, for two samples with no peak in common, to one, for two identical peak sets, and one minus it is the Jaccard distance the samples are clustered on by \code{\link{plotSampleCorrelation}}. At the \code{"region"} level the union of the peaks of all the samples is the list of places, and each sample either has a peak on a place or not, so that a broad peak and a narrow one on the same site count as a match. At the \code{"basepair"} level the widths count, as in \code{bedtools jaccard}, and two samples calling the same sites with different widths come out less similar. The peaks are those kept by \code{\link{loadConsensusPeaks}} after its \code{blacklist} and \code{greylist}, so the artefacts weigh on neither sample. The index says nothing about how strong the signal is, and a sample with far fewer peaks than the others is dissimilar to all of them even when its peaks are a subset of theirs: the number of peaks of every sample, in \code{consensusData(x)$samples}, is worth reading next to it. \code{useOffsets} and \code{topRegions} do not apply.
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
@@ -343,6 +354,19 @@ computeSamplePCA <-
 #'
 #' sampleCorrelation <- computeSampleCorrelation(counts, method = "pearson")
 #' round(sampleCorrelation$correlation, 3)
+#'
+#' # The samples of one strain only
+#' brownNorway <- SummarizedExperiment::colData(counts)$condition == "BN"
+#' round(computeSampleCorrelation(counts, samples = brownNorway, method = "pearson")$correlation, 3)
+#'
+#' # Occupancy: the Jaccard index of the peak sets of the AR example
+#' if (requireNamespace("consensusRegions", quietly = TRUE)) {
+#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+#'
+#'   peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
+#'   round(peakJaccard$correlation, 2)
+#' }
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -356,7 +380,9 @@ computeSampleCorrelation <-
   function(object,
            set = NULL,
            contrast = NULL,
+           samples = NULL,
            method = "spearman",
+           jaccardLevel = "region",
            useOffsets = TRUE,
            topRegions = NULL,
            verbose = TRUE) {
@@ -364,12 +390,17 @@ computeSampleCorrelation <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
-    counts <- .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts
-
-    if (!(method[1] %in% c("spearman", "pearson", "kendall"))) {
-      stop("The 'method' parameter must be one of 'spearman', 'pearson', 'kendall'.", call. = FALSE)
+    if (!(method[1] %in% c("spearman", "pearson", "kendall", "jaccard"))) {
+      stop("The 'method' parameter must be one of 'spearman', 'pearson', 'kendall', 'jaccard'.", call. = FALSE)
     }
     method <- method[1]
+
+    # The Jaccard index is computed on the peak calls, the counts play no part in it
+    if (method == "jaccard") {
+      return(.peakJaccard(object = object, set = set, jaccardLevel = jaccardLevel, samples = samples))
+    }
+
+    counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
 
     if (ncol(counts) < 2) {
       stop("At least two samples are needed for a correlation.", call. = FALSE)
@@ -401,12 +432,14 @@ computeSampleCorrelation <-
 
 #' @title plotSampleCorrelation
 #'
-#' @description Draws the correlation between the samples as a heatmap, clustered and annotated with any column of the sample table, such as the condition, the treatment or the replicate. The correlation can be computed on the normalised or on the raw signal, on every region or on the most variable ones.
+#' @description Draws the correlation between the samples as a heatmap, clustered and annotated with any column of the sample table, such as the condition, the treatment or the replicate. The correlation can be computed on the normalised or on the raw signal, on every region or on the most variable ones. With \code{method = "jaccard"} the heatmap shows instead how similar the peak sets of the samples are, before any read is counted.
 #'
-#' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSampleCorrelation}}.
+#' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSampleCorrelation}}. For \code{method = "jaccard"}, the \code{RegionSetDE} object returned by \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList} or list of \code{GRanges} with the peaks of every sample.
 #' @param set Character vector with the names of the region sets used. Default: \code{NULL}, all of them.
 #' @param contrast String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.
-#' @param method String with the correlation, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}. Default: \code{"spearman"}.
+#' @param samples Samples drawn, see \code{\link{computeSampleCorrelation}}. Default: \code{NULL}, all of them.
+#' @param method String with the measure, one of \code{"spearman"}, \code{"pearson"} and \code{"kendall"}, computed on the signal, or \code{"jaccard"}, the Jaccard index of the peak calls. Default: \code{"spearman"}.
+#' @param jaccardLevel String, either \code{"region"} or \code{"basepair"}, see \code{\link{computeSampleCorrelation}}. Only for \code{method = "jaccard"}. Default: \code{"region"}.
 #' @param groupBy String with the name of a \code{colData} column defining the groups whose within and between correlations are summarised in the title. Default: \code{NULL}.
 #' @param annotationColumns Character vector with the \code{colData} columns drawn as annotation bars above and beside the heatmap, for instance \code{c("condition", "replicate")}. Default: \code{NULL}, the \code{groupBy} column when there is one.
 #' @param annotationColours Named list with the colours of the annotation columns, as \code{ComplexHeatmap} takes them: a named vector for a categorical column, a \code{circlize::colorRamp2} function for a numeric one. The columns left out take the palette of the package. Default: \code{NULL}.
@@ -437,6 +470,8 @@ computeSampleCorrelation <-
 #'
 #' The clustering, on one minus the correlation, comes from the first heatmap and is reused by the others, so a comparison across \code{compareOffsets} or \code{facetBySet} shows the values changing rather than the samples moving. The dendrogram on the side is drawn once for the same reason, and so are the sample names, the columns of every panel following the order of the rows. Numeric annotation columns get a grey gradient, and turning one into a factor colours it by level instead, which suits a replicate number.
 #'
+#' With \code{method = "jaccard"} the cells hold the Jaccard index of the peak sets, and the samples are clustered on the Jaccard distance, one minus the index. The panels of \code{facetBySet} compare the peaks overlapping each set, while \code{useOffsets}, \code{compareOffsets} and \code{topRegions} have no counts to act on and are ignored. The sample annotation comes from the sample sheet the consensus was built from.
+#'
 #' \code{compareOffsets} answers less here than it does on an ordination. A correlation does not see a single factor per sample, so the two panels come out identical unless the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. Whether the scaling factors are driving a grouping is a question for \code{\link{plotRegionPCA}}.
 #'
 #' @examples
@@ -448,11 +483,20 @@ computeSampleCorrelation <-
 #' # The same samples before and after the normalisation, on the CpG island promoters only
 #' plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson", compareOffsets = TRUE)
 #'
+#' # Occupancy of the peak calls, as the Jaccard index
+#' if (requireNamespace("consensusRegions", quietly = TRUE)) {
+#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+#'
+#'   plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
+#' }
+#'
 #' @author Sebastian Gregoricchio
 #'
 #' @seealso \code{\link{computeSampleCorrelation}}, \code{\link{plotRegionPCA}}, \code{\link{normalizeCounts}}
 #'
 #' @importFrom stats hclust as.dist as.dendrogram
+#' @importFrom methods is
 #' @importFrom grid gpar
 #'
 #' @export plotSampleCorrelation
@@ -461,7 +505,9 @@ plotSampleCorrelation <-
   function(object,
            set = NULL,
            contrast = NULL,
+           samples = NULL,
            method = "spearman",
+           jaccardLevel = "region",
            groupBy = NULL,
            annotationColumns = NULL,
            annotationColours = NULL,
@@ -516,8 +562,31 @@ plotSampleCorrelation <-
       sampleTable <- object$samples
       method <- if (is.null(object$parameters$method)) {method} else {object$parameters$method}
       panelLabels <- if (isFALSE(object$parameters$useOffsets)) {"library size only"} else {""}
+    } else if (identical(method[1], "jaccard")) {
+      # The peak calls give one matrix per set at most, there are no counts to normalise
+      jaccardSets <- if (isTRUE(facetBySet) & methods::is(object, "RegionSetDE")) {
+        if (is.null(set)) {names(object@regions)} else {set}
+      } else {
+        "all"
+      }
+
+      panelLabels <- character(0)
+
+      for (setName in jaccardSets) {
+        panelJaccard <- computeSampleCorrelation(object = object,
+                                                 set = if (setName == "all") {set} else {setName},
+                                                 samples = samples,
+                                                 method = "jaccard",
+                                                 jaccardLevel = jaccardLevel,
+                                                 verbose = FALSE)
+
+        matrixList[[length(matrixList) + 1]] <- panelJaccard$correlation
+        panelLabels <- c(panelLabels, if (setName == "all") {""} else {setName})
+      }
+
+      sampleTable <- panelJaccard$samples
     } else {
-      counts <- .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts
+      counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
       .normalisationNotice(counts = counts, useOffsets = useOffsets | isTRUE(compareOffsets), verbose = verbose)
 
       panelSets <- .panelSets(counts = counts, set = set, facetBySet = facetBySet)
@@ -569,7 +638,8 @@ plotSampleCorrelation <-
     offDiagonal <- unlist(lapply(matrixList, function(correlationMatrix) {correlationMatrix[row(correlationMatrix) != col(correlationMatrix)]}))
     drawnValues <- if (isTRUE(excludeDiagonal)) {offDiagonal} else {unlist(matrixList)}
 
-    scaleLimits <- .resolveScaleLimits(values = offDiagonal, limits = limits, drawnValues = drawnValues, label = "correlation")
+    scaleLimits <- .resolveScaleLimits(values = offDiagonal, limits = limits, drawnValues = drawnValues,
+                                       label = if (method == "jaccard") {"Jaccard index"} else {"correlation"})
 
     # Two samples leave a single off-diagonal value, which is not a range to build a scale on
     if (diff(scaleLimits) == 0) {scaleLimits <- scaleLimits + c(-0.01, 0.01)}
@@ -580,7 +650,7 @@ plotSampleCorrelation <-
                                                   annotationColumns = annotationColumns,
                                                   annotationColours = annotationColours)
 
-    legendTitle <- paste0(toupper(substring(method, 1, 1)), substring(method, 2), "\ncorrelation")
+    legendTitle <- paste0(toupper(substring(method, 1, 1)), substring(method, 2), if (method == "jaccard") {"\nindex"} else {"\ncorrelation"})
 
     #-------------------------------#
     # One heatmap per panel         #
@@ -1112,4 +1182,223 @@ plotSampleCorrelation <-
                                         col = if (is.null(valuesColour)) {.contrastColour(colour = fill)} else {valuesColour}))
       }
     })
+  } # END function
+
+
+
+
+#' @title .peakJaccard
+#'
+#' @description Computes the Jaccard index between the peak sets of every pair of samples, on the regions of the union of the peaks or on the base pairs they cover.
+#'
+#' @param object \code{RegionSetDE} object built by \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList} or list of \code{GRanges} with the peaks of every sample.
+#' @param set Character vector with the region sets whose regions the peaks must overlap, or \code{NULL} for all the peaks.
+#' @param jaccardLevel String, either \code{"region"} or \code{"basepair"}.
+#' @param samples Character, numeric or logical vector with the samples kept, or \code{NULL} for all of them.
+#'
+#' @return A list shaped as the one of \code{\link{computeSampleCorrelation}}: \code{correlation}, the matrix of the Jaccard indices, \code{samples}, the annotation of the samples, and \code{parameters}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomicRanges GRangesList intersect union
+#' @importFrom IRanges reduce overlapsAny
+#' @importFrom BiocGenerics width
+#' @importFrom methods is
+#'
+#' @keywords internal
+
+.peakJaccard <-
+  function(object,
+           set = NULL,
+           jaccardLevel = "region",
+           samples = NULL) {
+
+    #------------------------#
+    # Check of the arguments #
+    #------------------------#
+    jaccardLevel <- tolower(as.character(jaccardLevel[1]))
+    if (!(jaccardLevel %in% c("region", "basepair"))) {
+      stop("The 'jaccardLevel' parameter must be either 'region' or 'basepair'.", call. = FALSE)
+    }
+
+    #------------------------#
+    # Peaks and annotation   #
+    #------------------------#
+    if (methods::is(object, "RegionSetDE")) {
+      if (length(object@consensus) == 0) {
+        stop("method = 'jaccard' compares peak calls: pass the object returned by loadConsensusPeaks(), or the peaks of every sample as a GRangesList.", call. = FALSE)
+      }
+
+      peakList <- as.list(object@consensus$peaks)
+
+      # The sheet carries the annotation, restricted to the samples with peaks and in their order
+      sheetTable <- as.data.frame(object@consensus$sheet, stringsAsFactors = FALSE)
+      sampleTable <- sheetTable[match(names(peakList), sheetTable$sample), , drop = FALSE]
+      rownames(sampleTable) <- NULL
+
+      if (!is.null(set)) {
+        absentSets <- setdiff(set, names(object@regions))
+        if (length(absentSets) > 0) {
+          stop("The following sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+        }
+        setRegions <- IRanges::reduce(unlist(object@regions[set], use.names = FALSE), ignore.strand = TRUE)
+      }
+    } else if (methods::is(object, "GRangesList") | (is.list(object) && length(object) > 0 && all(vapply(object, function(x) {methods::is(x, "GRanges")}, logical(1))))) {
+      peakList <- as.list(object)
+
+      if (is.null(names(peakList)) || any(is.na(names(peakList)) | names(peakList) == "") || any(duplicated(names(peakList)))) {
+        stop("The peak sets must be named after their samples, with unique names.", call. = FALSE)
+      }
+
+      if (!is.null(set)) {
+        stop("The 'set' parameter needs region sets, which a plain list of peaks does not have.", call. = FALSE)
+      }
+
+      sampleTable <- data.frame(sample = names(peakList), stringsAsFactors = FALSE)
+    } else {
+      stop("method = 'jaccard' compares peak calls: pass the object returned by loadConsensusPeaks(), or the peaks of every sample as a GRangesList.", call. = FALSE)
+    }
+
+    # The samples asked for, in the order of the object
+    keptSamples <- .sampleIndex(sampleNames = names(peakList), samples = samples)
+    peakList <- peakList[keptSamples]
+    sampleTable <- sampleTable[keptSamples, , drop = FALSE]
+    rownames(sampleTable) <- NULL
+
+    if (length(peakList) < 2) {
+      stop("At least two samples with peaks are needed for a Jaccard index.", call. = FALSE)
+    }
+
+    # Overlapping peaks of one sample would count the same place twice
+    peakList <- lapply(peakList, function(peakRanges) {IRanges::reduce(peakRanges, ignore.strand = TRUE)})
+
+    if (!is.null(set)) {
+      peakList <- lapply(peakList, function(peakRanges) {peakRanges[IRanges::overlapsAny(peakRanges, setRegions, ignore.strand = TRUE)]})
+    }
+
+    sampleNumber <- length(peakList)
+    jaccardMatrix <- diag(1, nrow = sampleNumber)
+    dimnames(jaccardMatrix) <- list(names(peakList), names(peakList))
+
+    #------------------------#
+    # Pairwise index         #
+    #------------------------#
+    if (jaccardLevel == "region") {
+      # The union of all the peaks is the list of places, and each sample has a peak on a place or not
+      placeRanges <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(peakList)), use.names = FALSE), ignore.strand = TRUE)
+      occupancyMatrix <- vapply(peakList, function(peakRanges) {IRanges::overlapsAny(placeRanges, peakRanges, ignore.strand = TRUE)}, logical(length(placeRanges)))
+      occupancyMatrix <- matrix(occupancyMatrix, nrow = length(placeRanges))
+
+      sharedPlaces <- crossprod(occupancyMatrix * 1)
+      placesPerSample <- colSums(occupancyMatrix)
+      unionPlaces <- outer(placesPerSample, placesPerSample, FUN = "+") - sharedPlaces
+
+      jaccardMatrix[] <- ifelse(unionPlaces > 0, sharedPlaces / unionPlaces, NA_real_)
+      universeSize <- length(placeRanges)
+    } else {
+      for (i in seq_len(sampleNumber - 1)) {
+        for (j in seq(i + 1, sampleNumber)) {
+          sharedBp <- sum(as.numeric(BiocGenerics::width(GenomicRanges::intersect(peakList[[i]], peakList[[j]], ignore.strand = TRUE))))
+          unionBp <- sum(as.numeric(BiocGenerics::width(GenomicRanges::union(peakList[[i]], peakList[[j]], ignore.strand = TRUE))))
+          jaccardMatrix[i, j] <- jaccardMatrix[j, i] <- if (unionBp > 0) {sharedBp / unionBp} else {NA_real_}
+        }
+      }
+      universeSize <- sum(as.numeric(BiocGenerics::width(IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(peakList)), use.names = FALSE), ignore.strand = TRUE))))
+    }
+
+    return(list(correlation = jaccardMatrix,
+                samples = sampleTable,
+                parameters = list(method = "jaccard",
+                                  jaccardLevel = jaccardLevel,
+                                  useOffsets = NULL,
+                                  set = set,
+                                  topRegions = NULL,
+                                  n.peaks = vapply(peakList, length, integer(1)),
+                                  n.regions = universeSize)))
+  } # END function
+
+
+
+
+
+#' @title .sampleIndex
+#'
+#' @description Turns a selection of samples, given by name, by position or as a logical vector, into the positions of the samples kept, in the order of the object.
+#'
+#' @param sampleNames Character vector with the names of all the samples, in the order of the object.
+#' @param samples Character, numeric or logical vector with the samples kept, or \code{NULL} for all of them.
+#'
+#' @return An integer vector with the positions of the samples kept.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.sampleIndex <-
+  function(sampleNames,
+           samples = NULL) {
+
+    if (is.null(samples)) {
+      return(seq_along(sampleNames))
+    }
+
+    #-------------------------------#
+    # The three ways of naming them #
+    #-------------------------------#
+    if (is.logical(samples)) {
+      if (length(samples) != length(sampleNames) | anyNA(samples)) {
+        stop("A logical 'samples' parameter must hold one TRUE or FALSE per sample, ", length(sampleNames), " here.", call. = FALSE)
+      }
+      sampleIndex <- which(samples)
+    } else if (is.character(samples)) {
+      absentSamples <- setdiff(samples, sampleNames)
+      if (length(absentSamples) > 0) {
+        stop("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+      }
+      sampleIndex <- which(sampleNames %in% samples)
+    } else if (is.numeric(samples)) {
+      if (anyNA(samples) | any(samples < 1) | any(samples > length(sampleNames))) {
+        stop("The 'samples' parameter contains positions outside the range of the samples.", call. = FALSE)
+      }
+      sampleIndex <- sort(unique(as.integer(samples)))
+    } else {
+      stop("The 'samples' parameter must be a character, numeric or logical vector.", call. = FALSE)
+    }
+
+    if (length(sampleIndex) == 0) {
+      stop("The 'samples' parameter selects no sample.", call. = FALSE)
+    }
+
+    return(sampleIndex)
+  } # END function
+
+
+
+
+#' @title .subsetSamples
+#'
+#' @description Keeps the samples of a counts object selected for a figure, together with the normalisation stored for them.
+#'
+#' @param counts \code{RegionSetDE.counts} object.
+#' @param samples Character, numeric or logical vector with the samples kept, or \code{NULL} for all of them.
+#'
+#' @return The \code{RegionSetDE.counts} object restricted to the samples kept.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.subsetSamples <-
+  function(counts,
+           samples = NULL) {
+
+    if (is.null(samples)) {
+      return(counts)
+    }
+
+    # The factors are one per sample and stay valid on a subset, a figure is not the place to estimate them again
+    return(selectSamples(counts = counts,
+                         samples = colnames(counts)[.sampleIndex(sampleNames = colnames(counts), samples = samples)],
+                         dropNormalization = FALSE,
+                         verbose = FALSE))
   } # END function

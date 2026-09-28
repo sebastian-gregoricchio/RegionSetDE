@@ -35,7 +35,7 @@ countBackground(
 
 \item{pairedEnd}{Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.}
 
-\item{fragmentLength}{Numeric value with the length to which single-end reads are extended. Default: \code{NULL}, the value used at the counting step.}
+\item{fragmentLength}{Numeric value with the length to which single-end reads are extended, or one value per BAM file. Default: \code{NULL}, the lengths used at the counting step, sample by sample.}
 
 \item{maxFragmentLength}{Numeric value with the maximum insert size accepted for a pair. Default: \code{NULL}, the value used at the counting step.}
 

@@ -6,7 +6,8 @@
 #'
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, with at least the \code{sample} and \code{peaks} columns.
 #' @param groupBy String with the column of the sample sheet defining the groups, for instance \code{"condition"}. Default: \code{NULL}, all the samples form a single group.
-#' @param excludeRegions Regions whose peaks must be dropped before any consensus is built, typically a blacklist and the greylist returned by \code{\link{makeGreylist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them. Default: \code{NULL}.
+#' @param blacklist Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.
+#' @param greylist Regions of this experiment whose peaks must be dropped before any consensus is built, typically the list built from the inputs by \code{\link{makeGreylist}}. Accepts the same forms as \code{blacklist}. Default: \code{NULL}.
 #' @param regionSets Regions of interest of the user, in any form accepted by \code{\link{loadRegions}}: a named list of paths, \code{GRanges} or data.frames. Default: \code{NULL}, the total consensus is the only set.
 #' @param regionMode String indicating what \code{regionSets} do, either \code{"split"}, where every region of the total consensus goes to the first set it overlaps, or \code{"replace"}, where the sets of the user are the regions and the peaks only annotate them. Ignored without \code{regionSets}. Default: \code{"split"}.
 #' @param unassignedSet String with the name of the set collecting the consensus regions that overlap none of \code{regionSets} in \code{"split"} mode. \code{NULL} drops them. Default: \code{"other"}.
@@ -16,13 +17,13 @@
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #' @param ... Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.
 #'
-#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the exclusion, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them.
+#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot, the size of the greylist to \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}.
 #'
 #' @details The consensus is built group by group and then pooled, rather than once over all the samples. A single requirement over all the libraries, such as a peak in at least two of them, favours the larger group, while the same requirement applied within each group treats them alike, and the union keeps the regions found in one group only. A group with a single sample has no replicate to agree with, and its peaks stand for the group as they are.
 #'
 #' The peaks are read by \code{consensusRegions}, which keeps the standard chromosomes only, as \code{GenomeInfoDb::keepStandardChromosomes} defines them: scaffolds, patches and unplaced contigs are dropped, and so are chromosomes whose names it does not recognise.
 #'
-#' The peaks overlapping \code{excludeRegions} are removed before the consensus, not after it. An artefact lying next to a genuine peak would otherwise merge with it, and removing the merged region afterwards would take the genuine peak away as well.
+#' The peaks overlapping \code{blacklist} and \code{greylist} are removed before the consensus, not after it. An artefact lying next to a genuine peak would otherwise merge with it, and removing the merged region afterwards would take the genuine peak away as well. The blacklist is applied first and the greylist to the peaks left, so a peak lying on both is counted as blacklisted. The two lists are kept apart because they say different things: a blacklist describes the assembly and is the same for every experiment, a greylist describes the inputs of this one. Both are recorded the way \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} record them, so the counts, the fit and the results built from the object carry the blacklist with them and \code{\link{exportResults}} writes it down. \code{consensusData(x)$removed} holds the peaks taken out, with the sample they came from and the list that removed them, and \code{consensusData(x)$samples} their number per sample. A blacklist built for another assembly than \code{genomeAssembly} is refused, as \code{\link{applyBlacklist}} refuses it.
 #'
 #' With \code{regionMode = "split"} the consensus regions are assigned to the sets of \code{regionSets} in the order they are given, a region overlapping two sets going to the first one. The sets then describe classes of peaks, such as promoter and distal ones, and \code{\link{testRegionSets}} can compare them. With \code{regionMode = "replace"} the counted regions are those of \code{regionSets}, and the peaks only tell which of them are occupied in each group.
 #'
@@ -56,12 +57,13 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{plotPeakUpset}}, \code{\link{consensusData}}, \code{\link{loadSampleSheet}}, \code{\link{makeGreylist}}
+#' @seealso \code{\link{plotPeakUpset}}, \code{\link{consensusData}}, \code{\link{loadSampleSheet}}, \code{\link{loadBlacklist}}, \code{\link{makeGreylist}}
 #'
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
-#' @importFrom GenomicRanges GRangesList
-#' @importFrom IRanges reduce overlapsAny
+#' @importFrom GenomicRanges GRangesList GRanges
+#' @importFrom IRanges reduce overlapsAny IRanges
+#' @importFrom BiocGenerics width
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom methods is validObject
 #'
@@ -70,7 +72,8 @@
 loadConsensusPeaks <-
   function(sampleSheet,
            groupBy = NULL,
-           excludeRegions = NULL,
+           blacklist = NULL,
+           greylist = NULL,
            regionSets = NULL,
            regionMode = "split",
            unassignedSet = "other",
@@ -111,6 +114,11 @@ loadConsensusPeaks <-
     }
 
     consensusArguments <- list(...)
+
+    if ("excludeRegions" %in% names(consensusArguments)) {
+      stop("The 'excludeRegions' parameter has been replaced by 'blacklist' and 'greylist', which take the two lists separately.", call. = FALSE)
+    }
+
     reservedArguments <- intersect(names(consensusArguments), c("peaks", "sampleNames"))
     if (length(reservedArguments) > 0) {
       stop("The following arguments of runConsensus are set from the sample sheet and cannot be given: ",
@@ -165,24 +173,61 @@ loadConsensusPeaks <-
                                                verbose = FALSE)
 
     sampleTable$n.peaks <- as.integer(lengths(peakList))
-    sampleTable$n.excluded <- 0L
-    excludedRanges <- NULL
 
-    # An artefact next to a genuine peak would merge with it, so the exclusion comes before the consensus
-    if (!is.null(excludeRegions)) {
-      excludedRanges <- .loadExclusionRegions(excludeRegions = excludeRegions, seqlevelsStyle = seqlevelsStyle)
+    #-------------------------------#
+    # Blacklist, then greylist      #
+    #-------------------------------#
+    # An artefact next to a genuine peak would merge with it, so both lists act before the consensus.
+    # The greylist sees only the peaks the blacklist left, so a peak on both is counted once, as blacklisted.
+    listRanges <- list(blacklist = NULL, greylist = NULL)
+    removedList <- list()
+    filteringSteps <- list()
 
-      peakList <- GenomicRanges::GRangesList(lapply(as.list(peakList),
-                                                    function(peakRanges) {
-                                                      peakRanges[!IRanges::overlapsAny(peakRanges, excludedRanges, ignore.strand = TRUE)]
-                                                    }))
+    for (listLabel in c("blacklist", "greylist")) {
+      listInput <- if (listLabel == "blacklist") {blacklist} else {greylist}
+      sampleTable[[paste0("n.", listLabel)]] <- 0L
 
-      sampleTable$n.excluded <- sampleTable$n.peaks - as.integer(lengths(peakList))
+      if (is.null(listInput)) {next}
+
+      .checkListAssembly(listInput = listInput, genomeAssembly = genomeAssembly, listLabel = listLabel)
+      listRanges[[listLabel]] <- .loadExclusionRegions(excludeRegions = listInput, seqlevelsStyle = seqlevelsStyle, listLabel = listLabel)
+
+      peaksBefore <- as.integer(lengths(peakList))
+      overlapList <- lapply(as.list(peakList), function(peakRanges) {IRanges::overlapsAny(peakRanges, listRanges[[listLabel]], ignore.strand = TRUE)})
+
+      # The peaks taken out are kept, with the sample they came from and the list that removed them
+      removedList[[listLabel]] <- lapply(names(peakList), function(sampleName) {
+        removedPeaks <- peakList[[sampleName]][overlapList[[sampleName]]]
+        S4Vectors::mcols(removedPeaks)$sample <- rep(sampleName, length(removedPeaks))
+        S4Vectors::mcols(removedPeaks)$removed.by <- rep(listLabel, length(removedPeaks))
+        return(removedPeaks)
+      })
+
+      peakList <- GenomicRanges::GRangesList(lapply(names(peakList), function(sampleName) {peakList[[sampleName]][!overlapList[[sampleName]]]}))
+      names(peakList) <- sampleTable$sample
+      peaksAfter <- as.integer(lengths(peakList))
+
+      sampleTable[[paste0("n.", listLabel)]] <- peaksBefore - peaksAfter
+
+      filteringSteps[[listLabel]] <- data.frame(step = listLabel,
+                                                region.set = paste(sampleTable$sample, "peaks"),
+                                                n.before = peaksBefore,
+                                                n.after = peaksAfter,
+                                                n.removed = peaksBefore - peaksAfter,
+                                                stringsAsFactors = FALSE)
 
       if (isTRUE(verbose)) {
-        message("Peaks overlapping the excluded regions removed: ",
-                paste(sampleTable$sample, paste(sampleTable$n.excluded, sampleTable$n.peaks, sep = "/"), collapse = ", "), ".")
+        message("Peaks overlapping the ", listLabel, " (", length(listRanges[[listLabel]]), " regions) removed: ",
+                paste(sampleTable$sample, paste(peaksBefore - peaksAfter, peaksBefore, sep = "/"), collapse = ", "), ".")
       }
+    }
+
+    sampleTable$n.excluded <- sampleTable$n.blacklist + sampleTable$n.greylist
+
+    removedPeaks <- if (length(removedList) == 0) {
+      GenomicRanges::GRanges()
+    } else {
+      unlist(GenomicRanges::GRangesList(unlist(removedList, recursive = FALSE, use.names = FALSE)), use.names = FALSE)
     }
 
     #-------------------------------#
@@ -298,11 +343,28 @@ loadConsensusPeaks <-
                                 objects = consensusObjects,
                                 total = totalConsensus,
                                 peaks = peakList,
+                                removed = removedPeaks,
                                 samples = sampleTable,
                                 sheet = sampleSheet,
                                 groupBy = groupBy,
                                 mode = analysisMode,
-                                excluded = excludedRanges)
+                                blacklist = listRanges$blacklist,
+                                greylist = listRanges$greylist)
+
+    # Recorded as applyBlacklist and applyGreylist record them, so the lists follow the object downstream
+    if (!is.null(listRanges$blacklist)) {
+      regionSet@blacklist <- listRanges$blacklist
+    }
+
+    if (!is.null(listRanges$greylist)) {
+      regionSet@parameters$greylist <- list(n.regions = length(listRanges$greylist),
+                                            covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))),
+                                            applied.to = "peaks")
+    }
+
+    if (length(filteringSteps) > 0) {
+      regionSet@filtering.log <- rbind(regionSet@filtering.log, do.call(what = rbind, args = unname(filteringSteps)))
+    }
 
     # Only plain values go to the parameters, a BiocParallel object has no place in an exported record
     regionSet@parameters$loadConsensusPeaks <- list(groupBy = groupBy,
@@ -311,7 +373,8 @@ loadConsensusPeaks <-
                                                     seqlevelsStyle = seqlevelsStyle,
                                                     n.samples = nrow(sampleTable),
                                                     n.groups = length(groupLevels),
-                                                    n.excluded.regions = if (is.null(excludedRanges)) {0L} else {length(excludedRanges)},
+                                                    n.blacklist.regions = if (is.null(listRanges$blacklist)) {0L} else {length(listRanges$blacklist)},
+                                                    n.greylist.regions = if (is.null(listRanges$greylist)) {0L} else {length(listRanges$greylist)},
                                                     consensusArguments = Filter(is.atomic, consensusArguments))
 
     methods::validObject(regionSet)
@@ -327,6 +390,7 @@ loadConsensusPeaks <-
 #'
 #' @param excludeRegions A \code{GRanges}, a path, a data.frame, or a list of them.
 #' @param seqlevelsStyle String with the chromosome naming style, or \code{NULL}.
+#' @param listLabel String with the name of the parameter the list came from, used in the messages. Default: \code{"blacklist"}.
 #'
 #' @return A \code{GRanges} without overlaps.
 #'
@@ -340,7 +404,8 @@ loadConsensusPeaks <-
 
 .loadExclusionRegions <-
   function(excludeRegions,
-           seqlevelsStyle = "UCSC") {
+           seqlevelsStyle = "UCSC",
+           listLabel = "blacklist") {
 
     # A single list of regions is wrapped, a list of lists is taken as it is
     if (methods::is(excludeRegions, "GRanges") | is.data.frame(excludeRegions) | is.character(excludeRegions)) {
@@ -348,10 +413,10 @@ loadConsensusPeaks <-
     }
 
     if (!is.list(excludeRegions)) {
-      stop("The 'excludeRegions' parameter must be a GRanges, a path, a data.frame, or a list of them.", call. = FALSE)
+      stop("The '", listLabel, "' parameter must be a GRanges, a path, a data.frame, or a list of them.", call. = FALSE)
     }
 
-    names(excludeRegions) <- paste0("exclusion_", seq_along(excludeRegions))
+    names(excludeRegions) <- paste0(listLabel, "_", seq_along(excludeRegions))
 
     exclusionList <- loadRegions(regions = excludeRegions,
                                  keepMetadata = FALSE,
@@ -361,6 +426,54 @@ loadConsensusPeaks <-
                                  verbose = FALSE)
 
     return(IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(exclusionList)), use.names = FALSE), ignore.strand = TRUE))
+  } # END function
+
+
+
+
+#' @title .checkListAssembly
+#'
+#' @description Refuses a list of regions built for another assembly than the one declared for the peaks, which would overlap them on the chromosome names alone.
+#'
+#' @param listInput The list as given: a \code{GRanges}, a path, a data.frame, or a list of them.
+#' @param genomeAssembly String with the assembly of the peaks, or \code{NULL}.
+#' @param listLabel String with the name of the parameter the list came from.
+#'
+#' @return Nothing, it stops when the two assemblies differ.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomeInfoDb genome
+#' @importFrom methods is
+#'
+#' @keywords internal
+
+.checkListAssembly <-
+  function(listInput,
+           genomeAssembly,
+           listLabel) {
+
+    if (is.null(genomeAssembly) || is.na(genomeAssembly[1]) || genomeAssembly[1] == "") {
+      return(invisible(TRUE))
+    }
+
+    # Only a GRanges carries its assembly, a file or a table cannot be checked
+    listElements <- if (methods::is(listInput, "GRanges")) {list(listInput)} else if (is.list(listInput) & !is.data.frame(listInput)) {listInput} else {list()}
+
+    for (listElement in listElements) {
+      if (!methods::is(listElement, "GRanges")) {next}
+
+      listAssembly <- unique(as.character(GenomeInfoDb::genome(listElement)))
+      listAssembly <- listAssembly[!is.na(listAssembly) & listAssembly != ""]
+
+      # GRCh38 and hg38 name the same assembly, the aliases are resolved before the comparison
+      if (length(listAssembly) == 1 && .resolveGenomeName(listAssembly) != .resolveGenomeName(as.character(genomeAssembly[1]))) {
+        stop("The ", listLabel, " was built for ", listAssembly, " and the peaks are declared as ", genomeAssembly[1],
+             ". Overlapping them would match the chromosome names and nothing else. Clear the assembly with genome() on the list to force it.", call. = FALSE)
+      }
+    }
+
+    return(invisible(TRUE))
   } # END function
 
 
@@ -495,7 +608,7 @@ loadConsensusPeaks <-
 #'
 #' @param object \code{RegionSetDE} object.
 #'
-#' @return A list with \code{groups}, the consensus regions of every group; \code{objects}, the \code{consensusRegions} object behind each of them (\code{NULL} for the groups with a single sample); \code{total}, the pooled consensus; \code{peaks}, the peaks of every sample after the exclusion; \code{samples}, a data.frame with the group, the peak file and the number of peaks kept and excluded for every sample; \code{sheet}, the sample sheet the consensus was built from; \code{groupBy}; \code{mode}, one among \code{"consensus"}, \code{"split"} and \code{"replace"}; and \code{excluded}, the regions the peaks were cleaned against.
+#' @return A list with \code{groups}, the consensus regions of every group; \code{objects}, the \code{consensusRegions} object behind each of them (\code{NULL} for the groups with a single sample); \code{total}, the pooled consensus; \code{peaks}, the peaks of every sample after the blacklist and the greylist; \code{removed}, the peaks they took out, with the \code{sample} they came from and the list that removed them in \code{removed.by}; \code{samples}, a data.frame with the group, the peak file, the number of peaks read (\code{n.peaks}), removed by the blacklist (\code{n.blacklist}), by the greylist (\code{n.greylist}) and by both (\code{n.excluded}) for every sample; \code{sheet}, the sample sheet the consensus was built from; \code{groupBy}; \code{mode}, one among \code{"consensus"}, \code{"split"} and \code{"replace"}; and \code{blacklist} and \code{greylist}, the regions the peaks were cleaned against, \code{NULL} when a list was not given.
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
@@ -516,7 +629,7 @@ loadConsensusPeaks <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{loadConsensusPeaks}}, \code{\link{plotPeakUpset}}
+#' @seealso \code{\link{loadConsensusPeaks}}, \code{\link{consensusGroupList}}, \code{\link{plotPeakUpset}}
 #'
 #' @importFrom methods setGeneric setMethod
 #'
@@ -536,3 +649,86 @@ setMethod(f = "consensusData",
             }
             return(object@consensus)
           })
+
+
+
+
+#' @title consensusGroupList
+#'
+#' @description Returns the consensus of every group of samples built by \code{\link{loadConsensusPeaks}}, as a named list with one \code{GRanges} per group, ready to be annotated or compared group by group with tools taking a list of peak sets, such as \code{ChIPseeker}.
+#'
+#' @param object \code{RegionSetDE} object returned by \code{\link{loadConsensusPeaks}}.
+#' @param groups Character vector with the groups returned, in the order wanted. Default: \code{NULL}, every group, in the order of the consensus.
+#' @param seqlevelsStyle String with the chromosome naming style of the output, one among \code{"UCSC"}, \code{"Ensembl"} and \code{"NCBI"}, for instance \code{"UCSC"} to match a \code{TxDb} of the UCSC annotation. Default: \code{NULL}, the style of the object.
+#' @param asGRangesList Logical value to indicate whether a \code{GRangesList} must be returned instead of a list. Default: \code{FALSE}.
+#'
+#' @return A named list of \code{GRanges}, or a \code{GRangesList}, with one element per group holding its consensus regions, named after the group.
+#'
+#' @details The consensus of a group is the one built within that group, before the groups are pooled, so a region found in two groups is in both elements and a region found in one group only is in that one alone. The regions carry no metadata column, since the statistics of the consensus of one group mean nothing for the others; the consensus object of every group, with its statistics, is in \code{consensusData(object)$objects}. A group with a single sample holds the peaks of that sample, merged where they overlap, and the peaks removed by the \code{blacklist} and the \code{greylist} are absent from every group.
+#'
+#' The list goes as it is to the functions of \code{ChIPseeker} that take several peak sets, for instance \code{lapply(consensusGroupList(x, seqlevelsStyle = "UCSC"), ChIPseeker::annotatePeak, TxDb = txdb)} followed by \code{ChIPseeker::plotAnnoBar()}. The naming style of the chromosomes has to match the one of the annotation, which is what \code{seqlevelsStyle} is for.
+#'
+#' @examples
+#' if (requireNamespace("consensusRegions", quietly = TRUE)) {
+#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+#'
+#'   groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
+#'   lengths(groupList)
+#'   groupList$R1881_24h
+#'
+#'   # Two groups only, in the order given
+#'   names(consensusGroupList(consensus, groups = c("R1881_24h", "DMSO")))
+#' }
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @seealso \code{\link{consensusData}}, \code{\link{loadConsensusPeaks}}, \code{\link{plotPeakUpset}}
+#'
+#' @importFrom GenomicRanges GRangesList
+#' @importFrom methods is
+#'
+#' @export consensusGroupList
+
+consensusGroupList <-
+  function(object,
+           groups = NULL,
+           seqlevelsStyle = NULL,
+           asGRangesList = FALSE) {
+
+    #------------------------#
+    # Check of the arguments #
+    #------------------------#
+    if (!methods::is(object, "RegionSetDE") || length(object@consensus) == 0) {
+      stop("The 'object' parameter must be the RegionSetDE object returned by loadConsensusPeaks().", call. = FALSE)
+    }
+
+    if (!is.logical(asGRangesList) | length(asGRangesList) != 1 | anyNA(asGRangesList)) {
+      stop("The 'asGRangesList' parameter must be TRUE or FALSE.", call. = FALSE)
+    }
+
+    groupList <- object@consensus$groups
+
+    if (!is.null(groups)) {
+      absentGroups <- setdiff(groups, names(groupList))
+      if (length(absentGroups) > 0) {
+        stop("The following groups are absent from the consensus: ", paste(absentGroups, collapse = ", "),
+             ". The groups are: ", paste(names(groupList), collapse = ", "), ".", call. = FALSE)
+      }
+      groupList <- groupList[groups]
+    }
+
+    #------------------------#
+    # Naming style           #
+    #------------------------#
+    # An annotation of another style would find no gene next to any region, so the names are converted on request
+    if (!is.null(seqlevelsStyle)) {
+      groupList <- lapply(groupList, .styleSeqlevels, seqlevelsStyle = seqlevelsStyle)
+    }
+
+    if (isTRUE(asGRangesList)) {
+      return(GenomicRanges::GRangesList(groupList))
+    }
+
+    return(groupList)
+  } # END function

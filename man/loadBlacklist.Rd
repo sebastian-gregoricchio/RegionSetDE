@@ -27,7 +27,7 @@ loadBlacklist(
 A \code{GRanges} with the regions of the list and their name, carrying the assembly in its \code{genome} and the source, the version and the reference in its metadata.
 }
 \description{
-Returns a blacklist shipped with the package, ready for \code{\link{applyBlacklist}} or for the \code{excludeRegions} argument of \code{\link{loadConsensusPeaks}}. The files travel with the package, so nothing is downloaded and nothing depends on a hub being reachable.
+Returns a blacklist shipped with the package, ready for \code{\link{applyBlacklist}} or for the \code{blacklist} argument of \code{\link{loadConsensusPeaks}}. The files travel with the package, so nothing is downloaded and nothing depends on a hub being reachable.
 }
 \details{
 Without an assay the list is the one meant for ChIP-seq and ATAC-seq, the regions of anomalous coverage found across many experiments: the ENCODE blacklist version 2 for the assemblies it covers, and for T2T-CHM13v2.0, which ENCODE never covered, the set the excluderanges authors built by running the same software on that assembly. Naming an assay returns instead the high signal regions of the CUT&RUN greenlist paper, built from hundreds of CUT&RUN or CUT&Tag libraries, one list per assay. They are not interchangeable: the first kind is about the genome, the other two are about what a given protocol does to it.

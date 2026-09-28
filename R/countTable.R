@@ -7,6 +7,7 @@
 #' @param object \code{RegionSetDE.counts}, \code{RegionSetDE.fit}, \code{RegionSetDE.results} or \code{RegionSetDE.setResults} object, or either of the two list classes holding several contrasts. For the results the counts are the ones carried inside them, which requires the test to have been run with \code{carryCounts = TRUE}.
 #' @param level String indicating whether the table must have one row per region (\code{"region"}) or one row per tile (\code{"tile"}). On a tiled object \code{"region"} combines the tiles of each region into a single row. Default: \code{"region"}.
 #' @param normalized Logical value to indicate whether the normalised values must be returned instead of the raw ones. Default: \code{FALSE}.
+#' @param input Logical value to indicate whether the counts of the inputs must be returned instead of those of the samples, one column per sample holding the counts of its input, as stored by \code{\link{countReads}}. The inputs are never normalised, so it cannot be combined with \code{normalized = TRUE}. Default: \code{FALSE}.
 #' @param format String with the shape of the output: \code{"wide"} gives one column per sample, \code{"long"} one row per row of the object and sample, with the \code{colData} of the samples attached, and \code{"matrix"} a numeric matrix with the rows named after the regions. Default: \code{"wide"}.
 #' @param set Character vector with the names of the region sets to keep. Default: \code{NULL}, all of them.
 #' @param tileSummary String indicating how the tiles are combined into their region when \code{level = "region"}, one among \code{"sum"}, \code{"mean"}, \code{"max"} and \code{"min"}. Default: \code{NULL}, read from the way the object was counted.
@@ -14,7 +15,7 @@
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #' @param ... Arguments passed on to the method for \code{RegionSetDE.counts} objects.
 #'
-#' @return With \code{format = "wide"}, a data.frame with one row per region, or per tile, described by the \code{region.set}, \code{region.id}, \code{tile.id} (tiles only), \code{seqnames}, \code{start}, \code{end} and \code{width} columns, followed by the annotation of the regions and by one column per sample. When the tiles have been combined, \code{n.tiles} reports how many of them each region was built from. With \code{format = "long"}, a data.frame with the same description repeated for every sample, a \code{sample} column, the values in a column named after the assay they were read from (\code{counts}, or \code{norm.counts} for the normalised ones), and the \code{colData} of the samples. With \code{format = "matrix"}, a numeric matrix with one column per sample and the rows named \code{"set|id"}, or \code{"set|id|tileN"} for the tiles.
+#' @return With \code{format = "wide"}, a data.frame with one row per region, or per tile, described by the \code{region.set}, \code{region.id}, \code{tile.id} (tiles only), \code{seqnames}, \code{start}, \code{end} and \code{width} columns, followed by the annotation of the regions and by one column per sample. When the tiles have been combined, \code{n.tiles} reports how many of them each region was built from. With \code{format = "long"}, a data.frame with the same description repeated for every sample, a \code{sample} column, the values in a column named after the assay they were read from (\code{counts}, \code{norm.counts} for the normalised ones, or \code{input}), and the \code{colData} of the samples. With \code{format = "matrix"}, a numeric matrix with one column per sample and the rows named \code{"set|id"}, or \code{"set|id|tileN"} for the tiles.
 #'
 #' @details With \code{level = "region"} on a tiled object the tiles of each region are combined into one row, spanning from the first to the last tile present. Read counts are summed. Signal read from bigWig files follows the \code{summaryFunction} used by \code{\link{countBigwig}}: a sum stays a sum, a mean is averaged with the width of each tile as its weight, so that a shorter trailing tile counts for the bases it covers, and maxima and minima stay maxima and minima. \code{tileSummary} overrides the rule, for instance for a matrix imported through \code{\link{loadCounts}} that holds a mean signal rather than counts.
 #'
@@ -79,6 +80,7 @@ setMethod(f = "countTable",
           definition = function(object,
                                 level = "region",
                                 normalized = FALSE,
+                                input = FALSE,
                                 format = "wide",
                                 set = NULL,
                                 tileSummary = NULL,
@@ -87,6 +89,7 @@ setMethod(f = "countTable",
             return(.buildCountTable(counts = object,
                                     level = level,
                                     normalized = normalized,
+                                    input = input,
                                     format = format,
                                     set = set,
                                     tileSummary = tileSummary,
@@ -156,6 +159,7 @@ setMethod(f = "countTable",
 #' @param counts \code{RegionSetDE.counts} object.
 #' @param level String, either \code{"region"} or \code{"tile"}.
 #' @param normalized Logical value indicating whether the normalised assay must be read.
+#' @param input Logical value indicating whether the input assay must be read.
 #' @param format String, one among \code{"wide"}, \code{"long"} and \code{"matrix"}.
 #' @param set Character vector with the region sets to keep, or \code{NULL}.
 #' @param tileSummary String with the rule combining the tiles, or \code{NULL}.
@@ -179,6 +183,7 @@ setMethod(f = "countTable",
   function(counts,
            level = "region",
            normalized = FALSE,
+           input = FALSE,
            format = "wide",
            set = NULL,
            tileSummary = NULL,
@@ -202,6 +207,14 @@ setMethod(f = "countTable",
       stop("The 'normalized' parameter must be a single logical value.", call. = FALSE)
     }
 
+    if (!is.logical(input) | length(input) != 1 | anyNA(input)) {
+      stop("The 'input' parameter must be a single logical value.", call. = FALSE)
+    }
+
+    if (isTRUE(input) & isTRUE(normalized)) {
+      stop("The inputs are not normalised: use either 'input = TRUE' or 'normalized = TRUE'.", call. = FALSE)
+    }
+
     isTiled <- identical(counts@counting.level, "tile")
 
     if (level == "tile" & !isTiled) {
@@ -212,6 +225,13 @@ setMethod(f = "countTable",
     # Assay to read                 #
     #-------------------------------#
     assayName <- "counts"
+
+    if (isTRUE(input)) {
+      if (!("input" %in% SummarizedExperiment::assayNames(counts))) {
+        stop("The object carries no input counts: count the inputs with countReads(), through the sample sheet or 'inputFiles'.", call. = FALSE)
+      }
+      assayName <- "input"
+    }
 
     if (isTRUE(normalized)) {
       normalizationInfo <- S4Vectors::metadata(counts)$normalization

@@ -126,3 +126,113 @@ test_that("the diagonal can be left out of the drawing and of the scale", {
   expect_message(plotSampleCorrelation(counts, limits = c(0.99, 1), verbose = FALSE),
                  "drawn at its ends")
 })
+
+
+test_that("the Jaccard index compares the peak calls of the samples", {
+
+  peakList <- GenomicRanges::GRangesList(
+    a = GenomicRanges::GRanges("chr1", IRanges::IRanges(c(100, 1000, 5000), width = 100)),
+    b = GenomicRanges::GRanges("chr1", IRanges::IRanges(c(150, 1000, 9000), width = 100)),
+    c = GenomicRanges::GRanges("chr1", IRanges::IRanges(20000, width = 100)))
+
+  # Places: 100-249 (a, b), 1000 (a, b), 5000 (a), 9000 (b), 20000 (c)
+  regionJaccard <- computeSampleCorrelation(peakList, method = "jaccard")$correlation
+  expect_equal(regionJaccard["a", "b"], 2 / 4)
+  expect_equal(regionJaccard["a", "c"], 0)
+  expect_equal(unname(diag(regionJaccard)), rep(1, 3))
+
+  # Base pairs: 50 + 100 shared, 150 + 100 + 100 + 100 in the union
+  basepairJaccard <- computeSampleCorrelation(peakList, method = "jaccard", jaccardLevel = "basepair")$correlation
+  expect_equal(basepairJaccard["a", "b"], 150 / 450)
+  expect_true(isSymmetric(basepairJaccard))
+
+  expect_error(computeSampleCorrelation(exampleCounts(), method = "jaccard"), "compares peak calls")
+  expect_error(computeSampleCorrelation(peakList, method = "jaccard", jaccardLevel = "window"), "'region' or 'basepair'")
+})
+
+
+test_that("the Jaccard heatmap takes the peaks and the annotation of a consensus", {
+
+  testthat::skip_if_not_installed("consensusRegions")
+
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+
+  peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
+  expect_identical(colnames(peakJaccard$correlation), sampleSheet$sample)
+  expect_identical(peakJaccard$samples$condition, sampleSheet$condition)
+  expect_true(all(peakJaccard$correlation >= 0 & peakJaccard$correlation <= 1))
+
+  # Replicates of a condition share more peaks with each other than with the vehicle
+  expect_gt(peakJaccard$correlation["AR_R1881_24h_r1", "AR_R1881_24h_r2"], peakJaccard$correlation["AR_R1881_24h_r1", "AR_DMSO_r1"])
+
+  jaccardHeatmap <- plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
+  expect_s4_class(jaccardHeatmap, "Heatmap")
+  expect_s4_class(plotSampleCorrelation(peakJaccard), "Heatmap")
+})
+
+
+test_that("the ordination and the correlation can be restricted to some samples", {
+
+  counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+  sampleNames <- colnames(counts)
+
+  # The normalisation of the whole analysis is kept, so a subset of the matrix is a subset of the samples
+  fullCorrelation <- computeSampleCorrelation(counts, method = "pearson")$correlation
+  subsetCorrelation <- computeSampleCorrelation(counts, method = "pearson", samples = sampleNames[c(1, 2, 4)])$correlation
+  expect_equal(subsetCorrelation, fullCorrelation[c(1, 2, 4), c(1, 2, 4)])
+
+  # Names, positions and a logical vector select the same samples
+  expect_identical(computeSamplePCA(counts, samples = 1:3, topRegions = 500)$scores$sample, sampleNames[1:3])
+  expect_identical(computeSamplePCA(counts, samples = c(TRUE, TRUE, TRUE, FALSE), topRegions = 500)$scores$sample, sampleNames[1:3])
+
+  pcaPlot <- plotRegionPCA(counts, samples = sampleNames[2:4], colourBy = "condition", topRegions = 500)
+  expect_setequal(attr(pcaPlot, "pca")$sample, sampleNames[2:4])
+
+  correlationHeatmap <- plotSampleCorrelation(counts, samples = 2:4, groupBy = "condition")
+  expect_identical(nrow(correlationHeatmap@matrix), 3L)
+
+  expect_error(computeSamplePCA(counts, samples = 1:2), "three samples")
+  expect_error(computeSampleCorrelation(counts, samples = "absentSample"), "absent from the object")
+  expect_error(computeSampleCorrelation(counts, samples = c(TRUE, FALSE)), "one TRUE or FALSE per sample")
+})
+
+
+test_that("the Jaccard index can be restricted to some samples", {
+
+  testthat::skip_if_not_installed("consensusRegions")
+
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+
+  treatedSamples <- sampleSheet$sample[sampleSheet$treatment == "R1881"]
+  treatedJaccard <- computeSampleCorrelation(consensus, method = "jaccard", samples = treatedSamples)
+
+  expect_identical(rownames(treatedJaccard$correlation), treatedSamples)
+  expect_identical(treatedJaccard$samples$sample, treatedSamples)
+
+  # The places are the union of the peaks of the samples kept, so the index is the one of those samples alone
+  pairJaccard <- computeSampleCorrelation(consensus, method = "jaccard", samples = treatedSamples[1:2])$correlation
+  expect_equal(pairJaccard[1, 2], treatedJaccard$correlation[1, 2])
+})
+
+
+test_that("selectSamples keeps the files, the layouts and the greenlist counts in line with the samples", {
+
+  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+  peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), verbose = FALSE)
+  counts <- countReads(peakRegions, sampleSheet = sampleSheet, countInput = FALSE, verbose = FALSE)
+  counts <- countGreenlist(counts, greenlist = GenomicRanges::GRanges("19", IRanges::IRanges(seq(46.5e6, 57.5e6, by = 1e6), width = 2e5)),
+                           excludeCounted = FALSE, verbose = FALSE)
+
+  selectedCounts <- selectSamples(counts, samples = c(1, 4, 7), verbose = FALSE)
+
+  expect_identical(selectedCounts@parameters$countReads$bamFiles, sampleSheet$bam[c(1, 4, 7)])
+  expect_length(selectedCounts@parameters$countReads$fragmentLength, 3)
+  expect_identical(colnames(S4Vectors::metadata(selectedCounts)$greenlist), colnames(selectedCounts))
+
+  # Every step reading the files again works on the selection
+  expect_s3_class(libInfo(selectedCounts), "data.frame")
+  expect_s4_class(normalizeCounts(selectedCounts, method = "greenlist", verbose = FALSE), "RegionSetDE.counts")
+  expect_s4_class(countBackground(selectedCounts, binSize = 10000, verbose = FALSE), "RegionSetDE.counts")
+})

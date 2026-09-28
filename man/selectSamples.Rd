@@ -32,7 +32,7 @@ Restricts a \code{RegionSetDE.counts} object to a subset of its samples. The con
 \details{
 Marks, and more generally experiments run on different antibodies or different assays, should not share a model. The dispersion, the dynamic range and the meaning of the scaling factors all differ between them, so a fit that pools them borrows information across rows that have nothing to say about each other. The selection therefore belongs upstream of \code{\link{normalizeCounts}} rather than at test time, and this is why \code{dropNormalization} defaults to \code{TRUE}: factors estimated over a set of samples that no longer exists describe a library composition that no longer exists either. The raw counts are never modified, so re-normalising costs one call.
 
-The background bins stored in the metadata, when present, are subset along with the regions.
+The background bins and the greenlist counts stored in the metadata, when present, are subset along with the samples, and so are the files, the layouts and the fragment lengths recorded by the counting, so that \code{\link{countBackground}}, \code{\link{countGreenlist}}, \code{\link{libInfo}} and \code{\link{computeProfiles}} keep working on the selection.
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)

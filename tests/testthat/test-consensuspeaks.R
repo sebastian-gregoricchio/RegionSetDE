@@ -107,14 +107,14 @@ test_that("a group with a single sample keeps its peaks as they are", {
 })
 
 
-test_that("the excluded regions take their peaks away before the consensus", {
+test_that("the blacklist and the greylist take their peaks away before the consensus", {
 
   skip_if_not_installed("consensusRegions")
   blacklist <- GenomicRanges::GRanges("chr1", IRanges::IRanges(300000, width = 1000))
   greylist <- GenomicRanges::GRanges("chr1", IRanges::IRanges(10000, width = 1000))
 
   regions <- loadConsensusPeaks(consensusSheet(), groupBy = "condition",
-                                excludeRegions = list(blacklist, greylist), verbose = FALSE)
+                                blacklist = blacklist, greylist = greylist, verbose = FALSE)
 
   consensusRanges <- regions@regions$consensus
   expect_length(consensusRanges, 12)
@@ -122,7 +122,67 @@ test_that("the excluded regions take their peaks away before the consensus", {
 
   sampleTable <- consensusData(regions)$samples
   expect_identical(sampleTable$n.excluded, c(1L, 1L, 1L, 2L, 2L))
-  expect_identical(regions@parameters$loadConsensusPeaks$n.excluded.regions, 2L)
+  expect_identical(sampleTable$n.excluded, sampleTable$n.blacklist + sampleTable$n.greylist)
+  expect_identical(regions@parameters$loadConsensusPeaks$n.blacklist.regions, 1L)
+  expect_identical(regions@parameters$loadConsensusPeaks$n.greylist.regions, 1L)
+
+  expect_error(loadConsensusPeaks(consensusSheet(), groupBy = "condition", excludeRegions = blacklist, verbose = FALSE),
+               "replaced by 'blacklist' and 'greylist'")
+})
+
+
+test_that("the two lists and the peaks they removed are recorded in the object", {
+
+  skip_if_not_installed("consensusRegions")
+  blacklist <- GenomicRanges::GRanges("chr1", IRanges::IRanges(300000, width = 1000))
+  greylist <- GenomicRanges::GRanges("chr1", IRanges::IRanges(10000, width = 1000))
+
+  regions <- loadConsensusPeaks(consensusSheet(), groupBy = "condition",
+                                blacklist = blacklist, greylist = greylist, verbose = FALSE)
+  consensusList <- consensusData(regions)
+
+  # The blacklist goes where applyBlacklist puts it, the greylist where applyGreylist does
+  expect_length(regions@blacklist, 1)
+  expect_identical(regions@parameters$greylist$n.regions, 1L)
+  expect_s4_class(consensusList$blacklist, "GRanges")
+  expect_s4_class(consensusList$greylist, "GRanges")
+
+  # One row per sample and list in the filtering log, the greylist acting on what the blacklist left
+  filteringTable <- filteringLog(regions)
+  expect_identical(filteringTable$step, rep(c("blacklist", "greylist"), each = 5))
+  expect_identical(filteringTable$n.removed, c(consensusList$samples$n.blacklist, consensusList$samples$n.greylist))
+  expect_identical(filteringTable$n.before[6:10], filteringTable$n.after[1:5])
+
+  # The peaks removed, with their sample and the list that removed them
+  removedPeaks <- consensusList$removed
+  expect_identical(length(removedPeaks), sum(consensusList$samples$n.excluded))
+  expect_setequal(unique(removedPeaks$removed.by), c("blacklist", "greylist"))
+  expect_true(all(IRanges::overlapsAny(removedPeaks[removedPeaks$removed.by == "blacklist"], blacklist)))
+  expect_identical(as.integer(table(factor(removedPeaks$sample, levels = consensusList$samples$sample))), consensusList$samples$n.excluded)
+
+  # The blacklist follows the regions into the counts
+  countedRegions <- loadConsensusPeaks(consensusSheet(bamFiles = consensusLibraries()), groupBy = "condition",
+                                       blacklist = blacklist, greylist = greylist, verbose = FALSE)
+  counts <- countReads(countedRegions, pairedEnd = FALSE, verbose = FALSE)
+  expect_length(counts@blacklist, 1)
+  expect_identical(nrow(counts@filtering.log), 10L)
+})
+
+
+test_that("a blacklist of another assembly is refused, whatever the alias of the assembly", {
+
+  skip_if_not_installed("consensusRegions")
+  blacklist <- GenomicRanges::GRanges("chr1", IRanges::IRanges(300000, width = 1000))
+  GenomeInfoDb::genome(blacklist) <- "mm10"
+
+  expect_error(loadConsensusPeaks(consensusSheet(), groupBy = "condition", blacklist = blacklist,
+                                  genomeAssembly = "hg38", verbose = FALSE),
+               "was built for mm10")
+
+  GenomeInfoDb::genome(blacklist) <- "hg38"
+  expect_s4_class(loadConsensusPeaks(consensusSheet(), groupBy = "condition", blacklist = blacklist,
+                                     genomeAssembly = "GRCh38", verbose = FALSE),
+                  "RegionSetDE")
 })
 
 
@@ -544,4 +604,25 @@ test_that("the example alignments are counted through their CSI index", {
   # the peaks are not describing the same experiment
   frip <- colSums(countMatrix) / SummarizedExperiment::colData(counts)$library.size
   expect_lt(max(frip[sampleSheet$condition == "DMSO"]), min(frip[sampleSheet$condition == "R1881_24h"]))
+})
+
+
+test_that("consensusGroupList returns the consensus of every group as a named list", {
+
+  skip_if_not_installed("consensusRegions")
+  regions <- loadConsensusPeaks(consensusSheet(), groupBy = "condition", seqlevelsStyle = "UCSC", verbose = FALSE)
+
+  groupList <- consensusGroupList(regions)
+  expect_type(groupList, "list")
+  expect_identical(names(groupList), c("A", "B"))
+  expect_identical(groupList, consensusData(regions)$groups)
+
+  # The groups asked for, in the order given, and the naming style of an annotation
+  expect_identical(names(consensusGroupList(regions, groups = c("B", "A"))), c("B", "A"))
+  ensemblList <- consensusGroupList(regions, seqlevelsStyle = "Ensembl")
+  expect_identical(GenomeInfoDb::seqlevels(ensemblList$A), "1")
+  expect_s4_class(consensusGroupList(regions, asGRangesList = TRUE), "GRangesList")
+
+  expect_error(consensusGroupList(regions, groups = "C"), "absent from the consensus")
+  expect_error(consensusGroupList(toyRegionSet()), "returned by loadConsensusPeaks")
 })

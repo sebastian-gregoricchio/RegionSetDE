@@ -8,6 +8,7 @@ plotRegionPCA(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   colourBy = NULL,
   shapeBy = NULL,
   labelBy = "sample",
@@ -25,11 +26,13 @@ plotRegionPCA(
 )
 }
 \arguments{
-\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSamplePCA}}, in which case \code{set}, \code{useOffsets}, \code{compareOffsets}, \code{facetBySet} and \code{topRegions} are those of the computation.}
+\item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit} or any result object of the package, or the list returned by \code{\link{computeSamplePCA}}, in which case \code{set}, \code{samples}, \code{useOffsets}, \code{compareOffsets}, \code{facetBySet} and \code{topRegions} are those of the computation.}
 
 \item{set}{Character vector with the names of the region sets used. Default: \code{NULL}, all of them.}
 
 \item{contrast}{String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.}
+
+\item{samples}{Samples the ordination is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples, and \code{useOffsets = FALSE} gives the library sizes alone. Default: \code{NULL}, all of them.}
 
 \item{colourBy}{String with the name of a \code{colData} column driving the colour. Default: \code{NULL}.}
 

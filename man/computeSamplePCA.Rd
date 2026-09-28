@@ -8,6 +8,7 @@ computeSamplePCA(
   object,
   set = NULL,
   contrast = NULL,
+  samples = NULL,
   useOffsets = TRUE,
   topRegions = 2000,
   verbose = TRUE
@@ -19,6 +20,8 @@ computeSamplePCA(
 \item{set}{Character vector with the names of the region sets used. Default: \code{NULL}, all of them.}
 
 \item{contrast}{String with the name of a contrast, or its position, when \code{object} holds several of them. Default: \code{NULL}.}
+
+\item{samples}{Samples the ordination is computed on: a character vector with their names, a numeric vector with their positions, or a logical vector with one value per sample. The normalisation stored in the object is kept, so the values are the ones of the whole analysis restricted to these samples, and \code{useOffsets = FALSE} gives the library sizes alone. Default: \code{NULL}, all of them.}
 
 \item{useOffsets}{Logical value to indicate whether the normalisation stored in the object must be applied, \code{FALSE} scaling the samples by their library sizes alone. Default: \code{TRUE}.}
 
@@ -42,6 +45,9 @@ counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 samplePCA <- computeSamplePCA(counts, topRegions = 1000)
 samplePCA$variance
 head(samplePCA$scores[, c("sample", "PC1", "PC2", "condition")])
+
+# Three of the four samples, with the normalisation of all four
+computeSamplePCA(counts, samples = colnames(counts)[1:3], topRegions = 1000)$variance
 
 }
 \seealso{

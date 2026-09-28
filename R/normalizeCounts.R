@@ -221,7 +221,8 @@ normalizeCounts <-
     } else if (method == "greenlist") {
       # The greenlist carries the noise of the protocol, so its counts follow the material sequenced and already hold the depth
       scalingFactorVector <- .greenlistFactors(greenlistMatrix = .greenlistMatrix(counts = counts, greenlistCounts = greenlistCounts),
-                                               estimator = greenlistEstimator)
+                                               estimator = greenlistEstimator,
+                                               verbose = verbose)
 
     } else if (method == "background") {
       backgroundBins <- S4Vectors::metadata(counts)$background

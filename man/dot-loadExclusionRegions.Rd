@@ -4,12 +4,18 @@
 \alias{.loadExclusionRegions}
 \title{.loadExclusionRegions}
 \usage{
-.loadExclusionRegions(excludeRegions, seqlevelsStyle = "UCSC")
+.loadExclusionRegions(
+  excludeRegions,
+  seqlevelsStyle = "UCSC",
+  listLabel = "blacklist"
+)
 }
 \arguments{
 \item{excludeRegions}{A \code{GRanges}, a path, a data.frame, or a list of them.}
 
 \item{seqlevelsStyle}{String with the chromosome naming style, or \code{NULL}.}
+
+\item{listLabel}{String with the name of the parameter the list came from, used in the messages. Default: \code{"blacklist"}.}
 }
 \value{
 A \code{GRanges} without overlaps.

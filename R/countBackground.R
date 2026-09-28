@@ -11,7 +11,7 @@
 #' @param minCount Numeric value with the minimum total count required to keep a bin. Default: \code{1}.
 #' @param excludeChromosomes Character vector with the chromosomes left out of the bins and of their library sizes, written in either naming style, as in \code{\link{countReads}}. \code{character(0)} excludes nothing. Default: \code{NULL}, the value used at the counting step.
 #' @param pairedEnd Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.
-#' @param fragmentLength Numeric value with the length to which single-end reads are extended. Default: \code{NULL}, the value used at the counting step.
+#' @param fragmentLength Numeric value with the length to which single-end reads are extended, or one value per BAM file. Default: \code{NULL}, the lengths used at the counting step, sample by sample.
 #' @param maxFragmentLength Numeric value with the maximum insert size accepted for a pair. Default: \code{NULL}, the value used at the counting step.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{NULL}, the value used at the counting step.
 #' @param removeDuplicates Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.
@@ -156,7 +156,7 @@ countBackground <-
     binCounts <- .countBamFragments(bamFiles = bamFiles,
                                     ranges = backgroundBins,
                                     pairedEnd = pairedEnd,
-                                    fragmentLength = fragmentLength[1],
+                                    fragmentLength = fragmentLength,
                                     maxFragmentLength = maxFragmentLength[1],
                                     minMapq = minMapq,
                                     removeDuplicates = removeDuplicates,

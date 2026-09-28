@@ -8,6 +8,7 @@
   counts,
   level = "region",
   normalized = FALSE,
+  input = FALSE,
   format = "wide",
   set = NULL,
   tileSummary = NULL,
@@ -21,6 +22,8 @@
 \item{level}{String, either \code{"region"} or \code{"tile"}.}
 
 \item{normalized}{Logical value indicating whether the normalised assay must be read.}
+
+\item{input}{Logical value indicating whether the input assay must be read.}
 
 \item{format}{String, one among \code{"wide"}, \code{"long"} and \code{"matrix"}.}
 

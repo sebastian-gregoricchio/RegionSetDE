@@ -6,21 +6,24 @@
 #'
 #' @param counts \code{RegionSetDE.counts} object returned by \code{\link{countReads}}.
 #' @param greenlist \code{GRanges} with the greenlist regions, typically from \code{\link{loadGreenlist}}, or the path to a BED file holding them.
+#' @param excludeCounted Logical value to indicate whether the greenlist regions overlapping the regions of \code{counts} must be left out, since the reads there carry the signal under study rather than the background of the protocol. Default: \code{TRUE}.
 #' @param bamFiles Character vector with the paths of the BAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.
 #' @param minCount Numeric value with the minimum total count required to keep a greenlist region. Default: \code{1}.
 #' @param pairedEnd Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.
-#' @param fragmentLength Numeric value with the length to which single-end reads are extended. Default: \code{NULL}, the value used at the counting step.
+#' @param fragmentLength Numeric value with the length to which single-end reads are extended, or one value per BAM file. Default: \code{NULL}, the lengths used at the counting step, sample by sample.
 #' @param maxFragmentLength Numeric value with the maximum insert size accepted for a pair. Default: \code{NULL}, the value used at the counting step.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{NULL}, the value used at the counting step.
 #' @param removeDuplicates Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.
 #' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return The input \code{RegionSetDE.counts} object with the greenlist counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$greenlist}.
+#' @return The input \code{RegionSetDE.counts} object with the greenlist counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$greenlist}. Its \code{colData} describes every library over the list: \code{totals}, the fragments counted, \code{regions.covered}, the regions holding at least one of them, and \code{library.fraction}, the share of the library they represent.
 #'
 #' @details The read filters are taken from \code{\link{countReads}} unless they are given here, for the same reason as in \code{\link{countBackground}}: a reference counted with another mapping quality or duplicate policy describes a library that is not the one under study.
 #'
-#' Each fragment is counted once, in the region holding its centre, as the background bins do, so the totals stay a share of the library and two neighbouring regions never claim the same fragment. The list is merged beforehand for the same reason. Greenlist regions lying on chromosomes absent from the BAM files are dropped, and how many were is reported, which is what catches a list built for another assembly before it quietly halves the counts.
+#' Each fragment is counted once, in the region holding its centre, as the background bins do, so the totals stay a share of the library and two neighbouring regions never claim the same fragment. The list is merged beforehand for the same reason. This is the quantification of the greenlist paper, which counted the lists with \code{multiBamSummary --centerReads}. Greenlist regions lying on chromosomes absent from the BAM files are dropped, and how many were is reported, which is what catches a list built for another assembly before it quietly halves the counts.
+#'
+#' The checks follow the conditions under which de Mello \emph{et al.} built and validated the lists. The regions were chosen at least 5 kb away from genes so that no target binds there; a region of this experiment that overlaps one of them means the target does bind there, in these cells, and its reads would carry the biology into the factors, which is why \code{excludeCounted} drops it. The libraries used to build the lists had at least 1.5 million aligned reads for human CUT&RUN, 1 million for mouse CUT&RUN and 500,000 for human CUT&Tag, and a library below that depth, counted here in fragments, is reported. So is a library covering fewer than half as many greenlist regions as the median library, whose factor rests on a small part of the list. The paper sets no rule per group of samples: what matters for the factors is how many regions carry reads in every library, which \code{\link{normalizeCounts}} reports when it computes them.
 #'
 #' @examples
 #' sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
@@ -44,8 +47,9 @@
 #' @importFrom SummarizedExperiment SummarizedExperiment assay
 #' @importFrom GenomeInfoDb seqlevels seqnames
 #' @importFrom BiocGenerics width
-#' @importFrom IRanges reduce
+#' @importFrom IRanges reduce overlapsAny
 #' @importFrom S4Vectors metadata metadata<- DataFrame
+#' @importFrom SummarizedExperiment rowRanges colData
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
 #' @importFrom methods is
@@ -55,6 +59,7 @@
 countGreenlist <-
   function(counts,
            greenlist,
+           excludeCounted = TRUE,
            bamFiles = NULL,
            minCount = 1,
            pairedEnd = NULL,
@@ -79,6 +84,13 @@ countGreenlist <-
     if (!methods::is(greenlist, "GRanges")) {
       stop("The 'greenlist' parameter must be a GRanges or the path to a BED file, see loadGreenlist().", call. = FALSE)
     }
+
+    if (!is.logical(excludeCounted) | length(excludeCounted) != 1 | anyNA(excludeCounted)) {
+      stop("The 'excludeCounted' parameter must be TRUE or FALSE.", call. = FALSE)
+    }
+
+    # The description of the list goes before the merge, which drops it
+    greenlistInfo <- S4Vectors::metadata(greenlist)
 
     #-----------------------------------#
     # Recover the counting parameters   #
@@ -134,6 +146,28 @@ countGreenlist <-
 
     greenlistRanges <- greenlistRanges[!absentRegions]
 
+    #-----------------------------------#
+    # Keep the signal out of the list   #
+    #-----------------------------------#
+    # A greenlist region the regions of the study fall on is bound by the target here, its reads are not background
+    excludedRegions <- 0L
+
+    if (isTRUE(excludeCounted)) {
+      countedRanges <- .matchSeqlevels(x = SummarizedExperiment::rowRanges(counts), targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
+      overlappingRegions <- IRanges::overlapsAny(greenlistRanges, countedRanges, ignore.strand = TRUE)
+      excludedRegions <- sum(overlappingRegions)
+
+      if (all(overlappingRegions)) {
+        stop("Every greenlist region overlaps the regions of the object. Set excludeCounted = FALSE only if those regions are not bound by the target, genome wide bins for instance.", call. = FALSE)
+      }
+
+      if (excludedRegions > 0 & isTRUE(verbose)) {
+        message(excludedRegions, " greenlist regions overlap the regions of the object and are left out, their reads carry the signal under study.")
+      }
+
+      greenlistRanges <- greenlistRanges[!overlappingRegions]
+    }
+
     #-------------------------------#
     # Count over the greenlist      #
     #-------------------------------#
@@ -145,7 +179,7 @@ countGreenlist <-
     greenlistCounts <- .countBamFragments(bamFiles = bamFiles,
                                           ranges = greenlistRanges,
                                           pairedEnd = pairedEnd,
-                                          fragmentLength = fragmentLength[1],
+                                          fragmentLength = fragmentLength,
                                           maxFragmentLength = maxFragmentLength[1],
                                           minMapq = minMapq,
                                           removeDuplicates = removeDuplicates,
@@ -154,11 +188,16 @@ countGreenlist <-
                                           countMode = "bin",
                                           nThreads = nThreads)
 
+    librarySizes <- SummarizedExperiment::colData(counts)$library.size
+    if (is.null(librarySizes)) {librarySizes <- rep(NA_real_, ncol(counts))}
+
     greenlistExperiment <-
       SummarizedExperiment::SummarizedExperiment(assays = list(counts = greenlistCounts$counts),
                                                  rowRanges = greenlistRanges,
                                                  colData = S4Vectors::DataFrame(bam.files = bamFiles,
                                                                                 totals = as.numeric(colSums(greenlistCounts$counts)),
+                                                                                regions.covered = as.integer(colSums(greenlistCounts$counts > 0)),
+                                                                                library.fraction = as.numeric(colSums(greenlistCounts$counts)) / as.numeric(librarySizes),
                                                                                 row.names = colnames(counts)))
 
     colnames(greenlistExperiment) <- colnames(counts)
@@ -180,25 +219,32 @@ countGreenlist <-
 
     S4Vectors::metadata(counts)$greenlist <- greenlistExperiment
 
+    #-------------------------------#
+    # Checks on the libraries       #
+    #-------------------------------#
+    .checkGreenlistLibraries(greenlistExperiment = greenlistExperiment,
+                             librarySizes = librarySizes,
+                             greenlistInfo = greenlistInfo)
+
     # Assigned rather than appended, so that counting twice leaves one record and not two
     counts@parameters$countGreenlist <- list(bamFiles = bamFiles,
                                              n.regions = nrow(greenlistExperiment),
                                              covered.bp = sum(as.numeric(BiocGenerics::width(greenlistRanges))),
+                                             excludeCounted = excludeCounted,
+                                             n.excluded.regions = excludedRegions,
                                              minCount = minCount,
                                              pairedEnd = pairedEnd,
                                              fragmentLength = fragmentLength,
                                              maxFragmentLength = maxFragmentLength,
                                              minMapq = minMapq,
                                              removeDuplicates = removeDuplicates,
-                                             greenlist = S4Vectors::metadata(greenlist))
+                                             greenlist = greenlistInfo)
 
     if (isTRUE(verbose)) {
       message("Done. ", format(nrow(greenlistExperiment), big.mark = ","), " greenlist regions kept.")
 
       # The share of the library sitting on the greenlist is the number worth watching between samples
-      librarySizes <- SummarizedExperiment::colData(counts)$library.size
-
-      if (!is.null(librarySizes) && !any(is.na(librarySizes))) {
+      if (!any(is.na(librarySizes))) {
         greenlistFraction <- 100 * colSums(SummarizedExperiment::assay(greenlistExperiment, "counts")) / librarySizes
 
         message("They hold between ", format(round(min(greenlistFraction), 2), nsmall = 2), " and ",
@@ -207,6 +253,69 @@ countGreenlist <-
     }
 
     return(counts)
+  } # END function
+
+
+
+
+#' @title .checkGreenlistLibraries
+#'
+#' @description Warns about the libraries whose greenlist counts are too thin to give a steady factor: those below the depth the lists were built from, and those covering far fewer regions of the list than the others.
+#'
+#' @param greenlistExperiment \code{SummarizedExperiment} with the greenlist counts, as built by \code{countGreenlist}.
+#' @param librarySizes Numeric vector with the library size of every sample, possibly \code{NA}.
+#' @param greenlistInfo List with the metadata of the greenlist, as set by \code{\link{loadGreenlist}}.
+#'
+#' @return Nothing, it raises warnings at most.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom SummarizedExperiment colData
+#' @importFrom stats median
+#'
+#' @keywords internal
+
+.checkGreenlistLibraries <-
+  function(greenlistExperiment,
+           librarySizes,
+           greenlistInfo = NULL) {
+
+    sampleNames <- colnames(greenlistExperiment)
+    regionsCovered <- SummarizedExperiment::colData(greenlistExperiment)$regions.covered
+
+    #-------------------------------#
+    # Depth used to build the lists #
+    #-------------------------------#
+    # de Mello et al. left out of the construction the libraries below these depths
+    depthTable <- data.frame(genome = c("hg38", "mm39", "hg38"),
+                             assay = c("cutrun", "cutrun", "cuttag"),
+                             min.depth = c(1.5e6, 1e6, 5e5),
+                             stringsAsFactors = FALSE)
+
+    if (!is.null(greenlistInfo$genome) & !is.null(greenlistInfo$assay) & !any(is.na(librarySizes))) {
+      minDepth <- depthTable$min.depth[depthTable$genome == greenlistInfo$genome & depthTable$assay == greenlistInfo$assay]
+
+      shallowLibraries <- sampleNames[librarySizes < minDepth[1]]
+      if (length(minDepth) == 1 && length(shallowLibraries) > 0) {
+        warning("The following libraries hold fewer than ", format(minDepth, big.mark = ",", scientific = FALSE),
+                " fragments, the depth below which the libraries were left out when this greenlist was built: ",
+                paste(shallowLibraries, collapse = ", "), ". Their greenlist factors rest on few reads.", call. = FALSE)
+      }
+    }
+
+    #-------------------------------#
+    # Regions covered               #
+    #-------------------------------#
+    # A library reaching a small part of the list gets a factor from that part alone
+    thinLibraries <- sampleNames[regionsCovered < 0.5 * stats::median(regionsCovered)]
+
+    if (length(thinLibraries) > 0) {
+      warning("The following libraries have reads on fewer than half as many greenlist regions as the median library: ",
+              paste(thinLibraries, " (", regionsCovered[match(thinLibraries, sampleNames)], ")", sep = "", collapse = ", "),
+              ". Their factors rest on a small part of the list.", call. = FALSE)
+    }
+
+    return(invisible(TRUE))
   } # END function
 
 
@@ -280,6 +389,7 @@ countGreenlist <-
 #'
 #' @param greenlistMatrix Numeric matrix with one row per greenlist region and one column per sample.
 #' @param estimator String with the estimator, one among \code{"medianRatio"}, \code{"TMM"} and \code{"sum"}.
+#' @param verbose Logical value to indicate whether the number of regions behind the median of ratios must be reported. Default: \code{FALSE}.
 #'
 #' @return A numeric vector with one factor per sample, centred on one.
 #'
@@ -292,7 +402,8 @@ countGreenlist <-
 
 .greenlistFactors <-
   function(greenlistMatrix,
-           estimator = "medianRatio") {
+           estimator = "medianRatio",
+           verbose = FALSE) {
 
     sampleTotals <- as.numeric(colSums(greenlistMatrix))
 
@@ -327,6 +438,11 @@ countGreenlist <-
     # A median taken over a handful of regions is not a median of anything stable
     if (sum(usableRows) < 10) {
       warning("Only ", sum(usableRows), " greenlist regions carry a read in every sample, the factors rest on those alone.", call. = FALSE)
+    }
+
+    # Like DESeq2, the median only sees the regions with reads in every library, so their number is the size of the reference
+    if (isTRUE(verbose)) {
+      message("Median of ratios over the ", sum(usableRows), " greenlist regions with reads in every sample, out of ", nrow(greenlistMatrix), ".")
     }
 
     logRatios <- logCounts[usableRows, , drop = FALSE] - referenceRow[usableRows]

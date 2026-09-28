@@ -4,12 +4,14 @@
 \alias{.greenlistFactors}
 \title{.greenlistFactors}
 \usage{
-.greenlistFactors(greenlistMatrix, estimator = "medianRatio")
+.greenlistFactors(greenlistMatrix, estimator = "medianRatio", verbose = FALSE)
 }
 \arguments{
 \item{greenlistMatrix}{Numeric matrix with one row per greenlist region and one column per sample.}
 
 \item{estimator}{String with the estimator, one among \code{"medianRatio"}, \code{"TMM"} and \code{"sum"}.}
+
+\item{verbose}{Logical value to indicate whether the number of regions behind the median of ratios must be reported. Default: \code{FALSE}.}
 }
 \value{
 A numeric vector with one factor per sample, centred on one.

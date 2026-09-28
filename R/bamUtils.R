@@ -66,7 +66,7 @@
 #' @param bamFiles Character vector with the paths of the BAM files, all sharing the same header.
 #' @param ranges \code{GRanges} with the ranges to count, named after the chromosomes of the BAM files. The strand is ignored.
 #' @param pairedEnd Logical vector with one value per BAM file.
-#' @param fragmentLength Numeric value with the length to which single-end reads are extended. Default: \code{150}.
+#' @param fragmentLength Numeric value with the length to which single-end reads are extended, or one value per BAM file. Default: \code{150}.
 #' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment. Default: \code{1000}.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. For paired-end data the mate is checked through its \code{MQ} tag, when the file carries it. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
@@ -133,6 +133,9 @@
     countMatrix <- matrix(0L, nrow = length(ranges), ncol = length(bamFiles))
     librarySizes <- numeric(length(bamFiles))
     mateMapqFound <- ifelse(pairedEnd, FALSE, NA)
+
+    # One length per file, so that libraries of different fragment sizes are each extended to their own
+    fragmentLength <- rep_len(as.integer(round(fragmentLength)), length(bamFiles))
 
     if (nrow(chromosomeTable) == 0) {
       return(list(counts = countMatrix, library.size = librarySizes, mate.mapq.found = mateMapqFound))
@@ -240,7 +243,7 @@
 #' @param job List describing the job: \code{file.index}, the \code{pieces} table, the \code{ranges} to count with their \code{range.chromosome} and \code{range.index}, and the \code{discard} regions of its chromosomes.
 #' @param bamFiles Character vector with the paths of the BAM files.
 #' @param pairedEnd Logical vector with one value per BAM file.
-#' @param fragmentLength Numeric value with the length to which single-end reads are extended.
+#' @param fragmentLength Integer vector with the length to which single-end reads are extended, one value per BAM file.
 #' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment.
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
@@ -250,9 +253,9 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom Rsamtools ScanBamParam scanBamFlag scanBam
+#' @importFrom Rsamtools scanBam
 #' @importFrom GenomicRanges GRanges
-#' @importFrom IRanges IRanges countOverlaps overlapsAny
+#' @importFrom IRanges IRanges countOverlaps
 #'
 #' @keywords internal
 
@@ -268,7 +271,6 @@
 
     isPairedEnd <- pairedEnd[job$file.index]
     pieces <- job$pieces
-    checkMapq <- isTRUE(!is.na(minMapq[1]) & minMapq[1] > 0)
 
     jobCounts <- integer(length(job$range.index))
     totalFragments <- 0
@@ -277,19 +279,11 @@
     #--------------------------#
     # Read the pieces          #
     #--------------------------#
-    # Of a proper pair only the first mate is read, it already knows where the fragment starts and how long it is
-    readParameters <- Rsamtools::ScanBamParam(what = if (isPairedEnd) {c("pos", "mpos", "isize")} else {c("pos", "strand", "cigar")},
-                                              tag = if (isPairedEnd & checkMapq) {"MQ"} else {character(0)},
-                                              which = GenomicRanges::GRanges(seqnames = pieces$chromosome,
-                                                                             ranges = IRanges::IRanges(start = pieces$start, end = pieces$end)),
-                                              mapqFilter = if (checkMapq) {as.integer(minMapq)} else {NA_integer_},
-                                              flag = Rsamtools::scanBamFlag(isPaired = if (isPairedEnd) {TRUE} else {NA},
-                                                                            isProperPair = if (isPairedEnd) {TRUE} else {NA},
-                                                                            isFirstMateRead = if (isPairedEnd) {TRUE} else {NA},
-                                                                            isUnmappedQuery = FALSE,
-                                                                            isSecondaryAlignment = FALSE,
-                                                                            isSupplementaryAlignment = FALSE,
-                                                                            isDuplicate = if (isTRUE(removeDuplicates)) {FALSE} else {NA}))
+    readParameters <- .bamReadParameters(which = GenomicRanges::GRanges(seqnames = pieces$chromosome,
+                                                                        ranges = IRanges::IRanges(start = pieces$start, end = pieces$end)),
+                                         isPairedEnd = isPairedEnd,
+                                         minMapq = minMapq,
+                                         removeDuplicates = removeDuplicates)
 
     # All the pieces go in a single call: querying an open BamFile a second time returns no reads
     readList <- Rsamtools::scanBam(.bamWithIndex(bamFiles[job$file.index]), param = readParameters)
@@ -299,50 +293,20 @@
       reads <- readList[[i]]
 
       # A read belongs to the piece holding its start, the neighbouring piece would count it again otherwise
-      keep <- reads$pos >= pieces$start[i] & reads$pos <= pieces$end[i]
+      pieceFragments <- .fragmentsFromReads(reads = reads,
+                                            keep = reads$pos >= pieces$start[i] & reads$pos <= pieces$end[i],
+                                            isPairedEnd = isPairedEnd,
+                                            fragmentLength = fragmentLength[job$file.index],
+                                            maxFragmentLength = maxFragmentLength,
+                                            minMapq = minMapq,
+                                            chromosomeLength = pieces$chromosome.length[i],
+                                            discard = job$discard[[pieces$chromosome[i]]])
 
-      #--------------------------#
-      # Fragment boundaries      #
-      #--------------------------#
-      if (isPairedEnd) {
-        keep <- keep & reads$isize != 0 & abs(reads$isize) <= maxFragmentLength
-
-        # The quality of the mate is only known through the MQ tag, without it the mate is let through
-        mateMapq <- reads$tag$MQ
-        if (checkMapq & !is.null(mateMapq)) {
-          mateMapqFound <- TRUE
-          keep <- keep & (is.na(mateMapq) | mateMapq >= minMapq)
-        }
-
-        readStarts <- list(reads$pos, reads$mpos)
-      } else {
-        readEnd <- reads$pos + .cigarReferenceWidth(reads$cigar) - 1L
-        onMinus <- as.character(reads$strand) == "-"
-        readStarts <- list(reads$pos)
-      }
-
-      # A read starting in a discarded region takes its whole fragment away
-      discardHere <- job$discard[[pieces$chromosome[i]]]
-      if (!is.null(discardHere)) {
-        for (readStart in readStarts) {
-          keep <- keep & !IRanges::overlapsAny(IRanges::IRanges(start = readStart, width = 1), discardHere)
-        }
-      }
-
-      if (isPairedEnd) {
-        fragmentStart <- pmin(reads$pos, reads$mpos)[keep]
-        fragmentEnd <- fragmentStart + abs(reads$isize[keep]) - 1L
-      } else {
-        fragmentStart <- ifelse(onMinus, readEnd - fragmentLength + 1L, reads$pos)[keep]
-        fragmentEnd <- ifelse(onMinus, readEnd, reads$pos + fragmentLength - 1L)[keep]
-      }
-
-      fragmentStart <- pmax(fragmentStart, 1L)
-      fragmentEnd <- pmin(fragmentEnd, pieces$chromosome.length[i])
+      if (isTRUE(pieceFragments$mate.mapq.found)) {mateMapqFound <- TRUE}
 
       # An excluded chromosome is read for its ranges only, its fragments stay out of the library size
       if (pieces$in.library[i]) {
-        totalFragments <- totalFragments + length(fragmentStart)
+        totalFragments <- totalFragments + length(pieceFragments$start)
       }
 
       #--------------------------#
@@ -350,13 +314,12 @@
       #--------------------------#
       rangeSlot <- which(job$range.chromosome == pieces$chromosome[i])
 
-      if (length(rangeSlot) > 0 & length(fragmentStart) > 0) {
-        if (countMode == "bin") {
-          # One count per fragment, at its centre, or at the 5' end of a single read
-          countPoint <- if (isPairedEnd) {fragmentStart + (fragmentEnd - fragmentStart + 1L) %/% 2L} else {ifelse(onMinus, readEnd, reads$pos)[keep]}
-          fragmentRanges <- IRanges::IRanges(start = countPoint, width = 1)
+      if (length(rangeSlot) > 0 & length(pieceFragments$start) > 0) {
+        # In bin mode a fragment counts once, at its centre, or at the 5' end of a single read
+        fragmentRanges <- if (countMode == "bin") {
+          IRanges::IRanges(start = pieceFragments$point, width = 1)
         } else {
-          fragmentRanges <- IRanges::IRanges(start = fragmentStart, end = fragmentEnd)
+          IRanges::IRanges(start = pieceFragments$start, end = pieceFragments$end)
         }
 
         jobCounts[rangeSlot] <- jobCounts[rangeSlot] + IRanges::countOverlaps(job$ranges[rangeSlot], fragmentRanges)
@@ -368,6 +331,399 @@
                 counts = jobCounts,
                 total.fragments = totalFragments,
                 mate.mapq.found = mateMapqFound))
+  } # END function
+
+
+
+
+#' @title .bamReadParameters
+#'
+#' @description Builds the \code{ScanBamParam} shared by every function reading fragments from a BAM file, so that counting, summits and profiles apply the same filters. Of a proper pair only the first mate is read, since its position, the position of its mate and the template length already describe the fragment.
+#'
+#' @param which \code{GRanges} with the stretches of genome to read.
+#' @param isPairedEnd Logical value, \code{TRUE} for a paired-end file.
+#' @param minMapq Numeric value with the minimum mapping quality of a read.
+#' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
+#'
+#' @return A \code{ScanBamParam} object.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom Rsamtools ScanBamParam scanBamFlag
+#'
+#' @keywords internal
+
+.bamReadParameters <-
+  function(which,
+           isPairedEnd,
+           minMapq,
+           removeDuplicates) {
+
+    checkMapq <- isTRUE(!is.na(minMapq[1]) & minMapq[1] > 0)
+
+    return(Rsamtools::ScanBamParam(what = if (isPairedEnd) {c("pos", "mpos", "isize")} else {c("pos", "strand", "cigar")},
+                                   tag = if (isPairedEnd & checkMapq) {"MQ"} else {character(0)},
+                                   which = which,
+                                   mapqFilter = if (checkMapq) {as.integer(minMapq[1])} else {NA_integer_},
+                                   flag = Rsamtools::scanBamFlag(isPaired = if (isPairedEnd) {TRUE} else {NA},
+                                                                 isProperPair = if (isPairedEnd) {TRUE} else {NA},
+                                                                 isFirstMateRead = if (isPairedEnd) {TRUE} else {NA},
+                                                                 isUnmappedQuery = FALSE,
+                                                                 isSecondaryAlignment = FALSE,
+                                                                 isSupplementaryAlignment = FALSE,
+                                                                 isDuplicate = if (isTRUE(removeDuplicates)) {FALSE} else {NA})))
+  } # END function
+
+
+
+
+#' @title .fragmentsFromReads
+#'
+#' @description Turns the records returned by \code{scanBam} into fragments. Paired-end fragments are rebuilt from the first mate of each proper pair, single-end reads are extended from their 5' end to the fragment length. The records of a pair longer than the maximum, of a mate below the mapping quality, or starting in a discarded region are dropped.
+#'
+#' @param reads List returned by \code{scanBam} for one stretch of genome, or several of them pasted together.
+#' @param keep Logical vector with one value per record, telling which records enter at all.
+#' @param isPairedEnd Logical value, \code{TRUE} for a paired-end file.
+#' @param fragmentLength Numeric value with the length to which single-end reads are extended.
+#' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment.
+#' @param minMapq Numeric value with the minimum mapping quality of a read, applied to the mate through its \code{MQ} tag.
+#' @param chromosomeLength Numeric value, or one value per record, with the length of the chromosome the fragments are clipped to.
+#' @param discard \code{IRanges} with the discarded regions of the chromosome, or \code{NULL}. Only for records of a single chromosome.
+#'
+#' @return A list with the \code{start}, the \code{end} and the \code{point} of every fragment, the point being its centre for paired-end data and the 5' end of the read for single-end data, the \code{index} of the record each fragment comes from, and \code{mate.mapq.found}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom IRanges IRanges overlapsAny
+#'
+#' @keywords internal
+
+.fragmentsFromReads <-
+  function(reads,
+           keep,
+           isPairedEnd,
+           fragmentLength,
+           maxFragmentLength,
+           minMapq,
+           chromosomeLength,
+           discard = NULL) {
+
+    checkMapq <- isTRUE(!is.na(minMapq[1]) & minMapq[1] > 0)
+    mateMapqFound <- FALSE
+    keep[is.na(keep)] <- FALSE
+
+    #--------------------------#
+    # Filters of the records   #
+    #--------------------------#
+    if (isPairedEnd) {
+      keep <- keep & reads$isize != 0 & abs(reads$isize) <= maxFragmentLength
+
+      # The quality of the mate is only known through the MQ tag, without it the mate is let through
+      mateMapq <- reads$tag$MQ
+      if (checkMapq & !is.null(mateMapq)) {
+        mateMapqFound <- TRUE
+        keep <- keep & (is.na(mateMapq) | mateMapq >= minMapq[1])
+      }
+
+      readStarts <- list(reads$pos, reads$mpos)
+    } else {
+      readEnd <- reads$pos + .cigarReferenceWidth(reads$cigar) - 1L
+      onMinus <- as.character(reads$strand) == "-"
+      readStarts <- list(reads$pos)
+    }
+
+    # A read starting in a discarded region takes its whole fragment away
+    if (!is.null(discard)) {
+      for (readStart in readStarts) {
+        keep <- keep & !IRanges::overlapsAny(IRanges::IRanges(start = readStart, width = 1), discard)
+      }
+    }
+
+    #--------------------------#
+    # Fragment boundaries      #
+    #--------------------------#
+    if (isPairedEnd) {
+      fragmentStart <- pmin(reads$pos, reads$mpos)[keep]
+      fragmentEnd <- fragmentStart + abs(reads$isize[keep]) - 1L
+    } else {
+      fragmentLength <- as.integer(fragmentLength[1])
+      fragmentStart <- ifelse(onMinus, readEnd - fragmentLength + 1L, reads$pos)[keep]
+      fragmentEnd <- ifelse(onMinus, readEnd, reads$pos + fragmentLength - 1L)[keep]
+    }
+
+    if (length(chromosomeLength) > 1) {chromosomeLength <- chromosomeLength[keep]}
+
+    fragmentStart <- as.integer(pmax(fragmentStart, 1L))
+    fragmentEnd <- as.integer(pmin(fragmentEnd, chromosomeLength))
+
+    # The centre of a pair, once clipped to the chromosome, or the 5' end of a single read
+    fragmentPoint <- if (isPairedEnd) {fragmentStart + (fragmentEnd - fragmentStart + 1L) %/% 2L} else {ifelse(onMinus, readEnd, reads$pos)[keep]}
+
+    return(list(start = fragmentStart,
+                end = fragmentEnd,
+                point = as.integer(fragmentPoint),
+                index = which(keep),
+                mate.mapq.found = mateMapqFound))
+  } # END function
+
+
+
+
+#' @title .windowFragments
+#'
+#' @description Reads the fragments of one BAM file that overlap a set of windows, with the same filters as the counting. The windows are widened by the longest fragment accepted, so that a fragment reaching a window from outside is not lost, and merged, so that every record is read once.
+#'
+#' @param bamFile String with the path of the BAM file.
+#' @param windows \code{GRanges} with the windows, named after the chromosomes of the BAM file.
+#' @param isPairedEnd Logical value, \code{TRUE} for a paired-end file.
+#' @param fragmentLength Numeric value with the length to which single-end reads are extended.
+#' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment.
+#' @param minMapq Numeric value with the minimum mapping quality of a read.
+#' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
+#' @param chromosomeLengths Named numeric vector with the length of every chromosome of the BAM file.
+#' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, named after the chromosomes of the BAM file. Default: \code{NULL}.
+#' @param padding Numeric value with the number of base pairs added on both sides of the windows. Default: \code{NULL}, the longest fragment accepted.
+#' @param readsOnly Logical value: \code{TRUE} returns the reads as they are, with their strand and 5' end, instead of the fragments. Only for single-end files. Default: \code{FALSE}.
+#'
+#' @return A \code{GRanges} with one element per fragment, or per read when \code{readsOnly = TRUE}, carrying the 5' end of the read in the \code{five.prime} column.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom Rsamtools scanBam
+#' @importFrom GenomicRanges GRanges
+#' @importFrom GenomeInfoDb seqnames
+#' @importFrom BiocGenerics start end
+#' @importFrom IRanges IRanges reduce
+#'
+#' @keywords internal
+
+.windowFragments <-
+  function(bamFile,
+           windows,
+           isPairedEnd,
+           fragmentLength,
+           maxFragmentLength,
+           minMapq,
+           removeDuplicates,
+           chromosomeLengths,
+           discardRegions = NULL,
+           padding = NULL,
+           readsOnly = FALSE) {
+
+    emptyResult <- GenomicRanges::GRanges(seqnames = character(0), ranges = IRanges::IRanges(), strand = character(0), five.prime = integer(0))
+
+    windows <- windows[as.character(GenomeInfoDb::seqnames(windows)) %in% names(chromosomeLengths)]
+    if (length(windows) == 0) {return(emptyResult)}
+
+    #--------------------------#
+    # Windows to read          #
+    #--------------------------#
+    # Merged after the widening, so that the windows never share a record and each read is taken once
+    if (is.null(padding)) {padding <- max(c(maxFragmentLength, fragmentLength), na.rm = TRUE)}
+    windowChromosomes <- as.character(GenomeInfoDb::seqnames(windows))
+
+    readWindows <- GenomicRanges::GRanges(seqnames = windowChromosomes,
+                                          ranges = IRanges::IRanges(start = as.integer(pmax(BiocGenerics::start(windows) - padding, 1)),
+                                                                    end = as.integer(pmin(BiocGenerics::end(windows) + padding, chromosomeLengths[windowChromosomes]))))
+    readWindows <- IRanges::reduce(readWindows, ignore.strand = TRUE)
+
+    readParameters <- .bamReadParameters(which = readWindows,
+                                         isPairedEnd = isPairedEnd,
+                                         minMapq = minMapq,
+                                         removeDuplicates = removeDuplicates)
+
+    readList <- Rsamtools::scanBam(.bamWithIndex(bamFile), param = readParameters)
+    readList <- readList[paste0(as.character(GenomeInfoDb::seqnames(readWindows)), ":",
+                                BiocGenerics::start(readWindows), "-", BiocGenerics::end(readWindows))]
+
+    #--------------------------#
+    # One chromosome at a time #
+    #--------------------------#
+    # The records of a chromosome are pooled, a read belonging to the window holding its start
+    readWindowChromosomes <- as.character(GenomeInfoDb::seqnames(readWindows))
+    discardList <- if (is.null(discardRegions) || length(discardRegions) == 0) {NULL} else {
+      split(IRanges::ranges(discardRegions), as.character(GenomeInfoDb::seqnames(discardRegions)))
+    }
+
+    fragmentList <- list()
+
+    for (chromosome in unique(readWindowChromosomes)) {
+      windowIndex <- which(readWindowChromosomes == chromosome)
+      chromosomeReads <- readList[windowIndex]
+
+      recordNumber <- vapply(chromosomeReads, function(reads) {length(reads$pos)}, integer(1))
+      if (sum(recordNumber) == 0) {next}
+
+      pooledReads <- list(pos = unlist(lapply(chromosomeReads, `[[`, "pos"), use.names = FALSE))
+      if (isPairedEnd) {
+        pooledReads$mpos <- unlist(lapply(chromosomeReads, `[[`, "mpos"), use.names = FALSE)
+        pooledReads$isize <- unlist(lapply(chromosomeReads, `[[`, "isize"), use.names = FALSE)
+        mateMapq <- lapply(chromosomeReads, function(reads) {reads$tag$MQ})
+        if (!all(vapply(mateMapq, is.null, logical(1)))) {
+          pooledReads$tag <- list(MQ = unlist(lapply(seq_along(mateMapq), function(j) {
+            if (is.null(mateMapq[[j]])) {rep(NA_integer_, recordNumber[j])} else {mateMapq[[j]]}
+          }), use.names = FALSE))
+        }
+      } else {
+        pooledReads$strand <- unlist(lapply(chromosomeReads, function(reads) {as.character(reads$strand)}), use.names = FALSE)
+        pooledReads$cigar <- unlist(lapply(chromosomeReads, `[[`, "cigar"), use.names = FALSE)
+      }
+
+      windowStart <- rep(BiocGenerics::start(readWindows)[windowIndex], times = recordNumber)
+      windowEnd <- rep(BiocGenerics::end(readWindows)[windowIndex], times = recordNumber)
+      inWindow <- pooledReads$pos >= windowStart & pooledReads$pos <= windowEnd
+
+      chromosomeFragments <- .fragmentsFromReads(reads = pooledReads,
+                                                 keep = inWindow,
+                                                 isPairedEnd = isPairedEnd,
+                                                 fragmentLength = if (isTRUE(readsOnly)) {1L} else {fragmentLength},
+                                                 maxFragmentLength = maxFragmentLength,
+                                                 minMapq = minMapq,
+                                                 chromosomeLength = chromosomeLengths[[chromosome]],
+                                                 discard = discardList[[chromosome]])
+
+      if (length(chromosomeFragments$start) == 0) {next}
+
+      if (isTRUE(readsOnly)) {
+        # The read itself, with its strand, is what a cross-correlation looks at
+        readIndex <- chromosomeFragments$index
+        readStart <- pooledReads$pos[readIndex]
+        readEnd <- readStart + .cigarReferenceWidth(pooledReads$cigar[readIndex]) - 1L
+        fragmentList[[chromosome]] <- GenomicRanges::GRanges(seqnames = chromosome,
+                                                             ranges = IRanges::IRanges(start = readStart, end = readEnd),
+                                                             strand = pooledReads$strand[readIndex],
+                                                             five.prime = chromosomeFragments$point)
+      } else {
+        fragmentList[[chromosome]] <- GenomicRanges::GRanges(seqnames = chromosome,
+                                                             ranges = IRanges::IRanges(start = chromosomeFragments$start, end = chromosomeFragments$end),
+                                                             strand = "*",
+                                                             five.prime = chromosomeFragments$point)
+      }
+    }
+
+    if (length(fragmentList) == 0) {return(emptyResult)}
+
+    return(do.call(what = c, args = unname(fragmentList)))
+  } # END function
+
+
+
+
+#' @title .windowCoverage
+#'
+#' @description Reads the fragments of one BAM file around a set of windows and returns their coverage, chromosome by chromosome.
+#'
+#' @param bamFile String with the path of the BAM file.
+#' @param windows \code{GRanges} with the windows, named after the chromosomes of the BAM file.
+#' @param chromosomeLengths Named numeric vector with the length of every chromosome of the BAM file.
+#' @param ... Read filters passed to \code{.windowFragments}.
+#'
+#' @return A list with \code{coverage}, an \code{RleList} with one element per chromosome of the BAM file, and \code{fragments}, the number of fragments read.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomicRanges coverage
+#' @importFrom GenomeInfoDb seqlevels<- seqlengths<-
+#'
+#' @keywords internal
+
+.windowCoverage <-
+  function(bamFile,
+           windows,
+           chromosomeLengths,
+           ...) {
+
+    fragments <- .windowFragments(bamFile = bamFile, windows = windows, chromosomeLengths = chromosomeLengths, ...)
+
+    # Every chromosome gets an element, so that a window on a chromosome without fragments reads zero instead of failing
+    GenomeInfoDb::seqlevels(fragments) <- names(chromosomeLengths)
+    GenomeInfoDb::seqlengths(fragments) <- as.integer(chromosomeLengths)
+
+    return(list(coverage = GenomicRanges::coverage(fragments),
+                fragments = length(fragments)))
+  } # END function
+
+
+
+
+#' @title .bamSummits
+#'
+#' @description Finds, in every BAM file, the summit of the fragment pileup within each region: the middle of the highest stretch of coverage, and its height.
+#'
+#' @param bamFiles Character vector with the paths of the BAM files.
+#' @param regions \code{GRanges} with the regions, named after the chromosomes of the BAM files.
+#' @param pairedEnd Logical vector with one value per BAM file.
+#' @param fragmentLength Numeric vector with the length to which single-end reads are extended, one value per BAM file.
+#' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment.
+#' @param minMapq Numeric value with the minimum mapping quality of a read.
+#' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
+#' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
+#' @param nThreads Number of threads, one file per thread. Default: \code{1}.
+#'
+#' @return A list with \code{position} and \code{height}, two matrices with one row per region and one column per file, and \code{fragments}, the number of fragments read in each file.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom Rsamtools scanBamHeader
+#' @importFrom BiocParallel bplapply
+#' @importFrom GenomeInfoDb seqnames
+#' @importFrom IRanges Views viewMaxs viewRangeMaxs ranges
+#' @importFrom BiocGenerics start end
+#'
+#' @keywords internal
+
+.bamSummits <-
+  function(bamFiles,
+           regions,
+           pairedEnd,
+           fragmentLength,
+           maxFragmentLength,
+           minMapq,
+           removeDuplicates,
+           discardRegions = NULL,
+           nThreads = 1) {
+
+    chromosomeLengths <- Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets
+    fragmentLength <- rep_len(fragmentLength, length(bamFiles))
+
+    regionChromosomes <- as.character(GenomeInfoDb::seqnames(regions))
+    regionIndexList <- split(seq_along(regions), factor(regionChromosomes, levels = unique(regionChromosomes)))
+    regionIndexList <- regionIndexList[names(regionIndexList) %in% names(chromosomeLengths)]
+
+    summitList <-
+      BiocParallel::bplapply(seq_along(bamFiles),
+                             function(fileIndex) {
+                               fileCoverage <- .windowCoverage(bamFile = bamFiles[fileIndex],
+                                                               windows = regions,
+                                                               chromosomeLengths = chromosomeLengths,
+                                                               isPairedEnd = pairedEnd[fileIndex],
+                                                               fragmentLength = fragmentLength[fileIndex],
+                                                               maxFragmentLength = maxFragmentLength,
+                                                               minMapq = minMapq,
+                                                               removeDuplicates = removeDuplicates,
+                                                               discardRegions = discardRegions)
+
+                               summitPosition <- rep(NA_integer_, length(regions))
+                               summitHeight <- rep(0, length(regions))
+
+                               # The middle of the highest plateau, a flat top would otherwise pull the summit to its left edge
+                               for (chromosome in names(regionIndexList)) {
+                                 regionIndex <- regionIndexList[[chromosome]]
+                                 coverageViews <- IRanges::Views(fileCoverage$coverage[[chromosome]], IRanges::ranges(regions[regionIndex]))
+                                 plateauRanges <- IRanges::viewRangeMaxs(coverageViews)
+                                 summitHeight[regionIndex] <- as.numeric(IRanges::viewMaxs(coverageViews))
+                                 summitPosition[regionIndex] <- as.integer((BiocGenerics::start(plateauRanges) + BiocGenerics::end(plateauRanges)) %/% 2L)
+                               }
+
+                               summitPosition[summitHeight == 0] <- NA_integer_
+
+                               list(position = summitPosition, height = summitHeight, fragments = fileCoverage$fragments)
+                             },
+                             BPPARAM = .makeParallelParam(nThreads = nThreads, tasks = length(bamFiles)))
+
+    return(list(position = matrix(vapply(summitList, `[[`, integer(length(regions)), "position"), nrow = length(regions)),
+                height = matrix(vapply(summitList, `[[`, numeric(length(regions)), "height"), nrow = length(regions)),
+                fragments = vapply(summitList, `[[`, numeric(1), "fragments")))
   } # END function
 
 

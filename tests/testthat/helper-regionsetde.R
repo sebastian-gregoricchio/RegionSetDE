@@ -97,3 +97,44 @@ syntheticInput <- function(fileName,
 
   return(Rsamtools::asBam(samFile, destination = file.path(tempdir(), fileName), overwrite = TRUE, indexDestination = TRUE))
 }
+
+
+
+# A single-end BAM file where fragments of a known length pile up on sites spaced every 20 kb, each fragment
+# leaving one read on either strand, plus reads spread at random. The site positions are returned as an attribute.
+syntheticFragments <- function(fileName,
+                               fragmentLength = 200L,
+                               readLength = 50L,
+                               fragmentsPerSite = 2000L,
+                               siteSpread = 30,
+                               seed = 1L,
+                               chromosome = "chrT",
+                               contigLength = 200000L) {
+  set.seed(seed)
+
+  sitePositions <- seq(20000L, contigLength - 20000L, by = 20000L)
+  fragmentStarts <- unlist(lapply(sitePositions, function(site) {site - fragmentLength %/% 2L + round(stats::rnorm(fragmentsPerSite, 0, siteSpread))}))
+  fragmentStarts <- c(fragmentStarts, sample.int(contigLength - 2L * fragmentLength, 2000L, replace = TRUE))
+
+  readStrand <- sample(c("+", "-"), length(fragmentStarts), replace = TRUE)
+  readStart <- as.integer(ifelse(readStrand == "+", fragmentStarts, fragmentStarts + fragmentLength - readLength))
+  readOrder <- order(readStart)
+
+  samHeader <- c("@HD\tVN:1.6\tSO:coordinate", paste0("@SQ\tSN:", chromosome, "\tLN:", contigLength))
+  samRecords <- paste(paste0("read", seq_along(readOrder)), ifelse(readStrand[readOrder] == "+", 0L, 16L), chromosome,
+                      readStart[readOrder], 60, paste0(readLength, "M"), "*", 0, 0, "*", "*", sep = "\t")
+
+  samFile <- file.path(tempdir(), paste0(fileName, ".sam"))
+  writeLines(c(samHeader, samRecords), samFile)
+
+  bamFile <- Rsamtools::asBam(samFile, destination = file.path(tempdir(), fileName), overwrite = TRUE, indexDestination = TRUE)
+  attr(bamFile, "sites") <- sitePositions
+  return(bamFile)
+}
+
+
+# Regions of 4 kb centred on the sites of syntheticFragments, their centre shifted so that a summit has somewhere to move to
+syntheticSiteRegions <- function(sitePositions, shift = 700L, chromosome = "chrT") {
+  RegionSetDE::loadRegions(list(sites = GenomicRanges::GRanges(chromosome, IRanges::IRanges(start = sitePositions + shift - 2000L, width = 4000L))),
+                           seqlevelsStyle = NULL, verbose = FALSE)
+}

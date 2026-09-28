@@ -54,9 +54,9 @@ test_that("a filter sharing no chromosome with the regions is refused", {
 test_that("the peaks excluded before the consensus do not depend on the style of the exclusion list", {
 
   ensemblConsensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl",
-                                         excludeRegions = halfWindowEnsembl, verbose = FALSE)
+                                         blacklist = halfWindowEnsembl, verbose = FALSE)
   ucscConsensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl",
-                                      excludeRegions = halfWindowUCSC, verbose = FALSE)
+                                      blacklist = halfWindowUCSC, verbose = FALSE)
 
   expect_identical(length(consensusData(ensemblConsensus)$total), length(consensusData(ucscConsensus)$total))
   expect_lt(length(consensusData(ensemblConsensus)$total), length(consensusData(consensusEnsembl)$total))
@@ -83,10 +83,11 @@ test_that("the greenlist is counted whichever style it carries", {
   binsEnsembl <- GenomicRanges::GRanges("19", IRanges::IRanges(seq(46e6, 57.9e6, by = 1e5), width = 1e5))
   binsUCSC <- GenomicRanges::GRanges("chr19", IRanges::IRanges(seq(46e6, 57.9e6, by = 1e5), width = 1e5))
 
+  # Abutting bins merge into one stretch, which the peaks overlap, so nothing would be left without excludeCounted = FALSE
   ensemblGreenlist <- countGreenlist(counts, greenlist = binsEnsembl, bamFiles = sampleSheet$bam,
-                                     pairedEnd = TRUE, verbose = FALSE)
+                                     excludeCounted = FALSE, pairedEnd = TRUE, verbose = FALSE)
   ucscGreenlist <- countGreenlist(counts, greenlist = binsUCSC, bamFiles = sampleSheet$bam,
-                                  pairedEnd = TRUE, verbose = FALSE)
+                                  excludeCounted = FALSE, pairedEnd = TRUE, verbose = FALSE)
 
   expect_identical(sum(RegionSetDE:::.greenlistMatrix(ensemblGreenlist)),
                    sum(RegionSetDE:::.greenlistMatrix(ucscGreenlist)))

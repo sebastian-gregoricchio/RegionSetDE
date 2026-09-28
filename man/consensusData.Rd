@@ -13,7 +13,7 @@ consensusData(object)
 \item{object}{\code{RegionSetDE} object.}
 }
 \value{
-A list with \code{groups}, the consensus regions of every group; \code{objects}, the \code{consensusRegions} object behind each of them (\code{NULL} for the groups with a single sample); \code{total}, the pooled consensus; \code{peaks}, the peaks of every sample after the exclusion; \code{samples}, a data.frame with the group, the peak file and the number of peaks kept and excluded for every sample; \code{sheet}, the sample sheet the consensus was built from; \code{groupBy}; \code{mode}, one among \code{"consensus"}, \code{"split"} and \code{"replace"}; and \code{excluded}, the regions the peaks were cleaned against.
+A list with \code{groups}, the consensus regions of every group; \code{objects}, the \code{consensusRegions} object behind each of them (\code{NULL} for the groups with a single sample); \code{total}, the pooled consensus; \code{peaks}, the peaks of every sample after the blacklist and the greylist; \code{removed}, the peaks they took out, with the \code{sample} they came from and the list that removed them in \code{removed.by}; \code{samples}, a data.frame with the group, the peak file, the number of peaks read (\code{n.peaks}), removed by the blacklist (\code{n.blacklist}), by the greylist (\code{n.greylist}) and by both (\code{n.excluded}) for every sample; \code{sheet}, the sample sheet the consensus was built from; \code{groupBy}; \code{mode}, one among \code{"consensus"}, \code{"split"} and \code{"replace"}; and \code{blacklist} and \code{greylist}, the regions the peaks were cleaned against, \code{NULL} when a list was not given.
 }
 \description{
 Returns the consensus data kept by a \code{RegionSetDE} object built from peaks with \code{\link{loadConsensusPeaks}}.
@@ -37,7 +37,7 @@ if (requireNamespace("consensusRegions", quietly = TRUE)) {
 
 }
 \seealso{
-\code{\link{loadConsensusPeaks}}, \code{\link{plotPeakUpset}}
+\code{\link{loadConsensusPeaks}}, \code{\link{consensusGroupList}}, \code{\link{plotPeakUpset}}
 }
 \author{
 Sebastian Gregoricchio

@@ -8,13 +8,15 @@
 #' @param annotationColumns Character vector with the columns of the \code{colData} to add after the sample names, for instance \code{"condition"}. Default: \code{NULL}, none.
 #' @param bamFiles Character vector with the BAM files, in the order of the samples. Default: \code{NULL}, the files recorded by \code{\link{countReads}}.
 #'
-#' @return A data.frame with one row per sample: \code{sample}, the \code{annotationColumns}, \code{paired.end}, \code{bam.reads} (every record of the BAM file), \code{bam.mapped} (the mapped ones), \code{library.size} (the fragments that went through the filters of the counting), \code{reads.in.regions} and \code{FRiP}, the ratio of the last two.
+#' @return A data.frame with one row per sample: \code{sample}, the \code{annotationColumns}, \code{paired.end}, \code{fragment.length} (the length single-end reads were extended to, \code{NA} for paired-end samples), \code{bam.reads} (every record of the BAM file), \code{bam.mapped} (the mapped ones), \code{library.size} (the fragments that went through the filters of the counting), \code{reads.in.regions} and \code{FRiP}, the ratio of the last two. When the inputs were counted, \code{input.id}, \code{input.library.size}, \code{input.in.regions} and \code{input.FRiP} give the same numbers for the input of each sample.
 #'
 #' @details The three counts measure different things and are not expected to agree. \code{bam.reads} and \code{bam.mapped} come from the index of each file, so they are read in an instant, and they count alignment records: a paired-end fragment is two of them. \code{library.size} and \code{reads.in.regions} come from the counting, where a paired-end fragment counts once and only after the mapping quality, duplicate and proper pair filters. On paired-end data \code{bam.mapped} is therefore about twice \code{library.size}, less what the filters removed.
 #'
 #' \code{reads.in.regions} counts a fragment once per region it overlaps, the way the counting does. A region shared by several sets is counted once, but a fragment lying across two neighbouring regions, or two tiles of the same region, is counted in both, so on a tiled object the FRiP comes out slightly high.
 #'
 #' The FRiP is computed on \code{library.size}, the reads that went through the same filters as the counts. Computed on \code{bam.reads} it would mix fragments with alignment records and mapped with filtered reads.
+#'
+#' The FRiP of the input is the share of the input library falling in the regions, which is what the regions would collect with no enrichment at all. A sample whose FRiP sits close to the one of its input carries little signal in the regions, however many reads it has.
 #'
 #' @examples
 #' sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
@@ -28,7 +30,7 @@
 #' @seealso \code{\link{countReads}}, \code{\link{countTable}}
 #'
 #' @importFrom Rsamtools idxstatsBam
-#' @importFrom SummarizedExperiment colData rowRanges assay
+#' @importFrom SummarizedExperiment colData rowRanges assay assayNames
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
 #' @importFrom dplyr mutate bind_cols
@@ -104,12 +106,14 @@ libInfo <-
 
     librarySize <- if ("library.size" %in% colnames(sampleTable)) {as.numeric(sampleTable$library.size)} else {rep(NA_real_, ncol(counts))}
     pairedEnd <- if ("paired.end" %in% colnames(sampleTable)) {as.logical(sampleTable$paired.end)} else {rep(NA, ncol(counts))}
+    fragmentLength <- if ("fragment.length" %in% colnames(sampleTable)) {as.numeric(sampleTable$fragment.length)} else {rep(NA_real_, ncol(counts))}
 
     #------------------------#
     # Assemble the table     #
     #------------------------#
     infoTable <- data.frame(sample = colnames(counts),
                             paired.end = pairedEnd,
+                            fragment.length = fragmentLength,
                             bam.reads = bamReads,
                             bam.mapped = bamMapped,
                             library.size = librarySize,
@@ -117,6 +121,20 @@ libInfo <-
                             stringsAsFactors = FALSE)
 
     infoTable <- dplyr::mutate(infoTable, FRiP = round(.data$reads.in.regions / .data$library.size, 4))
+
+    #------------------------#
+    # The inputs             #
+    #------------------------#
+    # The same fraction on the input tells how much of the FRiP the regions would collect with no enrichment
+    if ("input" %in% SummarizedExperiment::assayNames(counts)) {
+      inputMatrix <- as.matrix(SummarizedExperiment::assay(counts, "input"))
+
+      infoTable <- dplyr::mutate(infoTable,
+                                 input.id = if ("input.id" %in% colnames(sampleTable)) {as.character(sampleTable$input.id)} else {NA_character_},
+                                 input.library.size = if ("input.library.size" %in% colnames(sampleTable)) {as.numeric(sampleTable$input.library.size)} else {NA_real_},
+                                 input.in.regions = as.numeric(colSums(inputMatrix[!duplicated(regionKey), , drop = FALSE])),
+                                 input.FRiP = round(.data$input.in.regions / .data$input.library.size, 4))
+    }
 
     if (length(annotationColumns) > 0) {
       infoTable <- dplyr::bind_cols(infoTable[, "sample", drop = FALSE],

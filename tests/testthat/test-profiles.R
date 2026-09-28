@@ -51,6 +51,11 @@ test_that("the BAM coverage is scaled by the normalisation, a bigWig is read as 
     return(bigwigFile)
   }, character(1))
 
+  # rtracklayer writes bigWig files on Windows but its UCSC reader takes the drive letter of an absolute
+  # path for a protocol ("Unrecognized protocol C in udcProtNew"), so the reading part is skipped there
+  bigwigReadable <- suppressWarnings(try(GenomeInfoDb::seqlengths(rtracklayer::BigWigFile(bigwigFiles[1])), silent = TRUE))
+  skip_if(inherits(bigwigReadable, "try-error"), "bigWig reading is not supported here")
+
   bigwigProfiles <- computeProfiles(counts, distance = 500, signalFiles = bigwigFiles, verbose = FALSE)
   expect_identical(bigwigProfiles$parameters$signal, "bigwig")
   expect_gt(stats::cor(as.numeric(bigwigProfiles$profiles[[9]]), as.numeric(bamProfiles$profiles[[9]])), 0.999)

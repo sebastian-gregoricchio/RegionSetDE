@@ -92,7 +92,12 @@ loadConsensusPeaks(
 
 - nThreads:
 
-  Number of threads used by the consensus. Default: `1`.
+  Number of threads. The groups with more than one sample are built side
+  by side, one worker per group, and the threads left over go to the
+  calibration of the threshold inside each group when `calibrate = TRUE`
+  is passed on to
+  [`consensusRegions::runConsensus`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html).
+  Default: `1`.
 
 - verbose:
 
@@ -178,6 +183,21 @@ a poor basis for a set of regions to test. A set of the regions found in
 one group only was selected on the signal of that group, so a test of
 its change between the groups answers a question already settled by the
 selection.
+
+The consensus of a group does not depend on the other groups, so with
+`nThreads` above one the groups run in parallel. `consensusRegions`
+builds a consensus on a single thread and only parallelises the
+permutations of the calibration, so without `calibrate` the groups are
+the one place where more threads save time: three groups on three
+threads take about as long as the largest of them. With
+`calibrate = TRUE` the threads are shared, `nThreads` divided by the
+number of groups for the permutations of each group. A `BPPARAM` passed
+in `...` is handed to every group as it is and the groups then run one
+after the other, so that two levels of workers are never stacked on each
+other by accident. The random numbers of the calibration come from
+`BiocParallel`, which gives each group a stream of its own, so a
+[`set.seed()`](https://rdrr.io/r/base/Random.html) before the call
+returns the same consensus whatever the number of threads.
 
 ## See also
 

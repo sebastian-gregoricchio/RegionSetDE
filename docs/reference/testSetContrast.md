@@ -19,6 +19,7 @@ testSetContrast(
   interRegionCor = NULL,
   useRanks = FALSE,
   sharedRegions = "drop",
+  overlapWithinSet = "warn",
   FDR = 0.05,
   adjustMethod = "BH",
   carryCounts = TRUE,
@@ -68,6 +69,13 @@ testSetContrast(
   String with what to do with the regions the two sets share in the
   genome, either `"drop"` or `"stop"`. Default: `"drop"`.
 
+- overlapWithinSet:
+
+  String with what to do when regions on the same side of the pair
+  overlap each other in the genome, one among `"allow"`, `"warn"` and
+  `"stop"`. The counts are reported in `n.overlapping.within.1` and
+  `n.overlapping.within.2`. Default: `"warn"`.
+
 - FDR:
 
   Numeric value with the adjusted p-value cut-off reported in the
@@ -102,6 +110,11 @@ on the first of them, which is exactly a comparison of the first set
 against the second. The effect size is the difference between the two
 mean log2 fold changes, with the interval selected by `effectMethod`
 beside it and the region-heterogeneity one always reported next to it.
+As in
+[`testRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md),
+`mean.log2FC.1` and `mean.log2FC.2` are means of per-region fold
+changes, every region counting once, and not the fold changes of the
+signal pooled over each set.
 
 This is the function for the redistribution question. A set gaining what
 another set lost is a claim about two sets, and it is the one claim a
@@ -119,6 +132,12 @@ though neither region identifier appears twice. Overlapping regions are
 removed from both sides by default and the number removed is reported in
 `n.shared.dropped`; `sharedRegions = "stop"` refuses to run instead,
 which is the safer setting when the overlap is unexpected.
+
+Overlaps within one side of the pair are a separate matter, measured
+after the shared regions are removed and handled by `overlapWithinSet`
+as
+[`testRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
+handles them.
 
 ## See also
 
@@ -139,14 +158,16 @@ setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
 resultsTable(setContrast)
 #>         set.1          set.2 n.regions.1 n.regions.2 n.shared.dropped
 #> 1 promoterCpG promoterNonCpG         269         277                0
-#>   mean.log2FC.1 mean.log2FC.2 delta.log2FC  CI.lower  CI.upper CI.type
-#> 1    -0.8336708   -0.02089479    -0.812776 -1.706428 0.4466904  sample
-#>   heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor.1
-#> 1              -2.518293              0.8927412           0.858368
-#>   inter.region.cor.2 camera.direction camera.p sample.delta.log2FC
-#> 1           0.443314             Down 0.393662           -0.629869
-#>   sample.delta.SE sample.delta.df sample.delta.p camera.FDR sample.delta.FDR
-#> 1       0.2502083               2      0.1281565   0.393662        0.1281565
+#>   n.overlapping.within.1 n.overlapping.within.2 mean.log2FC.1 mean.log2FC.2
+#> 1                      0                      0    -0.8336708   -0.02089479
+#>   delta.log2FC  CI.lower  CI.upper CI.type heterogeneity.CI.lower
+#> 1    -0.812776 -1.706428 0.4466904  sample              -2.518293
+#>   heterogeneity.CI.upper inter.region.cor.1 inter.region.cor.2 camera.direction
+#> 1              0.8927412           0.858368           0.443314             Down
+#>   camera.p sample.delta.log2FC sample.delta.SE sample.delta.df sample.delta.p
+#> 1 0.393662           -0.629869       0.2502083               2      0.1281565
+#>   camera.FDR sample.delta.FDR
+#> 1   0.393662        0.1281565
 
 # Every pair at once
 allPairs <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)

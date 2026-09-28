@@ -499,7 +499,7 @@ topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
 
 ## Tiled regions {#tiles}
 
-When the counting was tiled, the p-value of a region is a Simes combination across its tiles. That answers *does any part of this region change* rather than *does the whole region change*, and the distinction matters for wide domains: a long region that moves over one tile in forty comes out with a small p-value and a small overall fold change. The `log2FC` reported is the fold change of the most significant tile, not an average, because that is the quantity matching the p-value.
+When the counting was tiled, the p-value of a region is a Simes combination across its tiles. That answers *does any part of this region change* rather than *does the whole region change*, and the distinction matters for wide domains: a long region that moves over one tile in forty comes out with a small p-value and a small overall fold change. The `log2FC` reported is the fold change of the most significant tile, not an average, because that is the quantity matching the p-value; `rep.tile.start` and `rep.tile.end` say where that tile is. `mean.tile.log2FC` beside it averages the tiles over the whole region, weighted by their width, and is the number to quote for the region as a whole. A large gap between the two means that only part of the region moved.
 
 The tile-level table stays available:
 
@@ -574,14 +574,15 @@ setTable
 | -------------------------: | :---------- |
 | *region.set*               | the set |
 | *n.regions*                | how many of its regions survived filtering |
-| *mean.log2FC*              | mean fold change of the set |
-| *mean.log2FC.comparison*   | mean fold change of the comparison rows |
+| *mean.log2FC*              | mean of the per-region fold changes of the set, every region counting once |
+| *mean.log2FC.comparison*   | the same mean over the comparison rows |
 | *delta.log2FC*             | the difference between the two, the effect size |
 | *CI.lower*, *CI.upper*     | interval selected by `effectMethod`, sample-based by default |
 | *CI.type*                  | which of the two intervals the columns above hold |
 | *heterogeneity.CI.lower/upper* | spread of the effect between the loci of the set |
 | *sample.delta.log2FC*      | the same effect estimated from one score per library |
 | *n.comparison.overlapping* | comparison rows overlapping the set in the genome |
+| *n.overlapping.within*     | regions of the set overlapping another region of the same set |
 | *camera.FDR*               | competitive test, adjusted |
 | *fry.FDR*                  | self-contained test, adjusted |
 
@@ -590,6 +591,10 @@ setTable
 ## Reading the output {#set_interpretation}
 
 **Read the effect size before the p-value.** A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which tells you nothing about whether the shift matters.
+
+**Know which effect size it is.** `mean.log2FC` is the average of the fold changes of the regions, each region weighted once. It is not the fold change of the signal summed over the set. Take a set of 100 strong promoters and 900 weak ones: the summed signal is mostly the strong ones, the mean of the fold changes mostly the weak ones, and the two numbers only agree when the response does not depend on width or baseline signal. Write "the regions of the set changed by X on average" rather than "the set changed X-fold", and look at `plotSetDistribution()` before trusting either. `camera` and `fry` do not estimate an effect at all, they rank and test.
+
+In the `setResults` table no set reaches significance, which is the honest outcome for four libraries on one chromosome. The informative part is `promoterCpG`: a `delta.log2FC` around -0.9 with an interval that only just includes zero, in the direction H3K4me3 biology would predict, and in the one set where a promoter effect belongs. The intergenic control sits near zero, as it should.
 
 **Two intervals, answering two questions.** The default `CI.lower` and `CI.upper` come from `effectMethod = "sample"`. One number is computed per library, the mean signal over the set minus the mean signal over its comparison, and those numbers are run through the design of the experiment. The replication is the biological samples, which is where it comes from in the experiment: four libraries give an interval as wide as four libraries support, whether the set holds twenty regions or thirty thousand.
 
@@ -608,11 +613,26 @@ The second row used to be read here as redistribution. It does not support that 
 
 One more thing the self-contained test cannot do: detect a genuinely global shift. Every centring normalisation, background and TMM included, removes exactly that before the test sees the data. If the question is whether the mark changed in absolute terms, the answer has to come from a spike-in.
 
-The competitive test is the one to lead with. It runs on the per-region statistics through `limma::cameraPR`, which makes it behave identically across the engines, whereas the self-contained test is computed on the log-CPM matrix and is therefore a transformation away from what `edgeR` and `DESeq2` actually fitted.
+The competitive test is the one to lead with. It runs on the per-region statistics through `limma::cameraPR`, which makes it behave identically across the engines. The self-contained test needs values rather than statistics. With `voom`, `limma` and `dream` it reads the log values the model was fitted on. With `edgeR` and `DESeq2` it reads the counts turned into z-scores under the null model of the fit, with the same offsets and dispersions, the way `edgeR` runs `fry` on its own objects, so both tests stay on the model the regions were tested with. `fryInput = "logCPM"` goes back to the log-CPM matrix, which only matters when comparing with an older analysis.
 
 **"More" means more than the sets you loaded.** The comparison universe is drawn from the other region sets in the object, so a competitive p-value is relative to those and not to the genome. With two sets loaded, the test compares them to each other. With four sets that respond alike, each is being asked whether it stands out against three sets behaving as it does, and adjusted p-values clustered near one is what that looks like: a property of the comparison, not a finding. `makeSetUniverse(universeSets = )`, or the same argument on `fitRegions()` and `testRegionSets()`, fixes the pool explicitly, and the sets forming it are printed with the universe object.
 
-In the table above no set reaches significance, which is the honest outcome for four libraries on one chromosome. The informative part is `promoterCpG`: a `delta.log2FC` around -0.9 with an interval that only just includes zero, in the direction H3K4me3 biology would predict, and in the one set where a promoter effect belongs. The intergenic control sits near zero, as it should.
+For a result that goes into a paper, naming the comparison is worth the extra line. Here the two promoter sets are compared with the intergenic regions only, which makes the question *did promoters respond more than regions with no gene around*:
+
+```{r test_region_sets_universe}
+promoterResults <- testRegionSets(fit,
+                                  contrast = c("condition", "SHR", "BN"),
+                                  regionSets = c("promoterCpG", "promoterNonCpG"),
+                                  universeSets = "intergenic",
+                                  verbose = FALSE)
+
+resultsTable(promoterResults)[, c("region.set", "n.comparison", "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR")]
+```
+
+The numbers differ from those of `setResults` because the comparison did. `plotUniverseMatching(promoterResults)` shows how closely the intergenic rows match the promoters on width and abundance.
+
+**Overlapping regions inside a set.** Two regions of one set sharing bases count those bases twice. `n.overlapping.within` reports how many regions are in that situation, and the test warns about it (`overlapWithinSet = "warn"`). Merging them with `loadRegions(reduceRegions = TRUE)` is the usual fix; `overlapWithinSet = "allow"` keeps them when the average per region, overlaps included, is what the question is about.
+
 
 <br>
 

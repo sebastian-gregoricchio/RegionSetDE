@@ -240,6 +240,15 @@ setTable <- resultsTable(setResults)
 
 setTable
 
+## ----test_region_sets_universe------------------------------------------------
+promoterResults <- testRegionSets(fit,
+                                  contrast = c("condition", "SHR", "BN"),
+                                  regionSets = c("promoterCpG", "promoterNonCpG"),
+                                  universeSets = "intergenic",
+                                  verbose = FALSE)
+
+resultsTable(promoterResults)[, c("region.set", "n.comparison", "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR")]
+
 ## ----plot_set_effect, fig.height = 4------------------------------------------
 plotSetEffect(setResults)
 

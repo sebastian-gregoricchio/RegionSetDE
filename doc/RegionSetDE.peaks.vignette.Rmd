@@ -191,7 +191,8 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 blacklist = blacklist,
                                 greylist = greylist,
-                                seqlevelsStyle = "Ensembl")
+                                seqlevelsStyle = "Ensembl",
+                                nThreads = 1)
 
 consensus
 ```
@@ -199,8 +200,7 @@ consensus
 In this window neither list touches a peak, which is what one hopes; the `n.blacklist` and `n.greylist` columns below say so for every sample, and `filteringLog()` gives the same numbers as a record of the steps, one row per sample and list:
 
 ```{r filtering_log}
-filteringLog(consensus) %>%
-  head(3)
+filteringLog(consensus) %>% head(3)
 ```
 
 `consensusData(consensus)$removed` holds the peaks taken out, with the sample they came from and the list that removed them, empty here. On a whole genome the blacklist alone typically takes a few per cent of the peaks of a transcription factor; the greylist built with the default 1 kb windows [above](#artefacts) would have taken 61 peak calls across the nine samples, genuine AR sites among them, which is the kind of loss this table is there to catch.
@@ -222,6 +222,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
+                                      nThreads = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -829,7 +830,7 @@ Tiles are worth it when the shape of a region matters and not only its total:
 * **Partial changes.** A super-enhancer where one constituent gains binding, or a promoter where the signal moves downstream into the gene body.
 * **Regions of very different width.** Tiles give every row the same width, so a 20 kb domain and a 500 bp peak are tested on the same scale.
 
-How the tiles of a region are put together is a choice about the question. `combineMethod = "simes"`, the default, asks whether any part of the region changed, and one strong tile is enough. `"holm-min"` asks several tiles to change together, three or 40 % of the region, whichever is more, which suits broad domains where a single tile moving on its own is more often noise than biology. The results table then reports `n.tiles`, and `n.tiles.up` and `n.tiles.down`, the tiles changing significantly in each direction within the region. The `log2FC` of a tiled region is the one of the tile carrying the p-value, not an average, since that is the quantity the p-value is about.
+How the tiles of a region are put together is a choice about the question. `combineMethod = "simes"`, the default, asks whether any part of the region changed, and one strong tile is enough. `"holm-min"` asks several tiles to change together, three or 40 % of the region, whichever is more, which suits broad domains where a single tile moving on its own is more often noise than biology. The results table then reports `n.tiles`, and `n.tiles.up` and `n.tiles.down`, the tiles changing significantly in each direction within the region. The `log2FC` of a tiled region is the one of the tile carrying the p-value, not an average, since that is the quantity the p-value is about. `mean.tile.log2FC` gives the average over the tiles of the region, weighted by their width, for when the region as a whole is what is being described.
 
 For a transcription factor like AR, tiles add rows without adding information: a peak of 400 bp cut into 200 bp tiles gives two tiles that nearly always move together, and a test with more rows and the same answer.
 

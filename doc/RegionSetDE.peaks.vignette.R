@@ -59,13 +59,13 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 blacklist = blacklist,
                                 greylist = greylist,
-                                seqlevelsStyle = "Ensembl")
+                                seqlevelsStyle = "Ensembl",
+                                nThreads = 1)
 
 consensus
 
 ## ----filtering_log------------------------------------------------------------
-filteringLog(consensus) %>%
-  head(3)
+filteringLog(consensus) %>% head(3)
 
 ## ----min_replicates-----------------------------------------------------------
 strictConsensus <- loadConsensusPeaks(sampleSheet,
@@ -74,6 +74,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
+                                      nThreads = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),

@@ -171,7 +171,10 @@ holds one row per region with the coordinates, then:
 
 On a tiled object the statistics, the degrees of freedom and the
 averages come from the tile carrying the p-value of the region, followed
-by the columns the combination adds.
+by the columns the combination adds: `n.tiles`, `n.tiles.up`,
+`n.tiles.down`, `direction`, `rep.tile.start` and `rep.tile.end`, the
+coordinates of that tile, and `mean.tile.log2FC`, the fold change of the
+tiles averaged over the region and weighted by their width.
 
 ## Details
 
@@ -187,9 +190,13 @@ it answers "does any part of this region change" rather than "does the
 whole region change", and a long domain that moves over one tile out of
 forty will come out with a small p-value and a small overall fold
 change. The `log2FC` reported for a combined region is the fold change
-of the most significant tile, not an average, which is the quantity that
-matches the p-value. The tile level table stays available in the `tiles`
-slot, and
+of the most significant tile, the one between `rep.tile.start` and
+`rep.tile.end`, not an average, which is the quantity that matches the
+p-value and the one `diff.status` is read from. It describes that tile,
+and a sentence such as "the domain gained 3-fold" needs
+`mean.tile.log2FC` instead, which is the closer thing to a fold change
+of the whole region. When the two are far apart, only part of the region
+moved. The tile level table stays available in the `tiles` slot, and
 [`plotRegion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
 draws it.
 

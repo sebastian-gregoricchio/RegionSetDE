@@ -292,7 +292,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpqmpG8p/temp_libpath1ede3850ab3859/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmpy42xxa/temp_libpath214b34645ef8d3/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
 > 1      5353 0.09351198 0.1836287         2  114488             362     161
 >   greylisted.bp
@@ -368,7 +368,8 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 groupBy = "condition",
                                 blacklist = blacklist,
                                 greylist = greylist,
-                                seqlevelsStyle = "Ensembl")
+                                seqlevelsStyle = "Ensembl",
+                                nThreads = 1)
 
 consensus
 > ### RegionSetDE object ###
@@ -396,8 +397,7 @@ gives the same numbers as a record of the steps, one row per sample and
 list:
 
 ``` r
-filteringLog(consensus) %>%
-  head(3)
+filteringLog(consensus) %>% head(3)
 >        step       region.set n.before n.after n.removed
 > 1 blacklist AR_DMSO_r1 peaks       13      13         0
 > 2 blacklist AR_DMSO_r2 peaks       13      13         0
@@ -448,6 +448,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
+                                      nThreads = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -1721,6 +1722,9 @@ is more often noise than biology. The results table then reports
 significantly in each direction within the region. The `log2FC` of a
 tiled region is the one of the tile carrying the p-value, not an
 average, since that is the quantity the p-value is about.
+`mean.tile.log2FC` gives the average over the tiles of the region,
+weighted by their width, for when the region as a whole is what is being
+described.
 
 For a transcription factor like AR, tiles add rows without adding
 information: a peak of 400 bp cut into 200 bp tiles gives two tiles that

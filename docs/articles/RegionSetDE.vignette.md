@@ -292,7 +292,16 @@ claim about the genome and is worth keeping apart from the ENCODE list.
 [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
 counts alignments over every region of every set. Reads can be counted
 once per region, which is the default, or over fixed-width tiles inside
-each region when `tileWidth` is set.
+each region when `tileWidth` is set. A plain `GRanges` is accepted in
+place of the object: it goes through
+[`loadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+and is counted as a single set named `regions`, its order and its
+chromosome names kept.
+
+The BAM files have to be aligned to the same assembly, but they do not
+have to name its chromosomes alike. Files written `chr1` and files
+written `1` are counted together, and the regions can follow either
+style.
 
 ``` r
 
@@ -2125,7 +2134,7 @@ genome-wide catalogue.
 sessionInfo()
 > R version 4.6.1 (2026-06-24)
 > Platform: x86_64-pc-linux-gnu
-> Running under: Ubuntu 24.04.4 LTS
+> Running under: Ubuntu 24.04.5 LTS
 > 
 > Matrix products: default
 > BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 

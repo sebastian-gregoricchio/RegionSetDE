@@ -65,8 +65,8 @@ Gregoricchio, Ph.D.</h4>
 Netherlands<br><a class="author_email" href="mailto:#"></a><a href="mailto:s.gregoricchio@nki.nl" class="email">s.gregoricchio@nki.nl</a>
       </address>
                   
-            <h4 data-toc-skip class="date">Last update: 28<sup>th</sup>
-September, 2026</h4>
+            <h4 data-toc-skip class="date">Last update: 06<sup>th</sup>
+October, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/blob/HEAD/vignettes/RegionSetDE.vignette.Rmd" class="external-link"><code>vignettes/RegionSetDE.vignette.Rmd</code></a></small>
       <div class="d-none name"><code>RegionSetDE.vignette.Rmd</code></div>
@@ -413,7 +413,14 @@ ENCODE list.</p>
 <p><code><a href="../reference/countReads.html">countReads()</a></code> counts alignments over every region of
 every set. Reads can be counted once per region, which is the default,
 or over fixed-width tiles inside each region when <code>tileWidth</code>
-is set.</p>
+is set. A plain <code>GRanges</code> is accepted in place of the object:
+it goes through <code><a href="../reference/loadRegions.html">loadRegions()</a></code> and is counted as a single
+set named <code>regions</code>, its order and its chromosome names
+kept.</p>
+<p>The BAM files have to be aligned to the same assembly, but they do
+not have to name its chromosomes alike. Files written <code>chr1</code>
+and files written <code>1</code> are counted together, and the regions
+can follow either style.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/countReads.html">countReads</a></span><span class="op">(</span><span class="va">regions</span>,</span>
@@ -2230,7 +2237,7 @@ genome-wide catalogue.</p>
 <div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
 <span id="cb65-2"><a href="#cb65-2" tabindex="-1"></a><span class="sc">&gt;</span> R version <span class="dv">4</span>.<span class="fl">6.1</span> (<span class="dv">2026-06-24</span>)</span>
 <span id="cb65-3"><a href="#cb65-3" tabindex="-1"></a><span class="sc">&gt;</span> Platform<span class="sc">:</span> x86_64<span class="sc">-</span>pc<span class="sc">-</span>linux<span class="sc">-</span>gnu</span>
-<span id="cb65-4"><a href="#cb65-4" tabindex="-1"></a><span class="sc">&gt;</span> Running under<span class="sc">:</span> Ubuntu <span class="dv">24</span>.<span class="fl">04.4</span> LTS</span>
+<span id="cb65-4"><a href="#cb65-4" tabindex="-1"></a><span class="sc">&gt;</span> Running under<span class="sc">:</span> Ubuntu <span class="dv">24</span>.<span class="fl">04.5</span> LTS</span>
 <span id="cb65-5"><a href="#cb65-5" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb65-6"><a href="#cb65-6" tabindex="-1"></a><span class="er">&gt;</span> Matrix products<span class="sc">:</span> default</span>
 <span id="cb65-7"><a href="#cb65-7" tabindex="-1"></a><span class="sc">&gt;</span> BLAS<span class="sc">:</span>   <span class="er">/</span>usr<span class="sc">/</span>lib<span class="sc">/</span>x86_64<span class="sc">-</span>linux<span class="sc">-</span>gnu<span class="sc">/</span>openblas<span class="sc">-</span>pthread<span class="sc">/</span>libblas.so<span class="fl">.3</span> </span>

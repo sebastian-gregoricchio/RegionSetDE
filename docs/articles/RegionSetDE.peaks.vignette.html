@@ -65,8 +65,8 @@ Gregoricchio, Ph.D.</h4>
 Netherlands<br><a class="author_email" href="mailto:#"></a><a href="mailto:s.gregoricchio@nki.nl" class="email">s.gregoricchio@nki.nl</a>
       </address>
                   
-            <h4 data-toc-skip class="date">Last update: 28<sup>th</sup>
-September, 2026</h4>
+            <h4 data-toc-skip class="date">Last update: 06<sup>th</sup>
+October, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/blob/HEAD/vignettes/RegionSetDE.peaks.vignette.Rmd" class="external-link"><code>vignettes/RegionSetDE.peaks.vignette.Rmd</code></a></small>
       <div class="d-none name"><code>RegionSetDE.peaks.vignette.Rmd</code></div>
@@ -333,7 +333,7 @@ flagged and merged.</p>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="sc">&gt;</span>   input</span>
 <span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> input</span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="sc">&gt;</span>                                                                               file</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">/</span>tmp<span class="sc">/</span>Rtmpy42xxa<span class="sc">/</span>temp_libpath214b34645ef8d3<span class="sc">/</span>RegionSetDE<span class="sc">/</span>extdata<span class="sc">/</span>lncapAR<span class="sc">/</span>input.bam</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">/</span>tmp<span class="sc">/</span>RtmpJUMvbz<span class="sc">/</span>temp_libpath3c29392d4a9d88<span class="sc">/</span>RegionSetDE<span class="sc">/</span>extdata<span class="sc">/</span>lncapAR<span class="sc">/</span>input.bam</span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="sc">&gt;</span>   fragments       mean      size threshold windows flagged.windows regions</span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>      <span class="dv">5353</span> <span class="fl">0.09351198</span> <span class="fl">0.1836287</span>         <span class="dv">2</span>  <span class="dv">114488</span>             <span class="dv">362</span>     <span class="dv">161</span></span>
 <span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="sc">&gt;</span>   greylisted.bp</span>
@@ -503,7 +503,9 @@ analysis: an overlap between <code>chr19</code> and <code>19</code> is
 not an error, it is simply empty, so a blacklist removes nothing and an
 occupancy column counts nobody. The package reconciles the styles at
 every junction instead of trusting them to agree, and stops when it
-cannot:</p>
+cannot. The names are settled chromosome by chromosome, so files or
+ranges written half in one style and half in the other are handled like
+uniform ones:</p>
 <table class="table">
 <colgroup>
 <col width="36%">
@@ -520,9 +522,22 @@ cannot:</p>
 the counting; the object returned keeps its own</td>
 </tr>
 <tr class="even">
+<td align="left">BAM or bigWig files naming the chromosomes
+differently</td>
+<td align="left">each file is read under its own names, those of the
+first file standing for all of them; BAM files giving different lengths
+to a chromosome are on different assemblies and are refused</td>
+</tr>
+<tr class="odd">
+<td align="left">samples and their inputs</td>
+<td align="left">the inputs are read under their own names, over the
+same rows</td>
+</tr>
+<tr class="even">
 <td align="left">regions and a blacklist, whitelist or greylist</td>
-<td align="left">the list is converted to the style of the regions, and
-a list sharing no chromosome is refused</td>
+<td align="left">the list is converted to the names of the regions,
+whether the regions declare a style or not, and a list sharing no
+chromosome is refused</td>
 </tr>
 <tr class="odd">
 <td align="left">peaks and the consensus built from them</td>
@@ -542,6 +557,13 @@ files</td>
 <td align="left"><code>excludeChromosomes</code></td>
 <td align="left">read in either style, with a warning when a name
 reaches no chromosome</td>
+</tr>
+<tr class="odd">
+<td align="left">regions and a count table read by
+<code><a href="../reference/loadCounts.html">loadCounts()</a></code>
+</td>
+<td align="left">the chromosomes of the table are read under the names
+of the regions</td>
 </tr>
 </tbody>
 </table>
@@ -1729,7 +1751,7 @@ threshold.</p>
 <div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
 <span id="cb58-2"><a href="#cb58-2" tabindex="-1"></a><span class="sc">&gt;</span> R version <span class="dv">4</span>.<span class="fl">6.1</span> (<span class="dv">2026-06-24</span>)</span>
 <span id="cb58-3"><a href="#cb58-3" tabindex="-1"></a><span class="sc">&gt;</span> Platform<span class="sc">:</span> x86_64<span class="sc">-</span>pc<span class="sc">-</span>linux<span class="sc">-</span>gnu</span>
-<span id="cb58-4"><a href="#cb58-4" tabindex="-1"></a><span class="sc">&gt;</span> Running under<span class="sc">:</span> Ubuntu <span class="dv">24</span>.<span class="fl">04.4</span> LTS</span>
+<span id="cb58-4"><a href="#cb58-4" tabindex="-1"></a><span class="sc">&gt;</span> Running under<span class="sc">:</span> Ubuntu <span class="dv">24</span>.<span class="fl">04.5</span> LTS</span>
 <span id="cb58-5"><a href="#cb58-5" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb58-6"><a href="#cb58-6" tabindex="-1"></a><span class="er">&gt;</span> Matrix products<span class="sc">:</span> default</span>
 <span id="cb58-7"><a href="#cb58-7" tabindex="-1"></a><span class="sc">&gt;</span> BLAS<span class="sc">:</span>   <span class="er">/</span>usr<span class="sc">/</span>lib<span class="sc">/</span>x86_64<span class="sc">-</span>linux<span class="sc">-</span>gnu<span class="sc">/</span>openblas<span class="sc">-</span>pthread<span class="sc">/</span>libblas.so<span class="fl">.3</span> </span>

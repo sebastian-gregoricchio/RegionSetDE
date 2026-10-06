@@ -68,7 +68,7 @@
 
 
 <dt id="arg-windows">windows<a class="anchor" aria-label="anchor" href="#arg-windows"></a></dt>
-<dd><p><code>GRanges</code> with the windows, named after the chromosomes of the BAM file.</p></dd>
+<dd><p><code>GRanges</code> with the windows, named as in <code>chromosomeLengths</code>.</p></dd>
 
 
 <dt id="arg-ispairedend">isPairedEnd<a class="anchor" aria-label="anchor" href="#arg-ispairedend"></a></dt>
@@ -92,11 +92,11 @@
 
 
 <dt id="arg-chromosomelengths">chromosomeLengths<a class="anchor" aria-label="anchor" href="#arg-chromosomelengths"></a></dt>
-<dd><p>Named numeric vector with the length of every chromosome of the BAM file.</p></dd>
+<dd><p>Named numeric vector with the length of every chromosome, as returned by <code>.bamChromosomeMap</code>. The file may name the same chromosomes in another style, it is read under its own names and the fragments come back under these.</p></dd>
 
 
 <dt id="arg-discardregions">discardRegions<a class="anchor" aria-label="anchor" href="#arg-discardregions"></a></dt>
-<dd><p><code>GRanges</code> with the regions whose reads must be ignored, named after the chromosomes of the BAM file. Default: <code>NULL</code>.</p></dd>
+<dd><p><code>GRanges</code> with the regions whose reads must be ignored, named as in <code>chromosomeLengths</code>. Default: <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-padding">padding<a class="anchor" aria-label="anchor" href="#arg-padding"></a></dt>

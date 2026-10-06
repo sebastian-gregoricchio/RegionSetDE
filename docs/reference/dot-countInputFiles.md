@@ -49,7 +49,8 @@ serve.
 
 - bamTargets:
 
-  Named vector with the chromosome lengths of the sample BAM files.
+  Named vector with the chromosome lengths of the sample BAM files,
+  whose names the regions are written in.
 
 - regions:
 

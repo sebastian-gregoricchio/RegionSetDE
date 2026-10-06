@@ -58,6 +58,7 @@
 <span>  minMapq <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  removeDuplicates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  progressBar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -67,7 +68,7 @@
 
 
 <dl><dt id="arg-inputfiles">inputFiles<a class="anchor" aria-label="anchor" href="#arg-inputfiles"></a></dt>
-<dd><p>Character vector with the paths of the input BAM files, or the data.frame returned by <code><a href="loadSampleSheet.html">loadSampleSheet</a></code>, in which case every distinct file of its <code>input</code> column is used once and named after <code>input.id</code>.</p></dd>
+<dd><p>Character vector with the paths of the input BAM files, or the data.frame returned by <code><a href="loadSampleSheet.html">loadSampleSheet</a></code>, in which case every distinct file of its <code>input</code> column is used once and named after <code>input.id</code>. The files may name the chromosomes of their assembly in different styles, the greylist then carries the names of the first one.</p></dd>
 
 
 <dt id="arg-inputnames">inputNames<a class="anchor" aria-label="anchor" href="#arg-inputnames"></a></dt>
@@ -118,6 +119,10 @@
 <dd><p>Number of threads. Default: <code>1</code>.</p></dd>
 
 
+<dt id="arg-progressbar">progressBar<a class="anchor" aria-label="anchor" href="#arg-progressbar"></a></dt>
+<dd><p>Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when <code>verbose = TRUE</code>. Default: <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code>, which keeps it out of scripts and rendered documents.</p></dd>
+
+
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical value to indicate whether the messages must be printed. Default: <code>TRUE</code>.</p></dd>
 
@@ -153,6 +158,8 @@
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">greylist</span> <span class="op">&lt;-</span> <span class="fu">makeGreylist</span><span class="op">(</span><span class="va">inputFile</span>, binSize <span class="op">=</span> <span class="fl">200</span>, maxGap <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Counting 1 input libraries over 32 windows of 200 bp...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   ex1: more than 331 fragments per window (mean 97.9), 0 windows flagged, 0 regions, 0 Mb.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Greylist: 0 regions, 0 Mb (0% of the genome), flagged by at least 1 of 1 inputs.</span>
 <span class="r-in"><span><span class="va">greylist</span></span></span>

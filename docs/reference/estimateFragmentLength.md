@@ -28,7 +28,8 @@ estimateFragmentLength(
 
 - bamFiles:
 
-  Character vector with the paths of the BAM files. Default: `NULL`,
+  Character vector with the paths of the BAM files, which may name the
+  chromosomes of their assembly in different styles. Default: `NULL`,
   taken from `sampleSheet`.
 
 - regions:

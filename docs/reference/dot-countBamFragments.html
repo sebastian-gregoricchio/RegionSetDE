@@ -57,6 +57,8 @@
 <span>  fullLibrarySize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  countMode <span class="op">=</span> <span class="st">"overlap"</span>,</span>
 <span>  pieceLength <span class="op">=</span> <span class="fl">5e+07</span>,</span>
+<span>  referenceTargets <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  progressBar <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -66,11 +68,11 @@
 
 
 <dl><dt id="arg-bamfiles">bamFiles<a class="anchor" aria-label="anchor" href="#arg-bamfiles"></a></dt>
-<dd><p>Character vector with the paths of the BAM files, all sharing the same header.</p></dd>
+<dd><p>Character vector with the paths of the BAM files, all aligned to the same assembly. Their chromosomes may be named in different styles, see <code>.bamChromosomeMap</code>.</p></dd>
 
 
 <dt id="arg-ranges">ranges<a class="anchor" aria-label="anchor" href="#arg-ranges"></a></dt>
-<dd><p><code>GRanges</code> with the ranges to count, named after the chromosomes of the BAM files. The strand is ignored.</p></dd>
+<dd><p><code>GRanges</code> with the ranges to count, named after the chromosomes of the first BAM file, or of <code>referenceTargets</code>. The strand is ignored.</p></dd>
 
 
 <dt id="arg-pairedend">pairedEnd<a class="anchor" aria-label="anchor" href="#arg-pairedend"></a></dt>
@@ -111,6 +113,14 @@
 
 <dt id="arg-piecelength">pieceLength<a class="anchor" aria-label="anchor" href="#arg-piecelength"></a></dt>
 <dd><p>Numeric value with the maximum length of the stretch of genome read by a single job, in base pairs. Default: <code>5e7</code>.</p></dd>
+
+
+<dt id="arg-referencetargets">referenceTargets<a class="anchor" aria-label="anchor" href="#arg-referencetargets"></a></dt>
+<dd><p>Named vector with the chromosome lengths whose names the ranges, the excluded chromosomes and the discarded regions are written in. Default: <code>NULL</code>, the header of the first BAM file.</p></dd>
+
+
+<dt id="arg-progressbar">progressBar<a class="anchor" aria-label="anchor" href="#arg-progressbar"></a></dt>
+<dd><p>Logical value to indicate whether a progress bar must be drawn, one step for every job that comes back. Default: <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>

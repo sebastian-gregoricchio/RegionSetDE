@@ -31,8 +31,7 @@ not lost, and merged, so that every record is read once.
 
 - windows:
 
-  `GRanges` with the windows, named after the chromosomes of the BAM
-  file.
+  `GRanges` with the windows, named as in `chromosomeLengths`.
 
 - isPairedEnd:
 
@@ -57,13 +56,15 @@ not lost, and merged, so that every record is read once.
 
 - chromosomeLengths:
 
-  Named numeric vector with the length of every chromosome of the BAM
-  file.
+  Named numeric vector with the length of every chromosome, as returned
+  by `.bamChromosomeMap`. The file may name the same chromosomes in
+  another style, it is read under its own names and the fragments come
+  back under these.
 
 - discardRegions:
 
-  `GRanges` with the regions whose reads must be ignored, named after
-  the chromosomes of the BAM file. Default: `NULL`.
+  `GRanges` with the regions whose reads must be ignored, named as in
+  `chromosomeLengths`. Default: `NULL`.
 
 - padding:
 

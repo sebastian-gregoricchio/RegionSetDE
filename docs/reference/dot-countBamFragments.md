@@ -25,6 +25,7 @@ from their 5' end.
   fullLibrarySize = TRUE,
   countMode = "overlap",
   pieceLength = 5e+07,
+  referenceTargets = NULL,
   nThreads = 1
 )
 ```
@@ -33,13 +34,14 @@ from their 5' end.
 
 - bamFiles:
 
-  Character vector with the paths of the BAM files, all sharing the same
-  header.
+  Character vector with the paths of the BAM files, all aligned to the
+  same assembly. Their chromosomes may be named in different styles, see
+  `.bamChromosomeMap`.
 
 - ranges:
 
   `GRanges` with the ranges to count, named after the chromosomes of the
-  BAM files. The strand is ignored.
+  first BAM file, or of `referenceTargets`. The strand is ignored.
 
 - pairedEnd:
 
@@ -97,6 +99,12 @@ from their 5' end.
 
   Numeric value with the maximum length of the stretch of genome read by
   a single job, in base pairs. Default: `5e7`.
+
+- referenceTargets:
+
+  Named vector with the chromosome lengths whose names the ranges, the
+  excluded chromosomes and the discarded regions are written in.
+  Default: `NULL`, the header of the first BAM file.
 
 - nThreads:
 

@@ -47,14 +47,17 @@ countReads(
   [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
   or
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
-  or a named `GRangesList`.
+  a named `GRangesList`, or a single `GRanges`, which is loaded by
+  [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+  as one set named `regions`.
 
 - bamFiles:
 
   Character vector with the paths of the BAM files. Each file must be
-  indexed, and all of them must share the same header. Default: `NULL`,
-  taken from `sampleSheet`, or from the sample sheet a consensus was
-  built from by
+  indexed, and all of them must be aligned to the same assembly, whose
+  chromosomes they may name in different styles (`chr1` in some files
+  and `1` in others). Default: `NULL`, taken from `sampleSheet`, or from
+  the sample sheet a consensus was built from by
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
 
 - sampleSheet:
@@ -292,10 +295,28 @@ region it came from, and windows of neighbouring regions may overlap, as
 in DiffBind.
 
 Regions and BAM files do not need to share the same chromosome naming
-style. When no chromosome is shared, the regions are converted to the
-style of the files for the counting only, so that UCSC regions can be
-counted on Ensembl alignments and the object still comes back with the
-names of the input sets.
+style, and neither do the BAM files among themselves. The names of the
+first file are the reference. The regions, `discardRegions` and
+`excludeChromosomes` are brought to them chromosome by chromosome, for
+the counting only, and every other file is read under its own names.
+UCSC regions can then be counted on Ensembl alignments, or on a mix of
+the two, and the object still comes back with the names of the input
+sets. The same holds for the inputs. What the files cannot differ in is
+the assembly: two files giving different lengths to the same chromosome
+are refused. Contigs that some files lack under any name, as scaffolds
+and decoys often do between two builds of one assembly, hold no read in
+those files and enter the library sizes of the others, unless they are
+listed in `excludeChromosomes`.
+
+A single `GRanges` is taken as one set of regions. It goes through
+[`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+with its order and its chromosome names kept, the regions with identical
+coordinates collapsed into one, and the set is called `regions`. To give
+the set another name, to sort it or to split it into several sets, call
+[`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+or
+[`splitLoadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.md)
+first.
 
 ## See also
 

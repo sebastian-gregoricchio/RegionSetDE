@@ -67,6 +67,7 @@
 <span>  summits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  summitSource <span class="op">=</span> <span class="st">"reads"</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  progressBar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -76,11 +77,11 @@
 
 
 <dl><dt id="arg-regionset">regionSet<a class="anchor" aria-label="anchor" href="#arg-regionset"></a></dt>
-<dd><p><code>RegionSetDE</code> object returned by <code><a href="loadRegions.html">loadRegions</a></code> or <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>, or a named <code>GRangesList</code>.</p></dd>
+<dd><p><code>RegionSetDE</code> object returned by <code><a href="loadRegions.html">loadRegions</a></code> or <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>, a named <code>GRangesList</code>, or a single <code>GRanges</code>, which is loaded by <code><a href="loadRegions.html">loadRegions</a></code> as one set named <code>regions</code>.</p></dd>
 
 
 <dt id="arg-bamfiles">bamFiles<a class="anchor" aria-label="anchor" href="#arg-bamfiles"></a></dt>
-<dd><p>Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header. Default: <code>NULL</code>, taken from <code>sampleSheet</code>, or from the sample sheet a consensus was built from by <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
+<dd><p>Character vector with the paths of the BAM files. Each file must be indexed, and all of them must be aligned to the same assembly, whose chromosomes they may name in different styles (<code>chr1</code> in some files and <code>1</code> in others). Default: <code>NULL</code>, taken from <code>sampleSheet</code>, or from the sample sheet a consensus was built from by <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
 
 
 <dt id="arg-samplesheet">sampleSheet<a class="anchor" aria-label="anchor" href="#arg-samplesheet"></a></dt>
@@ -163,6 +164,10 @@
 <dd><p>Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: <code>1</code>.</p></dd>
 
 
+<dt id="arg-progressbar">progressBar<a class="anchor" aria-label="anchor" href="#arg-progressbar"></a></dt>
+<dd><p>Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when <code>verbose = TRUE</code>. Default: <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code>, which keeps it out of scripts and rendered documents.</p></dd>
+
+
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical value to indicate whether the messages must be printed. Default: <code>TRUE</code>.</p></dd>
 
@@ -180,7 +185,8 @@
 <p>Single-end libraries rarely share the same fragment length, and a read extended too far spills into the neighbouring regions while one extended too little misses the centre of its own. The length can come from the pipeline that produced the files, as a column of the sample sheet, or from <code>fragmentLength = "auto"</code>, which runs the strand cross-correlation of <code><a href="estimateFragmentLength.html">estimateFragmentLength</a></code> over the regions being counted. <code><a href="countBackground.html">countBackground</a></code> and <code><a href="countGreenlist.html">countGreenlist</a></code> reuse the lengths chosen here, sample by sample.</p>
 <p>The inputs are counted with the same filters as the samples, over the same rows, and a single-end input is extended to the mean fragment length of the samples it serves. Nothing downstream subtracts them: the counts of a sample stay the reads of that sample, as the count models need. The input assay is there to check the enrichment of the regions, and to see whether a change between conditions also shows in the inputs, which points to copy number rather than to binding. <code><a href="libInfo.html">libInfo</a></code> reports the inputs beside the libraries.</p>
 <p>A consensus of peaks has regions of every width, and a wide region collects more background than a narrow one around the same summit. With <code>summits</code>, every region is replaced by a window of fixed width centred on its summit, which is what DiffBind does by default. With <code>summitSource = "reads"</code> the summit is the middle of the highest stretch of fragment pileup in each sample, averaged over the samples with weights proportional to the height of their pileup, scaled by their depth, so that the samples carrying signal decide where it sits. With <code>summitSource = "peaks"</code> it is the average of the summits the peak caller wrote for the peaks overlapping the region, weighted by their significance, which needs no BAM file but works only for narrowPeak files. A region with neither reads nor peaks keeps its midpoint. The regions keep their identifiers, so each window can be traced back to the region it came from, and windows of neighbouring regions may overlap, as in DiffBind.</p>
-<p>Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.</p>
+<p>Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, <code>discardRegions</code> and <code>excludeChromosomes</code> are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in <code>excludeChromosomes</code>.</p>
+<p>A single <code>GRanges</code> is taken as one set of regions. It goes through <code><a href="loadRegions.html">loadRegions</a></code> with its order and its chromosome names kept, the regions with identical coordinates collapsed into one, and the set is called <code>regions</code>. To give the set another name, to sort it or to split it into several sets, call <code><a href="loadRegions.html">loadRegions</a></code> or <code><a href="splitLoadRegions.html">splitLoadRegions</a></code> first.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -24,13 +24,12 @@ file over a set of regions.
 
 - regions:
 
-  `GRanges` with the regions, named after the chromosomes of the BAM
-  file.
+  `GRanges` with the regions, named as in `chromosomeLengths`.
 
 - chromosomeLengths:
 
-  Named numeric vector with the length of every chromosome of the BAM
-  file.
+  Named numeric vector with the length of every chromosome, as returned
+  by `.bamChromosomeMap`.
 
 - minMapq:
 

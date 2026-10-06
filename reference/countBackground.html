@@ -57,6 +57,7 @@
 <span>  minMapq <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  removeDuplicates <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  progressBar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -111,6 +112,10 @@
 
 <dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
 <dd><p>Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: <code>1</code>.</p></dd>
+
+
+<dt id="arg-progressbar">progressBar<a class="anchor" aria-label="anchor" href="#arg-progressbar"></a></dt>
+<dd><p>Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when <code>verbose = TRUE</code>. Default: <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code>, which keeps it out of scripts and rendered documents.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

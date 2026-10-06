@@ -21,6 +21,7 @@ serve.
   discardRegions,
   fullLibrarySize,
   nThreads,
+  progressBar = FALSE,
   verbose
 )
 ```
@@ -86,6 +87,11 @@ serve.
 - nThreads:
 
   Number of threads.
+
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn while
+  the inputs are read. Default: `FALSE`.
 
 - verbose:
 

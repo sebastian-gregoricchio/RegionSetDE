@@ -16,6 +16,7 @@ to the height of its pileup over its depth.
   minMapq,
   removeDuplicates,
   discardRegions,
+  progressBar = FALSE,
   nThreads
 )
 ```
@@ -56,6 +57,11 @@ to the height of its pileup over its depth.
 - discardRegions:
 
   `GRanges` with the regions whose reads must be ignored, or `NULL`.
+
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn, one
+  step for every file. Default: `FALSE`.
 
 - nThreads:
 

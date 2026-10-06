@@ -53,6 +53,7 @@
 <span>  <span class="va">minMapq</span>,</span>
 <span>  <span class="va">removeDuplicates</span>,</span>
 <span>  <span class="va">discardRegions</span>,</span>
+<span>  progressBar <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">nThreads</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -91,6 +92,10 @@
 
 <dt id="arg-discardregions">discardRegions<a class="anchor" aria-label="anchor" href="#arg-discardregions"></a></dt>
 <dd><p><code>GRanges</code> with the regions whose reads must be ignored, or <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-progressbar">progressBar<a class="anchor" aria-label="anchor" href="#arg-progressbar"></a></dt>
+<dd><p>Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>

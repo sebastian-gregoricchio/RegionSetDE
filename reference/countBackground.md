@@ -23,6 +23,7 @@ countBackground(
   minMapq = NULL,
   removeDuplicates = NULL,
   nThreads = 1,
+  progressBar = interactive(),
   verbose = TRUE
 )
 ```
@@ -95,6 +96,14 @@ countBackground(
 
   Number of threads. The files are cut into pieces of at most 50 Mb,
   shared among the threads. Default: `1`.
+
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn while
+  the files are read. It advances with the pieces of the files as the
+  threads hand them back, and it is drawn only when `verbose = TRUE`.
+  Default: [`interactive()`](https://rdrr.io/r/base/interactive.html),
+  which keeps it out of scripts and rendered documents.
 
 - verbose:
 

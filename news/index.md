@@ -223,6 +223,22 @@ First version.
   also pastes the coordinates of the table as integers: a start or an
   end at 100000 was written `1e+05` and found no region, which hit
   tables counted over bins.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  and
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+  take `progressBar`, which draws a bar while the BAM files are read. It
+  advances with the pieces of the files as the threads hand them back,
+  on one thread or on many, and
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  draws one for the summits and one for the inputs as well. The default
+  is [`interactive()`](https://rdrr.io/r/base/interactive.html), so
+  scripts and rendered documents are not filled with it, and a call with
+  `verbose = FALSE` draws nothing.
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  also says when it starts locating the summits or estimating the
+  fragment lengths, and how long the whole call took.
 - `pairedEnd = "auto"` reads the layout from the first 100,000 records
   of each BAM file, in
   [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),

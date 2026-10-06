@@ -25,6 +25,7 @@ makeGreylist(
   minMapq = 20,
   removeDuplicates = TRUE,
   nThreads = 1,
+  progressBar = interactive(),
   verbose = TRUE
 )
 ```
@@ -102,6 +103,14 @@ makeGreylist(
 - nThreads:
 
   Number of threads. Default: `1`.
+
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn while
+  the files are read. It advances with the pieces of the files as the
+  threads hand them back, and it is drawn only when `verbose = TRUE`.
+  Default: [`interactive()`](https://rdrr.io/r/base/interactive.html),
+  which keeps it out of scripts and rendered documents.
 
 - verbose:
 

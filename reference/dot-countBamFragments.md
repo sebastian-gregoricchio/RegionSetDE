@@ -26,6 +26,7 @@ from their 5' end.
   countMode = "overlap",
   pieceLength = 5e+07,
   referenceTargets = NULL,
+  progressBar = FALSE,
   nThreads = 1
 )
 ```
@@ -105,6 +106,11 @@ from their 5' end.
   Named vector with the chromosome lengths whose names the ranges, the
   excluded chromosomes and the discarded regions are written in.
   Default: `NULL`, the header of the first BAM file.
+
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn, one
+  step for every job that comes back. Default: `FALSE`.
 
 - nThreads:
 

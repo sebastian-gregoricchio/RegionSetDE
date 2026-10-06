@@ -264,3 +264,17 @@ test_that("the CIGAR widths add up the reference operations only", {
   expect_equal(RegionSetDE:::.cigarReferenceWidth(c("50M", "10S40M", "20M2D30M", "25M3I22M", "25M100N25M")),
                c(50L, 40L, 52L, 47L, 150L))
 })
+
+
+test_that("the layout is read from the head of the files, without a word", {
+
+  singleEnd <- syntheticInput("layoutSingle")
+  pairedEnd <- loadExampleData("peakSheet", verbose = FALSE)$bam[1]
+
+  # Rsamtools::testPairedEndBam reads a single-end file to its last record and prints the running total
+  expect_silent(layout <- RegionSetDE:::.bamIsPairedEnd(c(singleEnd, pairedEnd)))
+  expect_identical(layout, c(FALSE, TRUE))
+
+  # A handful of records is enough, every read of a paired library carries the flag
+  expect_identical(RegionSetDE:::.bamIsPairedEnd(c(singleEnd, pairedEnd), nRecords = 10), c(FALSE, TRUE))
+})

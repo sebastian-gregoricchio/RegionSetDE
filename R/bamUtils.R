@@ -59,6 +59,40 @@
 
 
 
+#' @title .bamIsPairedEnd
+#'
+#' @description Tells whether BAM files hold paired-end reads, from the flags of their first records. In a paired-end library every read carries the paired flag, so the head of the file answers for all of it. \code{Rsamtools::testPairedEndBam} stops at the first paired read as well, but on a single-end file it finds none and reads to the last record, a million at a time, printing the running total.
+#'
+#' @param bamFiles Character vector with the paths of the BAM files.
+#' @param nRecords Numeric value with the number of records read from the head of each file. Default: \code{1e5}.
+#'
+#' @return A logical vector with one value per file, \code{FALSE} for a file without records.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom Rsamtools BamFile scanBam ScanBamParam bamFlagTest
+#'
+#' @keywords internal
+
+.bamIsPairedEnd <-
+  function(bamFiles,
+           nRecords = 1e5) {
+
+    return(vapply(bamFiles,
+                  function(bamFile) {
+                    # No index is needed to read a file from its first record
+                    headFlags <- Rsamtools::scanBam(Rsamtools::BamFile(file = bamFile, yieldSize = as.integer(nRecords)),
+                                                    param = Rsamtools::ScanBamParam(what = "flag"))[[1]]$flag
+
+                    return(any(Rsamtools::bamFlagTest(headFlags, "isPaired")))
+                  },
+                  logical(1),
+                  USE.NAMES = FALSE))
+  } # END function
+
+
+
+
 #' @title .bamChromosomeMap
 #'
 #' @description Brings the chromosomes of a group of BAM files under one set of names, those of the first file or of a reference given by the caller. Files aligned to the same assembly do not always name its chromosomes alike, \code{chr1} in one header and \code{1} in the next, and the ranges being counted can only be written one way. Every file is then read under its own names and reported under the common ones.

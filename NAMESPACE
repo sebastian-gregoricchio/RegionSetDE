@@ -172,11 +172,11 @@ importFrom(IRanges,
 importFrom(Rsamtools,
   BamFile,
   ScanBamParam,
+  bamFlagTest,
   idxstatsBam,
   scanBam,
   scanBamFlag,
-  scanBamHeader,
-  testPairedEndBam
+  scanBamHeader
 )
 importFrom(S4Vectors,
   "mcols<-",

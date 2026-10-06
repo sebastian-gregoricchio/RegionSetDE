@@ -52,7 +52,6 @@
 #'
 #' @seealso \code{\link{applyGreylist}}, \code{\link{loadSampleSheet}}, \code{\link{applyBlacklist}}
 #'
-#' @importFrom Rsamtools testPairedEndBam
 #' @importFrom IRanges reduce
 #' @importFrom S4Vectors metadata<-
 #' @importFrom GenomeInfoDb seqinfo
@@ -148,7 +147,7 @@ makeGreylist <-
     }
 
     if (identical(pairedEnd, "auto")) {
-      pairedEnd <- vapply(inputFiles, Rsamtools::testPairedEndBam, logical(1), USE.NAMES = FALSE)
+      pairedEnd <- .bamIsPairedEnd(bamFiles = inputFiles)
     }
 
     if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(inputFiles))}

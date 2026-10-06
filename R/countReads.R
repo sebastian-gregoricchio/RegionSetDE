@@ -77,7 +77,6 @@
 #'
 #' @seealso \code{\link{estimateFragmentLength}}, \code{\link{countBigwig}}, \code{\link{loadCounts}}, \code{\link{countBackground}}, \code{\link{libInfo}}
 #'
-#' @importFrom Rsamtools testPairedEndBam
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
 #' @importFrom IRanges ranges ranges<-
@@ -186,7 +185,7 @@ countReads <-
 
     # The flags of the first records are enough to tell a paired library from a single-end one
     if (identical(pairedEnd, "auto")) {
-      pairedEnd <- vapply(bamFiles, Rsamtools::testPairedEndBam, logical(1), USE.NAMES = FALSE)
+      pairedEnd <- .bamIsPairedEnd(bamFiles = bamFiles)
     }
 
     if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(bamFiles))}
@@ -624,8 +623,6 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom Rsamtools testPairedEndBam
-#'
 #' @keywords internal
 
 .countInputFiles <-
@@ -666,7 +663,7 @@ countReads <-
     #-------------------------------#
     # Layout and fragment length    #
     #-------------------------------#
-    inputPairedEnd <- vapply(distinctInputs, Rsamtools::testPairedEndBam, logical(1), USE.NAMES = FALSE)
+    inputPairedEnd <- .bamIsPairedEnd(bamFiles = distinctInputs)
 
     # A single-end input is extended as the samples it serves, which are the fragments it has to be compared with
     inputFragmentLength <- vapply(distinctInputs,

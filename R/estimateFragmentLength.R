@@ -49,7 +49,6 @@
 #'
 #' @seealso \code{\link{countReads}}
 #'
-#' @importFrom Rsamtools testPairedEndBam
 #' @importFrom GenomicRanges GRanges
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom IRanges IRanges reduce
@@ -128,7 +127,7 @@ estimateFragmentLength <-
     }
 
     if (identical(pairedEnd, "auto")) {
-      pairedEnd <- vapply(bamFiles, Rsamtools::testPairedEndBam, logical(1), USE.NAMES = FALSE)
+      pairedEnd <- .bamIsPairedEnd(bamFiles = bamFiles)
     }
     if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(bamFiles))}
 

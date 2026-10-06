@@ -34,13 +34,15 @@ countBigwig(
 
   `RegionSetDE` object returned by
   [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md),
-  or a named `GRangesList`.
+  a named `GRangesList`, or a single `GRanges`, which is loaded by
+  [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+  as one set named `regions`.
 
 - bigwigFiles:
 
-  Character vector with the paths of the bigWig files. Default: `NULL`,
-  taken from `sampleSheet`, or from the sample sheet a consensus was
-  built from by
+  Character vector with the paths of the bigWig files, which may name
+  the chromosomes in different styles. Default: `NULL`, taken from
+  `sampleSheet`, or from the sample sheet a consensus was built from by
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
 
 - sampleSheet:
@@ -156,6 +158,14 @@ Setting `countLike = TRUE` is an assertion about the files, not a
 setting: it says these are raw, unnormalised coverage tracks and the
 count model is close enough for the purpose, and it should be stated in
 the methods when it is used.
+
+The regions and the bigWig files do not need to share the same
+chromosome naming style, and neither do the files among themselves: each
+file is asked for the regions under its own names, chromosome by
+chromosome, and the object comes back with the names of the input sets.
+A single `GRanges` is taken as one set of regions, loaded by
+[`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+with its order and its chromosome names kept, and called `regions`.
 
 ## See also
 

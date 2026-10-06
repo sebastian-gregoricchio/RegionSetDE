@@ -37,7 +37,9 @@ loadCounts(
 
   `RegionSetDE` object returned by
   [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md),
-  or a named `GRangesList`.
+  a named `GRangesList`, or a single `GRanges`, which is loaded by
+  [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+  as one set named `regions`.
 
 - counts:
 
@@ -149,7 +151,9 @@ When the sequencing depth is known it should be passed through
 `librarySizes`, otherwise the normalisation should rely on factors
 estimated elsewhere. Rows of the count table that match no region are
 ignored, which makes it safe to import a genome wide matrix and keep
-only the sets of interest.
+only the sets of interest. With `matchBy = "coordinates"` the
+chromosomes of the table are read under the names of the regions, so a
+table written with `1` matches regions written with `chr1`.
 
 What the table holds decides what may be fitted on it. A `featureCounts`
 or `bedtools multicov` matrix holds fragment counts and the default is

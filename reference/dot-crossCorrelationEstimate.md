@@ -26,13 +26,13 @@ distances between the 5' ends of its forward and reverse reads.
 
 - regions:
 
-  `GRanges` with the regions, named after the chromosomes of the BAM
-  file and without overlaps.
+  `GRanges` with the regions, named as in `chromosomeLengths` and
+  without overlaps.
 
 - chromosomeLengths:
 
-  Named numeric vector with the length of every chromosome of the BAM
-  file.
+  Named numeric vector with the length of every chromosome, as returned
+  by `.bamChromosomeMap`.
 
 - maxDistance:
 

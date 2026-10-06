@@ -71,7 +71,7 @@
 
 
 <dl><dt id="arg-regionset">regionSet<a class="anchor" aria-label="anchor" href="#arg-regionset"></a></dt>
-<dd><p><code>RegionSetDE</code> object returned by <code><a href="loadRegions.html">loadRegions</a></code>, or a named <code>GRangesList</code>.</p></dd>
+<dd><p><code>RegionSetDE</code> object returned by <code><a href="loadRegions.html">loadRegions</a></code>, a named <code>GRangesList</code>, or a single <code>GRanges</code>, which is loaded by <code><a href="loadRegions.html">loadRegions</a></code> as one set named <code>regions</code>.</p></dd>
 
 
 <dt id="arg-counts">counts<a class="anchor" aria-label="anchor" href="#arg-counts"></a></dt>
@@ -148,7 +148,7 @@
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through <code>librarySizes</code>, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.</p>
+    <p>The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through <code>librarySizes</code>, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest. With <code>matchBy = "coordinates"</code> the chromosomes of the table are read under the names of the regions, so a table written with <code>1</code> matches regions written with <code>chr1</code>.</p>
 <p>What the table holds decides what may be fitted on it. A <code>featureCounts</code> or <code>bedtools multicov</code> matrix holds fragment counts and the default is right for it. A <code>deeptools multiBigwigSummary</code> matrix holds coverage, often already normalised, and <code>countLike = FALSE</code> should be set so that <code><a href="fitRegions.html">fitRegions</a></code> steers it to the <code>"limma"</code> engine instead of a negative binomial one.</p>
     </div>
     <div class="section level2">

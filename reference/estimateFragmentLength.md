@@ -28,7 +28,8 @@ estimateFragmentLength(
 
 - bamFiles:
 
-  Character vector with the paths of the BAM files. Default: `NULL`,
+  Character vector with the paths of the BAM files, which may name the
+  chromosomes of their assembly in different styles. Default: `NULL`,
   taken from `sampleSheet`.
 
 - regions:
@@ -156,7 +157,6 @@ writeLines(c("@HD\tVN:1.6\tSO:coordinate", "@SQ\tSN:chrT\tLN:200000", samRecords
 bamFile <- Rsamtools::asBam(samFile, destination = file.path(tempdir(), "fragments"), overwrite = TRUE, indexDestination = TRUE)
 
 fragmentEstimate <- estimateFragmentLength(bamFile, verbose = FALSE)
-#> 3600 
 fragmentEstimate$table
 #>      sample paired.end read.length fragment.length            method n.reads
 #> 1 fragments      FALSE          50             202 cross-correlation    1805

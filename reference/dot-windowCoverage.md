@@ -17,13 +17,12 @@ their coverage, chromosome by chromosome.
 
 - windows:
 
-  `GRanges` with the windows, named after the chromosomes of the BAM
-  file.
+  `GRanges` with the windows, named as in `chromosomeLengths`.
 
 - chromosomeLengths:
 
-  Named numeric vector with the length of every chromosome of the BAM
-  file.
+  Named numeric vector with the length of every chromosome, as returned
+  by `.bamChromosomeMap`.
 
 - ...:
 
@@ -32,7 +31,7 @@ their coverage, chromosome by chromosome.
 ## Value
 
 A list with `coverage`, an `RleList` with one element per chromosome of
-the BAM file, and `fragments`, the number of fragments read.
+`chromosomeLengths`, and `fragments`, the number of fragments read.
 
 ## Author
 

@@ -68,11 +68,11 @@
 
 
 <dl><dt id="arg-regionset">regionSet<a class="anchor" aria-label="anchor" href="#arg-regionset"></a></dt>
-<dd><p><code>RegionSetDE</code> object returned by <code><a href="loadRegions.html">loadRegions</a></code>, or a named <code>GRangesList</code>.</p></dd>
+<dd><p><code>RegionSetDE</code> object returned by <code><a href="loadRegions.html">loadRegions</a></code>, a named <code>GRangesList</code>, or a single <code>GRanges</code>, which is loaded by <code><a href="loadRegions.html">loadRegions</a></code> as one set named <code>regions</code>.</p></dd>
 
 
 <dt id="arg-bigwigfiles">bigwigFiles<a class="anchor" aria-label="anchor" href="#arg-bigwigfiles"></a></dt>
-<dd><p>Character vector with the paths of the bigWig files. Default: <code>NULL</code>, taken from <code>sampleSheet</code>, or from the sample sheet a consensus was built from by <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
+<dd><p>Character vector with the paths of the bigWig files, which may name the chromosomes in different styles. Default: <code>NULL</code>, taken from <code>sampleSheet</code>, or from the sample sheet a consensus was built from by <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
 
 
 <dt id="arg-samplesheet">sampleSheet<a class="anchor" aria-label="anchor" href="#arg-samplesheet"></a></dt>
@@ -136,6 +136,7 @@
     <p>A bigWig holds coverage, not reads, so the library sizes cannot be recovered from it: the <code>library.size</code> column of the <code>colData</code> is left as <code>NA</code> and the total signal falling in the regions is reported in <code>total.signal</code> instead. Normalisation factors must therefore be supplied externally, or estimated from a background bigWig.</p>
 <p>Coverage is not a count and rounding it does not make it one. A value of 12.72 becomes 13 and looks like a count, but the negative binomial likelihood that <code>edgeR</code> and <code>DESeq2</code> are built on describes the number of fragments falling in an interval, and a rounded coverage value is not that number. The gap is widest for files carrying an already normalised signal, CPM, RPKM, RPGC, fold enrichment over input, where the values have been divided by a factor that the count model then has no way of knowing about. It does not close entirely even for raw coverage: coverage summed over an interval weights every fragment by how many of its bases fall inside, so it is over-dispersed relative to the fragment count it stands in for.</p>
 <p>The object therefore records where its values came from, and <code><a href="fitRegions.html">fitRegions</a></code> refuses the count engines on it unless <code>countLike</code> says otherwise. The engine to reach for on bigWig input is <code>"limma"</code>, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting <code>countLike = TRUE</code> is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.</p>
+<p>The regions and the bigWig files do not need to share the same chromosome naming style, and neither do the files among themselves: each file is asked for the regions under its own names, chromosome by chromosome, and the object comes back with the names of the input sets. A single <code>GRanges</code> is taken as one set of regions, loaded by <code><a href="loadRegions.html">loadRegions</a></code> with its order and its chromosome names kept, and called <code>regions</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

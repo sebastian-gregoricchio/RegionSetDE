@@ -23,9 +23,10 @@ by every thread of `.countBamFragments`.
 
 - job:
 
-  List describing the job: `file.index`, the `pieces` table, the
-  `ranges` to count with their `range.chromosome` and `range.index`, and
-  the `discard` regions of its chromosomes.
+  List describing the job: `file.index`, the `pieces` table, whose
+  `file.chromosome` column holds the name each chromosome carries in the
+  file, the `ranges` to count with their `range.chromosome` and
+  `range.index`, and the `discard` regions of its chromosomes.
 
 - bamFiles:
 

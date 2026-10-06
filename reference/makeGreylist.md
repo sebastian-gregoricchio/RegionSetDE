@@ -37,7 +37,9 @@ makeGreylist(
   data.frame returned by
   [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
   in which case every distinct file of its `input` column is used once
-  and named after `input.id`.
+  and named after `input.id`. The files may name the chromosomes of
+  their assembly in different styles, the greylist then carries the
+  names of the first one.
 
 - inputNames:
 

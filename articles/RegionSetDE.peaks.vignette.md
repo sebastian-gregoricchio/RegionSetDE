@@ -489,16 +489,21 @@ Mixing the two styles is the classic silent failure of this kind of
 analysis: an overlap between `chr19` and `19` is not an error, it is
 simply empty, so a blacklist removes nothing and an occupancy column
 counts nobody. The package reconciles the styles at every junction
-instead of trusting them to agree, and stops when it cannot:
+instead of trusting them to agree, and stops when it cannot. The names
+are settled chromosome by chromosome, so files or ranges written half in
+one style and half in the other are handled like uniform ones:
 
 | Meeting | What happens |
 |:---|:---|
 | regions and BAM or bigWig files | the regions are converted to the style of the files for the counting; the object returned keeps its own |
-| regions and a blacklist, whitelist or greylist | the list is converted to the style of the regions, and a list sharing no chromosome is refused |
+| BAM or bigWig files naming the chromosomes differently | each file is read under its own names, those of the first file standing for all of them; BAM files giving different lengths to a chromosome are on different assemblies and are refused |
+| samples and their inputs | the inputs are read under their own names, over the same rows |
+| regions and a blacklist, whitelist or greylist | the list is converted to the names of the regions, whether the regions declare a style or not, and a list sharing no chromosome is refused |
 | peaks and the consensus built from them | both follow `seqlevelsStyle` |
 | greenlist and BAM files | the greenlist is converted to the style of the files |
 | background bins and the counted regions | the bins follow the regions |
 | `excludeChromosomes` | read in either style, with a warning when a name reaches no chromosome |
+| regions and a count table read by [`loadCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md) | the chromosomes of the table are read under the names of the regions |
 
 Assemblies are checked separately and more strictly: a list built for
 another genome is refused rather than overlapped, since rat chr1 and
@@ -1914,9 +1919,8 @@ sessionInfo()
 >  [95] gtable_0.3.6                sass_0.4.10                
 >  [97] digest_0.6.39               ggrepel_0.9.8              
 >  [99] SparseArray_1.12.3          rjson_0.2.23               
-> [101] htmlwidgets_1.6.4           farver_2.1.2               
-> [103] htmltools_0.5.9             pkgdown_2.2.1              
-> [105] lifecycle_1.0.5             httr_1.4.9                 
-> [107] GlobalOptions_0.1.4         statmod_1.5.2              
-> [109] gridtext_0.1.6
+> [101] farver_2.1.2                htmltools_0.5.9            
+> [103] pkgdown_2.2.1               lifecycle_1.0.5            
+> [105] httr_1.4.9                  GlobalOptions_0.1.4        
+> [107] statmod_1.5.2               gridtext_0.1.6
 ```

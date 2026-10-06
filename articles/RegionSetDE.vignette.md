@@ -292,7 +292,16 @@ claim about the genome and is worth keeping apart from the ENCODE list.
 [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
 counts alignments over every region of every set. Reads can be counted
 once per region, which is the default, or over fixed-width tiles inside
-each region when `tileWidth` is set.
+each region when `tileWidth` is set. A plain `GRanges` is accepted in
+place of the object: it goes through
+[`loadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
+and is counted as a single set named `regions`, its order and its
+chromosome names kept.
+
+The BAM files have to be aligned to the same assembly, but they do not
+have to name its chromosomes alike. Files written `chr1` and files
+written `1` are counted together, and the regions can follow either
+style.
 
 ``` r
 
@@ -2199,9 +2208,9 @@ sessionInfo()
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
 >  [95] SparseArray_1.12.3          ggrepel_0.9.8              
->  [97] rjson_0.2.23                htmlwidgets_1.6.4          
->  [99] farver_2.1.2                htmltools_0.5.9            
-> [101] pkgdown_2.2.1               lifecycle_1.0.5            
-> [103] httr_1.4.9                  GlobalOptions_0.1.4        
-> [105] statmod_1.5.2               gridtext_0.1.6
+>  [97] rjson_0.2.23                farver_2.1.2               
+>  [99] htmltools_0.5.9             pkgdown_2.2.1              
+> [101] lifecycle_1.0.5             httr_1.4.9                 
+> [103] GlobalOptions_0.1.4         statmod_1.5.2              
+> [105] gridtext_0.1.6
 ```

@@ -118,13 +118,13 @@ matters here: bins counted with a different mapping quality or duplicate
 policy would return factors that do not apply to the region counts. The
 parameters are taken from the object unless they are given explicitly.
 
-The bins cover every chromosome of the BAM files except those in
-`excludeChromosomes`, starting at the first base and with the last bin
-of each chromosome stopping at its end. Each fragment is counted once,
-in the bin holding its centre, or the 5' end of the read for single-end
-data, so a fragment lying across two bins is not counted twice. The
-whole genome is read whatever the value of `fullLibrarySize` used for
-the regions.
+The bins cover every chromosome the BAM files have in common except
+those in `excludeChromosomes`, starting at the first base and with the
+last bin of each chromosome stopping at its end. Each fragment is
+counted once, in the bin holding its centre, or the 5' end of the read
+for single-end data, so a fragment lying across two bins is not counted
+twice. The whole genome is read whatever the value of `fullLibrarySize`
+used for the regions.
 
 ## See also
 

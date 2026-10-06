@@ -20,7 +20,7 @@ estimateFragmentLength(
 )
 }
 \arguments{
-\item{bamFiles}{Character vector with the paths of the BAM files. Default: \code{NULL}, taken from \code{sampleSheet}.}
+\item{bamFiles}{Character vector with the paths of the BAM files, which may name the chromosomes of their assembly in different styles. Default: \code{NULL}, taken from \code{sampleSheet}.}
 
 \item{regions}{Regions the reads are collected from: a \code{RegionSetDE} object, a \code{GRangesList}, a named list of \code{GRanges} or a single \code{GRanges}. Default: \code{NULL}, the three longest chromosomes of the BAM files.}
 

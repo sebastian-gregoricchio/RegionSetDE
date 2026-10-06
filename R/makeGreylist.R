@@ -4,7 +4,7 @@
 #'
 #' @description Builds a greylist from input libraries: the stretches of genome where an input carries far more fragments than the rest of its genome leads to expect, such as copy number gains of the cell line, collapsed repeats or regions that stick to any immunoprecipitation. Each input is judged against its own coverage, and the regions flagged are pooled over the inputs, ready for \code{\link{applyGreylist}}.
 #'
-#' @param inputFiles Character vector with the paths of the input BAM files, or the data.frame returned by \code{\link{loadSampleSheet}}, in which case every distinct file of its \code{input} column is used once and named after \code{input.id}.
+#' @param inputFiles Character vector with the paths of the input BAM files, or the data.frame returned by \code{\link{loadSampleSheet}}, in which case every distinct file of its \code{input} column is used once and named after \code{input.id}. The files may name the chromosomes of their assembly in different styles, the greylist then carries the names of the first one.
 #' @param inputNames Character vector with the names of the inputs. Default: \code{NULL}, the \code{input.id} of the sample sheet or the file names.
 #' @param binSize Numeric value with the width of the windows, in base pairs. Consecutive windows overlap by half of it. Default: \code{1024}.
 #' @param quantile Numeric value with the quantile of the fitted negative binomial above which a window is flagged. Default: \code{0.99}.
@@ -52,7 +52,7 @@
 #'
 #' @seealso \code{\link{applyGreylist}}, \code{\link{loadSampleSheet}}, \code{\link{applyBlacklist}}
 #'
-#' @importFrom Rsamtools scanBamHeader testPairedEndBam
+#' @importFrom Rsamtools testPairedEndBam
 #' @importFrom IRanges reduce
 #' @importFrom S4Vectors metadata<-
 #' @importFrom GenomeInfoDb seqinfo
@@ -160,11 +160,15 @@ makeGreylist <-
     #-------------------------------#
     # Windows over the genome       #
     #-------------------------------#
-    chromosomeLengths <- Rsamtools::scanBamHeader(inputFiles[1])[[1]]$targets
+    # The inputs may name the chromosomes in different styles, those of the first file stand for all of them
+    inputChromosomes <- .bamChromosomeMap(bamFiles = inputFiles)
+    chromosomeLengths <- inputChromosomes$lengths
 
     # A name in the other naming style would leave the chromosome in and go unnoticed
     excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
 
+    # A contig that some inputs lack would fill their windows with zeros and pull their threshold down
+    chromosomeLengths <- chromosomeLengths[inputChromosomes$shared]
     chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
 
     if (length(chromosomeLengths) == 0) {

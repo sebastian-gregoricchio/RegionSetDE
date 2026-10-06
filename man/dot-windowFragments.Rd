@@ -21,7 +21,7 @@
 \arguments{
 \item{bamFile}{String with the path of the BAM file.}
 
-\item{windows}{\code{GRanges} with the windows, named after the chromosomes of the BAM file.}
+\item{windows}{\code{GRanges} with the windows, named as in \code{chromosomeLengths}.}
 
 \item{isPairedEnd}{Logical value, \code{TRUE} for a paired-end file.}
 
@@ -33,9 +33,9 @@
 
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded.}
 
-\item{chromosomeLengths}{Named numeric vector with the length of every chromosome of the BAM file.}
+\item{chromosomeLengths}{Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}. The file may name the same chromosomes in another style, it is read under its own names and the fragments come back under these.}
 
-\item{discardRegions}{\code{GRanges} with the regions whose reads must be ignored, named after the chromosomes of the BAM file. Default: \code{NULL}.}
+\item{discardRegions}{\code{GRanges} with the regions whose reads must be ignored, named as in \code{chromosomeLengths}. Default: \code{NULL}.}
 
 \item{padding}{Numeric value with the number of base pairs added on both sides of the windows. Default: \code{NULL}, the longest fragment accepted.}
 

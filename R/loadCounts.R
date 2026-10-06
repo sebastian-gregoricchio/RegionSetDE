@@ -4,7 +4,7 @@
 #'
 #' @description Imports a count matrix computed outside R, for instance by featureCounts, bedtools multicov or deeptools multiBigwigSummary, and attaches it to the regions of a \code{RegionSetDE} object. The rows of the matrix are matched to the regions either by coordinates or by identifier.
 #'
-#' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.
+#' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.
 #' @param counts Matrix, data.frame or path to a tab separated file with the counts. Lines starting with \code{#}, such as the featureCounts header, are skipped.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the names of the count columns are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of the count columns. Default: \code{NULL}.
@@ -25,7 +25,7 @@
 #'
 #' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample.
 #'
-#' @details The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
+#' @details The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest. With \code{matchBy = "coordinates"} the chromosomes of the table are read under the names of the regions, so a table written with \code{1} matches regions written with \code{chr1}.
 #'
 #' What the table holds decides what may be fitted on it. A \code{featureCounts} or \code{bedtools multicov} matrix holds fragment counts and the default is right for it. A \code{deeptools multiBigwigSummary} matrix holds coverage, often already normalised, and \code{countLike = FALSE} should be set so that \code{\link{fitRegions}} steers it to the \code{"limma"} engine instead of a negative binomial one.
 #'
@@ -61,7 +61,7 @@
 #'
 #' @seealso \code{\link{countReads}}, \code{\link{countBigwig}}
 #'
-#' @importFrom GenomeInfoDb seqnames
+#' @importFrom GenomeInfoDb seqnames seqlevels
 #' @importFrom BiocGenerics start end
 #' @importFrom S4Vectors mcols
 #' @importFrom dplyr select all_of mutate
@@ -92,6 +92,9 @@ loadCounts <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
+    # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
+    regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
+
     matchBy <- tolower(matchBy[1])
     if (!(matchBy %in% c("coordinates", "id"))) {
       stop("The 'matchBy' parameter must be either 'coordinates' or 'id'.", call. = FALSE)
@@ -171,10 +174,19 @@ loadCounts <-
         stop("The coordinate columns could not be identified, provide them through the 'coordinateColumns' parameter.", call. = FALSE)
       }
 
-      # BED tables count from zero, the shift aligns them to the 1-based GRanges coordinates
-      tableKey <- paste0(as.character(countTable[[coordinateColumns[1]]]), ":",
-                         as.numeric(countTable[[coordinateColumns[2]]]) + (1L - startsAt), "-",
-                         as.numeric(countTable[[coordinateColumns[3]]]))
+      # A table written by a tool fed with Ensembl names would match nothing on UCSC regions, so the
+      # chromosomes of the table are read under the names of the regions wherever the two can be told to agree
+      tableChromosomes <- as.character(countTable[[coordinateColumns[1]]])
+      regionNames <- .translateChromosomeNames(chromosomeNames = unique(tableChromosomes),
+                                               targetSeqlevels = GenomeInfoDb::seqlevels(allRegions))
+      regionNames <- ifelse(is.na(regionNames), unique(tableChromosomes), regionNames)
+      tableChromosomes <- regionNames[match(tableChromosomes, unique(tableChromosomes))]
+
+      # BED tables count from zero, the shift aligns them to the 1-based GRanges coordinates. The positions
+      # are pasted as integers: as numbers, 100000 is written 1e+05 and no longer matches the region it belongs to
+      tableKey <- paste0(tableChromosomes, ":",
+                         as.integer(round(as.numeric(countTable[[coordinateColumns[2]]]) + (1L - startsAt))), "-",
+                         as.integer(round(as.numeric(countTable[[coordinateColumns[3]]]))))
 
       regionMatchKey <- paste0(as.character(GenomeInfoDb::seqnames(allRegions)), ":",
                                BiocGenerics::start(allRegions), "-",

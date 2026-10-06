@@ -4,8 +4,8 @@
 #'
 #' @description Summarises the signal of a group of bigWig files over the regions of a \code{RegionSetDE} object. Useful when the BAM files are not available, or when the coverage has been produced by an external pipeline. The regions can be cut into tiles of fixed width, in which case each tile becomes a row of the resulting object.
 #'
-#' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.
-#' @param bigwigFiles Character vector with the paths of the bigWig files. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
+#' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.
+#' @param bigwigFiles Character vector with the paths of the bigWig files, which may name the chromosomes in different styles. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the bigWig files, the sample names and the annotation in one go. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the bigWig file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bigwigFiles}. Default: \code{NULL}.
@@ -27,6 +27,8 @@
 #' Coverage is not a count and rounding it does not make it one. A value of 12.72 becomes 13 and looks like a count, but the negative binomial likelihood that \code{edgeR} and \code{DESeq2} are built on describes the number of fragments falling in an interval, and a rounded coverage value is not that number. The gap is widest for files carrying an already normalised signal, CPM, RPKM, RPGC, fold enrichment over input, where the values have been divided by a factor that the count model then has no way of knowing about. It does not close entirely even for raw coverage: coverage summed over an interval weights every fragment by how many of its bases fall inside, so it is over-dispersed relative to the fragment count it stands in for.
 #'
 #' The object therefore records where its values came from, and \code{\link{fitRegions}} refuses the count engines on it unless \code{countLike} says otherwise. The engine to reach for on bigWig input is \code{"limma"}, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting \code{countLike = TRUE} is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.
+#'
+#' The regions and the bigWig files do not need to share the same chromosome naming style, and neither do the files among themselves: each file is asked for the regions under its own names, chromosome by chromosome, and the object comes back with the names of the input sets. A single \code{GRanges} is taken as one set of regions, loaded by \code{\link{loadRegions}} with its order and its chromosome names kept, and called \code{regions}.
 #'
 #' @examples
 #' # The small bigWig shipped with rtracklayer, with a region set built on its own intervals.
@@ -79,6 +81,9 @@ countBigwig <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
+    # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
+    regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
+
     # A sample sheet brings the files, the names and the annotation in one go
     sheetInput <- .sheetCountingInput(regionSet = regionSet,
                                       sampleSheet = sampleSheet,
@@ -144,11 +149,21 @@ countBigwig <-
     expansionIndex <- match(regionKey, regionKey[!duplicated(regionKey)])
     uniqueWidths <- BiocGenerics::width(uniqueRegions)
 
-    # The query must speak the language of the file, the returned object keeps the style of the region sets
-    uniqueRegions <- .matchSeqlevels(x = uniqueRegions,
-                                     targetSeqlevels = GenomeInfoDb::seqlevels(rtracklayer::BigWigFile(bigwigFiles[1])),
-                                     fileName = bigwigFiles[1],
-                                     verbose = verbose)
+    # The query must speak the language of the file, and the files do not always agree with each other,
+    # so the regions are renamed for one file at a time. The returned object keeps the style of the region sets
+    fileRegionList <- lapply(seq_along(bigwigFiles),
+                             function(fileIndex) {
+                               .matchSeqlevels(x = uniqueRegions,
+                                               targetSeqlevels = GenomeInfoDb::seqlevels(rtracklayer::BigWigFile(bigwigFiles[fileIndex])),
+                                               fileName = bigwigFiles[fileIndex],
+                                               verbose = isTRUE(verbose) & fileIndex == 1)
+                             })
+
+    fileStyles <- vapply(fileRegionList, function(fileRegions) {paste(GenomeInfoDb::seqlevels(fileRegions), collapse = " ")}, character(1))
+
+    if (isTRUE(verbose) & length(unique(fileStyles)) > 1) {
+      message("The bigWig files do not name their chromosomes alike, each of them is read under its own names.")
+    }
 
     #----------------#
     # Read the files #
@@ -159,11 +174,11 @@ countBigwig <-
     }
 
     signalList <-
-      BiocParallel::bplapply(X = bigwigFiles,
+      BiocParallel::bplapply(X = seq_along(bigwigFiles),
                              BPPARAM = parallelParam,
-                             FUN = function(bigwigFile) {
-                               baseValues <- rtracklayer::import(con = rtracklayer::BigWigFile(bigwigFile),
-                                                                 which = uniqueRegions,
+                             FUN = function(fileIndex) {
+                               baseValues <- rtracklayer::import(con = rtracklayer::BigWigFile(bigwigFiles[fileIndex]),
+                                                                 which = fileRegionList[[fileIndex]],
                                                                  as = "NumericList")
 
                                # Uncovered bases are missing in the file, either they count as zeros or they leave the region shorter

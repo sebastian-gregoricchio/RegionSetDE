@@ -22,7 +22,7 @@
 #'
 #' @details Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
 #'
-#' The bins cover every chromosome of the BAM files except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
+#' The bins cover every chromosome the BAM files have in common except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
 #'
 #' @examples
 #' # The example counts already carry their background bins
@@ -44,7 +44,6 @@
 #'
 #' @seealso \code{\link{countReads}}
 #'
-#' @importFrom Rsamtools scanBamHeader
 #' @importFrom SummarizedExperiment assay rowRanges SummarizedExperiment
 #' @importFrom GenomicRanges GRanges
 #' @importFrom GenomeInfoDb seqlevels
@@ -120,8 +119,10 @@ countBackground <-
     #--------------------#
     # Tile the genome    #
     #--------------------#
-    # The bins come from the BAM header, from the first base of every chromosome that is not excluded
-    chromosomeLengths <- Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets
+    # The bins come from the BAM headers, from the first base of every chromosome that is not excluded.
+    # The files may name the chromosomes in different styles, those of the first file stand for all of them
+    bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles)
+    chromosomeLengths <- bamChromosomes$lengths
 
     # Objects counted before 'excludeChromosomes' existed recorded the chromosomes kept, not the ones left out
     if (is.null(excludeChromosomes) & !is.null(countingParameters$restrictChromosomes)) {
@@ -131,6 +132,8 @@ countBackground <-
     # A name written in the other style would exclude nothing and the bins would cover it anyway
     excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
 
+    # A bin on a contig that some files lack would read as a difference between the samples, which it is not
+    chromosomeLengths <- chromosomeLengths[bamChromosomes$shared]
     chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
 
     if (length(chromosomeLengths) == 0) {

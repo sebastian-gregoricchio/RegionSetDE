@@ -30,7 +30,7 @@
 
 \item{fragmentLength}{Value given to \code{countReads}, used to tell a single length from lengths varying by sample.}
 
-\item{bamTargets}{Named vector with the chromosome lengths of the sample BAM files.}
+\item{bamTargets}{Named vector with the chromosome lengths of the sample BAM files, whose names the regions are written in.}
 
 \item{regions}{\code{GRanges} with the regions, named after the chromosomes of the BAM files.}
 

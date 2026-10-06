@@ -56,7 +56,7 @@ Counts the reads falling in large genome wide bins, which provide the background
 \details{
 Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
 
-The bins cover every chromosome of the BAM files except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
+The bins cover every chromosome the BAM files have in common except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
 }
 \examples{
 # The example counts already carry their background bins

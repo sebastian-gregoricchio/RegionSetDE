@@ -9,14 +9,14 @@
 \arguments{
 \item{bamFile}{String with the path of the BAM file.}
 
-\item{windows}{\code{GRanges} with the windows, named after the chromosomes of the BAM file.}
+\item{windows}{\code{GRanges} with the windows, named as in \code{chromosomeLengths}.}
 
-\item{chromosomeLengths}{Named numeric vector with the length of every chromosome of the BAM file.}
+\item{chromosomeLengths}{Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.}
 
 \item{...}{Read filters passed to \code{.windowFragments}.}
 }
 \value{
-A list with \code{coverage}, an \code{RleList} with one element per chromosome of the BAM file, and \code{fragments}, the number of fragments read.
+A list with \code{coverage}, an \code{RleList} with one element per chromosome of \code{chromosomeLengths}, and \code{fragments}, the number of fragments read.
 }
 \description{
 Reads the fragments of one BAM file around a set of windows and returns their coverage, chromosome by chromosome.

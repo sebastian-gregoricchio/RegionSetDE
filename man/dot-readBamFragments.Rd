@@ -16,7 +16,7 @@
 )
 }
 \arguments{
-\item{job}{List describing the job: \code{file.index}, the \code{pieces} table, the \code{ranges} to count with their \code{range.chromosome} and \code{range.index}, and the \code{discard} regions of its chromosomes.}
+\item{job}{List describing the job: \code{file.index}, the \code{pieces} table, whose \code{file.chromosome} column holds the name each chromosome carries in the file, the \code{ranges} to count with their \code{range.chromosome} and \code{range.index}, and the \code{discard} regions of its chromosomes.}
 
 \item{bamFiles}{Character vector with the paths of the BAM files.}
 

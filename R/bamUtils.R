@@ -59,12 +59,117 @@
 
 
 
+#' @title .bamChromosomeMap
+#'
+#' @description Brings the chromosomes of a group of BAM files under one set of names, those of the first file or of a reference given by the caller. Files aligned to the same assembly do not always name its chromosomes alike, \code{chr1} in one header and \code{1} in the next, and the ranges being counted can only be written one way. Every file is then read under its own names and reported under the common ones.
+#'
+#' @param bamFiles Character vector with the paths of the BAM files.
+#' @param referenceTargets Named vector with the chromosome lengths the names are taken from. Default: \code{NULL}, the header of the first file.
+#' @param referenceLabel String naming the reference in the error messages. Default: \code{NULL}, the name of the first file.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{FALSE}.
+#'
+#' @return A list with \code{lengths}, a named integer vector with the length of every chromosome found in the reference or in a file, under the common names; \code{names}, a list with one named character vector per file, giving the name each of its chromosomes carries in the file (the names of the vector are the common ones); \code{shared}, the common names of the chromosomes every file has; and \code{renamed}, a logical vector telling which files are read under names of their own.
+#'
+#' @details Two files that give different lengths to the same chromosome are not on the same assembly, and the counting stops there. A contig that some files lack, under any name, is no reason to stop: scaffolds and decoys differ between builds of the same assembly, and the files without it simply hold no read there.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom Rsamtools scanBamHeader
+#' @importFrom stats setNames
+#' @importFrom utils head
+#'
+#' @keywords internal
+
+.bamChromosomeMap <-
+  function(bamFiles,
+           referenceTargets = NULL,
+           referenceLabel = NULL,
+           verbose = FALSE) {
+
+    targetList <- lapply(bamFiles, function(bamFile) {Rsamtools::scanBamHeader(bamFile)[[1]]$targets})
+
+    if (is.null(referenceTargets)) {
+      referenceTargets <- targetList[[1]]
+      if (is.null(referenceLabel)) {referenceLabel <- paste0("'", basename(bamFiles[1]), "'")}
+    }
+
+    if (is.null(referenceLabel)) {referenceLabel <- "the reference"}
+
+    chromosomeLengths <- stats::setNames(as.integer(referenceTargets), names(referenceTargets))
+    fileNames <- vector(mode = "list", length = length(bamFiles))
+    renamedFiles <- logical(length(bamFiles))
+
+    #-------------------------------#
+    # One file at a time            #
+    #-------------------------------#
+    for (fileIndex in seq_along(bamFiles)) {
+      fileSeqlevels <- names(targetList[[fileIndex]])
+      fileLengths <- as.integer(targetList[[fileIndex]])
+
+      translatedNames <- .translateChromosomeNames(chromosomeNames = fileSeqlevels, targetSeqlevels = names(chromosomeLengths))
+
+      # A header listing both chrM and MT would send two chromosomes to one name, the second keeps its own
+      exactNames <- !is.na(translatedNames) & translatedNames == fileSeqlevels
+      collidingNames <- !is.na(translatedNames) & !exactNames &
+        (translatedNames %in% translatedNames[exactNames] | duplicated(ifelse(exactNames, NA_character_, translatedNames)))
+      translatedNames[collidingNames] <- NA_character_
+
+      commonNames <- ifelse(is.na(translatedNames), fileSeqlevels, translatedNames)
+      knownNames <- commonNames %in% names(chromosomeLengths)
+
+      if (!any(knownNames)) {
+        stop("The chromosome names of '", basename(bamFiles[fileIndex]), "' cannot be reconciled with the ones of ", referenceLabel,
+             ": ", paste(utils::head(fileSeqlevels, 3), collapse = ", "), " against ",
+             paste(utils::head(names(chromosomeLengths), 3), collapse = ", "), ".", call. = FALSE)
+      }
+
+      # The same chromosome with two lengths means two assemblies, and the regions would land elsewhere
+      differentLengths <- which(knownNames & chromosomeLengths[commonNames] != fileLengths)
+
+      if (length(differentLengths) > 0) {
+        stop("The BAM files are not aligned to the same assembly: '", basename(bamFiles[fileIndex]), "' and ", referenceLabel,
+             " give different lengths to ", paste(utils::head(commonNames[differentLengths], 3), collapse = ", "), ".", call. = FALSE)
+      }
+
+      chromosomeLengths <- c(chromosomeLengths, stats::setNames(fileLengths[!knownNames], commonNames[!knownNames]))
+      fileNames[[fileIndex]] <- stats::setNames(fileSeqlevels, commonNames)
+      renamedFiles[fileIndex] <- any(commonNames != fileSeqlevels)
+    }
+
+    sharedNames <- Reduce(f = intersect, x = lapply(fileNames, names))
+
+    #-------------------------------#
+    # What the user should know     #
+    #-------------------------------#
+    if (isTRUE(verbose) & any(renamedFiles)) {
+      message("The BAM files do not name their chromosomes alike. The names of ", referenceLabel, " (",
+              paste(utils::head(names(referenceTargets), 2), collapse = ", "), ") stand for all of them; files read under their own names (",
+              paste(utils::head(fileNames[[which(renamedFiles)[1]]], 2), collapse = ", "), "): ", sum(renamedFiles), " of ", length(bamFiles), ".")
+    }
+
+    partialNames <- setdiff(unique(unlist(lapply(fileNames, names), use.names = FALSE)), sharedNames)
+
+    if (isTRUE(verbose) & length(partialNames) > 0) {
+      message("Chromosomes or contigs missing from at least one BAM file under any name: ", length(partialNames), " (",
+              paste(utils::head(partialNames, 3), collapse = ", "), if (length(partialNames) > 3) {", ..."} else {""},
+              "). Their reads enter the library sizes of the files that have them, list them in 'excludeChromosomes' to leave them out.")
+    }
+
+    return(list(lengths = chromosomeLengths,
+                names = fileNames,
+                shared = sharedNames,
+                renamed = renamedFiles))
+  } # END function
+
+
+
+
 #' @title .countBamFragments
 #'
 #' @description Counts the fragments of a group of BAM files over a set of ranges. The chromosomes are cut into pieces of at most 50 Mb, and the pieces of all the files are shared among the threads, so that even a single file keeps every thread busy. Paired-end fragments are rebuilt from the first mate of each proper pair, whose position, mate position and template length (TLEN) give the start and the width of the fragment: the two reads never have to be matched. Single-end reads are extended to the fragment length from their 5' end.
 #'
-#' @param bamFiles Character vector with the paths of the BAM files, all sharing the same header.
-#' @param ranges \code{GRanges} with the ranges to count, named after the chromosomes of the BAM files. The strand is ignored.
+#' @param bamFiles Character vector with the paths of the BAM files, all aligned to the same assembly. Their chromosomes may be named in different styles, see \code{.bamChromosomeMap}.
+#' @param ranges \code{GRanges} with the ranges to count, named after the chromosomes of the first BAM file, or of \code{referenceTargets}. The strand is ignored.
 #' @param pairedEnd Logical vector with one value per BAM file.
 #' @param fragmentLength Numeric value with the length to which single-end reads are extended, or one value per BAM file. Default: \code{150}.
 #' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment. Default: \code{1000}.
@@ -75,13 +180,13 @@
 #' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded to compute the library sizes, \code{FALSE} only the chromosomes carrying ranges, which is faster but leaves the library sizes partial. Default: \code{TRUE}.
 #' @param countMode String with the way a fragment is assigned to the ranges: \code{"overlap"} counts it in every range it overlaps, \code{"bin"} counts it once, at its centre for paired-end data and at the 5' end of the read for single-end data, as csaw does for genome wide bins. Default: \code{"overlap"}.
 #' @param pieceLength Numeric value with the maximum length of the stretch of genome read by a single job, in base pairs. Default: \code{5e7}.
+#' @param referenceTargets Named vector with the chromosome lengths whose names the ranges, the excluded chromosomes and the discarded regions are written in. Default: \code{NULL}, the header of the first BAM file.
 #' @param nThreads Number of threads. Default: \code{1}.
 #'
 #' @return A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom Rsamtools scanBamHeader
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom IRanges ranges
 #' @importFrom BiocParallel bplapply
@@ -103,26 +208,25 @@
            fullLibrarySize = TRUE,
            countMode = "overlap",
            pieceLength = 5e7,
+           referenceTargets = NULL,
            nThreads = 1) {
 
     #--------------------------#
     # Chromosomes to be read   #
     #--------------------------#
-    # The pieces are cut once for all the files, which only works if they share the same chromosomes
-    targetList <- lapply(Rsamtools::scanBamHeader(bamFiles), function(header) {header$targets})
-    sameHeader <- vapply(targetList, identical, logical(1), targetList[[1]])
-
-    if (any(!sameHeader)) {
-      stop("The BAM files do not share the same chromosomes and lengths: ", paste(basename(bamFiles[!sameHeader]), collapse = ", "),
-           " differ from ", basename(bamFiles[1]), ".", call. = FALSE)
-    }
+    # The pieces are cut once for all the files, under one set of names. Each file then reads them under
+    # its own, which is what lets alignments named chr1 and alignments named 1 be counted together
+    bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles, referenceTargets = referenceTargets)
 
     # A chromosome is read when it carries ranges to count, or, for the full library sizes, whenever it is not excluded
     rangeChromosomes <- as.character(GenomeInfoDb::seqnames(ranges))
 
-    chromosomeTable <- data.frame(chromosome = names(targetList[[1]]),
-                                  length = as.numeric(targetList[[1]]),
+    chromosomeTable <- data.frame(chromosome = names(bamChromosomes$lengths),
+                                  length = as.numeric(bamChromosomes$lengths),
                                   stringsAsFactors = FALSE)
+
+    # A chromosome of the reference that no file has would only make empty jobs
+    chromosomeTable <- dplyr::filter(chromosomeTable, .data$chromosome %in% unlist(lapply(bamChromosomes$names, names), use.names = FALSE))
 
     chromosomeTable <- dplyr::mutate(chromosomeTable,
                                      has.ranges = .data$chromosome %in% rangeChromosomes,
@@ -197,6 +301,9 @@
              function(j) {
                jobPieces <- dplyr::filter(pieceTable, .data$job == jobTable$job[j])
                jobChromosomes <- unique(jobPieces$chromosome)
+
+               # The name each chromosome carries in this file, NA when the file does not have it
+               jobPieces$file.chromosome <- unname(bamChromosomes$names[[jobTable$file.index[j]]][jobPieces$chromosome])
                jobRangeIndex <- unlist(rangeIndexList[intersect(jobChromosomes, names(rangeIndexList))], use.names = FALSE)
                if (is.null(jobRangeIndex)) {jobRangeIndex <- integer(0)}
 
@@ -240,7 +347,7 @@
 #'
 #' @description Reads the fragments of one BAM file over a group of pieces of genome and counts them over the ranges of the same chromosomes. It is the job run by every thread of \code{.countBamFragments}.
 #'
-#' @param job List describing the job: \code{file.index}, the \code{pieces} table, the \code{ranges} to count with their \code{range.chromosome} and \code{range.index}, and the \code{discard} regions of its chromosomes.
+#' @param job List describing the job: \code{file.index}, the \code{pieces} table, whose \code{file.chromosome} column holds the name each chromosome carries in the file, the \code{ranges} to count with their \code{range.chromosome} and \code{range.index}, and the \code{discard} regions of its chromosomes.
 #' @param bamFiles Character vector with the paths of the BAM files.
 #' @param pairedEnd Logical vector with one value per BAM file.
 #' @param fragmentLength Integer vector with the length to which single-end reads are extended, one value per BAM file.
@@ -256,6 +363,8 @@
 #' @importFrom Rsamtools scanBam
 #' @importFrom GenomicRanges GRanges
 #' @importFrom IRanges IRanges countOverlaps
+#' @importFrom dplyr filter
+#' @importFrom rlang .data
 #'
 #' @keywords internal
 
@@ -270,16 +379,27 @@
            countMode) {
 
     isPairedEnd <- pairedEnd[job$file.index]
-    pieces <- job$pieces
+
+    # A chromosome the file does not have holds no read, and asking for it would be an error
+    pieces <- dplyr::filter(job$pieces, !is.na(.data$file.chromosome))
 
     jobCounts <- integer(length(job$range.index))
     totalFragments <- 0
     mateMapqFound <- FALSE
 
+    if (nrow(pieces) == 0) {
+      return(list(file.index = job$file.index,
+                  range.index = job$range.index,
+                  counts = jobCounts,
+                  total.fragments = totalFragments,
+                  mate.mapq.found = mateMapqFound))
+    }
+
     #--------------------------#
     # Read the pieces          #
     #--------------------------#
-    readParameters <- .bamReadParameters(which = GenomicRanges::GRanges(seqnames = pieces$chromosome,
+    # The file is asked under its own chromosome names, everything else speaks the common ones
+    readParameters <- .bamReadParameters(which = GenomicRanges::GRanges(seqnames = pieces$file.chromosome,
                                                                         ranges = IRanges::IRanges(start = pieces$start, end = pieces$end)),
                                          isPairedEnd = isPairedEnd,
                                          minMapq = minMapq,
@@ -287,7 +407,7 @@
 
     # All the pieces go in a single call: querying an open BamFile a second time returns no reads
     readList <- Rsamtools::scanBam(.bamWithIndex(bamFiles[job$file.index]), param = readParameters)
-    readList <- readList[paste0(pieces$chromosome, ":", pieces$start, "-", pieces$end)]
+    readList <- readList[paste0(pieces$file.chromosome, ":", pieces$start, "-", pieces$end)]
 
     for (i in seq_len(nrow(pieces))) {
       reads <- readList[[i]]
@@ -474,14 +594,14 @@
 #' @description Reads the fragments of one BAM file that overlap a set of windows, with the same filters as the counting. The windows are widened by the longest fragment accepted, so that a fragment reaching a window from outside is not lost, and merged, so that every record is read once.
 #'
 #' @param bamFile String with the path of the BAM file.
-#' @param windows \code{GRanges} with the windows, named after the chromosomes of the BAM file.
+#' @param windows \code{GRanges} with the windows, named as in \code{chromosomeLengths}.
 #' @param isPairedEnd Logical value, \code{TRUE} for a paired-end file.
 #' @param fragmentLength Numeric value with the length to which single-end reads are extended.
 #' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment.
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
-#' @param chromosomeLengths Named numeric vector with the length of every chromosome of the BAM file.
-#' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, named after the chromosomes of the BAM file. Default: \code{NULL}.
+#' @param chromosomeLengths Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}. The file may name the same chromosomes in another style, it is read under its own names and the fragments come back under these.
+#' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, named as in \code{chromosomeLengths}. Default: \code{NULL}.
 #' @param padding Numeric value with the number of base pairs added on both sides of the windows. Default: \code{NULL}, the longest fragment accepted.
 #' @param readsOnly Logical value: \code{TRUE} returns the reads as they are, with their strand and 5' end, instead of the fragments. Only for single-end files. Default: \code{FALSE}.
 #'
@@ -493,7 +613,7 @@
 #' @importFrom GenomicRanges GRanges
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
-#' @importFrom IRanges IRanges reduce
+#' @importFrom IRanges IRanges ranges reduce
 #'
 #' @keywords internal
 
@@ -512,7 +632,10 @@
 
     emptyResult <- GenomicRanges::GRanges(seqnames = character(0), ranges = IRanges::IRanges(), strand = character(0), five.prime = integer(0))
 
-    windows <- windows[as.character(GenomeInfoDb::seqnames(windows)) %in% names(chromosomeLengths)]
+    # The names the chromosomes carry in this file, which may differ from the ones the windows are written in
+    fileChromosomes <- .bamChromosomeMap(bamFiles = bamFile, referenceTargets = chromosomeLengths)$names[[1]]
+
+    windows <- windows[as.character(GenomeInfoDb::seqnames(windows)) %in% names(fileChromosomes)]
     if (length(windows) == 0) {return(emptyResult)}
 
     #--------------------------#
@@ -527,14 +650,16 @@
                                                                     end = as.integer(pmin(BiocGenerics::end(windows) + padding, chromosomeLengths[windowChromosomes]))))
     readWindows <- IRanges::reduce(readWindows, ignore.strand = TRUE)
 
-    readParameters <- .bamReadParameters(which = readWindows,
+    fileWindowChromosomes <- unname(fileChromosomes[as.character(GenomeInfoDb::seqnames(readWindows))])
+
+    readParameters <- .bamReadParameters(which = GenomicRanges::GRanges(seqnames = fileWindowChromosomes,
+                                                                        ranges = IRanges::ranges(readWindows)),
                                          isPairedEnd = isPairedEnd,
                                          minMapq = minMapq,
                                          removeDuplicates = removeDuplicates)
 
     readList <- Rsamtools::scanBam(.bamWithIndex(bamFile), param = readParameters)
-    readList <- readList[paste0(as.character(GenomeInfoDb::seqnames(readWindows)), ":",
-                                BiocGenerics::start(readWindows), "-", BiocGenerics::end(readWindows))]
+    readList <- readList[paste0(fileWindowChromosomes, ":", BiocGenerics::start(readWindows), "-", BiocGenerics::end(readWindows))]
 
     #--------------------------#
     # One chromosome at a time #
@@ -614,11 +739,11 @@
 #' @description Reads the fragments of one BAM file around a set of windows and returns their coverage, chromosome by chromosome.
 #'
 #' @param bamFile String with the path of the BAM file.
-#' @param windows \code{GRanges} with the windows, named after the chromosomes of the BAM file.
-#' @param chromosomeLengths Named numeric vector with the length of every chromosome of the BAM file.
+#' @param windows \code{GRanges} with the windows, named as in \code{chromosomeLengths}.
+#' @param chromosomeLengths Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.
 #' @param ... Read filters passed to \code{.windowFragments}.
 #'
-#' @return A list with \code{coverage}, an \code{RleList} with one element per chromosome of the BAM file, and \code{fragments}, the number of fragments read.
+#' @return A list with \code{coverage}, an \code{RleList} with one element per chromosome of \code{chromosomeLengths}, and \code{fragments}, the number of fragments read.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -664,7 +789,6 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom Rsamtools scanBamHeader
 #' @importFrom BiocParallel bplapply
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom IRanges Views viewMaxs viewRangeMaxs ranges
@@ -683,7 +807,8 @@
            discardRegions = NULL,
            nThreads = 1) {
 
-    chromosomeLengths <- Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets
+    # The names of the first file stand for all of them, each file being read under its own
+    chromosomeLengths <- .bamChromosomeMap(bamFiles = bamFiles)$lengths
     fragmentLength <- rep_len(fragmentLength, length(bamFiles))
 
     regionChromosomes <- as.character(GenomeInfoDb::seqnames(regions))

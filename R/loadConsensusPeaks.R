@@ -66,6 +66,7 @@
 #' @importFrom GenomicRanges GRangesList GRanges
 #' @importFrom IRanges reduce overlapsAny IRanges
 #' @importFrom BiocGenerics width
+#' @importFrom GenomeInfoDb seqlevels
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom BiocParallel bplapply
 #' @importFrom methods is validObject
@@ -194,6 +195,12 @@ loadConsensusPeaks <-
 
       .checkListAssembly(listInput = listInput, genomeAssembly = genomeAssembly, listLabel = listLabel)
       listRanges[[listLabel]] <- .loadExclusionRegions(excludeRegions = listInput, seqlevelsStyle = seqlevelsStyle, listLabel = listLabel)
+
+      # With seqlevelsStyle = NULL the peaks keep the names of their files, and the list has to follow them
+      listRanges[[listLabel]] <- tryCatch(expr = .matchSeqlevels(x = listRanges[[listLabel]],
+                                                                 targetSeqlevels = GenomeInfoDb::seqlevels(peakList),
+                                                                 verbose = FALSE),
+                                          error = function(e) {return(listRanges[[listLabel]])})
 
       peaksBefore <- as.integer(lengths(peakList))
       overlapList <- lapply(as.list(peakList), function(peakRanges) {IRanges::overlapsAny(peakRanges, listRanges[[listLabel]], ignore.strand = TRUE)})
@@ -341,6 +348,16 @@ loadConsensusPeaks <-
                               genomeAssembly = genomeAssembly,
                               outputFormat = "list",
                               verbose = FALSE)
+
+      # With seqlevelsStyle = NULL the regions of the user may be written in another style than the peaks.
+      # Regions that cannot be reconciled are left as they are, and the occupancy step says so
+      userList <- lapply(userList,
+                         function(userRanges) {
+                           tryCatch(expr = .matchSeqlevels(x = userRanges,
+                                                           targetSeqlevels = GenomeInfoDb::seqlevels(totalConsensus),
+                                                           verbose = FALSE),
+                                    error = function(e) {return(userRanges)})
+                         })
 
       analysisMode <- regionMode
 

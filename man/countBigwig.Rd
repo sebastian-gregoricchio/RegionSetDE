@@ -23,9 +23,9 @@ countBigwig(
 )
 }
 \arguments{
-\item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.}
+\item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.}
 
-\item{bigwigFiles}{Character vector with the paths of the bigWig files. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.}
+\item{bigwigFiles}{Character vector with the paths of the bigWig files, which may name the chromosomes in different styles. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.}
 
 \item{sampleSheet}{Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the bigWig files, the sample names and the annotation in one go. Default: \code{NULL}.}
 
@@ -65,6 +65,8 @@ A bigWig holds coverage, not reads, so the library sizes cannot be recovered fro
 Coverage is not a count and rounding it does not make it one. A value of 12.72 becomes 13 and looks like a count, but the negative binomial likelihood that \code{edgeR} and \code{DESeq2} are built on describes the number of fragments falling in an interval, and a rounded coverage value is not that number. The gap is widest for files carrying an already normalised signal, CPM, RPKM, RPGC, fold enrichment over input, where the values have been divided by a factor that the count model then has no way of knowing about. It does not close entirely even for raw coverage: coverage summed over an interval weights every fragment by how many of its bases fall inside, so it is over-dispersed relative to the fragment count it stands in for.
 
 The object therefore records where its values came from, and \code{\link{fitRegions}} refuses the count engines on it unless \code{countLike} says otherwise. The engine to reach for on bigWig input is \code{"limma"}, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting \code{countLike = TRUE} is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.
+
+The regions and the bigWig files do not need to share the same chromosome naming style, and neither do the files among themselves: each file is asked for the regions under its own names, chromosome by chromosome, and the object comes back with the names of the input sets. A single \code{GRanges} is taken as one set of regions, loaded by \code{\link{loadRegions}} with its order and its chromosome names kept, and called \code{regions}.
 }
 \examples{
 # The small bigWig shipped with rtracklayer, with a region set built on its own intervals.

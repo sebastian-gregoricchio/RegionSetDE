@@ -190,7 +190,9 @@ Naming an assay returns the high signal regions of that protocol instead, `loadB
 
 # **Counting** {#counting}
 
-`countReads()` counts alignments over every region of every set. Reads can be counted once per region, which is the default, or over fixed-width tiles inside each region when `tileWidth` is set.
+`countReads()` counts alignments over every region of every set. Reads can be counted once per region, which is the default, or over fixed-width tiles inside each region when `tileWidth` is set. A plain `GRanges` is accepted in place of the object: it goes through `loadRegions()` and is counted as a single set named `regions`, its order and its chromosome names kept.
+
+The BAM files have to be aligned to the same assembly, but they do not have to name its chromosomes alike. Files written `chr1` and files written `1` are counted together, and the regions can follow either style.
 
 ```{r count_reads, eval = FALSE}
 counts <-

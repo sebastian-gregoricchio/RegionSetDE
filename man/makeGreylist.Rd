@@ -22,7 +22,7 @@ makeGreylist(
 )
 }
 \arguments{
-\item{inputFiles}{Character vector with the paths of the input BAM files, or the data.frame returned by \code{\link{loadSampleSheet}}, in which case every distinct file of its \code{input} column is used once and named after \code{input.id}.}
+\item{inputFiles}{Character vector with the paths of the input BAM files, or the data.frame returned by \code{\link{loadSampleSheet}}, in which case every distinct file of its \code{input} column is used once and named after \code{input.id}. The files may name the chromosomes of their assembly in different styles, the greylist then carries the names of the first one.}
 
 \item{inputNames}{Character vector with the names of the inputs. Default: \code{NULL}, the \code{input.id} of the sample sheet or the file names.}
 

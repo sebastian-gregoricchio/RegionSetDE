@@ -31,9 +31,9 @@ countReads(
 )
 }
 \arguments{
-\item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}} or \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList}.}
+\item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}} or \code{\link{loadConsensusPeaks}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.}
 
-\item{bamFiles}{Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.}
+\item{bamFiles}{Character vector with the paths of the BAM files. Each file must be indexed, and all of them must be aligned to the same assembly, whose chromosomes they may name in different styles (\code{chr1} in some files and \code{1} in others). Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.}
 
 \item{sampleSheet}{Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files, the input files, the sample names and the annotation in one go. Default: \code{NULL}.}
 
@@ -98,7 +98,9 @@ The inputs are counted with the same filters as the samples, over the same rows,
 
 A consensus of peaks has regions of every width, and a wide region collects more background than a narrow one around the same summit. With \code{summits}, every region is replaced by a window of fixed width centred on its summit, which is what DiffBind does by default. With \code{summitSource = "reads"} the summit is the middle of the highest stretch of fragment pileup in each sample, averaged over the samples with weights proportional to the height of their pileup, scaled by their depth, so that the samples carrying signal decide where it sits. With \code{summitSource = "peaks"} it is the average of the summits the peak caller wrote for the peaks overlapping the region, weighted by their significance, which needs no BAM file but works only for narrowPeak files. A region with neither reads nor peaks keeps its midpoint. The regions keep their identifiers, so each window can be traced back to the region it came from, and windows of neighbouring regions may overlap, as in DiffBind.
 
-Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.
+Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
+
+A single \code{GRanges} is taken as one set of regions. It goes through \code{\link{loadRegions}} with its order and its chromosome names kept, the regions with identical coordinates collapsed into one, and the set is called \code{regions}. To give the set another name, to sort it or to split it into several sets, call \code{\link{loadRegions}} or \code{\link{splitLoadRegions}} first.
 }
 \examples{
 # The peaks of one sample of the AR example stand in for a region set

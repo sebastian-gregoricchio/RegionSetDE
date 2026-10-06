@@ -18,9 +18,9 @@
 \arguments{
 \item{bamFile}{String with the path of the BAM file.}
 
-\item{regions}{\code{GRanges} with the regions, named after the chromosomes of the BAM file and without overlaps.}
+\item{regions}{\code{GRanges} with the regions, named as in \code{chromosomeLengths} and without overlaps.}
 
-\item{chromosomeLengths}{Named numeric vector with the length of every chromosome of the BAM file.}
+\item{chromosomeLengths}{Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.}
 
 \item{maxDistance}{Integer value with the longest distance considered.}
 

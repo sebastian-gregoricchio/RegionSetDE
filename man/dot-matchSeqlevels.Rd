@@ -19,7 +19,7 @@
 The input object with the renamed chromosomes.
 }
 \description{
-Renames the chromosomes of a set of ranges so that they follow the naming style of a signal file, leaving them untouched when the two already agree. Only the copy used for the counting is renamed, so the object returned to the user keeps the style of the regions it was built from.
+Renames the chromosomes of a set of ranges so that they follow the names of a signal file, or of another set of ranges. The chromosomes are settled one by one: those already written as in the target are left alone, and the others take the name the target gives them. Those the target does not have under any name, scaffolds for the most part, follow its style, so that the object does not come back half renamed. Only the copy used for the counting is renamed, so the object returned to the user keeps the style of the regions it was built from.
 }
 \author{
 Sebastian Gregoricchio

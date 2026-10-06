@@ -1026,7 +1026,7 @@ plotRegion <-
 #'
 #' @importFrom SummarizedExperiment rowData rowRanges
 #' @importFrom GenomicRanges findOverlaps
-#' @importFrom GenomeInfoDb seqnames
+#' @importFrom GenomeInfoDb seqnames seqlevels
 #' @importFrom BiocGenerics start end
 #' @importFrom S4Vectors queryHits
 #' @importFrom dplyr filter
@@ -1047,6 +1047,10 @@ plotRegion <-
       if (length(region) != 1) {
         stop("The 'region' parameter must be a GRanges of length one.", call. = FALSE)
       }
+      # A region written as chr19 has to find the rows of an object written as 19
+      region <- tryCatch(expr = .matchSeqlevels(x = region, targetSeqlevels = GenomeInfoDb::seqlevels(counts), verbose = FALSE),
+                         error = function(e) {return(region)})
+
       overlapIndex <- S4Vectors::queryHits(GenomicRanges::findOverlaps(query = SummarizedExperiment::rowRanges(counts),
                                                                        subject = region))
       regionRows <- rowTable[overlapIndex, , drop = FALSE]

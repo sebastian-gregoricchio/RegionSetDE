@@ -4,8 +4,8 @@
 #'
 #' @description Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the fragment length before the overlap is evaluated. The regions can be recentred on the summit of the signal, as DiffBind does with the peaks of a consensus, or cut into tiles of fixed width, in which case each tile becomes a row of the resulting object. The input libraries of the samples, when there are any, are counted over the same rows and stored beside the counts.
 #'
-#' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}} or \code{\link{loadConsensusPeaks}}, or a named \code{GRangesList}.
-#' @param bamFiles Character vector with the paths of the BAM files. Each file must be indexed, and all of them must share the same header. Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
+#' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}} or \code{\link{loadConsensusPeaks}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.
+#' @param bamFiles Character vector with the paths of the BAM files. Each file must be indexed, and all of them must be aligned to the same assembly, whose chromosomes they may name in different styles (\code{chr1} in some files and \code{1} in others). Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files, the input files, the sample names and the annotation in one go. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bamFiles}. Default: \code{NULL}.
@@ -44,7 +44,9 @@
 #'
 #' A consensus of peaks has regions of every width, and a wide region collects more background than a narrow one around the same summit. With \code{summits}, every region is replaced by a window of fixed width centred on its summit, which is what DiffBind does by default. With \code{summitSource = "reads"} the summit is the middle of the highest stretch of fragment pileup in each sample, averaged over the samples with weights proportional to the height of their pileup, scaled by their depth, so that the samples carrying signal decide where it sits. With \code{summitSource = "peaks"} it is the average of the summits the peak caller wrote for the peaks overlapping the region, weighted by their significance, which needs no BAM file but works only for narrowPeak files. A region with neither reads nor peaks keeps its midpoint. The regions keep their identifiers, so each window can be traced back to the region it came from, and windows of neighbouring regions may overlap, as in DiffBind.
 #'
-#' Regions and BAM files do not need to share the same chromosome naming style. When no chromosome is shared, the regions are converted to the style of the files for the counting only, so that UCSC regions can be counted on Ensembl alignments and the object still comes back with the names of the input sets.
+#' Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
+#'
+#' A single \code{GRanges} is taken as one set of regions. It goes through \code{\link{loadRegions}} with its order and its chromosome names kept, the regions with identical coordinates collapsed into one, and the set is called \code{regions}. To give the set another name, to sort it or to split it into several sets, call \code{\link{loadRegions}} or \code{\link{splitLoadRegions}} first.
 #'
 #' @examples
 #' # The peaks of one sample of the AR example stand in for a region set
@@ -75,7 +77,7 @@
 #'
 #' @seealso \code{\link{estimateFragmentLength}}, \code{\link{countBigwig}}, \code{\link{loadCounts}}, \code{\link{countBackground}}, \code{\link{libInfo}}
 #'
-#' @importFrom Rsamtools scanBamHeader testPairedEndBam
+#' @importFrom Rsamtools testPairedEndBam
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
 #' @importFrom IRanges ranges ranges<-
@@ -115,6 +117,9 @@ countReads <-
     #------------------------#
     # Check of the arguments #
     #------------------------#
+    # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
+    regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
+
     # A sample sheet brings the files, the names and the annotation in one go
     sheetInput <- .sheetCountingInput(regionSet = regionSet,
                                       sampleSheet = sampleSheet,
@@ -198,7 +203,8 @@ countReads <-
       stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
     }
 
-    bamTargets <- Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets
+    # The files may name the chromosomes in different styles: those of the first file stand for all of them
+    bamTargets <- .bamChromosomeMap(bamFiles = bamFiles, verbose = verbose)$lengths
     bamSeqlevels <- names(bamTargets)
 
     # 'chrM' against a BAM naming it 'MT' would exclude nothing, and the library sizes would carry
@@ -603,7 +609,7 @@ countReads <-
 #' @param inputIds Character vector with the name of the input of every sample, or \code{NULL} to name them after the files.
 #' @param sampleFragmentLength Numeric vector with the fragment length of every sample, \code{NA} for the paired-end ones.
 #' @param fragmentLength Value given to \code{countReads}, used to tell a single length from lengths varying by sample.
-#' @param bamTargets Named vector with the chromosome lengths of the sample BAM files.
+#' @param bamTargets Named vector with the chromosome lengths of the sample BAM files, whose names the regions are written in.
 #' @param regions \code{GRanges} with the regions, named after the chromosomes of the BAM files.
 #' @param maxFragmentLength Numeric value with the maximum length of a paired-end fragment.
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
@@ -618,7 +624,7 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom Rsamtools scanBamHeader testPairedEndBam
+#' @importFrom Rsamtools testPairedEndBam
 #'
 #' @keywords internal
 
@@ -653,12 +659,9 @@ countReads <-
       stop("The following input files are not indexed: ", paste(basename(unindexedInputs), collapse = ", "), ".", call. = FALSE)
     }
 
-    # Inputs aligned against another reference would place the regions somewhere else
-    sameHeader <- vapply(distinctInputs, function(inputFile) {identical(Rsamtools::scanBamHeader(inputFile)[[1]]$targets, bamTargets)}, logical(1))
-    if (any(!sameHeader)) {
-      stop("The following input files do not share the chromosomes of the sample BAM files: ",
-           paste(basename(distinctInputs[!sameHeader]), collapse = ", "), ".", call. = FALSE)
-    }
+    # Inputs aligned against another assembly would place the regions somewhere else, and are refused here.
+    # Inputs naming the chromosomes in another style than the samples are fine, the counting reads them under their own names
+    .bamChromosomeMap(bamFiles = distinctInputs, referenceTargets = bamTargets, referenceLabel = "the sample BAM files")
 
     #-------------------------------#
     # Layout and fragment length    #
@@ -707,6 +710,7 @@ countReads <-
                                          discardRegions = discardRegions,
                                          fullLibrarySize = fullLibrarySize,
                                          countMode = "overlap",
+                                         referenceTargets = bamTargets,
                                          nThreads = nThreads)
 
     inputIndex <- match(inputPaths, distinctInputs)

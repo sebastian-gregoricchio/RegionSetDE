@@ -193,10 +193,16 @@
     # Reusing loadRegions keeps the chromosome style aligned with the sets, otherwise the overlaps silently return zero
     filterRegions <- loadRegions(regions = list(filterSet),
                                  keepMetadata = FALSE,
-                                 seqlevelsStyle = ifelse(is.null(targetStyle) | isTRUE(is.na(targetStyle)), "UCSC", targetStyle),
+                                 seqlevelsStyle = if (is.null(targetStyle) || is.na(targetStyle)) {NULL} else {targetStyle},
                                  genomeAssembly = targetAssembly,
                                  outputFormat = "list",
                                  verbose = FALSE)[[1]]
+
+    # Sets loaded without a style, or given as plain ranges, declare none: the list then follows the names they
+    # actually carry, chromosome by chromosome. A list that cannot be reconciled is left to the check below
+    regionSeqlevels <- unique(unlist(lapply(regionSets, GenomeInfoDb::seqlevels), use.names = FALSE))
+    filterRegions <- tryCatch(expr = .matchSeqlevels(x = filterRegions, targetSeqlevels = regionSeqlevels, verbose = FALSE),
+                              error = function(e) {return(filterRegions)})
 
     # The reference set is reduced so that the covered bases are not counted twice
     filterRegions <- IRanges::reduce(filterRegions, ignore.strand = TRUE)

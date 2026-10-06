@@ -141,7 +141,7 @@
     } else if (is.list(regionSet) & all(vapply(regionSet, function(x) {methods::is(x, "GRanges")}, logical(1)))) {
       regionList <- regionSet
     } else {
-      stop("The 'regionSet' parameter must be a RegionSetDE object, a GRangesList or a named list of GRanges.", call. = FALSE)
+      stop("The 'regionSet' parameter must be a RegionSetDE object, a GRangesList, a named list of GRanges or a GRanges.", call. = FALSE)
     }
 
     if (is.null(names(regionList)) | any(is.na(names(regionList))) | any(names(regionList) == "")) {
@@ -306,6 +306,108 @@
 
 
 
+#' @title .registeredChromosomeNames
+#'
+#' @description Converts chromosome names to the naming style of another set of names through the tables of \code{GenomeInfoDb}, which cover the chromosomes of the species it lists and their mitochondrion.
+#'
+#' @param chromosomeNames Character vector with the chromosome names to convert.
+#' @param targetSeqlevels Character vector with chromosome names written in the style to convert to.
+#'
+#' @return A character vector as long as \code{chromosomeNames}, with \code{NA} for the names the tables do not hold, scaffolds and custom contigs for instance, or when the style of \code{targetSeqlevels} is not recognised.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomeInfoDb seqlevelsStyle mapSeqlevels
+#'
+#' @keywords internal
+
+.registeredChromosomeNames <-
+  function(chromosomeNames,
+           targetSeqlevels) {
+
+    unknownNames <- rep(NA_character_, length(chromosomeNames))
+
+    registeredNames <-
+      tryCatch({
+        mappedNames <- GenomeInfoDb::mapSeqlevels(seqlevels = chromosomeNames,
+                                                  style = GenomeInfoDb::seqlevelsStyle(targetSeqlevels)[1])
+        if (is.matrix(mappedNames)) {mappedNames <- mappedNames[1, ]}
+        as.character(mappedNames)
+      },
+      error = function(e) {unknownNames},
+      warning = function(w) {unknownNames})
+
+    if (length(registeredNames) != length(chromosomeNames)) {
+      return(unknownNames)
+    }
+
+    return(registeredNames)
+  } # END function
+
+
+
+
+#' @title .translateChromosomeNames
+#'
+#' @description Finds, for every chromosome name, the name the same chromosome goes under in another set of names. A name already there is kept. For the others the conversions of \code{GenomeInfoDb} are tried first, then the \code{chr} prefix is added or dropped, and the mitochondrion is looked for under the four names it is given (\code{chrM}, \code{MT}, \code{chrMT}, \code{M}). Each name is settled on its own, so a set mixing two styles is translated as well as a set written in one.
+#'
+#' @param chromosomeNames Character vector with the chromosome names to translate.
+#' @param targetSeqlevels Character vector with the chromosome names to translate into.
+#'
+#' @return A character vector as long as \code{chromosomeNames}, with the matching name of \code{targetSeqlevels} and \code{NA} where there is none.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.translateChromosomeNames <-
+  function(chromosomeNames,
+           targetSeqlevels) {
+
+    chromosomeNames <- as.character(chromosomeNames)
+    translatedNames <- as.character(ifelse(chromosomeNames %in% targetSeqlevels, chromosomeNames, NA_character_))
+    missingIndex <- which(is.na(translatedNames))
+
+    if (length(missingIndex) == 0 | length(targetSeqlevels) == 0) {
+      return(translatedNames)
+    }
+
+    missingNames <- chromosomeNames[missingIndex]
+
+    #-------------------------------#
+    # Candidates for every name     #
+    #-------------------------------#
+    # GenomeInfoDb knows the registered styles, the mitochondrion of the species it lists included
+    registeredNames <- .registeredChromosomeNames(chromosomeNames = missingNames, targetSeqlevels = targetSeqlevels)
+
+    # Scaffolds and custom contigs are in no table, for them the prefix is the only thing to try
+    prefixNames <- ifelse(grepl("^chr", missingNames), sub("^chr", "", missingNames), paste0("chr", missingNames))
+
+    # The mitochondrion is the one chromosome the styles disagree on beyond the prefix
+    mitochondrialNames <- c("chrM", "MT", "chrMT", "M")
+    candidateList <- c(list(registeredNames, prefixNames),
+                       lapply(mitochondrialNames, function(mitochondrialName) {
+                         ifelse(missingNames %in% mitochondrialNames, mitochondrialName, NA_character_)
+                       }))
+
+    #-------------------------------#
+    # First candidate that exists   #
+    #-------------------------------#
+    foundNames <- rep(NA_character_, length(missingNames))
+
+    for (candidateNames in candidateList) {
+      usable <- is.na(foundNames) & !is.na(candidateNames) & candidateNames %in% targetSeqlevels
+      foundNames[usable] <- candidateNames[usable]
+    }
+
+    translatedNames[missingIndex] <- foundNames
+
+    return(translatedNames)
+  } # END function
+
+
+
+
 #' @title .matchChromosomeNames
 #'
 #' @description Renames a plain vector of chromosome names into the naming style of a signal file, the way \code{.matchSeqlevels} does for a set of ranges. What it is for is \code{excludeChromosomes}: a name that matches nothing is not an error, it simply excludes nothing, and since the chromosomes left out decide the library sizes the silence would be paid for by the normalisation.
@@ -332,20 +434,8 @@
     }
 
     # Only the names that miss are touched, so a list mixing the two styles still works
-    missingNames <- setdiff(chromosomeNames, targetSeqlevels)
-
-    if (length(missingNames) > 0) {
-      converted <-
-        if (any(grepl("^chr", targetSeqlevels))) {
-          ifelse(grepl("^chr", chromosomeNames), chromosomeNames, paste0("chr", sub("^MT$", "M", chromosomeNames)))
-        } else {
-          ifelse(grepl("^chr", chromosomeNames),
-                 ifelse(chromosomeNames == "chrM", "MT", sub("^chr", "", chromosomeNames)),
-                 chromosomeNames)
-        }
-
-      chromosomeNames <- ifelse(chromosomeNames %in% targetSeqlevels, chromosomeNames, converted)
-    }
+    translatedNames <- .translateChromosomeNames(chromosomeNames = chromosomeNames, targetSeqlevels = targetSeqlevels)
+    chromosomeNames <- ifelse(is.na(translatedNames), as.character(chromosomeNames), translatedNames)
 
     stillMissing <- setdiff(chromosomeNames, targetSeqlevels)
 
@@ -363,7 +453,7 @@
 
 #' @title .matchSeqlevels
 #'
-#' @description Renames the chromosomes of a set of ranges so that they follow the naming style of a signal file, leaving them untouched when the two already agree. Only the copy used for the counting is renamed, so the object returned to the user keeps the style of the regions it was built from.
+#' @description Renames the chromosomes of a set of ranges so that they follow the names of a signal file, or of another set of ranges. The chromosomes are settled one by one: those already written as in the target are left alone, and the others take the name the target gives them. Those the target does not have under any name, scaffolds for the most part, follow its style, so that the object does not come back half renamed. Only the copy used for the counting is renamed, so the object returned to the user keeps the style of the regions it was built from.
 #'
 #' @param x \code{GRanges}, or any object accepting \code{seqlevels}, to be renamed.
 #' @param targetSeqlevels Character vector with the chromosome names to align to, usually read from the header of a signal file.
@@ -374,7 +464,12 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom GenomeInfoDb seqlevels seqlevels<- seqlevelsStyle mapSeqlevels
+#' @importFrom GenomeInfoDb seqlevels seqlevels<- seqnames
+#' @importFrom GenomicRanges GRanges
+#' @importFrom IRanges ranges
+#' @importFrom BiocGenerics strand
+#' @importFrom S4Vectors mcols mcols<-
+#' @importFrom methods is
 #' @importFrom utils head
 #'
 #' @keywords internal
@@ -387,51 +482,132 @@
 
     currentSeqlevels <- GenomeInfoDb::seqlevels(x)
 
-    # Sharing at least one chromosome is enough, the extra scaffolds of either side do no harm
-    if (length(intersect(currentSeqlevels, targetSeqlevels)) > 0) {
+    if (length(currentSeqlevels) == 0 | length(targetSeqlevels) == 0) {
       return(x)
     }
 
-    # GenomeInfoDb resolves the registered styles, the prefix is added or dropped by hand for everything else
-    renamedSeqlevels <-
-      tryCatch({
-        as.character(GenomeInfoDb::mapSeqlevels(seqlevels = currentSeqlevels,
-                                                style = GenomeInfoDb::seqlevelsStyle(targetSeqlevels)[1]))
-      },
-      error = function(e) {rep(NA_character_, length(currentSeqlevels))},
-      warning = function(w) {rep(NA_character_, length(currentSeqlevels))})
+    translatedSeqlevels <- .translateChromosomeNames(chromosomeNames = currentSeqlevels, targetSeqlevels = targetSeqlevels)
 
-    # The mitochondrion is the one chromosome the two styles disagree on beyond the prefix, and the
-    # substitution has to see the name before the prefix is taken off it
-    manualSeqlevels <-
-      if (any(grepl("^chr", targetSeqlevels))) {
-        ifelse(grepl("^chr", currentSeqlevels), currentSeqlevels, paste0("chr", sub("^MT$", "M", currentSeqlevels)))
-      } else {
-        ifelse(grepl("^chr", currentSeqlevels),
-               ifelse(currentSeqlevels == "chrM", "MT", sub("^chr", "", currentSeqlevels)),
-               currentSeqlevels)
-      }
-
-    renamedSeqlevels[is.na(renamedSeqlevels)] <- manualSeqlevels[is.na(renamedSeqlevels)]
-
-    if (any(duplicated(renamedSeqlevels))) {
-      stop("The conversion of the chromosome names produced duplicated entries, harmonise the styles before counting.", call. = FALSE)
-    }
-
-    if (length(intersect(renamedSeqlevels, targetSeqlevels)) == 0) {
+    # Not a single chromosome in common under any name: the two sides are not on the same assembly
+    if (all(is.na(translatedSeqlevels))) {
       stop("The chromosome names of ", if (is.null(fileName)) {"the signal file"} else {c("'", basename(fileName), "'")},
            " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
            " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
     }
 
-    GenomeInfoDb::seqlevels(x) <- renamedSeqlevels
+    # The chromosomes the target does not have do no harm. They follow its style all the same, GenomeInfoDb
+    # first and the prefix by hand for the rest, the mitochondrion being renamed before the prefix is taken off it
+    unmatchedSeqlevels <- is.na(translatedSeqlevels)
+    styledSeqlevels <- currentSeqlevels
+
+    if (any(unmatchedSeqlevels)) {
+      registeredSeqlevels <- .registeredChromosomeNames(chromosomeNames = currentSeqlevels, targetSeqlevels = targetSeqlevels)
+
+      manualSeqlevels <-
+        if (any(grepl("^chr", targetSeqlevels))) {
+          ifelse(grepl("^chr", currentSeqlevels), currentSeqlevels, paste0("chr", sub("^MT$", "M", currentSeqlevels)))
+        } else {
+          ifelse(grepl("^chr", currentSeqlevels),
+                 ifelse(currentSeqlevels == "chrM", "MT", sub("^chr", "", currentSeqlevels)),
+                 currentSeqlevels)
+        }
+
+      styledSeqlevels <- ifelse(is.na(registeredSeqlevels), manualSeqlevels, registeredSeqlevels)
+    }
+
+    renamedSeqlevels <- ifelse(unmatchedSeqlevels, styledSeqlevels, translatedSeqlevels)
+
+    # A styled name must not land on a chromosome that is there already, it is then left as it was
+    clashingSeqlevels <- unmatchedSeqlevels &
+      (renamedSeqlevels %in% renamedSeqlevels[!unmatchedSeqlevels] | duplicated(ifelse(unmatchedSeqlevels, renamedSeqlevels, NA_character_)) |
+         (renamedSeqlevels != currentSeqlevels & renamedSeqlevels %in% currentSeqlevels))
+    renamedSeqlevels[clashingSeqlevels] <- currentSeqlevels[clashingSeqlevels]
+
+    changedSeqlevels <- renamedSeqlevels != currentSeqlevels
+
+    if (!any(changedSeqlevels)) {
+      return(x)
+    }
+
+    if (any(duplicated(renamedSeqlevels))) {
+      # Ranges written half as chr1 and half as 1 end up on one chromosome, and the two levels have to merge
+      if (!methods::is(x, "GRanges")) {
+        stop("The conversion of the chromosome names produced duplicated entries, harmonise the styles before counting.", call. = FALSE)
+      }
+
+      rangeSeqnames <- renamedSeqlevels[match(as.character(GenomeInfoDb::seqnames(x)), currentSeqlevels)]
+
+      mergedRanges <- GenomicRanges::GRanges(seqnames = factor(rangeSeqnames, levels = unique(renamedSeqlevels)),
+                                             ranges = IRanges::ranges(x),
+                                             strand = BiocGenerics::strand(x))
+      S4Vectors::mcols(mergedRanges) <- S4Vectors::mcols(x)
+      x <- mergedRanges
+    } else {
+      GenomeInfoDb::seqlevels(x) <- renamedSeqlevels
+    }
 
     if (isTRUE(verbose)) {
-      message("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels, 2), collapse = ", "),
-              " to ", paste(utils::head(renamedSeqlevels, 2), collapse = ", "), " to match the signal files.")
+      message("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels[changedSeqlevels], 2), collapse = ", "),
+              " to ", paste(utils::head(renamedSeqlevels[changedSeqlevels], 2), collapse = ", "), " to match the signal files.")
     }
 
     return(x)
+  } # END function
+
+
+
+
+#' @title .asRegionSet
+#'
+#' @description Lets the counting functions take a single \code{GRanges} where they expect region sets. The ranges go through \code{\link{loadRegions}} and come back as a \code{RegionSetDE} object with one set, so that everything downstream finds the object it expects. Anything else is returned as it is.
+#'
+#' @param regionSet Object passed to the counting functions.
+#' @param setName String with the name given to the set. Default: \code{"regions"}.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
+#'
+#' @return A \code{RegionSetDE} object when \code{regionSet} is a \code{GRanges}, \code{regionSet} itself otherwise.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomeInfoDb genome
+#' @importFrom methods is
+#' @importFrom stats setNames
+#'
+#' @keywords internal
+
+.asRegionSet <-
+  function(regionSet,
+           setName = "regions",
+           verbose = TRUE) {
+
+    if (!methods::is(regionSet, "GRanges")) {
+      return(regionSet)
+    }
+
+    if (length(regionSet) == 0) {
+      stop("The GRanges given as 'regionSet' holds no region.", call. = FALSE)
+    }
+
+    # The assembly written in the ranges is the only thing known about them, it follows the object
+    regionAssembly <- unique(as.character(GenomeInfoDb::genome(regionSet)))
+    regionAssembly <- regionAssembly[!is.na(regionAssembly) & regionAssembly != ""]
+
+    # The order and the chromosome names of the ranges are kept, so that the rows can be matched back to them
+    loadedSet <- loadRegions(regions = stats::setNames(list(regionSet), setName),
+                             sortRegions = FALSE,
+                             seqlevelsStyle = NULL,
+                             genomeAssembly = if (length(regionAssembly) == 1) {regionAssembly} else {NULL},
+                             verbose = FALSE)
+
+    if (isTRUE(verbose)) {
+      removedRegions <- length(regionSet) - length(loadedSet@regions[[1]])
+
+      message("The GRanges given as 'regionSet' has been loaded with loadRegions() as a single set named '", setName, "' (",
+              length(loadedSet@regions[[1]]), " regions",
+              if (removedRegions > 0) {c(", ", removedRegions, " duplicated ones removed")} else {""}, ").")
+    }
+
+    return(loadedSet)
   } # END function
 
 

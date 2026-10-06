@@ -16,9 +16,9 @@
 \arguments{
 \item{bamFile}{String with the path of the BAM file.}
 
-\item{regions}{\code{GRanges} with the regions, named after the chromosomes of the BAM file.}
+\item{regions}{\code{GRanges} with the regions, named as in \code{chromosomeLengths}.}
 
-\item{chromosomeLengths}{Named numeric vector with the length of every chromosome of the BAM file.}
+\item{chromosomeLengths}{Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.}
 
 \item{minMapq}{Numeric value with the minimum mapping quality of a read.}
 

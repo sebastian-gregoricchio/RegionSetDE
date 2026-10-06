@@ -791,11 +791,10 @@ plotProfile <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom Rsamtools scanBamHeader
 #' @importFrom GenomicRanges GRanges
-#' @importFrom GenomeInfoDb seqnames seqlengths
+#' @importFrom GenomeInfoDb seqnames seqlengths seqlevels
 #' @importFrom BiocGenerics start end width strand
-#' @importFrom IRanges IRanges Views viewMeans
+#' @importFrom IRanges IRanges ranges Views viewMeans
 #' @importFrom BiocParallel bplapply
 #' @importFrom rtracklayer BigWigFile import
 #'
@@ -812,8 +811,9 @@ plotProfile <-
     #-------------------------------#
     # Chromosomes of the files      #
     #-------------------------------#
+    # The files may name the chromosomes in different styles, those of the first file stand for all of them
     if (type == "bam") {
-      chromosomeLengths <- Rsamtools::scanBamHeader(files[1])[[1]]$targets
+      chromosomeLengths <- .bamChromosomeMap(bamFiles = files)$lengths
     } else {
       chromosomeLengths <- GenomeInfoDb::seqlengths(rtracklayer::BigWigFile(files[1]))
     }
@@ -860,14 +860,35 @@ plotProfile <-
                                                  minMapq = if (is.null(countingParameters$minMapq)) {20} else {countingParameters$minMapq},
                                                  removeDuplicates = if (is.null(countingParameters$removeDuplicates)) {TRUE} else {countingParameters$removeDuplicates})$coverage
                                } else {
-                                 rtracklayer::import(rtracklayer::BigWigFile(files[fileIndex]), which = fileWindows, as = "RleList")
+                                 # A bigWig is asked under its own chromosome names, and answers under them
+                                 bigwigFile <- rtracklayer::BigWigFile(files[fileIndex])
+                                 fileChromosomes <- .translateChromosomeNames(chromosomeNames = names(chromosomeLengths),
+                                                                              targetSeqlevels = GenomeInfoDb::seqlevels(bigwigFile))
+                                 names(fileChromosomes) <- names(chromosomeLengths)
+
+                                 readableWindows <- !is.na(fileChromosomes[windowChromosomes])
+
+                                 if (any(readableWindows)) {
+                                   bigwigWindows <- GenomicRanges::GRanges(seqnames = unname(fileChromosomes[windowChromosomes[readableWindows]]),
+                                                                           ranges = IRanges::ranges(fileWindows[readableWindows]))
+
+                                   bigwigCoverage <- rtracklayer::import(bigwigFile, which = bigwigWindows, as = "RleList")
+
+                                   # Back under the names of the windows, the chromosomes without an equivalent left out
+                                   commonNames <- names(fileChromosomes)[match(names(bigwigCoverage), fileChromosomes)]
+                                   bigwigCoverage <- bigwigCoverage[!is.na(commonNames)]
+                                   names(bigwigCoverage) <- commonNames[!is.na(commonNames)]
+                                   bigwigCoverage
+                                 } else {
+                                   list()
+                                 }
                                }
 
                                binMeans <- numeric(length(binStarts))
 
                                for (chromosome in unique(windowChromosomes)) {
                                  binIndex <- which(binChromosomes == chromosome)
-                                 chromosomeCoverage <- fileCoverage[[chromosome]]
+                                 chromosomeCoverage <- if (chromosome %in% names(fileCoverage)) {fileCoverage[[chromosome]]} else {NULL}
                                  if (is.null(chromosomeCoverage)) {next}
 
                                  binMeans[binIndex] <- IRanges::viewMeans(IRanges::Views(chromosomeCoverage, IRanges::IRanges(start = binStarts[binIndex], width = binWidth)))

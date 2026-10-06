@@ -26,7 +26,7 @@ loadCounts(
 )
 }
 \arguments{
-\item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, or a named \code{GRangesList}.}
+\item{regionSet}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.}
 
 \item{counts}{Matrix, data.frame or path to a tab separated file with the counts. Lines starting with \code{#}, such as the featureCounts header, are skipped.}
 
@@ -69,7 +69,7 @@ A \code{RegionSetDE.counts} object with one row per region, or per tile, and one
 Imports a count matrix computed outside R, for instance by featureCounts, bedtools multicov or deeptools multiBigwigSummary, and attaches it to the regions of a \code{RegionSetDE} object. The rows of the matrix are matched to the regions either by coordinates or by identifier.
 }
 \details{
-The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest.
+The column sums of the imported table are a poor substitute for the real library sizes, since they only cover the regions present in the file. When the sequencing depth is known it should be passed through \code{librarySizes}, otherwise the normalisation should rely on factors estimated elsewhere. Rows of the count table that match no region are ignored, which makes it safe to import a genome wide matrix and keep only the sets of interest. With \code{matchBy = "coordinates"} the chromosomes of the table are read under the names of the regions, so a table written with \code{1} matches regions written with \code{chr1}.
 
 What the table holds decides what may be fitted on it. A \code{featureCounts} or \code{bedtools multicov} matrix holds fragment counts and the default is right for it. A \code{deeptools multiBigwigSummary} matrix holds coverage, often already normalised, and \code{countLike = FALSE} should be set so that \code{\link{fitRegions}} steers it to the \code{"limma"} engine instead of a negative binomial one.
 }

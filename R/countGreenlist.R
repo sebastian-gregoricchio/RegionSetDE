@@ -43,7 +43,6 @@
 #'
 #' @seealso \code{\link{loadGreenlist}}, \code{\link{normalizeCounts}}, \code{\link{countBackground}}
 #'
-#' @importFrom Rsamtools scanBamHeader
 #' @importFrom SummarizedExperiment SummarizedExperiment assay
 #' @importFrom GenomeInfoDb seqlevels seqnames
 #' @importFrom BiocGenerics width
@@ -130,7 +129,8 @@ countGreenlist <-
     # Overlapping entries would otherwise count the same fragment twice
     greenlistRanges <- IRanges::reduce(greenlist, ignore.strand = TRUE)
 
-    bamSeqlevels <- names(Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets)
+    # The files may name the chromosomes in different styles, those of the first file stand for all of them
+    bamSeqlevels <- names(.bamChromosomeMap(bamFiles = bamFiles)$lengths)
     greenlistRanges <- .matchSeqlevels(x = greenlistRanges, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = verbose)
 
     absentRegions <- !(as.character(GenomeInfoDb::seqnames(greenlistRanges)) %in% bamSeqlevels)

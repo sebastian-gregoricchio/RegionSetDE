@@ -4,7 +4,7 @@
 #'
 #' @description Estimates the fragment length of single-end libraries from the strand cross-correlation of their reads, the same signal phantompeakqualtools and MACS2 read the fragment size from. Paired-end libraries need no estimate, and for them the median insert size is reported instead.
 #'
-#' @param bamFiles Character vector with the paths of the BAM files. Default: \code{NULL}, taken from \code{sampleSheet}.
+#' @param bamFiles Character vector with the paths of the BAM files, which may name the chromosomes of their assembly in different styles. Default: \code{NULL}, taken from \code{sampleSheet}.
 #' @param regions Regions the reads are collected from: a \code{RegionSetDE} object, a \code{GRangesList}, a named list of \code{GRanges} or a single \code{GRanges}. Default: \code{NULL}, the three longest chromosomes of the BAM files.
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files and the sample names. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.
@@ -49,7 +49,7 @@
 #'
 #' @seealso \code{\link{countReads}}
 #'
-#' @importFrom Rsamtools scanBamHeader testPairedEndBam
+#' @importFrom Rsamtools testPairedEndBam
 #' @importFrom GenomicRanges GRanges
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom IRanges IRanges reduce
@@ -139,12 +139,15 @@ estimateFragmentLength <-
     #------------------------#
     # Regions to read        #
     #------------------------#
-    chromosomeLengths <- Rsamtools::scanBamHeader(bamFiles[1])[[1]]$targets
+    # The files may name the chromosomes in different styles, those of the first file stand for all of them
+    bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles)
+    chromosomeLengths <- bamChromosomes$lengths
     bamSeqlevels <- names(chromosomeLengths)
 
     if (is.null(regions)) {
-      # Without regions the longest chromosomes stand for the genome
-      longestChromosomes <- names(sort(chromosomeLengths, decreasing = TRUE))[seq_len(min(3, length(chromosomeLengths)))]
+      # Without regions the longest chromosomes stand for the genome, among those every file has
+      sharedLengths <- chromosomeLengths[bamChromosomes$shared]
+      longestChromosomes <- names(sort(sharedLengths, decreasing = TRUE))[seq_len(min(3, length(sharedLengths)))]
       readRegions <- GenomicRanges::GRanges(seqnames = longestChromosomes,
                                             ranges = IRanges::IRanges(start = 1L, end = as.integer(chromosomeLengths[longestChromosomes])))
     } else {
@@ -275,8 +278,8 @@ estimateFragmentLength <-
 #' @description Estimates the fragment length of one single-end BAM file from the distances between the 5' ends of its forward and reverse reads.
 #'
 #' @param bamFile String with the path of the BAM file.
-#' @param regions \code{GRanges} with the regions, named after the chromosomes of the BAM file and without overlaps.
-#' @param chromosomeLengths Named numeric vector with the length of every chromosome of the BAM file.
+#' @param regions \code{GRanges} with the regions, named as in \code{chromosomeLengths} and without overlaps.
+#' @param chromosomeLengths Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.
 #' @param maxDistance Integer value with the longest distance considered.
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
@@ -392,8 +395,8 @@ estimateFragmentLength <-
 #' @description Reports the median insert size of the proper pairs of one paired-end BAM file over a set of regions.
 #'
 #' @param bamFile String with the path of the BAM file.
-#' @param regions \code{GRanges} with the regions, named after the chromosomes of the BAM file.
-#' @param chromosomeLengths Named numeric vector with the length of every chromosome of the BAM file.
+#' @param regions \code{GRanges} with the regions, named as in \code{chromosomeLengths}.
+#' @param chromosomeLengths Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.

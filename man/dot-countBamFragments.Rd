@@ -17,13 +17,14 @@
   fullLibrarySize = TRUE,
   countMode = "overlap",
   pieceLength = 5e+07,
+  referenceTargets = NULL,
   nThreads = 1
 )
 }
 \arguments{
-\item{bamFiles}{Character vector with the paths of the BAM files, all sharing the same header.}
+\item{bamFiles}{Character vector with the paths of the BAM files, all aligned to the same assembly. Their chromosomes may be named in different styles, see \code{.bamChromosomeMap}.}
 
-\item{ranges}{\code{GRanges} with the ranges to count, named after the chromosomes of the BAM files. The strand is ignored.}
+\item{ranges}{\code{GRanges} with the ranges to count, named after the chromosomes of the first BAM file, or of \code{referenceTargets}. The strand is ignored.}
 
 \item{pairedEnd}{Logical vector with one value per BAM file.}
 
@@ -44,6 +45,8 @@
 \item{countMode}{String with the way a fragment is assigned to the ranges: \code{"overlap"} counts it in every range it overlaps, \code{"bin"} counts it once, at its centre for paired-end data and at the 5' end of the read for single-end data, as csaw does for genome wide bins. Default: \code{"overlap"}.}
 
 \item{pieceLength}{Numeric value with the maximum length of the stretch of genome read by a single job, in base pairs. Default: \code{5e7}.}
+
+\item{referenceTargets}{Named vector with the chromosome lengths whose names the ranges, the excluded chromosomes and the discarded regions are written in. Default: \code{NULL}, the header of the first BAM file.}
 
 \item{nThreads}{Number of threads. Default: \code{1}.}
 }

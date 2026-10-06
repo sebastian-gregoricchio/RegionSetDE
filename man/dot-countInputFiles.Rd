@@ -18,6 +18,7 @@
   discardRegions,
   fullLibrarySize,
   nThreads,
+  progressBar = FALSE,
   verbose
 )
 }
@@ -47,6 +48,8 @@
 \item{fullLibrarySize}{Logical value indicating whether the library sizes cover every chromosome.}
 
 \item{nThreads}{Number of threads.}
+
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the inputs are read. Default: \code{FALSE}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed.}
 }

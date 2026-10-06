@@ -215,6 +215,7 @@
 #' @param countMode String with the way a fragment is assigned to the ranges: \code{"overlap"} counts it in every range it overlaps, \code{"bin"} counts it once, at its centre for paired-end data and at the 5' end of the read for single-end data, as csaw does for genome wide bins. Default: \code{"overlap"}.
 #' @param pieceLength Numeric value with the maximum length of the stretch of genome read by a single job, in base pairs. Default: \code{5e7}.
 #' @param referenceTargets Named vector with the chromosome lengths whose names the ranges, the excluded chromosomes and the discarded regions are written in. Default: \code{NULL}, the header of the first BAM file.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn, one step for every job that comes back. Default: \code{FALSE}.
 #' @param nThreads Number of threads. Default: \code{1}.
 #'
 #' @return A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
@@ -243,6 +244,7 @@
            countMode = "overlap",
            pieceLength = 5e7,
            referenceTargets = NULL,
+           progressBar = FALSE,
            nThreads = 1) {
 
     #--------------------------#
@@ -361,7 +363,7 @@
                                          minMapq = minMapq,
                                          removeDuplicates = removeDuplicates,
                                          countMode = countMode,
-                                         BPPARAM = .makeParallelParam(nThreads = nThreads, tasks = length(jobList)))
+                                         BPPARAM = .makeParallelParam(nThreads = nThreads, tasks = length(jobList), progressBar = progressBar))
 
     # A chromosome cut in several pieces sends its ranges to several jobs, whose counts add up
     for (jobResult in jobResults) {
@@ -817,6 +819,7 @@
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: \code{FALSE}.
 #' @param nThreads Number of threads, one file per thread. Default: \code{1}.
 #'
 #' @return A list with \code{position} and \code{height}, two matrices with one row per region and one column per file, and \code{fragments}, the number of fragments read in each file.
@@ -839,6 +842,7 @@
            minMapq,
            removeDuplicates,
            discardRegions = NULL,
+           progressBar = FALSE,
            nThreads = 1) {
 
     # The names of the first file stand for all of them, each file being read under its own
@@ -878,7 +882,7 @@
 
                                list(position = summitPosition, height = summitHeight, fragments = fileCoverage$fragments)
                              },
-                             BPPARAM = .makeParallelParam(nThreads = nThreads, tasks = length(bamFiles)))
+                             BPPARAM = .makeParallelParam(nThreads = nThreads, tasks = length(bamFiles), progressBar = progressBar))
 
     return(list(position = matrix(vapply(summitList, `[[`, integer(length(regions)), "position"), nrow = length(regions)),
                 height = matrix(vapply(summitList, `[[`, numeric(length(regions)), "height"), nrow = length(regions)),

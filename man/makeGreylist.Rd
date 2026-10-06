@@ -18,6 +18,7 @@ makeGreylist(
   minMapq = 20,
   removeDuplicates = TRUE,
   nThreads = 1,
+  progressBar = interactive(),
   verbose = TRUE
 )
 }
@@ -47,6 +48,8 @@ makeGreylist(
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.}
 
 \item{nThreads}{Number of threads. Default: \code{1}.}
+
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }

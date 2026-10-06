@@ -13,6 +13,7 @@
   minMapq,
   removeDuplicates,
   discardRegions,
+  progressBar = FALSE,
   nThreads
 )
 }
@@ -32,6 +33,8 @@
 \item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded.}
 
 \item{discardRegions}{\code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.}
+
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: \code{FALSE}.}
 
 \item{nThreads}{Number of threads.}
 }

@@ -278,3 +278,26 @@ test_that("the layout is read from the head of the files, without a word", {
   # A handful of records is enough, every read of a paired library carries the flag
   expect_identical(RegionSetDE:::.bamIsPairedEnd(c(singleEnd, pairedEnd), nRecords = 10), c(FALSE, TRUE))
 })
+
+
+test_that("the progress bar is drawn on request and never without the messages", {
+
+  # One step for every piece of file handed back, up to the last one
+  expect_output(suppressMessages(barCounts <- countReads(toyRegionSet(), bamFiles = toyBamFile(), sampleNames = "example", progressBar = TRUE)),
+                "100%")
+
+  # A silent call stays silent, whatever is asked of the bar
+  expect_silent(silentCounts <- countReads(toyRegionSet(), bamFiles = toyBamFile(), sampleNames = "example", progressBar = TRUE, verbose = FALSE))
+
+  # The bar is drawn by the back end, the counts do not know about it
+  expect_identical(countTable(barCounts, format = "matrix"), countTable(silentCounts, format = "matrix"))
+
+  # Several threads report through the same bar
+  expect_output(suppressMessages(countReads(toyRegionSet(), bamFiles = toyBamFile(), sampleNames = "example", progressBar = TRUE, nThreads = 2)),
+                "100%")
+
+  expect_match(RegionSetDE:::.elapsedTime(Sys.time() - 5), "^[0-9]+ s$")
+  expect_match(RegionSetDE:::.elapsedTime(Sys.time() - 600), "^10 min$")
+  expect_match(RegionSetDE:::.elapsedTime(Sys.time() - 7200), "^2 h$")
+})
+

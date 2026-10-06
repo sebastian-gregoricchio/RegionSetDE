@@ -271,6 +271,7 @@
 #'
 #' @param nThreads Number of threads. Default: \code{1}.
 #' @param tasks Number of tasks the work is split into, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the threads become free. Default: \code{0}, one task per thread.
+#' @param progressBar Logical value to indicate whether the back end must draw its progress bar, which advances by one step for every task that comes back. Default: \code{FALSE}.
 #'
 #' @return A \code{BiocParallelParam} object.
 #'
@@ -282,24 +283,57 @@
 
 .makeParallelParam <-
   function(nThreads = 1,
-           tasks = 0L) {
+           tasks = 0L,
+           progressBar = FALSE) {
     nThreads <- as.integer(nThreads[1])
+    progressBar <- isTRUE(progressBar)
 
     if (is.na(nThreads) | nThreads < 1) {
       stop("The 'nThreads' parameter must be a positive integer.", call. = FALSE)
     }
 
     if (nThreads == 1) {
-      return(BiocParallel::SerialParam())
+      return(BiocParallel::SerialParam(progressbar = progressBar))
     }
 
     # Windows has no forking, sockets give the same result at a higher start-up cost
     if (.Platform$OS.type == "windows") {
-      return(BiocParallel::SnowParam(workers = nThreads, tasks = as.integer(tasks)))
+      return(BiocParallel::SnowParam(workers = nThreads, tasks = as.integer(tasks), progressbar = progressBar))
     }
 
     # Forked workers already see the options of the session, sending them along with every task only costs time
-    return(BiocParallel::MulticoreParam(workers = nThreads, tasks = as.integer(tasks), exportglobals = FALSE))
+    return(BiocParallel::MulticoreParam(workers = nThreads, tasks = as.integer(tasks), exportglobals = FALSE, progressbar = progressBar))
+  } # END function
+
+
+
+
+#' @title .elapsedTime
+#'
+#' @description Writes the time gone by since a starting point in the unit that reads best: seconds, minutes or hours.
+#'
+#' @param startTime Value returned by \code{Sys.time()} when the work started.
+#'
+#' @return A string such as \code{"42 s"}, \code{"3.5 min"} or \code{"1.2 h"}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.elapsedTime <-
+  function(startTime) {
+
+    elapsedSeconds <- as.numeric(difftime(Sys.time(), startTime, units = "secs"))
+
+    if (elapsedSeconds < 60) {
+      return(paste(round(elapsedSeconds), "s"))
+    }
+
+    if (elapsedSeconds < 3600) {
+      return(paste(round(elapsedSeconds / 60, 1), "min"))
+    }
+
+    return(paste(round(elapsedSeconds / 3600, 1), "h"))
   } # END function
 
 

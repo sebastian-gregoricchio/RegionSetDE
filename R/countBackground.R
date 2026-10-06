@@ -16,6 +16,7 @@
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{NULL}, the value used at the counting step.
 #' @param removeDuplicates Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.
 #' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}. Its \code{totals} column holds the library sizes of the bins.
@@ -68,6 +69,7 @@ countBackground <-
            minMapq = NULL,
            removeDuplicates = NULL,
            nThreads = 1,
+           progressBar = interactive(),
            verbose = TRUE) {
 
     #------------------------#
@@ -166,6 +168,7 @@ countBackground <-
                                     excludeChromosomes = excludeChromosomes,
                                     fullLibrarySize = TRUE,
                                     countMode = "bin",
+                                    progressBar = isTRUE(verbose) & isTRUE(progressBar),
                                     nThreads = nThreads)
 
     # csaw::normFactors takes the library sizes from the 'totals' column

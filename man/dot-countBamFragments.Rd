@@ -18,6 +18,7 @@
   countMode = "overlap",
   pieceLength = 5e+07,
   referenceTargets = NULL,
+  progressBar = FALSE,
   nThreads = 1
 )
 }
@@ -47,6 +48,8 @@
 \item{pieceLength}{Numeric value with the maximum length of the stretch of genome read by a single job, in base pairs. Default: \code{5e7}.}
 
 \item{referenceTargets}{Named vector with the chromosome lengths whose names the ranges, the excluded chromosomes and the discarded regions are written in. Default: \code{NULL}, the header of the first BAM file.}
+
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn, one step for every job that comes back. Default: \code{FALSE}.}
 
 \item{nThreads}{Number of threads. Default: \code{1}.}
 }

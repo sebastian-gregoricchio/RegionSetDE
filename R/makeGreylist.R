@@ -17,6 +17,7 @@
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
 #' @param nThreads Number of threads. Default: \code{1}.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{GRanges} with one element per greylisted region, carrying \code{n.inputs}, the number of inputs flagging it, and \code{inputs}, their names. Its \code{metadata} holds \code{thresholds}, a data.frame with, for every input, the fragments counted, the mean and size of the fitted negative binomial, the threshold and how much of the genome was flagged, and \code{parameters}, the arguments of the call.
@@ -76,6 +77,7 @@ makeGreylist <-
            minMapq = 20,
            removeDuplicates = TRUE,
            nThreads = 1,
+           progressBar = interactive(),
            verbose = TRUE) {
 
     #------------------------#
@@ -192,6 +194,7 @@ makeGreylist <-
                                     excludeChromosomes = excludeChromosomes,
                                     fullLibrarySize = FALSE,
                                     countMode = "bin",
+                                    progressBar = isTRUE(verbose) & isTRUE(progressBar),
                                     nThreads = nThreads)
 
     #-------------------------------#

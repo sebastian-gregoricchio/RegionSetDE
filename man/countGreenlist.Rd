@@ -16,6 +16,7 @@ countGreenlist(
   minMapq = NULL,
   removeDuplicates = NULL,
   nThreads = 1,
+  progressBar = interactive(),
   verbose = TRUE
 )
 }
@@ -41,6 +42,8 @@ countGreenlist(
 \item{removeDuplicates}{Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.}
 
 \item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.}
+
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }

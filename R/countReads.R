@@ -26,6 +26,7 @@
 #' @param summits Numeric value with the half width of the regions recentred on their summit, which then span \code{2 * summits + 1} bp, as with the \code{summits} argument of \code{DiffBind::dba.count}. \code{0} locates the summits and stores them without moving the regions. Default: \code{NULL}, the regions are counted as they are.
 #' @param summitSource String with where the summits are taken from: \code{"reads"}, the highest point of the fragment pileup of the samples, or \code{"peaks"}, the summits written by the peak caller in the narrowPeak files of a consensus built by \code{\link{loadConsensusPeaks}}. Default: \code{"reads"}.
 #' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region.
@@ -111,7 +112,13 @@ countReads <-
            summits = NULL,
            summitSource = "reads",
            nThreads = 1,
+           progressBar = interactive(),
            verbose = TRUE) {
+
+    startTime <- Sys.time()
+
+    # The bar belongs to the messages: a call asked to be silent draws nothing
+    showProgress <- isTRUE(verbose) & isTRUE(progressBar)
 
     #------------------------#
     # Check of the arguments #
@@ -280,6 +287,10 @@ countReads <-
     #------------------------#
     # The regions are moved before any read is counted, so that samples and inputs see the same windows
     if (!is.null(summits)) {
+      if (isTRUE(verbose) & summitSource == "reads") {
+        message("Locating the summits of ", length(uniqueRegions), " regions on the pileup of ", length(bamFiles), " samples...")
+      }
+
       summitPosition <- if (summitSource == "reads") {
         .readSummits(bamFiles = bamFiles,
                      regions = countingRegions,
@@ -289,6 +300,7 @@ countReads <-
                      minMapq = minMapq,
                      removeDuplicates = removeDuplicates,
                      discardRegions = discardRegions,
+                     progressBar = showProgress,
                      nThreads = nThreads)
       } else {
         .peakSummits(regions = uniqueRegions, peakList = regionSet@consensus$peaks)
@@ -350,6 +362,7 @@ countReads <-
                                          discardRegions = discardRegions,
                                          fullLibrarySize = fullLibrarySize,
                                          countMode = "overlap",
+                                         progressBar = showProgress,
                                          nThreads = nThreads)
 
     countMatrix <- fragmentCounts$counts
@@ -391,6 +404,7 @@ countReads <-
                                       discardRegions = discardRegions,
                                       fullLibrarySize = fullLibrarySize,
                                       nThreads = nThreads,
+                                      progressBar = showProgress,
                                       verbose = verbose)
     }
 
@@ -445,7 +459,7 @@ countReads <-
     }
 
     if (isTRUE(verbose)) {
-      message("Done. Library sizes: ",
+      message("Done in ", .elapsedTime(startTime), ". Library sizes: ",
               paste(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million fragments.")
 
       if (isFALSE(fullLibrarySize)) {
@@ -511,6 +525,10 @@ countReads <-
       lengthSource <- "cross-correlation"
 
       if (any(singleEnd)) {
+        if (isTRUE(verbose)) {
+          message("Estimating the fragment length of ", sum(singleEnd), " single-end samples from the reads over the regions...")
+        }
+
         fragmentEstimate <- estimateFragmentLength(bamFiles = bamFiles[singleEnd],
                                                    regions = regions,
                                                    sampleNames = sampleTable$sample[singleEnd],
@@ -617,6 +635,7 @@ countReads <-
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
 #' @param fullLibrarySize Logical value indicating whether the library sizes cover every chromosome.
 #' @param nThreads Number of threads.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the inputs are read. Default: \code{FALSE}.
 #' @param verbose Logical value to indicate whether the messages must be printed.
 #'
 #' @return A list with \code{counts}, a matrix with one column per sample, \code{NA} for the samples without input; \code{library.size}, the library size of the input of every sample; and \code{input.id}, its name.
@@ -639,6 +658,7 @@ countReads <-
            discardRegions,
            fullLibrarySize,
            nThreads,
+           progressBar = FALSE,
            verbose) {
 
     distinctInputs <- unique(inputPaths[!is.na(inputPaths)])
@@ -708,6 +728,7 @@ countReads <-
                                          fullLibrarySize = fullLibrarySize,
                                          countMode = "overlap",
                                          referenceTargets = bamTargets,
+                                         progressBar = progressBar,
                                          nThreads = nThreads)
 
     inputIndex <- match(inputPaths, distinctInputs)
@@ -741,6 +762,7 @@ countReads <-
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: \code{FALSE}.
 #' @param nThreads Number of threads.
 #'
 #' @return An integer vector with the summit of every region, \code{NA} where no sample has a fragment.
@@ -758,6 +780,7 @@ countReads <-
            minMapq,
            removeDuplicates,
            discardRegions,
+           progressBar = FALSE,
            nThreads) {
 
     summitData <- .bamSummits(bamFiles = bamFiles,
@@ -768,6 +791,7 @@ countReads <-
                               minMapq = minMapq,
                               removeDuplicates = removeDuplicates,
                               discardRegions = discardRegions,
+                              progressBar = progressBar,
                               nThreads = nThreads)
 
     # Heights over depth, so that a deeper library does not decide on its own where the summit sits

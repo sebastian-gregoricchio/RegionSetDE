@@ -27,6 +27,7 @@ countReads(
   summits = NULL,
   summitSource = "reads",
   nThreads = 1,
+  progressBar = interactive(),
   verbose = TRUE
 )
 }
@@ -74,6 +75,8 @@ countReads(
 \item{summitSource}{String with where the summits are taken from: \code{"reads"}, the highest point of the fragment pileup of the samples, or \code{"peaks"}, the summits written by the peak caller in the narrowPeak files of a consensus built by \code{\link{loadConsensusPeaks}}. Default: \code{"reads"}.}
 
 \item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.}
+
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }

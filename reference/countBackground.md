@@ -126,6 +126,11 @@ parameters of
 matters here: bins counted with a different mapping quality or duplicate
 policy would return factors that do not apply to the region counts. The
 parameters are taken from the object unless they are given explicitly.
+The same goes for the reads
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+discarded, those of the blacklist, of the greylist and of
+`discardRegions`: they stay out of the bins and of their library sizes
+as well.
 
 The bins cover every chromosome the BAM files have in common except
 those in `excludeChromosomes`, starting at the first base and with the

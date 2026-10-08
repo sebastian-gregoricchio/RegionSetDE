@@ -28,6 +28,9 @@ countReads(
   minMapq = 20,
   removeDuplicates = TRUE,
   excludeChromosomes = NULL,
+  blacklist = NULL,
+  greylist = FALSE,
+  discardListedReads = TRUE,
   discardRegions = NULL,
   fullLibrarySize = TRUE,
   inputFiles = NULL,
@@ -149,11 +152,48 @@ countReads(
   `grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)`.
   Default: `NULL`, every chromosome enters the library sizes.
 
+- blacklist:
+
+  Regions of the assembly that must be dropped before the counting,
+  typically the list returned by
+  [`loadBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md).
+  Either a `GRanges`, a path to a BED-like file, a data.frame, or a list
+  of them, which are pooled. The regions overlapping it are removed as
+  [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  removes them, and the list adds to the blacklist already stored in
+  `regionSet`, when there is one. Default: `NULL`.
+
+- greylist:
+
+  Either a logical value or the regions of a greylist. `TRUE` builds the
+  greylist from the inputs of the samples with
+  [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
+  at its default settings and with the read filters of this call, and
+  stops when no sample has an input. A greylist already built is
+  accepted in the same forms as `blacklist`, which is the way to use
+  other settings. The regions overlapping it are removed as
+  [`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+  removes them. Default: `FALSE`, no greylist is applied.
+
+- discardListedReads:
+
+  Logical value: `TRUE` ignores the reads lying on the blacklist and on
+  the greylist, the way `discardRegions` does, so that they enter
+  neither the counts nor the library sizes. It covers the lists given
+  here and those stored in `regionSet` by
+  [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
+  [`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+  or
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+  `FALSE` removes the regions and leaves the reads in the library sizes.
+  Default: `TRUE`.
+
 - discardRegions:
 
-  `GRanges` with regions whose reads must be ignored, for instance a
-  blacklist. A fragment is dropped when one of its reads starts inside
-  them. Default: `NULL`.
+  `GRanges` with further regions whose reads must be ignored, on top of
+  the lists handled by `discardListedReads`. A fragment is dropped when
+  one of its reads starts inside them. Unlike `blacklist`, it removes no
+  region. Default: `NULL`.
 
 - fullLibrarySize:
 
@@ -222,7 +262,17 @@ samples). With inputs, the `input` assay holds for every sample the
 counts of its input over the same rows (`NA` for a sample without one),
 and the `colData` gains `input.id` and `input.library.size`. With
 `summits`, the `rowData` gains `summit`, the position of the summit of
-every region.
+every region. When reads were discarded, the `colData` gains
+`discarded.reads`, the fragments each sample lost to the discarded
+regions, and `metadata(x)$discard.regions` holds those regions, which
+[`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+[`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+and
+[`computeProfiles`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
+read. A greylist built by this call is kept in `metadata(x)$greylist` as
+[`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+returned it. The lists applied, here or before, are in the `blacklist`
+and `greylist` slots.
 
 ## Details
 
@@ -252,6 +302,32 @@ partial: the counts do not change, but the library sizes are not usable
 for normalisation, and
 [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
 warns when a method relies on them.
+
+The blacklist and the greylist act before the counting, and on two
+things. The regions overlapping them are removed, as
+[`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+and
+[`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+do: taking rows out of a counts object would leave library sizes, inputs
+and summits computed on regions that are no longer there, which is why
+those two functions refuse it. With `discardListedReads = TRUE` the
+reads lying on the lists are ignored as well. These regions collect
+reads in amounts that change from one sample to the next, so leaving
+them in the library sizes shifts the scaling of each sample by a
+different amount. `discarded.reads` tells how many fragments each sample
+lost this way, and `library.size` plus `discarded.reads` is the library
+size the sample would have with nothing discarded.
+
+Lists given here add to the ones the object already carries: a blacklist
+is merged with the stored blacklist, a greylist with the stored
+greylist, and the reads of all of them are discarded together with those
+of `discardRegions`. `greylist = TRUE` uses the greylist already stored
+in `regionSet`, by
+[`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+or
+[`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+rather than building a second one. A set left without any region by the
+lists is dropped with a warning.
 
 Paired-end and single-end samples can be mixed in the same call,
 paired-end libraries being counted as fragments and single-end ones as
@@ -304,9 +380,9 @@ in DiffBind.
 
 Regions and BAM files do not need to share the same chromosome naming
 style, and neither do the BAM files among themselves. The names of the
-first file are the reference. The regions, `discardRegions` and
-`excludeChromosomes` are brought to them chromosome by chromosome, for
-the counting only, and every other file is read under its own names.
+first file are the reference. The regions, the lists, `discardRegions`
+and `excludeChromosomes` are brought to them chromosome by chromosome,
+for the counting only, and every other file is read under its own names.
 UCSC regions can then be counted on Ensembl alignments, or on a mix of
 the two, and the object still comes back with the names of the input
 sets. The same holds for the inputs. What the files cannot differ in is
@@ -332,7 +408,9 @@ first.
 [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md),
 [`loadCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md),
 [`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
-[`libInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+[`libInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md),
+[`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
+[`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
 
 ## Author
 
@@ -378,6 +456,13 @@ counts <- countReads(peakRegions,
                      sampleNames = sampleSheet$sample,
                      sampleMetadata = sampleSheet[, c("sample", "condition")],
                      verbose = FALSE)
+
+# The ENCODE blacklist on the way: its regions are removed and its reads ignored
+blacklist <- loadBlacklist("hg38", verbose = FALSE)
+cleanCounts <- countReads(peakRegions, sampleSheet = sampleSheet, blacklist = blacklist, verbose = FALSE)
+filteringLog(cleanCounts)
+#>        step region.set n.before n.after n.removed
+#> 1 blacklist      peaks      101     101         0
 
 # Windows of 401 bp centred on the summit of the reads, as DiffBind counts a consensus
 summitCounts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)

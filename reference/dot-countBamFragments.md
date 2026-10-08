@@ -118,9 +118,11 @@ from their 5' end.
 
 ## Value
 
-A list with three elements: `counts`, an integer matrix with one row per
+A list with four elements: `counts`, an integer matrix with one row per
 range and one column per file; `library.size`, the number of fragments
 that went through the filters on the chromosomes read and not excluded;
+`discarded`, the number of fragments of the same chromosomes that passed
+every other filter and were dropped by `discardRegions`;
 `mate.mapq.found`, telling for each paired-end file whether the `MQ` tag
 was found (`NA` for single-end files).
 

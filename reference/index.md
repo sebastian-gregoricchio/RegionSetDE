@@ -202,5 +202,14 @@
   : tileTable
 - [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
   : topRegions
+- [`updateObject(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.counts>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  : updateObject methods for the RegionSetDE classes
 - [`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md)
   : updateThresholds

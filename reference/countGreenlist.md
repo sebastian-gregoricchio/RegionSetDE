@@ -119,7 +119,10 @@ The read filters are taken from
 unless they are given here, for the same reason as in
 [`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md):
 a reference counted with another mapping quality or duplicate policy
-describes a library that is not the one under study.
+describes a library that is not the one under study. The reads
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+discarded, those of the blacklist, of the greylist and of
+`discardRegions`, are left out here too.
 
 Each fragment is counted once, in the region holding its centre, as the
 background bins do, so the totals stay a share of the library and two

@@ -5,8 +5,9 @@ typically the one built from the input libraries by
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
 or one exported by another tool as a BED-like file. It works as
 [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
-does, but the step is recorded as a greylist and the blacklist already
-stored in the object is left as it is.
+does, but the list goes to the `greylist` slot and the step is recorded
+as a greylist, while the blacklist already stored in the object is left
+as it is.
 
 ## Usage
 
@@ -80,9 +81,10 @@ applyGreylist(
 ## Value
 
 An object of the same class as `regionSet`. For a `RegionSetDE` object
-the step is added to the `filtering.log` as `"greylist"`, and the number
-of greylisted regions and the bases they cover are stored in
-`parameters$greylist`.
+the greylist is stored in the `greylist` slot, merged with the one
+already there, the step is added to the `filtering.log` as `"greylist"`,
+and the number of regions of the stored greylist and the bases they
+cover go to `parameters$greylist`.
 
 ## Details
 
@@ -95,11 +97,20 @@ regions mostly covered by the greylist. The messages report how many
 regions each set keeps, which is the number to look at before going
 further.
 
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+reads the stored greylist to leave its reads out of the counts and of
+the library sizes, as it does with the blacklist. The `greylist`
+argument of
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+does the work of this function at the counting step, so the two need not
+be combined.
+
 ## See also
 
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
 [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
-[`applyWhitelist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
+[`applyWhitelist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md),
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
 
 ## Author
 

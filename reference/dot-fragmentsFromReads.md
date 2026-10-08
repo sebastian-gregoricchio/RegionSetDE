@@ -65,7 +65,8 @@ mapping quality, or starting in a discarded region are dropped.
 A list with the `start`, the `end` and the `point` of every fragment,
 the point being its centre for paired-end data and the 5' end of the
 read for single-end data, the `index` of the record each fragment comes
-from, and `mate.mapq.found`.
+from, `discarded`, the number of fragments that passed the other filters
+and were dropped by the discarded regions, and `mate.mapq.found`.
 
 ## Author
 

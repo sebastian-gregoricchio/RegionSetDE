@@ -134,6 +134,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-pickResults.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-placeBrackets.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-plotSetScores.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-poolDiscardRegions.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-poolGreylists.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-prepareResultTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-profileRegions.html</loc></url>
@@ -180,6 +181,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-splitConsensus.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-stackProfileRegions.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-statsRanges.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-storedDiscardRegions.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-styleSeqlevels.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-subsetSamples.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-suggestDispersion.html</loc></url>
@@ -268,6 +270,7 @@
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.html</loc></url>
+<url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.html</loc></url>
 <url><loc>https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.html</loc></url>
 </urlset>
 

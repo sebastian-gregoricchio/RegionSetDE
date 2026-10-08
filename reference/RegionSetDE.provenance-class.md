@@ -12,6 +12,17 @@ every step of the analysis. Not meant to be instantiated directly.
   [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
   `NULL` when no blacklist has been applied.
 
+- `greylist`:
+
+  `GRanges` with the regions removed by
+  [`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md),
+  by the `greylist` argument of
+  [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  or by
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  `NULL` when no greylist has been applied. Several greylists applied
+  one after the other are merged.
+
 - `whitelist`:
 
   `GRanges` with the regions used by

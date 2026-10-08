@@ -7,7 +7,7 @@ alone.
 ## Usage
 
 ``` r
-.checkListAssembly(listInput, genomeAssembly, listLabel)
+.checkListAssembly(listInput, genomeAssembly, listLabel, regionLabel = "peaks")
 ```
 
 ## Arguments
@@ -24,6 +24,11 @@ alone.
 - listLabel:
 
   String with the name of the parameter the list came from.
+
+- regionLabel:
+
+  String naming what the list is applied to in the message. Default:
+  `"peaks"`.
 
 ## Value
 

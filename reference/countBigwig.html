@@ -56,6 +56,7 @@
 <span>  partialTiles <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  summaryFunction <span class="op">=</span> <span class="st">"sum"</span>,</span>
 <span>  missingAsZero <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  blacklist <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  countLike <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  roundValues <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -111,6 +112,10 @@
 <dd><p>Logical value indicating whether the positions not covered by the bigWig must be treated as zeros rather than as missing values. Default: <code>TRUE</code>.</p></dd>
 
 
+<dt id="arg-blacklist">blacklist<a class="anchor" aria-label="anchor" href="#arg-blacklist"></a></dt>
+<dd><p>Regions of the assembly that must be dropped before the signal is read, typically the list returned by <code><a href="loadBlacklist.html">loadBlacklist</a></code>. Either a <code>GRanges</code>, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as <code><a href="applyBlacklist.html">applyBlacklist</a></code> removes them, and the list adds to the blacklist already stored in <code>regionSet</code>. Default: <code>NULL</code>.</p></dd>
+
+
 <dt id="arg-countlike">countLike<a class="anchor" aria-label="anchor" href="#arg-countlike"></a></dt>
 <dd><p>Logical value with which you assert that the bigWig holds count-like values, meaning raw, unnormalised coverage that a count model may legitimately be applied to. Default: <code>FALSE</code>.</p></dd>
 
@@ -137,10 +142,11 @@
 <p>Coverage is not a count and rounding it does not make it one. A value of 12.72 becomes 13 and looks like a count, but the negative binomial likelihood that <code>edgeR</code> and <code>DESeq2</code> are built on describes the number of fragments falling in an interval, and a rounded coverage value is not that number. The gap is widest for files carrying an already normalised signal, CPM, RPKM, RPGC, fold enrichment over input, where the values have been divided by a factor that the count model then has no way of knowing about. It does not close entirely even for raw coverage: coverage summed over an interval weights every fragment by how many of its bases fall inside, so it is over-dispersed relative to the fragment count it stands in for.</p>
 <p>The object therefore records where its values came from, and <code><a href="fitRegions.html">fitRegions</a></code> refuses the count engines on it unless <code>countLike</code> says otherwise. The engine to reach for on bigWig input is <code>"limma"</code>, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting <code>countLike = TRUE</code> is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.</p>
 <p>The regions and the bigWig files do not need to share the same chromosome naming style, and neither do the files among themselves: each file is asked for the regions under its own names, chromosome by chromosome, and the object comes back with the names of the input sets. A single <code>GRanges</code> is taken as one set of regions, loaded by <code><a href="loadRegions.html">loadRegions</a></code> with its order and its chromosome names kept, and called <code>regions</code>.</p>
+<p><code>blacklist</code> removes regions and nothing else. The signal of a bigWig was summed when the file was written, so the reads behind it cannot be discarded here the way <code><a href="countReads.html">countReads</a></code> discards them, and a greylist, which is built from the input alignments, has to be applied with <code><a href="applyGreylist.html">applyGreylist</a></code> beforehand. A set left without any region by the blacklist is dropped with a warning.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="countReads.html">countReads</a></code>, <code><a href="loadCounts.html">loadCounts</a></code></p></div>
+    <div class="dont-index"><p><code><a href="countReads.html">countReads</a></code>, <code><a href="loadCounts.html">loadCounts</a></code>, <code><a href="applyBlacklist.html">applyBlacklist</a></code></p></div>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

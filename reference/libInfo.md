@@ -37,10 +37,13 @@ A data.frame with one row per sample: `sample`, the `annotationColumns`,
 extended to, `NA` for paired-end samples), `bam.reads` (every record of
 the BAM file), `bam.mapped` (the mapped ones), `library.size` (the
 fragments that went through the filters of the counting),
-`reads.in.regions` and `FRiP`, the ratio of the last two. When the
-inputs were counted, `input.id`, `input.library.size`,
-`input.in.regions` and `input.FRiP` give the same numbers for the input
-of each sample.
+`reads.in.regions` and `FRiP`, the ratio of the last two. When
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+discarded the reads of a blacklist, of a greylist or of other regions,
+`discarded.reads` follows `library.size` with the fragments each sample
+lost to them. When the inputs were counted, `input.id`,
+`input.library.size`, `input.in.regions` and `input.FRiP` give the same
+numbers for the input of each sample.
 
 ## Details
 
@@ -62,6 +65,12 @@ out slightly high.
 The FRiP is computed on `library.size`, the reads that went through the
 same filters as the counts. Computed on `bam.reads` it would mix
 fragments with alignment records and mapped with filtered reads.
+
+`discarded.reads` counts the fragments that passed every other filter
+and lie on the discarded regions, on the chromosomes entering the
+library sizes. They are in neither `library.size` nor
+`reads.in.regions`, and a sample losing a much larger share of its
+library than the others is worth a look.
 
 The FRiP of the input is the share of the input library falling in the
 regions, which is what the regions would collect with no enrichment at

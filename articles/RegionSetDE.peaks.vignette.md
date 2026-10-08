@@ -338,12 +338,13 @@ and the object records them the same way
 [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
 and
 [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
-would: the blacklist in its `blacklist` slot, which follows the regions
-into the counts and the results and is written down by
-[`exportResults()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md),
-the size of the greylist in its parameters, and the peaks each of them
-removed from every sample in the filtering log. Once the regions are
-built,
+would: the blacklist in its `blacklist` slot and the greylist in its
+`greylist` slot, which follow the regions into the counts and the
+results, and the peaks each of them removed from every sample in the
+filtering log.
+[`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+reads the two slots to leave the reads lying on the lists out of the
+library sizes. Once the regions are built,
 [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
 [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
 and
@@ -378,6 +379,7 @@ consensus
 >   consensus  109 regions  (54,721 bp)
 > 
 > Blacklist:  applied (636 regions)
+> Greylist:   applied (2 regions)
 > Whitelist:  not applied
 > 
 > Filtering steps: blacklist, greylist
@@ -649,14 +651,15 @@ counts <- countReads(consensus,
 counts
 > class: RegionSetDE.counts 
 > dim: 109 9 
-> metadata(2): signal.type count.like
+> metadata(3): signal.type count.like discard.regions
 > assays(2): counts input
 > rownames(109): consensus|19:46089709-46090037
 >   consensus|19:46182368-46182658 ... consensus|19:57823636-57824055
 >   consensus|19:57840011-57840689
 > rowData names(8): region.set region.id ... peak.groups peak.samples
 > colnames(9): AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3
-> colData names(13): sample bam.file ... library.size input.library.size
+> colData names(14): sample bam.file ... discarded.reads
+>   input.library.size
 ```
 
 The sheet names an input for every sample, so the input is counted as
@@ -782,26 +785,26 @@ libInfo(counts, annotationColumns = "condition")
 > 7 AR_R1881_24h_r1 R1881_24h       TRUE              NA     14080      14080
 > 8 AR_R1881_24h_r2 R1881_24h       TRUE              NA     10793      10793
 > 9 AR_R1881_24h_r3 R1881_24h       TRUE              NA     10332      10332
->   library.size reads.in.regions   FRiP input.id input.library.size
-> 1         3588              147 0.0410    input               5353
-> 2         5469              187 0.0342    input               5353
-> 3         4183              150 0.0359    input               5353
-> 4         3582              605 0.1689    input               5353
-> 5         5121              931 0.1818    input               5353
-> 6         5806              751 0.1293    input               5353
-> 7         6326             1149 0.1816    input               5353
-> 8         4889             1197 0.2448    input               5353
-> 9         4651              872 0.1875    input               5353
->   input.in.regions input.FRiP
-> 1               38     0.0071
-> 2               38     0.0071
-> 3               38     0.0071
-> 4               38     0.0071
-> 5               38     0.0071
-> 6               38     0.0071
-> 7               38     0.0071
-> 8               38     0.0071
-> 9               38     0.0071
+>   library.size discarded.reads reads.in.regions   FRiP input.id
+> 1         3570              18              147 0.0412    input
+> 2         5443              26              187 0.0344    input
+> 3         4158              25              150 0.0361    input
+> 4         3562              20              605 0.1698    input
+> 5         5096              25              931 0.1827    input
+> 6         5779              27              751 0.1300    input
+> 7         6295              31             1149 0.1825    input
+> 8         4871              18             1197 0.2457    input
+> 9         4623              28              872 0.1886    input
+>   input.library.size input.in.regions input.FRiP
+> 1               5306               38     0.0072
+> 2               5306               38     0.0072
+> 3               5306               38     0.0072
+> 4               5306               38     0.0072
+> 5               5306               38     0.0072
+> 6               5306               38     0.0072
+> 7               5306               38     0.0072
+> 8               5306               38     0.0072
+> 9               5306               38     0.0072
 ```
 
 The columns measure different things and are not expected to agree.
@@ -893,8 +896,8 @@ normalisationEffect <-
 dplyr::bind_rows(normalisationEffect)
 >           method up down median.log2FC
 > 1    librarySize 78    2          2.55
-> 2     background 87    2          2.82
-> 3            TMM  8    3          0.78
+> 2     background 86    2          2.81
+> 3            TMM  8    3          0.77
 > 4            RLE  8    4          0.60
 > 5 readsInRegions  3    5          0.34
 ```
@@ -1023,9 +1026,9 @@ backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
 round(backgroundFactors, 2)
 >      AR_DMSO_r1      AR_DMSO_r2      AR_DMSO_r3  AR_R1881_4h_r1  AR_R1881_4h_r2 
->            0.84            1.27            0.97            0.70            1.01 
+>            0.82            1.27            0.97            0.71            1.01 
 >  AR_R1881_4h_r3 AR_R1881_24h_r1 AR_R1881_24h_r2 AR_R1881_24h_r3 
->            1.21            1.25            0.89            0.86
+>            1.22            1.25            0.89            0.87
 
 manualCounts <- normalizeCounts(counts,
                                 method = "manual",
@@ -1071,15 +1074,15 @@ alike; `columns` keeps only the ones named.
 ``` r
 sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
 >            sample condition library.size scaling.factor
-> 1      AR_DMSO_r1      DMSO         3588      0.8447824
-> 2      AR_DMSO_r2      DMSO         5469      1.2714786
-> 3      AR_DMSO_r3      DMSO         4183      0.9664067
-> 4  AR_R1881_4h_r1  R1881_4h         3582      0.6997805
-> 5  AR_R1881_4h_r2  R1881_4h         5121      1.0060053
-> 6  AR_R1881_4h_r3  R1881_4h         5806      1.2113487
-> 7 AR_R1881_24h_r1 R1881_24h         6326      1.2467688
-> 8 AR_R1881_24h_r2 R1881_24h         4889      0.8893384
-> 9 AR_R1881_24h_r3 R1881_24h         4651      0.8640907
+> 1      AR_DMSO_r1      DMSO         3570      0.8202212
+> 2      AR_DMSO_r2      DMSO         5443      1.2742403
+> 3      AR_DMSO_r3      DMSO         4158      0.9680969
+> 4  AR_R1881_4h_r1  R1881_4h         3562      0.7082455
+> 5  AR_R1881_4h_r2  R1881_4h         5096      1.0084424
+> 6  AR_R1881_4h_r3  R1881_4h         5779      1.2155428
+> 7 AR_R1881_24h_r1 R1881_24h         6295      1.2480119
+> 8 AR_R1881_24h_r2 R1881_24h         4871      0.8910149
+> 9 AR_R1881_24h_r3 R1881_24h         4623      0.8661840
 ```
 
 [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
@@ -1102,17 +1105,17 @@ countTable(counts, normalized = TRUE) %>%
 > consensus|19:46182368-46182658          FALSE           1            2
 > consensus|19:46300807-46301375           TRUE           2            6
 >                                AR_DMSO_r1 AR_DMSO_r2 AR_DMSO_r3 AR_R1881_4h_r1
-> consensus|19:46089709-46090037          0  0.0000000          0       1.429020
-> consensus|19:46182368-46182658          0  0.0000000          0       2.858039
-> consensus|19:46300807-46301375          0  0.7864859          0       2.858039
+> consensus|19:46089709-46090037          0  0.0000000          0       1.411940
+> consensus|19:46182368-46182658          0  0.0000000          0       2.823879
+> consensus|19:46300807-46301375          0  0.7847813          0       2.823879
 >                                AR_R1881_4h_r2 AR_R1881_4h_r3 AR_R1881_24h_r1
-> consensus|19:46089709-46090037       3.976122      1.6510523       0.0000000
-> consensus|19:46182368-46182658       2.982092      0.8255262       0.8020733
-> consensus|19:46300807-46301375       5.964183      5.7786831      10.4269534
+> consensus|19:46089709-46090037       3.966513      1.6453554       0.0000000
+> consensus|19:46182368-46182658       2.974885      0.8226777       0.8012744
+> consensus|19:46300807-46301375       5.949770      5.7587440      10.4165671
 >                                AR_R1881_24h_r2 AR_R1881_24h_r3
-> consensus|19:46089709-46090037        3.373294        3.471858
-> consensus|19:46182368-46182658        1.124431        2.314572
-> consensus|19:46300807-46301375       22.488629       24.303004
+> consensus|19:46089709-46090037        3.366947        3.463467
+> consensus|19:46182368-46182658        1.122316        2.308978
+> consensus|19:46300807-46301375       22.446314       24.244272
 ```
 
 A normalised value is the raw count divided by the scaling factor of its
@@ -1230,7 +1233,7 @@ resultsEarly
 >   counts carried  : 9 samples
 >   thresholds      : FDR < 0.05 | |log2FC| > 1 
 >   changing regions:
->     consensus: 59 up, 0 down
+>     consensus: 57 up, 0 down
 ```
 
 The fold changes read as the second element over the third, so a
@@ -1280,8 +1283,8 @@ results
 >   contrasts       : 3 
 > 
 >                   name                         contrast n.regions up down
->       R1881_4h_vs_DMSO      condition: R1881_4h vs DMSO       109 59    0
->      R1881_24h_vs_DMSO     condition: R1881_24h vs DMSO       109 87    2
+>       R1881_4h_vs_DMSO      condition: R1881_4h vs DMSO       109 57    0
+>      R1881_24h_vs_DMSO     condition: R1881_24h vs DMSO       109 86    2
 >  R1881_24h_vs_R1881_4h condition: R1881_24h vs R1881_4h       109  7    1
 ```
 
@@ -1320,17 +1323,17 @@ resultsTable(resultsLate) %>%
 > 2  consensus 19:46182368-46182658      NA       19 46182368 46182658   291
 > 3  consensus 19:46300807-46301375      NA       19 46300807 46301375   569
 >     log2FC average.signal average.signal.DMSO average.signal.R1881_4h
-> 1 4.104330       9.473017            8.822609                9.803347
-> 2 3.549098       9.327084            8.822609                9.698435
-> 3 5.376463      10.962974            9.040266               10.484667
+> 1 4.101975       9.480236            8.830140                9.810520
+> 2 3.546862       9.334321            8.830140                9.705637
+> 3 5.367161      10.970159            9.047782               10.491821
 >   average.signal.R1881_24h      stat stat.distribution df1 df2      p.value
-> 1                 9.576701  6.785618                 f   1 654 9.398431e-03
-> 2                 9.303106  4.478715                 f   1 654 3.469669e-02
-> 3                11.914385 49.176538                 f   1 654 5.849435e-12
+> 1                 9.583728  6.740346                 f   1 654 9.637352e-03
+> 2                 9.310149  4.448564                 f   1 654 3.531011e-02
+> 3                11.921445 48.857859                 f   1 654 6.803781e-12
 >            FDR diff.status peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups
-> 1 1.422818e-02          up     FALSE          TRUE           TRUE           2
-> 2 4.347057e-02          up     FALSE          TRUE          FALSE           1
-> 3 9.108406e-11          up     FALSE          TRUE           TRUE           2
+> 1 1.458988e-02          up     FALSE          TRUE           TRUE           2
+> 2 4.423910e-02          up     FALSE          TRUE          FALSE           1
+> 3 1.059446e-10          up     FALSE          TRUE           TRUE           2
 >   peak.samples
 > 1            5
 > 2            2
@@ -1370,10 +1373,10 @@ resultsTable(results) %>%
   dplyr::count(contrast, diff.status)
 >                contrast diff.status  n
 > 1     R1881_24h_vs_DMSO        down  2
-> 2     R1881_24h_vs_DMSO          up 87
+> 2     R1881_24h_vs_DMSO          up 86
 > 3 R1881_24h_vs_R1881_4h        down  1
 > 4 R1881_24h_vs_R1881_4h          up  7
-> 5      R1881_4h_vs_DMSO          up 59
+> 5      R1881_4h_vs_DMSO          up 57
 ```
 
 [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
@@ -1383,11 +1386,11 @@ sorts and trims, and takes the contrast by name:
 topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5) %>%
   dplyr::select(region.id, log2FC, FDR, peak.R1881_4h, peak.R1881_24h)
 >              region.id    log2FC          FDR peak.R1881_4h peak.R1881_24h
-> 1 19:55670391-55670922 -4.685281 2.136961e-09          TRUE          FALSE
-> 2 19:52645106-52645397  5.334727 4.066820e-03         FALSE           TRUE
-> 3 19:46300807-46301375  1.832773 4.066820e-03          TRUE           TRUE
-> 4 19:50010024-50010865  1.697581 4.066820e-03          TRUE           TRUE
-> 5 19:48582156-48582622  2.437200 1.778736e-02          TRUE           TRUE
+> 1 19:55670391-55670922 -4.679189 2.298771e-09          TRUE          FALSE
+> 2 19:52645106-52645397  5.332455 3.877685e-03         FALSE           TRUE
+> 3 19:46300807-46301375  1.837375 3.877685e-03          TRUE           TRUE
+> 4 19:50010024-50010865  1.702553 3.877685e-03          TRUE           TRUE
+> 5 19:48582156-48582622  2.441680 1.751699e-02          TRUE           TRUE
 ```
 
 The strongest change between the two time points is a loss: a site bound
@@ -1534,7 +1537,7 @@ profileData <- computeProfiles(results,
 names(profileData$profiles)
 > [1] "DMSO"      "R1881_4h"  "R1881_24h"
 dim(profileData$profiles$DMSO)
-> [1] 89 60
+> [1] 88 60
 ```
 
 `profiles` holds one matrix per condition, or per sample without
@@ -1599,7 +1602,7 @@ peak.
 peakOccupancyTable(results, contrast = "R1881_24h_vs_DMSO")
 >        occupancy n.regions down null up percent.changed
 > 1         shared        11    0    1 10            90.9
-> 2 R1881_24h only        90    0   16 74            82.2
+> 2 R1881_24h only        90    0   17 73            81.1
 > 3      DMSO only         1    1    0  0           100.0
 > 4           none         7    1    3  3            57.1
 ```
@@ -1912,15 +1915,16 @@ sessionInfo()
 >  [81] fs_2.1.0                    XML_3.99-0.25              
 >  [83] grid_4.6.1                  tidyr_1.3.2                
 >  [85] colorspace_2.1-3            edgeR_4.10.5               
->  [87] nlme_3.1-169                consensusRegions_0.99.1    
+>  [87] nlme_3.1-169                consensusRegions_0.99.2    
 >  [89] restfulr_0.0.17             cli_3.6.6                  
 >  [91] textshaping_1.0.5           viridisLite_0.4.3          
 >  [93] S4Arrays_1.12.1             ComplexHeatmap_2.28.0      
 >  [95] gtable_0.3.6                sass_0.4.10                
 >  [97] digest_0.6.39               ggrepel_0.9.8              
 >  [99] SparseArray_1.12.3          rjson_0.2.23               
-> [101] farver_2.1.2                htmltools_0.5.9            
-> [103] pkgdown_2.2.1               lifecycle_1.0.5            
-> [105] httr_1.4.9                  GlobalOptions_0.1.4        
-> [107] statmod_1.5.2               gridtext_0.1.6
+> [101] htmlwidgets_1.6.4           farver_2.1.2               
+> [103] htmltools_0.5.9             pkgdown_2.2.1              
+> [105] lifecycle_1.0.5             httr_1.4.9                 
+> [107] GlobalOptions_0.1.4         statmod_1.5.2              
+> [109] gridtext_0.1.6
 ```

@@ -154,6 +154,7 @@ regions
 >   promoterCpG     303 regions  (303,000 bp)
 > 
 > Blacklist:  not applied
+> Greylist:   not applied
 > Whitelist:  not applied
 ```
 
@@ -164,6 +165,7 @@ in an analysis have an accessor:
 |---:|:---|:---|
 | *regions* | [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md) | `GRangesList` with one element per region set, named |
 | *blacklist* |  | the exclusion regions applied, `NULL` until [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md) runs |
+| *greylist* |  | the greylisted regions, `NULL` until [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) runs |
 | *whitelist* |  | the regions kept, `NULL` until [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md) runs |
 | *genome.assembly* | [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md) | assembly string, or `NULL` |
 | *seqlevels.style* |  | naming style the sets were harmonised to |
@@ -2208,9 +2210,9 @@ sessionInfo()
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
 >  [95] SparseArray_1.12.3          ggrepel_0.9.8              
->  [97] rjson_0.2.23                farver_2.1.2               
->  [99] htmltools_0.5.9             pkgdown_2.2.1              
-> [101] lifecycle_1.0.5             httr_1.4.9                 
-> [103] GlobalOptions_0.1.4         statmod_1.5.2              
-> [105] gridtext_0.1.6
+>  [97] rjson_0.2.23                htmlwidgets_1.6.4          
+>  [99] farver_2.1.2                htmltools_0.5.9            
+> [101] pkgdown_2.2.1               lifecycle_1.0.5            
+> [103] httr_1.4.9                  GlobalOptions_0.1.4        
+> [105] statmod_1.5.2               gridtext_0.1.6
 ```

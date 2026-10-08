@@ -102,6 +102,10 @@
     <p>An object of the same class as the input, restricted to the whitelisted regions. For a <code>RegionSetDE</code> object the whitelist and the filtering counts are stored in the corresponding slots.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>A second whitelist restricts the first one: the regions left overlap both lists. The <code>whitelist</code> slot then holds the stretches the two lists have in common, and the <code>filtering.log</code> one step per call.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="applyBlacklist.html">applyBlacklist</a></code>, <code><a href="loadRegions.html">loadRegions</a></code></p></div>
     </div>
@@ -136,6 +140,7 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>   promoterCpG     160 regions  (160,000 bp)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Blacklist:  not applied</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Greylist:   not applied</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Whitelist:  applied (1 regions)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Filtering steps: whitelist</span>

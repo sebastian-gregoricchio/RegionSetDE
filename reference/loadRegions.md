@@ -135,6 +135,7 @@ regions
 #>   promoterNonCpG  498 regions  (498,000 bp)
 #> 
 #> Blacklist:  not applied
+#> Greylist:   not applied
 #> Whitelist:  not applied
 
 # Files and GRanges can be mixed, and an unnamed file takes the name of the file

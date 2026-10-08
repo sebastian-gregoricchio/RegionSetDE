@@ -77,6 +77,12 @@ An object of the same class as the input, restricted to the whitelisted
 regions. For a `RegionSetDE` object the whitelist and the filtering
 counts are stored in the corresponding slots.
 
+## Details
+
+A second whitelist restricts the first one: the regions left overlap
+both lists. The `whitelist` slot then holds the stretches the two lists
+have in common, and the `filtering.log` one step per call.
+
 ## See also
 
 [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md),
@@ -113,6 +119,7 @@ regions
 #>   promoterCpG     160 regions  (160,000 bp)
 #> 
 #> Blacklist:  not applied
+#> Greylist:   not applied
 #> Whitelist:  applied (1 regions)
 #> 
 #> Filtering steps: whitelist

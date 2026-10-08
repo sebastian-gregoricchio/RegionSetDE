@@ -157,7 +157,6 @@ writeLines(c("@HD\tVN:1.6\tSO:coordinate", "@SQ\tSN:chrT\tLN:200000", samRecords
 bamFile <- Rsamtools::asBam(samFile, destination = file.path(tempdir(), "fragments"), overwrite = TRUE, indexDestination = TRUE)
 
 fragmentEstimate <- estimateFragmentLength(bamFile, verbose = FALSE)
-#> 3600 
 fragmentEstimate$table
 #>      sample paired.end read.length fragment.length            method n.reads
 #> 1 fragments      FALSE          50             202 cross-correlation    1805

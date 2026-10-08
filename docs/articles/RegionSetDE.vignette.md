@@ -154,6 +154,7 @@ regions
 >   promoterCpG     303 regions  (303,000 bp)
 > 
 > Blacklist:  not applied
+> Greylist:   not applied
 > Whitelist:  not applied
 ```
 
@@ -164,6 +165,7 @@ in an analysis have an accessor:
 |---:|:---|:---|
 | *regions* | [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md) | `GRangesList` with one element per region set, named |
 | *blacklist* |  | the exclusion regions applied, `NULL` until [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md) runs |
+| *greylist* |  | the greylisted regions, `NULL` until [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) runs |
 | *whitelist* |  | the regions kept, `NULL` until [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md) runs |
 | *genome.assembly* | [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md) | assembly string, or `NULL` |
 | *seqlevels.style* |  | naming style the sets were harmonised to |
@@ -2203,15 +2205,15 @@ sessionInfo()
 >  [77] glue_1.8.1                  metapod_1.20.0             
 >  [79] tools_4.6.1                 BiocIO_1.22.0              
 >  [81] locfit_1.5-9.12             GenomicAlignments_1.48.0   
->  [83] fs_2.1.0                    XML_3.99-0.24              
+>  [83] fs_2.1.0                    XML_3.99-0.25              
 >  [85] Cairo_1.7-0                 grid_4.6.1                 
 >  [87] colorspace_2.1-3            edgeR_4.10.5               
 >  [89] nlme_3.1-171                restfulr_0.0.17            
 >  [91] cli_3.6.6                   textshaping_1.0.5          
->  [93] viridisLite_0.4.3           S4Arrays_1.12.0            
+>  [93] viridisLite_0.4.3           S4Arrays_1.12.1            
 >  [95] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [97] sass_0.4.10                 digest_0.6.39              
->  [99] ggrepel_0.9.8               SparseArray_1.12.2         
+>  [99] ggrepel_0.9.8               SparseArray_1.12.3         
 > [101] rjson_0.2.23                htmlwidgets_1.6.4          
 > [103] farver_2.1.2                htmltools_0.5.9            
 > [105] pkgdown_2.2.1               lifecycle_1.0.5            

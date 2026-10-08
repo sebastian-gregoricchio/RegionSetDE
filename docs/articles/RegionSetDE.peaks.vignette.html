@@ -65,7 +65,7 @@ Gregoricchio, Ph.D.</h4>
 Netherlands<br><a class="author_email" href="mailto:#"></a><a href="mailto:s.gregoricchio@nki.nl" class="email">s.gregoricchio@nki.nl</a>
       </address>
                   
-            <h4 data-toc-skip class="date">Last update: 06<sup>th</sup>
+            <h4 data-toc-skip class="date">Last update: 08<sup>th</sup>
 October, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/blob/HEAD/vignettes/RegionSetDE.peaks.vignette.Rmd" class="external-link"><code>vignettes/RegionSetDE.peaks.vignette.Rmd</code></a></small>
@@ -333,7 +333,7 @@ flagged and merged.</p>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="sc">&gt;</span>   input</span>
 <span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> input</span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="sc">&gt;</span>                                                                               file</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">/</span>tmp<span class="sc">/</span>RtmpJUMvbz<span class="sc">/</span>temp_libpath3c29392d4a9d88<span class="sc">/</span>RegionSetDE<span class="sc">/</span>extdata<span class="sc">/</span>lncapAR<span class="sc">/</span>input.bam</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">/</span>tmp<span class="sc">/</span>RtmpN5DVVW<span class="sc">/</span>temp_libpath2f26716997ab3a<span class="sc">/</span>RegionSetDE<span class="sc">/</span>extdata<span class="sc">/</span>lncapAR<span class="sc">/</span>input.bam</span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="sc">&gt;</span>   fragments       mean      size threshold windows flagged.windows regions</span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>      <span class="dv">5353</span> <span class="fl">0.09351198</span> <span class="fl">0.1836287</span>         <span class="dv">2</span>  <span class="dv">114488</span>             <span class="dv">362</span>     <span class="dv">161</span></span>
 <span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="sc">&gt;</span>   greylisted.bp</span>
@@ -372,12 +372,13 @@ away with the peak.</p>
 about the assembly and the greylist about the inputs of this experiment,
 and the object records them the same way <code><a href="../reference/applyBlacklist.html">applyBlacklist()</a></code>
 and <code><a href="../reference/applyGreylist.html">applyGreylist()</a></code> would: the blacklist in its
-<code>blacklist</code> slot, which follows the regions into the counts
-and the results and is written down by <code><a href="../reference/exportResults.html">exportResults()</a></code>, the
-size of the greylist in its parameters, and the peaks each of them
-removed from every sample in the filtering log. Once the regions are
-built, <code><a href="../reference/applyBlacklist.html">applyBlacklist()</a></code>, <code><a href="../reference/applyWhitelist.html">applyWhitelist()</a></code> and
-<code><a href="../reference/applyGreylist.html">applyGreylist()</a></code> do the same job on the region set
+<code>blacklist</code> slot and the greylist in its
+<code>greylist</code> slot, which follow the regions into the counts and
+the results, and the peaks each of them removed from every sample in the
+filtering log. <code><a href="../reference/countReads.html">countReads()</a></code> reads the two slots to leave
+the reads lying on the lists out of the library sizes. Once the regions
+are built, <code><a href="../reference/applyBlacklist.html">applyBlacklist()</a></code>, <code><a href="../reference/applyWhitelist.html">applyWhitelist()</a></code>
+and <code><a href="../reference/applyGreylist.html">applyGreylist()</a></code> do the same job on the region set
 itself.</p>
 <p><br></p>
 <hr>
@@ -406,13 +407,14 @@ and pools the groups into one region set.</p>
 <span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="er">&gt;</span>   consensus  <span class="dv">109</span> <span class="fu">regions</span>  (<span class="dv">54</span>,<span class="dv">721</span> bp)</span>
 <span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a><span class="er">&gt;</span> Blacklist<span class="sc">:</span>  <span class="fu">applied</span> (<span class="dv">636</span> regions)</span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="sc">&gt;</span> Whitelist<span class="sc">:</span>  not applied</span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a><span class="er">&gt;</span> Filtering steps<span class="sc">:</span> blacklist, greylist</span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="sc">&gt;</span> (see the <span class="st">'filtering.log'</span> slot <span class="cf">for</span> the details)</span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="sc">&gt;</span> </span>
-<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="er">&gt;</span> Consensus<span class="sc">:</span>  <span class="dv">9</span> samples <span class="cf">in</span> <span class="dv">3</span> <span class="fu">groups</span> (consensus mode), <span class="dv">109</span> regions <span class="cf">in</span> the total consensus</span>
-<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="sc">&gt;</span> (see <span class="fu">consensusData</span>() <span class="cf">for</span> the details)</span></code></pre></div>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="sc">&gt;</span> Greylist<span class="sc">:</span>   <span class="fu">applied</span> (<span class="dv">2</span> regions)</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="sc">&gt;</span> Whitelist<span class="sc">:</span>  not applied</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="er">&gt;</span> Filtering steps<span class="sc">:</span> blacklist, greylist</span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="sc">&gt;</span> (see the <span class="st">'filtering.log'</span> slot <span class="cf">for</span> the details)</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="sc">&gt;</span> </span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="er">&gt;</span> Consensus<span class="sc">:</span>  <span class="dv">9</span> samples <span class="cf">in</span> <span class="dv">3</span> <span class="fu">groups</span> (consensus mode), <span class="dv">109</span> regions <span class="cf">in</span> the total consensus</span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="sc">&gt;</span> (see <span class="fu">consensusData</span>() <span class="cf">for</span> the details)</span></code></pre></div>
 <p>In this window neither list touches a peak, which is what one hopes;
 the <code>n.blacklist</code> and <code>n.greylist</code> columns below
 say so for every sample, and <code><a href="../reference/filteringLog.html">filteringLog()</a></code> gives the same
@@ -683,14 +685,15 @@ the metadata from the same table.</p>
 <span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>counts</span>
 <span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="sc">&gt;</span> class<span class="sc">:</span> RegionSetDE.counts </span>
 <span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="sc">&gt;</span> dim<span class="sc">:</span> <span class="dv">109</span> <span class="dv">9</span> </span>
-<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">2</span>)<span class="sc">:</span> signal.type count.like</span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">metadata</span>(<span class="dv">3</span>)<span class="sc">:</span> signal.type count.like discard.regions</span>
 <span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">assays</span>(<span class="dv">2</span>)<span class="sc">:</span> counts input</span>
 <span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">rownames</span>(<span class="dv">109</span>)<span class="sc">:</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span></span>
 <span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a><span class="sc">&gt;</span>   consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span> ... consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">57823636-57824055</span></span>
 <span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="sc">&gt;</span>   consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">57840011-57840689</span></span>
 <span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a><span class="sc">&gt;</span> rowData <span class="fu">names</span>(<span class="dv">8</span>)<span class="sc">:</span> region.set region.id ... peak.groups peak.samples</span>
 <span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">colnames</span>(<span class="dv">9</span>)<span class="sc">:</span> AR_DMSO_r1 AR_DMSO_r2 ... AR_R1881_24h_r2 AR_R1881_24h_r3</span>
-<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="sc">&gt;</span> colData <span class="fu">names</span>(<span class="dv">13</span>)<span class="sc">:</span> sample bam.file ... library.size input.library.size</span></code></pre></div>
+<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="sc">&gt;</span> colData <span class="fu">names</span>(<span class="dv">14</span>)<span class="sc">:</span> sample bam.file ... discarded.reads</span>
+<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a><span class="sc">&gt;</span>   input.library.size</span></code></pre></div>
 <p>The sheet names an input for every sample, so the input is counted as
 well, over the same regions and with the same filters, into an assay of
 its own beside the counts. Each input file is read once, whatever the
@@ -794,26 +797,26 @@ in the regions.</p>
 <span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span> AR_R1881_24h_r1 R1881_24h       <span class="cn">TRUE</span>              <span class="cn">NA</span>     <span class="dv">14080</span>      <span class="dv">14080</span></span>
 <span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span> AR_R1881_24h_r2 R1881_24h       <span class="cn">TRUE</span>              <span class="cn">NA</span>     <span class="dv">10793</span>      <span class="dv">10793</span></span>
 <span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span> AR_R1881_24h_r3 R1881_24h       <span class="cn">TRUE</span>              <span class="cn">NA</span>     <span class="dv">10332</span>      <span class="dv">10332</span></span>
-<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a><span class="sc">&gt;</span>   library.size reads.in.regions   FRiP input.id input.library.size</span>
-<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>         <span class="dv">3588</span>              <span class="dv">147</span> <span class="fl">0.0410</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>         <span class="dv">5469</span>              <span class="dv">187</span> <span class="fl">0.0342</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>         <span class="dv">4183</span>              <span class="dv">150</span> <span class="fl">0.0359</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>         <span class="dv">3582</span>              <span class="dv">605</span> <span class="fl">0.1689</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>         <span class="dv">5121</span>              <span class="dv">931</span> <span class="fl">0.1818</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>         <span class="dv">5806</span>              <span class="dv">751</span> <span class="fl">0.1293</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span>         <span class="dv">6326</span>             <span class="dv">1149</span> <span class="fl">0.1816</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span>         <span class="dv">4889</span>             <span class="dv">1197</span> <span class="fl">0.2448</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span>         <span class="dv">4651</span>              <span class="dv">872</span> <span class="fl">0.1875</span>    input               <span class="dv">5353</span></span>
-<span id="cb23-22"><a href="#cb23-22" tabindex="-1"></a><span class="sc">&gt;</span>   input.in.regions input.FRiP</span>
-<span id="cb23-23"><a href="#cb23-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-24"><a href="#cb23-24" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-25"><a href="#cb23-25" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-26"><a href="#cb23-26" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-27"><a href="#cb23-27" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-28"><a href="#cb23-28" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-29"><a href="#cb23-29" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-30"><a href="#cb23-30" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span>
-<span id="cb23-31"><a href="#cb23-31" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span>               <span class="dv">38</span>     <span class="fl">0.0071</span></span></code></pre></div>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a><span class="sc">&gt;</span>   library.size discarded.reads reads.in.regions   FRiP input.id</span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>         <span class="dv">3570</span>              <span class="dv">18</span>              <span class="dv">147</span> <span class="fl">0.0412</span>    input</span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>         <span class="dv">5443</span>              <span class="dv">26</span>              <span class="dv">187</span> <span class="fl">0.0344</span>    input</span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>         <span class="dv">4158</span>              <span class="dv">25</span>              <span class="dv">150</span> <span class="fl">0.0361</span>    input</span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>         <span class="dv">3562</span>              <span class="dv">20</span>              <span class="dv">605</span> <span class="fl">0.1698</span>    input</span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>         <span class="dv">5096</span>              <span class="dv">25</span>              <span class="dv">931</span> <span class="fl">0.1827</span>    input</span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>         <span class="dv">5779</span>              <span class="dv">27</span>              <span class="dv">751</span> <span class="fl">0.1300</span>    input</span>
+<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span>         <span class="dv">6295</span>              <span class="dv">31</span>             <span class="dv">1149</span> <span class="fl">0.1825</span>    input</span>
+<span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span>         <span class="dv">4871</span>              <span class="dv">18</span>             <span class="dv">1197</span> <span class="fl">0.2457</span>    input</span>
+<span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span>         <span class="dv">4623</span>              <span class="dv">28</span>              <span class="dv">872</span> <span class="fl">0.1886</span>    input</span>
+<span id="cb23-22"><a href="#cb23-22" tabindex="-1"></a><span class="sc">&gt;</span>   input.library.size input.in.regions input.FRiP</span>
+<span id="cb23-23"><a href="#cb23-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-24"><a href="#cb23-24" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-25"><a href="#cb23-25" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-26"><a href="#cb23-26" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-27"><a href="#cb23-27" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-28"><a href="#cb23-28" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-29"><a href="#cb23-29" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-30"><a href="#cb23-30" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span>
+<span id="cb23-31"><a href="#cb23-31" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span>               <span class="dv">5306</span>               <span class="dv">38</span>     <span class="fl">0.0072</span></span></code></pre></div>
 <p>The columns measure different things and are not expected to agree.
 <code>bam.reads</code> and <code>bam.mapped</code> come from the index
 of each file, so they cost nothing to read, and they count alignment
@@ -890,8 +893,8 @@ times and changing nothing but the normalisation.</p>
 <span id="cb26-16"><a href="#cb26-16" tabindex="-1"></a>dplyr<span class="sc">::</span><span class="fu">bind_rows</span>(normalisationEffect)</span>
 <span id="cb26-17"><a href="#cb26-17" tabindex="-1"></a><span class="sc">&gt;</span>           method up down median.log2FC</span>
 <span id="cb26-18"><a href="#cb26-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>    librarySize <span class="dv">78</span>    <span class="dv">2</span>          <span class="fl">2.55</span></span>
-<span id="cb26-19"><a href="#cb26-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>     background <span class="dv">87</span>    <span class="dv">2</span>          <span class="fl">2.82</span></span>
-<span id="cb26-20"><a href="#cb26-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>            TMM  <span class="dv">8</span>    <span class="dv">3</span>          <span class="fl">0.78</span></span>
+<span id="cb26-19"><a href="#cb26-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>     background <span class="dv">86</span>    <span class="dv">2</span>          <span class="fl">2.81</span></span>
+<span id="cb26-20"><a href="#cb26-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>            TMM  <span class="dv">8</span>    <span class="dv">3</span>          <span class="fl">0.77</span></span>
 <span id="cb26-21"><a href="#cb26-21" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>            RLE  <span class="dv">8</span>    <span class="dv">4</span>          <span class="fl">0.60</span></span>
 <span id="cb26-22"><a href="#cb26-22" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span> readsInRegions  <span class="dv">3</span>    <span class="dv">5</span>          <span class="fl">0.34</span></span></code></pre></div>
 <p>Same counts, same design, same engine. Library size and background
@@ -1002,9 +1005,9 @@ absent from the object.</p>
 <span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>                              <span class="fu">colnames</span>(backgroundCounts))</span>
 <span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a><span class="fu">round</span>(backgroundFactors, <span class="dv">2</span>)</span>
 <span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a><span class="sc">&gt;</span>      AR_DMSO_r1      AR_DMSO_r2      AR_DMSO_r3  AR_R1881_4h_r1  AR_R1881_4h_r2 </span>
-<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a><span class="sc">&gt;</span>            <span class="fl">0.84</span>            <span class="fl">1.27</span>            <span class="fl">0.97</span>            <span class="fl">0.70</span>            <span class="fl">1.01</span> </span>
+<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a><span class="sc">&gt;</span>            <span class="fl">0.82</span>            <span class="fl">1.27</span>            <span class="fl">0.97</span>            <span class="fl">0.71</span>            <span class="fl">1.01</span> </span>
 <span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="sc">&gt;</span>  AR_R1881_4h_r3 AR_R1881_24h_r1 AR_R1881_24h_r2 AR_R1881_24h_r3 </span>
-<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a><span class="sc">&gt;</span>            <span class="fl">1.21</span>            <span class="fl">1.25</span>            <span class="fl">0.89</span>            <span class="fl">0.86</span></span>
+<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a><span class="sc">&gt;</span>            <span class="fl">1.22</span>            <span class="fl">1.25</span>            <span class="fl">0.89</span>            <span class="fl">0.87</span></span>
 <span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a></span>
 <span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>manualCounts <span class="ot">&lt;-</span> <span class="fu">normalizeCounts</span>(counts,</span>
 <span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a>                                <span class="at">method =</span> <span class="st">"manual"</span>,</span>
@@ -1043,15 +1046,15 @@ the package added to it, from a counts object, a fit or the results
 alike; <code>columns</code> keeps only the ones named.</p>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a><span class="fu">sampleInfo</span>(counts, <span class="at">columns =</span> <span class="fu">c</span>(<span class="st">"sample"</span>, <span class="st">"condition"</span>, <span class="st">"library.size"</span>, <span class="st">"scaling.factor"</span>))</span>
 <span id="cb31-2"><a href="#cb31-2" tabindex="-1"></a><span class="sc">&gt;</span>            sample condition library.size scaling.factor</span>
-<span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>      AR_DMSO_r1      DMSO         <span class="dv">3588</span>      <span class="fl">0.8447824</span></span>
-<span id="cb31-4"><a href="#cb31-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>      AR_DMSO_r2      DMSO         <span class="dv">5469</span>      <span class="fl">1.2714786</span></span>
-<span id="cb31-5"><a href="#cb31-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>      AR_DMSO_r3      DMSO         <span class="dv">4183</span>      <span class="fl">0.9664067</span></span>
-<span id="cb31-6"><a href="#cb31-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>  AR_R1881_4h_r1  R1881_4h         <span class="dv">3582</span>      <span class="fl">0.6997805</span></span>
-<span id="cb31-7"><a href="#cb31-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>  AR_R1881_4h_r2  R1881_4h         <span class="dv">5121</span>      <span class="fl">1.0060053</span></span>
-<span id="cb31-8"><a href="#cb31-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>  AR_R1881_4h_r3  R1881_4h         <span class="dv">5806</span>      <span class="fl">1.2113487</span></span>
-<span id="cb31-9"><a href="#cb31-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span> AR_R1881_24h_r1 R1881_24h         <span class="dv">6326</span>      <span class="fl">1.2467688</span></span>
-<span id="cb31-10"><a href="#cb31-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span> AR_R1881_24h_r2 R1881_24h         <span class="dv">4889</span>      <span class="fl">0.8893384</span></span>
-<span id="cb31-11"><a href="#cb31-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span> AR_R1881_24h_r3 R1881_24h         <span class="dv">4651</span>      <span class="fl">0.8640907</span></span></code></pre></div>
+<span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>      AR_DMSO_r1      DMSO         <span class="dv">3570</span>      <span class="fl">0.8202212</span></span>
+<span id="cb31-4"><a href="#cb31-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>      AR_DMSO_r2      DMSO         <span class="dv">5443</span>      <span class="fl">1.2742403</span></span>
+<span id="cb31-5"><a href="#cb31-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>      AR_DMSO_r3      DMSO         <span class="dv">4158</span>      <span class="fl">0.9680969</span></span>
+<span id="cb31-6"><a href="#cb31-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>  AR_R1881_4h_r1  R1881_4h         <span class="dv">3562</span>      <span class="fl">0.7082455</span></span>
+<span id="cb31-7"><a href="#cb31-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>  AR_R1881_4h_r2  R1881_4h         <span class="dv">5096</span>      <span class="fl">1.0084424</span></span>
+<span id="cb31-8"><a href="#cb31-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">6</span>  AR_R1881_4h_r3  R1881_4h         <span class="dv">5779</span>      <span class="fl">1.2155428</span></span>
+<span id="cb31-9"><a href="#cb31-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">7</span> AR_R1881_24h_r1 R1881_24h         <span class="dv">6295</span>      <span class="fl">1.2480119</span></span>
+<span id="cb31-10"><a href="#cb31-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">8</span> AR_R1881_24h_r2 R1881_24h         <span class="dv">4871</span>      <span class="fl">0.8910149</span></span>
+<span id="cb31-11"><a href="#cb31-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">9</span> AR_R1881_24h_r3 R1881_24h         <span class="dv">4623</span>      <span class="fl">0.8661840</span></span></code></pre></div>
 <p><code><a href="../reference/countTable.html">countTable()</a></code> returns the normalised values with
 <code>normalized = TRUE</code>, in any of its three formats.</p>
 <div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="fu">countTable</span>(counts, <span class="at">normalized =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
@@ -1069,17 +1072,17 @@ alike; <code>columns</code> keeps only the ones named.</p>
 <span id="cb32-13"><a href="#cb32-13" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>          <span class="cn">FALSE</span>           <span class="dv">1</span>            <span class="dv">2</span></span>
 <span id="cb32-14"><a href="#cb32-14" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>           <span class="cn">TRUE</span>           <span class="dv">2</span>            <span class="dv">6</span></span>
 <span id="cb32-15"><a href="#cb32-15" tabindex="-1"></a><span class="sc">&gt;</span>                                AR_DMSO_r1 AR_DMSO_r2 AR_DMSO_r3 AR_R1881_4h_r1</span>
-<span id="cb32-16"><a href="#cb32-16" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span>          <span class="dv">0</span>  <span class="fl">0.0000000</span>          <span class="dv">0</span>       <span class="fl">1.429020</span></span>
-<span id="cb32-17"><a href="#cb32-17" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>          <span class="dv">0</span>  <span class="fl">0.0000000</span>          <span class="dv">0</span>       <span class="fl">2.858039</span></span>
-<span id="cb32-18"><a href="#cb32-18" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>          <span class="dv">0</span>  <span class="fl">0.7864859</span>          <span class="dv">0</span>       <span class="fl">2.858039</span></span>
+<span id="cb32-16"><a href="#cb32-16" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span>          <span class="dv">0</span>  <span class="fl">0.0000000</span>          <span class="dv">0</span>       <span class="fl">1.411940</span></span>
+<span id="cb32-17"><a href="#cb32-17" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>          <span class="dv">0</span>  <span class="fl">0.0000000</span>          <span class="dv">0</span>       <span class="fl">2.823879</span></span>
+<span id="cb32-18"><a href="#cb32-18" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>          <span class="dv">0</span>  <span class="fl">0.7847813</span>          <span class="dv">0</span>       <span class="fl">2.823879</span></span>
 <span id="cb32-19"><a href="#cb32-19" tabindex="-1"></a><span class="sc">&gt;</span>                                AR_R1881_4h_r2 AR_R1881_4h_r3 AR_R1881_24h_r1</span>
-<span id="cb32-20"><a href="#cb32-20" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span>       <span class="fl">3.976122</span>      <span class="fl">1.6510523</span>       <span class="fl">0.0000000</span></span>
-<span id="cb32-21"><a href="#cb32-21" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>       <span class="fl">2.982092</span>      <span class="fl">0.8255262</span>       <span class="fl">0.8020733</span></span>
-<span id="cb32-22"><a href="#cb32-22" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>       <span class="fl">5.964183</span>      <span class="fl">5.7786831</span>      <span class="fl">10.4269534</span></span>
+<span id="cb32-20"><a href="#cb32-20" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span>       <span class="fl">3.966513</span>      <span class="fl">1.6453554</span>       <span class="fl">0.0000000</span></span>
+<span id="cb32-21"><a href="#cb32-21" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>       <span class="fl">2.974885</span>      <span class="fl">0.8226777</span>       <span class="fl">0.8012744</span></span>
+<span id="cb32-22"><a href="#cb32-22" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>       <span class="fl">5.949770</span>      <span class="fl">5.7587440</span>      <span class="fl">10.4165671</span></span>
 <span id="cb32-23"><a href="#cb32-23" tabindex="-1"></a><span class="sc">&gt;</span>                                AR_R1881_24h_r2 AR_R1881_24h_r3</span>
-<span id="cb32-24"><a href="#cb32-24" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span>        <span class="fl">3.373294</span>        <span class="fl">3.471858</span></span>
-<span id="cb32-25"><a href="#cb32-25" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>        <span class="fl">1.124431</span>        <span class="fl">2.314572</span></span>
-<span id="cb32-26"><a href="#cb32-26" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>       <span class="fl">22.488629</span>       <span class="fl">24.303004</span></span></code></pre></div>
+<span id="cb32-24"><a href="#cb32-24" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46089709-46090037</span>        <span class="fl">3.366947</span>        <span class="fl">3.463467</span></span>
+<span id="cb32-25"><a href="#cb32-25" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>        <span class="fl">1.122316</span>        <span class="fl">2.308978</span></span>
+<span id="cb32-26"><a href="#cb32-26" tabindex="-1"></a><span class="sc">&gt;</span> consensus<span class="sc">|</span><span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>       <span class="fl">22.446314</span>       <span class="fl">24.244272</span></span></code></pre></div>
 <p>A normalised value is the raw count divided by the scaling factor of
 its sample, so it stays on the scale of counts rather than of counts per
 million. <code>format = "matrix"</code> gives the values alone, for a
@@ -1176,7 +1179,7 @@ compared against.</p>
 <span id="cb37-11"><a href="#cb37-11" tabindex="-1"></a><span class="sc">&gt;</span>   counts carried  <span class="sc">:</span> <span class="dv">9</span> samples</span>
 <span id="cb37-12"><a href="#cb37-12" tabindex="-1"></a><span class="sc">&gt;</span>   thresholds      <span class="sc">:</span> FDR <span class="sc">&lt;</span> <span class="fl">0.05</span> <span class="sc">|</span> <span class="er">|</span>log2FC<span class="sc">|</span> <span class="er">&gt;</span> <span class="dv">1</span> </span>
 <span id="cb37-13"><a href="#cb37-13" tabindex="-1"></a><span class="sc">&gt;</span>   changing regions<span class="sc">:</span></span>
-<span id="cb37-14"><a href="#cb37-14" tabindex="-1"></a><span class="er">&gt;</span>     consensus<span class="sc">:</span> <span class="dv">59</span> up, <span class="dv">0</span> down</span></code></pre></div>
+<span id="cb37-14"><a href="#cb37-14" tabindex="-1"></a><span class="er">&gt;</span>     consensus<span class="sc">:</span> <span class="dv">57</span> up, <span class="dv">0</span> down</span></code></pre></div>
 <p>The fold changes read as the second element over the third, so a
 positive <code>log2FC</code> means more signal after four hours of R1881
 than in DMSO; swapping the two groups flips every sign and changes
@@ -1218,8 +1221,8 @@ all of them in one call:</p>
 <span id="cb39-9"><a href="#cb39-9" tabindex="-1"></a><span class="sc">&gt;</span>   contrasts       <span class="sc">:</span> <span class="dv">3</span> </span>
 <span id="cb39-10"><a href="#cb39-10" tabindex="-1"></a><span class="sc">&gt;</span> </span>
 <span id="cb39-11"><a href="#cb39-11" tabindex="-1"></a><span class="er">&gt;</span>                   name                         contrast n.regions up down</span>
-<span id="cb39-12"><a href="#cb39-12" tabindex="-1"></a><span class="sc">&gt;</span>       R1881_4h_vs_DMSO      condition<span class="sc">:</span> R1881_4h vs DMSO       <span class="dv">109</span> <span class="dv">59</span>    <span class="dv">0</span></span>
-<span id="cb39-13"><a href="#cb39-13" tabindex="-1"></a><span class="sc">&gt;</span>      R1881_24h_vs_DMSO     condition<span class="sc">:</span> R1881_24h vs DMSO       <span class="dv">109</span> <span class="dv">87</span>    <span class="dv">2</span></span>
+<span id="cb39-12"><a href="#cb39-12" tabindex="-1"></a><span class="sc">&gt;</span>       R1881_4h_vs_DMSO      condition<span class="sc">:</span> R1881_4h vs DMSO       <span class="dv">109</span> <span class="dv">57</span>    <span class="dv">0</span></span>
+<span id="cb39-13"><a href="#cb39-13" tabindex="-1"></a><span class="sc">&gt;</span>      R1881_24h_vs_DMSO     condition<span class="sc">:</span> R1881_24h vs DMSO       <span class="dv">109</span> <span class="dv">86</span>    <span class="dv">2</span></span>
 <span id="cb39-14"><a href="#cb39-14" tabindex="-1"></a><span class="sc">&gt;</span>  R1881_24h_vs_R1881_4h condition<span class="sc">:</span> R1881_24h vs R1881_4h       <span class="dv">109</span>  <span class="dv">7</span>    <span class="dv">1</span></span></code></pre></div>
 <p><code>FDR</code> and <code>log2FC</code> set the cut-offs a region
 has to pass to be labelled <code>up</code> or <code>down</code>: an
@@ -1254,17 +1257,17 @@ others.</p>
 <span id="cb40-7"><a href="#cb40-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>  consensus <span class="dv">19</span><span class="sc">:</span><span class="dv">46182368-46182658</span>      <span class="cn">NA</span>       <span class="dv">19</span> <span class="dv">46182368</span> <span class="dv">46182658</span>   <span class="dv">291</span></span>
 <span id="cb40-8"><a href="#cb40-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>  consensus <span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>      <span class="cn">NA</span>       <span class="dv">19</span> <span class="dv">46300807</span> <span class="dv">46301375</span>   <span class="dv">569</span></span>
 <span id="cb40-9"><a href="#cb40-9" tabindex="-1"></a><span class="sc">&gt;</span>     log2FC average.signal average.signal.DMSO average.signal.R1881_4h</span>
-<span id="cb40-10"><a href="#cb40-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">4.104330</span>       <span class="fl">9.473017</span>            <span class="fl">8.822609</span>                <span class="fl">9.803347</span></span>
-<span id="cb40-11"><a href="#cb40-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">3.549098</span>       <span class="fl">9.327084</span>            <span class="fl">8.822609</span>                <span class="fl">9.698435</span></span>
-<span id="cb40-12"><a href="#cb40-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">5.376463</span>      <span class="fl">10.962974</span>            <span class="fl">9.040266</span>               <span class="fl">10.484667</span></span>
+<span id="cb40-10"><a href="#cb40-10" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">4.101975</span>       <span class="fl">9.480236</span>            <span class="fl">8.830140</span>                <span class="fl">9.810520</span></span>
+<span id="cb40-11"><a href="#cb40-11" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">3.546862</span>       <span class="fl">9.334321</span>            <span class="fl">8.830140</span>                <span class="fl">9.705637</span></span>
+<span id="cb40-12"><a href="#cb40-12" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">5.367161</span>      <span class="fl">10.970159</span>            <span class="fl">9.047782</span>               <span class="fl">10.491821</span></span>
 <span id="cb40-13"><a href="#cb40-13" tabindex="-1"></a><span class="sc">&gt;</span>   average.signal.R1881_24h      stat stat.distribution df1 df2      p.value</span>
-<span id="cb40-14"><a href="#cb40-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                 <span class="fl">9.576701</span>  <span class="fl">6.785618</span>                 f   <span class="dv">1</span> <span class="dv">654</span> <span class="fl">9.398431e-03</span></span>
-<span id="cb40-15"><a href="#cb40-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                 <span class="fl">9.303106</span>  <span class="fl">4.478715</span>                 f   <span class="dv">1</span> <span class="dv">654</span> <span class="fl">3.469669e-02</span></span>
-<span id="cb40-16"><a href="#cb40-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>                <span class="fl">11.914385</span> <span class="fl">49.176538</span>                 f   <span class="dv">1</span> <span class="dv">654</span> <span class="fl">5.849435e-12</span></span>
+<span id="cb40-14"><a href="#cb40-14" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>                 <span class="fl">9.583728</span>  <span class="fl">6.740346</span>                 f   <span class="dv">1</span> <span class="dv">654</span> <span class="fl">9.637352e-03</span></span>
+<span id="cb40-15"><a href="#cb40-15" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>                 <span class="fl">9.310149</span>  <span class="fl">4.448564</span>                 f   <span class="dv">1</span> <span class="dv">654</span> <span class="fl">3.531011e-02</span></span>
+<span id="cb40-16"><a href="#cb40-16" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>                <span class="fl">11.921445</span> <span class="fl">48.857859</span>                 f   <span class="dv">1</span> <span class="dv">654</span> <span class="fl">6.803781e-12</span></span>
 <span id="cb40-17"><a href="#cb40-17" tabindex="-1"></a><span class="sc">&gt;</span>            FDR diff.status peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups</span>
-<span id="cb40-18"><a href="#cb40-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">1.422818e-02</span>          up     <span class="cn">FALSE</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span>           <span class="dv">2</span></span>
-<span id="cb40-19"><a href="#cb40-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">4.347057e-02</span>          up     <span class="cn">FALSE</span>          <span class="cn">TRUE</span>          <span class="cn">FALSE</span>           <span class="dv">1</span></span>
-<span id="cb40-20"><a href="#cb40-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">9.108406e-11</span>          up     <span class="cn">FALSE</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span>           <span class="dv">2</span></span>
+<span id="cb40-18"><a href="#cb40-18" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="fl">1.458988e-02</span>          up     <span class="cn">FALSE</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span>           <span class="dv">2</span></span>
+<span id="cb40-19"><a href="#cb40-19" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="fl">4.423910e-02</span>          up     <span class="cn">FALSE</span>          <span class="cn">TRUE</span>          <span class="cn">FALSE</span>           <span class="dv">1</span></span>
+<span id="cb40-20"><a href="#cb40-20" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="fl">1.059446e-10</span>          up     <span class="cn">FALSE</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span>           <span class="dv">2</span></span>
 <span id="cb40-21"><a href="#cb40-21" tabindex="-1"></a><span class="sc">&gt;</span>   peak.samples</span>
 <span id="cb40-22"><a href="#cb40-22" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>            <span class="dv">5</span></span>
 <span id="cb40-23"><a href="#cb40-23" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>            <span class="dv">2</span></span>
@@ -1361,20 +1364,20 @@ compares:</p>
 <span id="cb41-3"><a href="#cb41-3" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">count</span>(contrast, diff.status)</span>
 <span id="cb41-4"><a href="#cb41-4" tabindex="-1"></a><span class="sc">&gt;</span>                contrast diff.status  n</span>
 <span id="cb41-5"><a href="#cb41-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>     R1881_24h_vs_DMSO        down  <span class="dv">2</span></span>
-<span id="cb41-6"><a href="#cb41-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>     R1881_24h_vs_DMSO          up <span class="dv">87</span></span>
+<span id="cb41-6"><a href="#cb41-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span>     R1881_24h_vs_DMSO          up <span class="dv">86</span></span>
 <span id="cb41-7"><a href="#cb41-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> R1881_24h_vs_R1881_4h        down  <span class="dv">1</span></span>
 <span id="cb41-8"><a href="#cb41-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> R1881_24h_vs_R1881_4h          up  <span class="dv">7</span></span>
-<span id="cb41-9"><a href="#cb41-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>      R1881_4h_vs_DMSO          up <span class="dv">59</span></span></code></pre></div>
+<span id="cb41-9"><a href="#cb41-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span>      R1881_4h_vs_DMSO          up <span class="dv">57</span></span></code></pre></div>
 <p><code><a href="../reference/topRegions.html">topRegions()</a></code> sorts and trims, and takes the contrast by
 name:</p>
 <div class="sourceCode" id="cb42"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" tabindex="-1"></a><span class="fu">topRegions</span>(results, <span class="at">contrast =</span> <span class="st">"R1881_24h_vs_R1881_4h"</span>, <span class="at">n =</span> <span class="dv">5</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb42-2"><a href="#cb42-2" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(region.id, log2FC, FDR, peak.R1881_4h, peak.R1881_24h)</span>
 <span id="cb42-3"><a href="#cb42-3" tabindex="-1"></a><span class="sc">&gt;</span>              region.id    log2FC          FDR peak.R1881_4h peak.R1881_24h</span>
-<span id="cb42-4"><a href="#cb42-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">55670391-55670922</span> <span class="sc">-</span><span class="fl">4.685281</span> <span class="fl">2.136961e-09</span>          <span class="cn">TRUE</span>          <span class="cn">FALSE</span></span>
-<span id="cb42-5"><a href="#cb42-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">52645106-52645397</span>  <span class="fl">5.334727</span> <span class="fl">4.066820e-03</span>         <span class="cn">FALSE</span>           <span class="cn">TRUE</span></span>
-<span id="cb42-6"><a href="#cb42-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>  <span class="fl">1.832773</span> <span class="fl">4.066820e-03</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span></span>
-<span id="cb42-7"><a href="#cb42-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">50010024-50010865</span>  <span class="fl">1.697581</span> <span class="fl">4.066820e-03</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span></span>
-<span id="cb42-8"><a href="#cb42-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">48582156-48582622</span>  <span class="fl">2.437200</span> <span class="fl">1.778736e-02</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span></span></code></pre></div>
+<span id="cb42-4"><a href="#cb42-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">55670391-55670922</span> <span class="sc">-</span><span class="fl">4.679189</span> <span class="fl">2.298771e-09</span>          <span class="cn">TRUE</span>          <span class="cn">FALSE</span></span>
+<span id="cb42-5"><a href="#cb42-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">52645106-52645397</span>  <span class="fl">5.332455</span> <span class="fl">3.877685e-03</span>         <span class="cn">FALSE</span>           <span class="cn">TRUE</span></span>
+<span id="cb42-6"><a href="#cb42-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">46300807-46301375</span>  <span class="fl">1.837375</span> <span class="fl">3.877685e-03</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span></span>
+<span id="cb42-7"><a href="#cb42-7" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">50010024-50010865</span>  <span class="fl">1.702553</span> <span class="fl">3.877685e-03</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span></span>
+<span id="cb42-8"><a href="#cb42-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">5</span> <span class="dv">19</span><span class="sc">:</span><span class="dv">48582156-48582622</span>  <span class="fl">2.441680</span> <span class="fl">1.751699e-02</span>          <span class="cn">TRUE</span>           <span class="cn">TRUE</span></span></code></pre></div>
 <p>The strongest change between the two time points is a loss: a site
 bound after four hours and released by twenty-four, which the
 comparisons against DMSO alone would not have shown.</p>
@@ -1485,7 +1488,7 @@ to compute them once and hand the result to
 <span id="cb49-5"><a href="#cb49-5" tabindex="-1"></a><span class="fu">names</span>(profileData<span class="sc">$</span>profiles)</span>
 <span id="cb49-6"><a href="#cb49-6" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="st">"DMSO"</span>      <span class="st">"R1881_4h"</span>  <span class="st">"R1881_24h"</span></span>
 <span id="cb49-7"><a href="#cb49-7" tabindex="-1"></a><span class="fu">dim</span>(profileData<span class="sc">$</span>profiles<span class="sc">$</span>DMSO)</span>
-<span id="cb49-8"><a href="#cb49-8" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">89</span> <span class="dv">60</span></span></code></pre></div>
+<span id="cb49-8"><a href="#cb49-8" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">1</span>] <span class="dv">88</span> <span class="dv">60</span></span></code></pre></div>
 <p><code>profiles</code> holds one matrix per condition, or per sample
 without <code>groupBy</code>, with one row per region and one column per
 bin; <code>regions</code> holds the window drawn for every row and the
@@ -1533,7 +1536,7 @@ the test against which groups called a peak.</p>
 <div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a><span class="fu">peakOccupancyTable</span>(results, <span class="at">contrast =</span> <span class="st">"R1881_24h_vs_DMSO"</span>)</span>
 <span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a><span class="sc">&gt;</span>        occupancy n.regions down null up percent.changed</span>
 <span id="cb52-3"><a href="#cb52-3" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">1</span>         shared        <span class="dv">11</span>    <span class="dv">0</span>    <span class="dv">1</span> <span class="dv">10</span>            <span class="fl">90.9</span></span>
-<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> R1881_24h only        <span class="dv">90</span>    <span class="dv">0</span>   <span class="dv">16</span> <span class="dv">74</span>            <span class="fl">82.2</span></span>
+<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">2</span> R1881_24h only        <span class="dv">90</span>    <span class="dv">0</span>   <span class="dv">17</span> <span class="dv">73</span>            <span class="fl">81.1</span></span>
 <span id="cb52-5"><a href="#cb52-5" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">3</span>      DMSO only         <span class="dv">1</span>    <span class="dv">1</span>    <span class="dv">0</span>  <span class="dv">0</span>           <span class="fl">100.0</span></span>
 <span id="cb52-6"><a href="#cb52-6" tabindex="-1"></a><span class="sc">&gt;</span> <span class="dv">4</span>           none         <span class="dv">7</span>    <span class="dv">1</span>    <span class="dv">3</span>  <span class="dv">3</span>            <span class="fl">57.1</span></span></code></pre></div>
 <div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
@@ -1787,8 +1790,8 @@ threshold.</p>
 <span id="cb58-37"><a href="#cb58-37" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">11</span>] BiocIO_1.<span class="fl">22.0</span>               ragg_1.<span class="fl">5.2</span>                 </span>
 <span id="cb58-38"><a href="#cb58-38" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">13</span>] vctrs_0.<span class="fl">7.3</span>                 Cairo_1<span class="fl">.7</span><span class="dv">-0</span>                </span>
 <span id="cb58-39"><a href="#cb58-39" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">15</span>] Rsamtools_2.<span class="fl">28.0</span>            RCurl_1<span class="fl">.98-1.20</span>            </span>
-<span id="cb58-40"><a href="#cb58-40" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">17</span>] htmltools_0.<span class="fl">5.9</span>             S4Arrays_1.<span class="fl">12.0</span>            </span>
-<span id="cb58-41"><a href="#cb58-41" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">19</span>] curl_8.<span class="fl">0.0</span>                  SparseArray_1.<span class="fl">12.2</span>         </span>
+<span id="cb58-40"><a href="#cb58-40" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">17</span>] htmltools_0.<span class="fl">5.9</span>             S4Arrays_1.<span class="fl">12.1</span>            </span>
+<span id="cb58-41"><a href="#cb58-41" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">19</span>] curl_8.<span class="fl">0.0</span>                  SparseArray_1.<span class="fl">12.3</span>         </span>
 <span id="cb58-42"><a href="#cb58-42" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">21</span>] sass_0.<span class="fl">4.10</span>                 consensusRegions_0.<span class="fl">99.0</span>    </span>
 <span id="cb58-43"><a href="#cb58-43" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">23</span>] bslib_0.<span class="fl">12.0</span>                htmlwidgets_1.<span class="fl">6.4</span>          </span>
 <span id="cb58-44"><a href="#cb58-44" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">25</span>] desc_1.<span class="fl">4.3</span>                  cachem_1.<span class="fl">1.0</span>               </span>
@@ -1830,7 +1833,7 @@ threshold.</p>
 <span id="cb58-80"><a href="#cb58-80" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">97</span>] cli_3.<span class="fl">6.6</span>                   systemfonts_1.<span class="fl">3.2</span>          </span>
 <span id="cb58-81"><a href="#cb58-81" tabindex="-1"></a><span class="sc">&gt;</span>  [<span class="dv">99</span>] jquerylib_0.<span class="fl">1.4</span>             dichromat_2<span class="fl">.0</span><span class="dv">-1</span>            </span>
 <span id="cb58-82"><a href="#cb58-82" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">101</span>] Rcpp_1.<span class="fl">1.2</span>                  GenomeInfoDb_1.<span class="fl">48.0</span>        </span>
-<span id="cb58-83"><a href="#cb58-83" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">103</span>] png_0<span class="fl">.1</span><span class="dv">-9</span>                   XML_3<span class="fl">.99-0.24</span>              </span>
+<span id="cb58-83"><a href="#cb58-83" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">103</span>] png_0<span class="fl">.1</span><span class="dv">-9</span>                   XML_3<span class="fl">.99-0.25</span>              </span>
 <span id="cb58-84"><a href="#cb58-84" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">105</span>] parallel_4.<span class="fl">6.1</span>              pkgdown_2.<span class="fl">2.1</span>              </span>
 <span id="cb58-85"><a href="#cb58-85" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">107</span>] bitops_1<span class="fl">.1</span><span class="dv">-0</span>                viridisLite_0.<span class="fl">4.3</span>          </span>
 <span id="cb58-86"><a href="#cb58-86" tabindex="-1"></a><span class="sc">&gt;</span> [<span class="dv">109</span>] scales_1.<span class="fl">4.0</span>                purrr_1.<span class="fl">2.2</span>                </span>

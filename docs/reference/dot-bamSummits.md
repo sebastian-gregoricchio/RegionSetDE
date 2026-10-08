@@ -15,6 +15,7 @@ region: the middle of the highest stretch of coverage, and its height.
   minMapq,
   removeDuplicates,
   discardRegions = NULL,
+  progressBar = FALSE,
   nThreads = 1
 )
 ```
@@ -55,6 +56,11 @@ region: the middle of the highest stretch of coverage, and its height.
 - discardRegions:
 
   `GRanges` with the regions whose reads must be ignored, or `NULL`.
+
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn, one
+  step for every file. Default: `FALSE`.
 
 - nThreads:
 

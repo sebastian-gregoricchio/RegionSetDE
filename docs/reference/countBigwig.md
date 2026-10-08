@@ -21,6 +21,7 @@ countBigwig(
   partialTiles = TRUE,
   summaryFunction = "sum",
   missingAsZero = TRUE,
+  blacklist = NULL,
   countLike = FALSE,
   roundValues = FALSE,
   nThreads = 1,
@@ -99,6 +100,17 @@ countBigwig(
   bigWig must be treated as zeros rather than as missing values.
   Default: `TRUE`.
 
+- blacklist:
+
+  Regions of the assembly that must be dropped before the signal is
+  read, typically the list returned by
+  [`loadBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md).
+  Either a `GRanges`, a path to a BED-like file, a data.frame, or a list
+  of them, which are pooled. The regions overlapping it are removed as
+  [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  removes them, and the list adds to the blacklist already stored in
+  `regionSet`. Default: `NULL`.
+
 - countLike:
 
   Logical value with which you assert that the bigWig holds count-like
@@ -167,10 +179,21 @@ A single `GRanges` is taken as one set of regions, loaded by
 [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
 with its order and its chromosome names kept, and called `regions`.
 
+`blacklist` removes regions and nothing else. The signal of a bigWig was
+summed when the file was written, so the reads behind it cannot be
+discarded here the way
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+discards them, and a greylist, which is built from the input alignments,
+has to be applied with
+[`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+beforehand. A set left without any region by the blacklist is dropped
+with a warning.
+
 ## See also
 
 [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
-[`loadCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md)
+[`loadCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadCounts.md),
+[`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
 
 ## Author
 

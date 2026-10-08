@@ -77,9 +77,22 @@ An object of the same class as the input, with the blacklisted regions
 removed. For a `RegionSetDE` object the blacklist and the filtering
 counts are stored in the corresponding slots.
 
+## Details
+
+A blacklist applied to an object that already stores one adds to it. The
+`blacklist` slot then holds the two lists merged, and the
+`filtering.log` one step per call, so nothing is lost when an
+assay-specific list follows the ENCODE one.
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+reads the stored blacklist to leave its reads out of the counts and of
+the library sizes.
+
 ## See also
 
 [`applyWhitelist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md),
+[`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md),
+[`loadBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md),
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
 [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
 
 ## Author
@@ -110,6 +123,7 @@ regions
 #>   promoterCpG     278 regions  (278,000 bp)
 #> 
 #> Blacklist:  applied (2,524 regions)
+#> Greylist:   not applied
 #> Whitelist:  not applied
 #> 
 #> Filtering steps: blacklist

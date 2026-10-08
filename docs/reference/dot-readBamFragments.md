@@ -61,7 +61,8 @@ by every thread of `.countBamFragments`.
 ## Value
 
 A list with the `file.index` and `range.index` of the job, the `counts`
-of its ranges, the `total.fragments` that went through the filters and
+of its ranges, the `total.fragments` that went through the filters, the
+`discarded.fragments` dropped by the discarded regions alone, and
 `mate.mapq.found`.
 
 ## Author

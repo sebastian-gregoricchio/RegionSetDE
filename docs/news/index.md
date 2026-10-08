@@ -223,6 +223,33 @@ First version.
   also pastes the coordinates of the table as integers: a start or an
   end at 100000 was written `1e+05` and found no region, which hit
   tables counted over bins.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  and
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+  take `progressBar`, which draws a bar while the BAM files are read. It
+  advances with the pieces of the files as the threads hand them back,
+  on one thread or on many, and
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  draws one for the summits and one for the inputs as well. The default
+  is [`interactive()`](https://rdrr.io/r/base/interactive.html), so
+  scripts and rendered documents are not filled with it, and a call with
+  `verbose = FALSE` draws nothing.
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  also says when it starts locating the summits or estimating the
+  fragment lengths, and how long the whole call took.
+- `pairedEnd = "auto"` reads the layout from the first 100,000 records
+  of each BAM file, in
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  its inputs,
+  [`estimateFragmentLength()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md)
+  and
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md).
+  [`Rsamtools::testPairedEndBam()`](https://rdrr.io/pkg/Rsamtools/man/testPairedEndBam.html)
+  was doing it before: it stops at the first paired read, so on a
+  single-end file it read every record, one file after the other, and
+  printed the running total at each million (`1e+06 2e+06 ...`).
 - `excludeChromosomes` is read in either naming style, so `"chrM"`
   reaches the mitochondrial genome of a BAM that calls it `MT`, in
   [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
@@ -303,6 +330,99 @@ First version.
   counted, the input of each sample with its library size, its fragments
   in the regions and its FRiP, which is what the regions would collect
   with no enrichment at all.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  takes `blacklist` and `greylist` and applies them before counting. The
+  regions overlapping them are removed as
+  [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  and
+  [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
+  remove them, which cannot be done on a counts object, whose library
+  sizes, inputs and summits were computed on the regions it holds.
+  `greylist = TRUE` builds the greylist from the inputs of the samples
+  with
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
+  and keeps it in `metadata(x)$greylist`; on regions built by
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  with a greylist, that one is reused. A set left without any region is
+  dropped with a warning.
+  [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
+  takes `blacklist` alone, since a greylist needs the input alignments.
+- [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  takes `discardListedReads`, `TRUE` by default: the reads lying on the
+  blacklist and on the greylist enter neither the counts nor the library
+  sizes, whether the lists were given in the call, stored by
+  [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  or brought by
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  and they are pooled with `discardRegions`. The library sizes of
+  regions carrying a blacklist are therefore a little smaller than they
+  used to be, and `discardListedReads = FALSE` gives the previous ones
+  back. The fragments each sample lost are in the `discarded.reads`
+  column of the `colData`, which
+  [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+  reports beside the library sizes.
+- The regions whose reads
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  discarded are kept in `metadata(x)$discard.regions`, and
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
+  and
+  [`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
+  leave the same reads out. They ignored `discardRegions` before, so the
+  background bins and the greenlist were counted with reads the regions
+  did not have.
+- [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  adds to the blacklist an object already stores rather than replacing
+  it: the slot holds every list applied, merged, where a second call
+  used to keep its own list only.
+  [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md)
+  keeps the stretches shared by the lists applied. Both, and
+  [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md),
+  resolve the aliases of an assembly before refusing a list, so a list
+  tagged `hg38` goes on regions declared as `GRCh38`, as it already did
+  in
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+- The classes carry a `greylist` slot next to `blacklist` and
+  `whitelist`, filled by
+  [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md),
+  by the `greylist` argument of
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  and by
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  and passed on to the counts, the fit, the results and the scores. A
+  second greylist is merged with the first, and
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  leaves the reads lying on the stored greylist out of the library
+  sizes, as it does for the blacklist. Only the size of a greylist was
+  kept before, so a greylist applied before the counting had to be given
+  again for its reads to be discarded.
+  `parameters$countReads$greylistSource` reads `"stored"` where it read
+  `"consensus"`.
+- `updateObject()` brings an object saved by an earlier version of the
+  package to the current classes: the `greylist` slot is added, filled
+  with the greylist of the consensus when the regions came from
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  and a fit or a result updates the counts it carries.
+  [`loadExampleData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadExampleData.md)
+  updates the objects it reads, so the stored example counts need not be
+  written again.
+- [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  takes `seed`, passed on to
+  [`consensusRegions::runConsensus()`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html)
+  in every group, which seeds the calibration of the threshold through
+  the `RNGseed` of its `BiocParallel` back end. It is stored in
+  `parameters$loadConsensusPeaks` with `seed.source`. The same seed
+  returns the same consensus on any number of threads, and the random
+  numbers of the session are left as they were: neither package calls
+  [`set.seed()`](https://rdrr.io/r/base/Random.html), which BiocCheck
+  refuses in package code anyway. Without a seed the permutations draw
+  from random numbers `BiocParallel` keeps apart from those of the
+  session, which [`set.seed()`](https://rdrr.io/r/base/Random.html) does
+  not reach, so two identical calls could calibrate two different
+  thresholds; the documentation said that
+  [`set.seed()`](https://rdrr.io/r/base/Random.html) was enough, and has
+  been corrected. `seed` needs consensusRegions 0.99.2 or later, now the
+  version required in `Suggests`.
 
 ### Normalisation and filtering
 

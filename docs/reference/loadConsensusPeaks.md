@@ -21,6 +21,7 @@ loadConsensusPeaks(
   seqlevelsStyle = "UCSC",
   genomeAssembly = NULL,
   nThreads = 1,
+  seed = NULL,
   verbose = TRUE,
   ...
 )
@@ -99,6 +100,18 @@ loadConsensusPeaks(
   [`consensusRegions::runConsensus`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html).
   Default: `1`.
 
+- seed:
+
+  Number seeding the random numbers of the calibration, when
+  `calibrate = TRUE` is passed on to
+  [`consensusRegions::runConsensus`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html).
+  It goes to `runConsensus` for every group, which hands it to the
+  `BiocParallel` back end of the permutations as its `RNGseed`, and it
+  is stored in `parameters$loadConsensusPeaks$seed`, so that the
+  consensus can be built again identically, on any number of threads.
+  Needs consensusRegions 0.99.2 or later. Default: `NULL`, no seed, and
+  a calibrated consensus may change from one call to the next.
+
 - verbose:
 
   Logical value to indicate whether the messages must be printed.
@@ -126,10 +139,12 @@ samples and the sample sheet itself, which
 and
 [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
 read when no file is given to them. The blacklist goes to the
-`blacklist` slot, the size of the greylist to `parameters$greylist`, and
-the peaks each of them removed from every sample to the `filtering.log`,
-read with
+`blacklist` slot, the greylist to the `greylist` slot with its size in
+`parameters$greylist`, and the peaks each of them removed from every
+sample to the `filtering.log`, read with
 [`filteringLog`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md).
+Where the random numbers of the calibration came from is recorded in
+`parameters$loadConsensusPeaks`, see Details.
 
 ## Details
 
@@ -160,12 +175,13 @@ recorded the way
 and
 [`applyGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
 record them, so the counts, the fit and the results built from the
-object carry the blacklist with them and
-[`exportResults`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/exportResults.md)
-writes it down. `consensusData(x)$removed` holds the peaks taken out,
-with the sample they came from and the list that removed them, and
-`consensusData(x)$samples` their number per sample. A blacklist built
-for another assembly than `genomeAssembly` is refused, as
+object carry the two lists with them, and
+[`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+leaves their reads out of the library sizes. `consensusData(x)$removed`
+holds the peaks taken out, with the sample they came from and the list
+that removed them, and `consensusData(x)$samples` their number per
+sample. A blacklist built for another assembly than `genomeAssembly` is
+refused, as
 [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
 refuses it.
 
@@ -194,10 +210,27 @@ threads take about as long as the largest of them. With
 number of groups for the permutations of each group. A `BPPARAM` passed
 in `...` is handed to every group as it is and the groups then run one
 after the other, so that two levels of workers are never stacked on each
-other by accident. The random numbers of the calibration come from
-`BiocParallel`, which gives each group a stream of its own, so a
-[`set.seed()`](https://rdrr.io/r/base/Random.html) before the call
-returns the same consensus whatever the number of threads.
+other by accident.
+
+The calibration is the only step drawing random numbers: it places the
+peaks at random to see how often they overlap by chance. The draws come
+from `BiocParallel`, and without a seed of its own a `BiocParallel` back
+end takes them from a stream it keeps for the whole session, which a
+[`set.seed()`](https://rdrr.io/r/base/Random.html) before the call does
+not reset: the calibrated threshold, and with it the consensus, can then
+change from one call to the next. `seed` is passed on to
+[`consensusRegions::runConsensus`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html)
+in every group, which gives it to the back end of the permutations as
+its `RNGseed`: the same seed returns the same consensus whatever the
+number of threads, and the random numbers of the session are left as
+they were. Neither package calls
+[`set.seed()`](https://rdrr.io/r/base/Random.html).
+`parameters$loadConsensusPeaks` keeps the `seed` and its `seed.source`:
+`"seed"`, `"BPPARAM"` when a `BPPARAM` passed in `...` carries its own
+`RNGseed`, which is then the one recorded, `"unseeded"` when the
+calibration ran without a seed, or `"none"` without calibration. A
+`BPPARAM` passed in `...` is used as it is, so `seed` is ignored with
+it, with a warning.
 
 ## See also
 

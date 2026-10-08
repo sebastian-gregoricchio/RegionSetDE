@@ -26,6 +26,7 @@ from their 5' end.
   countMode = "overlap",
   pieceLength = 5e+07,
   referenceTargets = NULL,
+  progressBar = FALSE,
   nThreads = 1
 )
 ```
@@ -106,15 +107,22 @@ from their 5' end.
   excluded chromosomes and the discarded regions are written in.
   Default: `NULL`, the header of the first BAM file.
 
+- progressBar:
+
+  Logical value to indicate whether a progress bar must be drawn, one
+  step for every job that comes back. Default: `FALSE`.
+
 - nThreads:
 
   Number of threads. Default: `1`.
 
 ## Value
 
-A list with three elements: `counts`, an integer matrix with one row per
+A list with four elements: `counts`, an integer matrix with one row per
 range and one column per file; `library.size`, the number of fragments
 that went through the filters on the chromosomes read and not excluded;
+`discarded`, the number of fragments of the same chromosomes that passed
+every other filter and were dropped by `discardRegions`;
 `mate.mapq.found`, telling for each paired-end file whether the `MQ` tag
 was found (`NA` for single-end files).
 

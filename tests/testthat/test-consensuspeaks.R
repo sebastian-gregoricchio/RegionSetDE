@@ -143,6 +143,7 @@ test_that("the two lists and the peaks they removed are recorded in the object",
 
   # The blacklist goes where applyBlacklist puts it, the greylist where applyGreylist does
   expect_length(regions@blacklist, 1)
+  expect_length(regions@greylist, 1)
   expect_identical(regions@parameters$greylist$n.regions, 1L)
   expect_s4_class(consensusList$blacklist, "GRanges")
   expect_s4_class(consensusList$greylist, "GRanges")
@@ -169,7 +170,8 @@ test_that("the two lists and the peaks they removed are recorded in the object",
 
   # The reads of the two lists stay out of the library sizes, the greylist being the one of the consensus
   expect_length(S4Vectors::metadata(counts)$discard.regions, 2)
-  expect_identical(counts@parameters$countReads$greylistSource, "consensus")
+  expect_identical(counts@parameters$countReads$greylistSource, "stored")
+  expect_identical(counts@greylist, regions@greylist)
   expect_true(all(counts$discarded.reads > 0))
 
   keptReads <- countReads(countedRegions, pairedEnd = FALSE, discardListedReads = FALSE, verbose = FALSE)
@@ -178,9 +180,74 @@ test_that("the two lists and the peaks they removed are recorded in the object",
 
   # Asking for a greylist does not build a second one
   expect_message(reused <- countReads(countedRegions, pairedEnd = FALSE, greylist = TRUE),
-                 "greylist the consensus was built with is used")
+                 "greylist stored in the regions is used")
   expect_equal(reused$library.size, counts$library.size)
   expect_null(S4Vectors::metadata(reused)$greylist)
+})
+
+
+test_that("a consensus saved before the greylist slot gets the greylist it was cleaned against", {
+
+  skip_if_not_installed("consensusRegions")
+  greylist <- GenomicRanges::GRanges("chr1", IRanges::IRanges(10000, width = 1000))
+
+  regions <- loadConsensusPeaks(consensusSheet(), groupBy = "condition", greylist = greylist, verbose = FALSE)
+
+  oldRegions <- regions
+  attr(oldRegions, "greylist") <- NULL
+
+  expect_message(updatedRegions <- BiocGenerics::updateObject(oldRegions, verbose = TRUE), "filled with the greylist of its consensus")
+  expect_identical(updatedRegions@greylist, consensusData(regions)$greylist)
+  expect_identical(updatedRegions, regions)
+})
+
+
+test_that("a seed makes a calibrated consensus reproducible on any number of threads", {
+
+  skip_if_not_installed("consensusRegions")
+
+  # The small sheet leaves the calibration short of its target FDR, which it says through a warning
+  buildCalibrated <- function(...) {
+    suppressWarnings(loadConsensusPeaks(consensusSheet(), groupBy = "condition", calibrate = TRUE, nPermutations = 3, verbose = FALSE, ...))
+  }
+  nullDraws <- function(regions) {
+    lapply(consensusData(regions)$objects, function(consensusObject) {consensusObject@calibration$null})
+  }
+
+  # The seed holds for the call alone, the random numbers of the session go on as if nothing had been drawn
+  set.seed(1)
+  expectedDraws <- stats::runif(3)
+  set.seed(1)
+  seeded <- buildCalibrated(seed = 3)
+  expect_identical(stats::runif(3), expectedDraws)
+
+  expect_identical(nullDraws(buildCalibrated(seed = 3)), nullDraws(seeded))
+  expect_identical(regionRanges(buildCalibrated(seed = 3)), regionRanges(seeded))
+  expect_identical(seeded@parameters$loadConsensusPeaks$seed, 3)
+  expect_identical(seeded@parameters$loadConsensusPeaks$seed.source, "seed")
+
+  if (.Platform$OS.type != "windows") {
+    expect_identical(nullDraws(buildCalibrated(seed = 3, nThreads = 2)), nullDraws(seeded))
+  }
+
+  # Without a seed the call says so, and the record too
+  expect_message(unseeded <- suppressWarnings(loadConsensusPeaks(consensusSheet(), groupBy = "condition", calibrate = TRUE, nPermutations = 3)),
+                 "no seed was given")
+  expect_null(unseeded@parameters$loadConsensusPeaks$seed)
+  expect_identical(unseeded@parameters$loadConsensusPeaks$seed.source, "unseeded")
+
+  expect_identical(loadConsensusPeaks(consensusSheet(), groupBy = "condition", verbose = FALSE)@parameters$loadConsensusPeaks$seed.source, "none")
+
+  # A back end of the user decides on its own
+  ownSeed <- buildCalibrated(BPPARAM = BiocParallel::SerialParam(RNGseed = 5))
+  expect_identical(ownSeed@parameters$loadConsensusPeaks$seed.source, "BPPARAM")
+  expect_equal(ownSeed@parameters$loadConsensusPeaks$seed, 5)
+
+  ignoredWarnings <- testthat::capture_warnings(loadConsensusPeaks(consensusSheet(), groupBy = "condition", calibrate = TRUE, nPermutations = 3,
+                                                                   seed = 3, BPPARAM = BiocParallel::SerialParam(), verbose = FALSE))
+  expect_true(any(grepl("'seed' parameter is ignored", ignoredWarnings)))
+
+  expect_error(loadConsensusPeaks(consensusSheet(), groupBy = "condition", seed = "a", verbose = FALSE), "'seed' parameter must be a single number")
 })
 
 

@@ -309,6 +309,7 @@ testRegions <-
                          combination = combinationInfo,
                          thresholds = list(FDR = FDR, log2FC = log2FC, lfcThreshold = lfcThreshold, adjust.method = adjustMethod),
                          blacklist = fit@blacklist,
+                         greylist = fit@greylist,
                          whitelist = fit@whitelist,
                          genome.assembly = fit@genome.assembly,
                          seqlevels.style = fit@seqlevels.style,

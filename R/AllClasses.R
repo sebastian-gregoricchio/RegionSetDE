@@ -21,6 +21,7 @@ setClassUnion("characterOrNULL", c("character", "NULL"))
 #' @description Virtual class collecting the filters and the parameters shared by all the RegionSetDE objects, so that the origin of the regions survives every step of the analysis. Not meant to be instantiated directly.
 #'
 #' @slot blacklist \code{GRanges} with the regions removed by \code{\link{applyBlacklist}}, \code{NULL} when no blacklist has been applied.
+#' @slot greylist \code{GRanges} with the regions removed by \code{\link{applyGreylist}}, by the \code{greylist} argument of \code{\link{countReads}} or by \code{\link{loadConsensusPeaks}}, \code{NULL} when no greylist has been applied. Several greylists applied one after the other are merged.
 #' @slot whitelist \code{GRanges} with the regions used by \code{\link{applyWhitelist}} to restrict the sets, \code{NULL} when no whitelist has been applied.
 #' @slot genome.assembly String with the genome assembly of the regions, \code{NULL} when not declared.
 #' @slot seqlevels.style String with the chromosome naming style shared by all the sets.
@@ -35,12 +36,14 @@ setClassUnion("characterOrNULL", c("character", "NULL"))
 setClass(Class = "RegionSetDE.provenance",
          representation = representation("VIRTUAL",
                                          blacklist = "GRangesOrNULL",
+                                         greylist = "GRangesOrNULL",
                                          whitelist = "GRangesOrNULL",
                                          genome.assembly = "characterOrNULL",
                                          seqlevels.style = "character",
                                          filtering.log = "data.frame",
                                          parameters = "list"),
          prototype = prototype(blacklist = NULL,
+                               greylist = NULL,
                                whitelist = NULL,
                                genome.assembly = NULL,
                                seqlevels.style = NA_character_,
@@ -170,6 +173,8 @@ setMethod(f = "show",
 
             cat(paste0("\nBlacklist:  ", ifelse(is.null(object@blacklist), "not applied",
                                                 paste0("applied (", format(length(object@blacklist), big.mark = ",", trim = TRUE), " regions)")), "\n"))
+            cat(paste0("Greylist:   ", ifelse(is.null(object@greylist), "not applied",
+                                              paste0("applied (", format(length(object@greylist), big.mark = ",", trim = TRUE), " regions)")), "\n"))
             cat(paste0("Whitelist:  ", ifelse(is.null(object@whitelist), "not applied",
                                               paste0("applied (", format(length(object@whitelist), big.mark = ",", trim = TRUE), " regions)")), "\n"))
 
@@ -1054,4 +1059,182 @@ setMethod(f = "show",
             cat("\nThe libraries are the replication, the composition of the sets is not controlled for.\n")
 
             invisible(NULL)
+          })
+
+
+
+
+
+##########################################################################################
+###    UPDATE OF STORED OBJECTS
+##########################################################################################
+
+
+#' @title .updateProvenance
+#'
+#' @description Brings an object saved by an earlier version of the package to the current definition of its class. The \code{greylist} slot is the only one added so far: an object saved without it gets the greylist its consensus was cleaned against, when there is one, and \code{NULL} otherwise. The counts carried by a fit or a result are updated together with it.
+#'
+#' @param object An object extending \code{RegionSetDE.provenance}.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{FALSE}.
+#'
+#' @return The object with the slots it was missing.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom methods .hasSlot slot<- is
+#' @importFrom BiocGenerics updateObject
+#'
+#' @keywords internal
+#' @noRd
+
+.updateProvenance <-
+  function(object,
+           verbose = FALSE) {
+
+    # The slot is written directly: the object does not have it yet, and the usual assignment would refuse it
+    if (!methods::.hasSlot(object, "greylist")) {
+      storedGreylist <- NULL
+
+      if (methods::.hasSlot(object, "consensus") && length(object@consensus) > 0) {
+        storedGreylist <- object@consensus$greylist
+      }
+
+      methods::slot(object, "greylist", check = FALSE) <- storedGreylist
+
+      if (isTRUE(verbose)) {
+        message("[updateObject] The '", class(object)[1], "' object gained the 'greylist' slot",
+                if (is.null(storedGreylist)) {", left empty."} else {", filled with the greylist of its consensus."})
+      }
+    }
+
+    # A fit or a result carries the counts it was computed on, saved together with it
+    if (methods::.hasSlot(object, "counts") && methods::is(object@counts, "RegionSetDE.counts")) {
+      object@counts <- BiocGenerics::updateObject(object@counts, verbose = verbose)
+    }
+
+    return(object)
+  } # END function
+
+
+
+
+#' @title updateObject methods for the RegionSetDE classes
+#'
+#' @description Bring an object saved by an earlier version of RegionSetDE to the current definition of its class, as \code{BiocGenerics::updateObject} does for the Bioconductor classes. An object saved before the \code{greylist} slot existed gets it, filled with the greylist of the consensus when the regions were built by \code{\link{loadConsensusPeaks}}, and empty otherwise. A fit or a result updates the counts it carries as well, and a list of results every result in it.
+#'
+#' @param object An object of one of the RegionSetDE classes.
+#' @param ... Passed on to the method of \code{SummarizedExperiment} for a counts object, ignored otherwise.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{FALSE}.
+#'
+#' @return The object, updated to the current definition of its class. An object already up to date comes back as it was.
+#'
+#' @details A greylist applied with \code{\link{applyGreylist}} before the slot existed left only its size in the object, so the update cannot recover it: apply it again, or pass it to the \code{greylist} argument of \code{\link{countReads}}.
+#'
+#' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts <- BiocGenerics::updateObject(counts, verbose = TRUE)
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @name updateObject-RegionSetDE
+#'
+#' @importFrom BiocGenerics updateObject
+#' @importFrom methods setMethod
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE",
+          definition = function(object, ..., verbose = FALSE) {
+            return(.updateProvenance(object = object, verbose = verbose))
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod callNextMethod
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.counts",
+          definition = function(object, ..., verbose = FALSE) {
+            object <- .updateProvenance(object = object, verbose = verbose)
+
+            # The SummarizedExperiment part has an update of its own, run once the slot is in place
+            return(methods::callNextMethod(object, ..., verbose = verbose))
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.fit",
+          definition = function(object, ..., verbose = FALSE) {
+            return(.updateProvenance(object = object, verbose = verbose))
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.results",
+          definition = function(object, ..., verbose = FALSE) {
+            return(.updateProvenance(object = object, verbose = verbose))
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.setResults",
+          definition = function(object, ..., verbose = FALSE) {
+            return(.updateProvenance(object = object, verbose = verbose))
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.setScores",
+          definition = function(object, ..., verbose = FALSE) {
+            return(.updateProvenance(object = object, verbose = verbose))
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod
+#' @importFrom BiocGenerics updateObject
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.resultsList",
+          definition = function(object, ..., verbose = FALSE) {
+            object@results <- lapply(object@results, BiocGenerics::updateObject, verbose = verbose)
+            return(object)
+          })
+
+
+#' @rdname updateObject-RegionSetDE
+#'
+#' @importFrom methods setMethod
+#' @importFrom BiocGenerics updateObject
+#'
+#' @export
+setMethod(f = "updateObject",
+          signature = "RegionSetDE.setResultsList",
+          definition = function(object, ..., verbose = FALSE) {
+            object@results <- lapply(object@results, BiocGenerics::updateObject, verbose = verbose)
+            return(object)
           })

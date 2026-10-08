@@ -172,6 +172,10 @@ test_that("greylist = TRUE builds the greylist from the inputs and applies it", 
   expect_identical(greylisted@parameters$countReads$greylistSource, "inputs")
   expect_null(greylisted@blacklist)
 
+  # The list applied stays in the object, beside the one makeGreylist returned
+  expect_length(greylisted@greylist, 1)
+  expect_true(all(IRanges::overlapsAny(builtGreylist, greylisted@greylist)))
+
   expect_equal(greylisted$library.size + greylisted$discarded.reads, plain$library.size)
   expect_true(all(greylisted$discarded.reads > 1000))
 
@@ -194,6 +198,69 @@ test_that("greylist = TRUE builds the greylist from the inputs and applies it", 
 
   expect_error(listCounts(greylist = TRUE), "no sample has one")
   expect_error(listCounts(greylist = NA), "'greylist' parameter must be TRUE, FALSE")
+})
+
+
+test_that("a greylist applied beforehand stays in the object and its reads are discarded", {
+
+  firstList <- GenomicRanges::GRanges("chrT", IRanges::IRanges(59000, 61500))
+  secondList <- GenomicRanges::GRanges("chrT", IRanges::IRanges(99000, 101000))
+
+  # applyGreylist stores the list, and a second call adds to it
+  once <- applyGreylist(listRegions(), greylist = firstList, verbose = FALSE)
+  twice <- applyGreylist(once, greylist = secondList, verbose = FALSE)
+
+  expect_length(once@greylist, 1)
+  expect_length(twice@greylist, 2)
+  expect_identical(twice@parameters$greylist$n.regions, 2L)
+  expect_identical(twice@parameters$greylist$covered.bp, sum(as.numeric(BiocGenerics::width(c(firstList, secondList)))))
+  expect_null(twice@blacklist)
+  expect_output(show(twice), "Greylist:   applied \\(2 regions\\)")
+
+  # The counting reads the slot, removes nothing more and leaves the reads of the list out
+  plain <- listCounts()
+  stored <- listCounts(regions = once)
+
+  expect_identical(nrow(stored), 8L)
+  expect_length(stored@greylist, 1)
+  expect_identical(stored@parameters$countReads$greylistSource, "stored")
+  expect_length(S4Vectors::metadata(stored)$discard.regions, 1)
+  expect_equal(stored$library.size + stored$discarded.reads, plain$library.size)
+
+  # A greylist given in the call is merged with the stored one
+  merged <- listCounts(regions = once, greylist = secondList)
+  expect_identical(nrow(merged), 7L)
+  expect_length(merged@greylist, 2)
+  expect_length(S4Vectors::metadata(merged)$discard.regions, 2)
+  expect_equal(merged$library.size, listCounts(regions = twice)$library.size)
+
+  # greylist = TRUE takes the stored list and needs no input
+  expect_message(reused <- countReads(once, bamFiles = listSamples(), sampleNames = c("first", "second"), pairedEnd = FALSE, greylist = TRUE),
+                 "greylist stored in the regions is used")
+  expect_equal(reused$library.size, stored$library.size)
+  expect_null(S4Vectors::metadata(reused)$greylist)
+
+  # Without the read filter the stored list still describes the regions, and the reads stay
+  kept <- listCounts(regions = once, discardListedReads = FALSE)
+  expect_length(kept@greylist, 1)
+  expect_equal(kept$library.size, plain$library.size)
+})
+
+
+test_that("the stored greylist follows the counts into the fit, the results and the scores", {
+
+  counts <- exampleCounts()
+  greylist <- GenomicRanges::GRanges("chr12", IRanges::IRanges(1, 1000))
+  counts@greylist <- greylist
+
+  fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+  expect_identical(fit@greylist, greylist)
+  expect_identical(fitCounts(fit)@greylist, greylist)
+
+  expect_identical(testRegions(fit, contrast = exampleContrast(), verbose = FALSE)@greylist, greylist)
+  expect_identical(testRegionSets(fit, contrast = exampleContrast(), verbose = FALSE)@greylist, greylist)
+  expect_identical(scoreRegionSets(counts, verbose = FALSE)@greylist, greylist)
+  expect_identical(counts[, 1:2]@greylist, greylist)
 })
 
 

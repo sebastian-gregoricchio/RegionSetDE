@@ -283,6 +283,7 @@ scoreRegionSets <-
                    summary = summary,
                    per.basepair = perBasepair,
                    blacklist = counts@blacklist,
+                   greylist = counts@greylist,
                    whitelist = counts@whitelist,
                    genome.assembly = counts@genome.assembly,
                    seqlevels.style = counts@seqlevels.style,

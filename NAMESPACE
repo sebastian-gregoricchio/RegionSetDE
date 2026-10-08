@@ -109,6 +109,7 @@ exportMethods(resultsTable)
 exportMethods(scoreTable)
 exportMethods(show)
 exportMethods(tileTable)
+exportMethods(updateObject)
 importClassesFrom(GenomicRanges,GRanges)
 importClassesFrom(GenomicRanges,GRangesList)
 importClassesFrom(SummarizedExperiment,RangedSummarizedExperiment)
@@ -120,12 +121,14 @@ importFrom(BiocGenerics,
   strand,
   unique,
   unlist,
+  updateObject,
   width
 )
 importFrom(BiocParallel,
   MulticoreParam,
   SerialParam,
   SnowParam,
+  bpRNGseed,
   bplapply
 )
 importFrom(GenomeInfoDb,
@@ -327,8 +330,10 @@ importFrom(limma,
   voom
 )
 importFrom(methods,
+  "slot<-",
   .hasSlot,
   as,
+  callNextMethod,
   coerce,
   is,
   isClass,

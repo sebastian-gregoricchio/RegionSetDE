@@ -137,6 +137,7 @@ The result is an S4 object of class `RegionSetDE`. The slots that matter in an a
 | ---------------: | :---------- | :---------- |
 | *regions*         | `regionRanges()`   | `GRangesList` with one element per region set, named |
 | *blacklist*       |                    | the exclusion regions applied, `NULL` until `applyBlacklist()` runs |
+| *greylist*        |                    | the greylisted regions, `NULL` until `applyGreylist()` runs |
 | *whitelist*       |                    | the regions kept, `NULL` until `applyWhitelist()` runs |
 | *genome.assembly* | `genomeAssembly()` | assembly string, or `NULL` |
 | *seqlevels.style* |                    | naming style the sets were harmonised to |

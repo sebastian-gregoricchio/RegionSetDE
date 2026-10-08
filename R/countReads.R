@@ -21,7 +21,7 @@
 #' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, written in either naming style, \code{chrM} and \code{MT} both reaching the mitochondrial genome of a file naming it either way, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. A name matching no chromosome once converted raises a warning, since it would leave that chromosome inside the library sizes without a word. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.
 #' @param blacklist Regions of the assembly that must be dropped before the counting, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}, when there is one. Default: \code{NULL}.
 #' @param greylist Either a logical value or the regions of a greylist. \code{TRUE} builds the greylist from the inputs of the samples with \code{\link{makeGreylist}}, at its default settings and with the read filters of this call, and stops when no sample has an input. A greylist already built is accepted in the same forms as \code{blacklist}, which is the way to use other settings. The regions overlapping it are removed as \code{\link{applyGreylist}} removes them. Default: \code{FALSE}, no greylist is applied.
-#' @param discardListedReads Logical value: \code{TRUE} ignores the reads lying on the blacklist and on the greylist, the way \code{discardRegions} does, so that they enter neither the counts nor the library sizes. It covers the lists given here, the blacklist stored in \code{regionSet} by \code{\link{applyBlacklist}} or \code{\link{loadConsensusPeaks}}, and the greylist of a consensus. \code{FALSE} removes the regions and leaves the reads in the library sizes. Default: \code{TRUE}.
+#' @param discardListedReads Logical value: \code{TRUE} ignores the reads lying on the blacklist and on the greylist, the way \code{discardRegions} does, so that they enter neither the counts nor the library sizes. It covers the lists given here and those stored in \code{regionSet} by \code{\link{applyBlacklist}}, \code{\link{applyGreylist}} or \code{\link{loadConsensusPeaks}}. \code{FALSE} removes the regions and leaves the reads in the library sizes. Default: \code{TRUE}.
 #' @param discardRegions \code{GRanges} with further regions whose reads must be ignored, on top of the lists handled by \code{discardListedReads}. A fragment is dropped when one of its reads starts inside them. Unlike \code{blacklist}, it removes no region. Default: \code{NULL}.
 #' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.
 #' @param inputFiles Character vector with the path of the input BAM file of every sample, \code{NA} for a sample without input. One input can serve several samples and is counted once. Default: \code{NULL}, the \code{input} column of the sample sheet or of \code{sampleMetadata}, when there is one.
@@ -32,7 +32,7 @@
 #' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist}.
+#' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist} as \code{\link{makeGreylist}} returned it. The lists applied, here or before, are in the \code{blacklist} and \code{greylist} slots.
 #'
 #' @details Regions shared by several sets are counted only once and the values are then copied to every set they belong to, which keeps the running time proportional to the number of distinct regions.
 #'
@@ -42,7 +42,7 @@
 #'
 #' The blacklist and the greylist act before the counting, and on two things. The regions overlapping them are removed, as \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} do: taking rows out of a counts object would leave library sizes, inputs and summits computed on regions that are no longer there, which is why those two functions refuse it. With \code{discardListedReads = TRUE} the reads lying on the lists are ignored as well. These regions collect reads in amounts that change from one sample to the next, so leaving them in the library sizes shifts the scaling of each sample by a different amount. \code{discarded.reads} tells how many fragments each sample lost this way, and \code{library.size} plus \code{discarded.reads} is the library size the sample would have with nothing discarded.
 #'
-#' Lists given here add to the ones the object already carries. A blacklist is merged with the stored one, and the reads of all of them are discarded together with those of \code{discardRegions}. A greylist applied beforehand with \code{\link{applyGreylist}} leaves only its size in the object, so it has to be passed again through \code{greylist} for its reads to be ignored. \code{greylist = TRUE} reuses the greylist of a consensus built by \code{\link{loadConsensusPeaks}} rather than building a second one. A set left without any region by the lists is dropped with a warning.
+#' Lists given here add to the ones the object already carries: a blacklist is merged with the stored blacklist, a greylist with the stored greylist, and the reads of all of them are discarded together with those of \code{discardRegions}. \code{greylist = TRUE} uses the greylist already stored in \code{regionSet}, by \code{\link{applyGreylist}} or \code{\link{loadConsensusPeaks}}, rather than building a second one. A set left without any region by the lists is dropped with a warning.
 #'
 #' Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to their fragment length, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
 #'
@@ -252,9 +252,9 @@ countReads <-
     #------------------------#
     # Blacklist and greylist #
     #------------------------#
-    # The greylist of a consensus is already in the object, the peaks were cleaned against it
-    storedGreylist <- if (methods::is(regionSet, "RegionSetDE")) {regionSet@consensus$greylist} else {NULL}
-    greylistSource <- if (is.null(storedGreylist)) {"none"} else {"consensus"}
+    # A greylist applied beforehand, or the one a consensus was cleaned against, is already in the object
+    storedGreylist <- if (methods::is(regionSet, "RegionSetDE")) {regionSet@greylist} else {NULL}
+    greylistSource <- if (is.null(storedGreylist)) {"none"} else {"stored"}
     builtGreylist <- NULL
 
     if (isTRUE(greylist)) {
@@ -262,7 +262,7 @@ countReads <-
 
       if (!is.null(storedGreylist)) {
         if (isTRUE(verbose)) {
-          message("The greylist the consensus was built with is used, no other one is built.")
+          message("The greylist stored in the regions is used, no other one is built.")
         }
       } else {
         greylistInputs <- .resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)
@@ -328,9 +328,9 @@ countReads <-
     }
 
     # The reads lying on the lists the regions were cleaned against stay out of the counts and of the
-    # library sizes, with those of 'discardRegions'. The stored blacklist already includes the one given here
+    # library sizes, with those of 'discardRegions'. The stored lists already include the ones given here
     listedDiscard <- if (isTRUE(discardListedReads)) {
-      list(listedRegions$provenance$blacklist, listedRegions$lists$greylist, storedGreylist)
+      list(listedRegions$provenance$blacklist, listedRegions$provenance$greylist)
     } else {
       list()
     }

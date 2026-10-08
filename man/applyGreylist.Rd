@@ -36,15 +36,15 @@ applyGreylist(
 \item{verbose}{Logical value to indicate whether the filtering messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-An object of the same class as \code{regionSet}. For a \code{RegionSetDE} object the step is added to the \code{filtering.log} as \code{"greylist"}, and the number of greylisted regions and the bases they cover are stored in \code{parameters$greylist}.
+An object of the same class as \code{regionSet}. For a \code{RegionSetDE} object the greylist is stored in the \code{greylist} slot, merged with the one already there, the step is added to the \code{filtering.log} as \code{"greylist"}, and the number of regions of the stored greylist and the bases they cover go to \code{parameters$greylist}.
 }
 \description{
-Removes from every region set the regions overlapping a greylist, typically the one built from the input libraries by \code{\link{makeGreylist}}, or one exported by another tool as a BED-like file. It works as \code{\link{applyBlacklist}} does, but the step is recorded as a greylist and the blacklist already stored in the object is left as it is.
+Removes from every region set the regions overlapping a greylist, typically the one built from the input libraries by \code{\link{makeGreylist}}, or one exported by another tool as a BED-like file. It works as \code{\link{applyBlacklist}} does, but the list goes to the \code{greylist} slot and the step is recorded as a greylist, while the blacklist already stored in the object is left as it is.
 }
 \details{
 A greylist removes what the inputs flag as artefacts, and for broad marks some of what it flags is genuine signal: heterochromatin marks such as H3K9me3 sit on satellites and repeats, where inputs pile up too. \code{trimRegions = TRUE} cuts the greylisted stretch out of a broad domain and keeps the rest of it, and \code{minOverlapFraction} removes only the regions mostly covered by the greylist. The messages report how many regions each set keeps, which is the number to look at before going further.
 
-The regions of the greylist are not kept in the object, only their number. To have \code{\link{countReads}} leave their reads out of the counts and of the library sizes, pass the greylist to its \code{greylist} argument, which also removes the regions and makes this call unnecessary.
+\code{\link{countReads}} reads the stored greylist to leave its reads out of the counts and of the library sizes, as it does with the blacklist. The \code{greylist} argument of \code{\link{countReads}} does the work of this function at the counting step, so the two need not be combined.
 }
 \examples{
 regionTable <- loadExampleData("regions", verbose = FALSE)

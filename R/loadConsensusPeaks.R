@@ -14,22 +14,25 @@
 #' @param seqlevelsStyle String indicating the chromosome naming style, one among \code{"UCSC"}, \code{"Ensembl"} or \code{"NCBI"}, or \code{NULL} to keep the names as they are. Default: \code{"UCSC"}.
 #' @param genomeAssembly String indicating the genome assembly to store with the regions, e.g. \code{"hg38"}. Default: \code{NULL}.
 #' @param nThreads Number of threads. The groups with more than one sample are built side by side, one worker per group, and the threads left over go to the calibration of the threshold inside each group when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Default: \code{1}.
+#' @param seed Number seeding the random numbers of the calibration, when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Every group draws its permutations from it, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of threads. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #' @param ... Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.
 #'
-#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot, the size of the greylist to \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}.
+#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot, the greylist to the \code{greylist} slot with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
 #'
 #' @details The consensus is built group by group and then pooled, rather than once over all the samples. A single requirement over all the libraries, such as a peak in at least two of them, favours the larger group, while the same requirement applied within each group treats them alike, and the union keeps the regions found in one group only. A group with a single sample has no replicate to agree with, and its peaks stand for the group as they are.
 #'
 #' The peaks are read by \code{consensusRegions}, which keeps the standard chromosomes only, as \code{GenomeInfoDb::keepStandardChromosomes} defines them: scaffolds, patches and unplaced contigs are dropped, and so are chromosomes whose names it does not recognise.
 #'
-#' The peaks overlapping \code{blacklist} and \code{greylist} are removed before the consensus, not after it. An artefact lying next to a genuine peak would otherwise merge with it, and removing the merged region afterwards would take the genuine peak away as well. The blacklist is applied first and the greylist to the peaks left, so a peak lying on both is counted as blacklisted. The two lists are kept apart because they say different things: a blacklist describes the assembly and is the same for every experiment, a greylist describes the inputs of this one. Both are recorded the way \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} record them, so the counts, the fit and the results built from the object carry the blacklist with them and \code{\link{exportResults}} writes it down. \code{consensusData(x)$removed} holds the peaks taken out, with the sample they came from and the list that removed them, and \code{consensusData(x)$samples} their number per sample. A blacklist built for another assembly than \code{genomeAssembly} is refused, as \code{\link{applyBlacklist}} refuses it.
+#' The peaks overlapping \code{blacklist} and \code{greylist} are removed before the consensus, not after it. An artefact lying next to a genuine peak would otherwise merge with it, and removing the merged region afterwards would take the genuine peak away as well. The blacklist is applied first and the greylist to the peaks left, so a peak lying on both is counted as blacklisted. The two lists are kept apart because they say different things: a blacklist describes the assembly and is the same for every experiment, a greylist describes the inputs of this one. Both are recorded the way \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} record them, so the counts, the fit and the results built from the object carry the two lists with them, and \code{\link{countReads}} leaves their reads out of the library sizes. \code{consensusData(x)$removed} holds the peaks taken out, with the sample they came from and the list that removed them, and \code{consensusData(x)$samples} their number per sample. A blacklist built for another assembly than \code{genomeAssembly} is refused, as \code{\link{applyBlacklist}} refuses it.
 #'
 #' With \code{regionMode = "split"} the consensus regions are assigned to the sets of \code{regionSets} in the order they are given, a region overlapping two sets going to the first one. The sets then describe classes of peaks, such as promoter and distal ones, and \code{\link{testRegionSets}} can compare them. With \code{regionMode = "replace"} the counted regions are those of \code{regionSets}, and the peaks only tell which of them are occupied in each group.
 #'
 #' The occupancy columns describe where the peaks were called, and they are a poor basis for a set of regions to test. A set of the regions found in one group only was selected on the signal of that group, so a test of its change between the groups answers a question already settled by the selection.
 #'
-#' The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident. The random numbers of the calibration come from \code{BiocParallel}, which gives each group a stream of its own, so a \code{set.seed()} before the call returns the same consensus whatever the number of threads.
+#' The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident.
+#'
+#' The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} gives every group a seeded back end, so that the same seed returns the same consensus whatever the number of threads, and leaves the random numbers of the session as they were. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BPPARAM} passed in \code{...} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BPPARAM} passed in \code{...} is used as it is, so \code{seed} is ignored with it, with a warning.
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
@@ -68,7 +71,7 @@
 #' @importFrom BiocGenerics width
 #' @importFrom GenomeInfoDb seqlevels
 #' @importFrom S4Vectors mcols mcols<-
-#' @importFrom BiocParallel bplapply
+#' @importFrom BiocParallel bplapply bpRNGseed
 #' @importFrom methods is validObject
 #'
 #' @export loadConsensusPeaks
@@ -84,6 +87,7 @@ loadConsensusPeaks <-
            seqlevelsStyle = "UCSC",
            genomeAssembly = NULL,
            nThreads = 1,
+           seed = NULL,
            verbose = TRUE,
            ...) {
 
@@ -121,6 +125,10 @@ loadConsensusPeaks <-
 
     if ("excludeRegions" %in% names(consensusArguments)) {
       stop("The 'excludeRegions' parameter has been replaced by 'blacklist' and 'greylist', which take the two lists separately.", call. = FALSE)
+    }
+
+    if (!is.null(seed) && (!is.numeric(seed) | length(seed) != 1 || !is.finite(seed))) {
+      stop("The 'seed' parameter must be a single number, or NULL.", call. = FALSE)
     }
 
     reservedArguments <- intersect(names(consensusArguments), c("peaks", "sampleNames"))
@@ -249,6 +257,34 @@ loadConsensusPeaks <-
     groupSizes <- vapply(groupLevels, function(groupName) {sum(sampleTable$group == groupName)}, integer(1))
     multiGroups <- groupLevels[groupSizes > 1]
 
+    # Only the calibration draws random numbers, and the record says where they came from.
+    # A back end of the user is handed over untouched, so its own seed, or the lack of one, decides
+    userBPPARAM <- consensusArguments$BPPARAM
+    userRNGseed <- if (methods::is(userBPPARAM, "BiocParallelParam")) {BiocParallel::bpRNGseed(userBPPARAM)} else {NULL}
+
+    calibrated <- isTRUE(consensusArguments$calibrate) & length(multiGroups) > 0
+
+    if (calibrated & !is.null(seed) & !is.null(userBPPARAM)) {
+      warning("The 'seed' parameter is ignored when a BPPARAM is passed on to runConsensus: give the seed to the back end as its RNGseed.", call. = FALSE)
+    }
+
+    seedSource <- if (!calibrated) {
+      "none"
+    } else if (!is.null(userRNGseed)) {
+      "BPPARAM"
+    } else if (!is.null(seed) & is.null(userBPPARAM)) {
+      "seed"
+    } else {
+      "unseeded"
+    }
+
+    recordedSeed <- switch(seedSource, "seed" = seed, "BPPARAM" = userRNGseed, NULL)
+
+    if (isTRUE(verbose) & seedSource == "unseeded") {
+      message("The calibration draws random positions and no seed was given: the consensus may change from one call to the next. ",
+              "Set 'seed' to build it again identically.")
+    }
+
     # A single sample has no replicate to agree with, its peaks stand for the group
     for (groupName in groupLevels[groupSizes == 1]) {
       groupSamples <- sampleTable$sample[sampleTable$group == groupName]
@@ -268,7 +304,12 @@ loadConsensusPeaks <-
                groupSamples <- sampleTable$sample[sampleTable$group == groupName]
 
                groupArguments <- consensusArguments
-               if (is.null(groupArguments$BPPARAM)) {groupArguments$BPPARAM <- workerPlan$inner}
+
+               # Every group draws the permutations of its calibration from the same seed, so that its consensus
+               # depends neither on the number of threads nor on the other groups
+               if (is.null(groupArguments$BPPARAM)) {
+                 groupArguments$BPPARAM <- if (is.null(seed)) {workerPlan$inner} else {.makeParallelParam(nThreads = workerPlan$inner, RNGseed = seed)}
+               }
                if (is.null(groupArguments$verbose)) {groupArguments$verbose <- FALSE}
 
                # runConsensus renames the chromosomes to UCSC on its own, which would leave the consensus in
@@ -293,11 +334,13 @@ loadConsensusPeaks <-
               if (workerPlan$inner > 1) {paste(",", workerPlan$inner, "threads each for the calibration")} else {""}, ".")
     }
 
-    # The groups do not depend on each other, so they run side by side
+    # The groups do not depend on each other, so they run side by side. With a seed the back end of the groups gets it
+    # too, so that not even its start-up draws from the random numbers of the session
     groupObjects <- BiocParallel::bplapply(X = groupArgumentList,
                                            FUN = .runGroupConsensus,
                                            BPPARAM = .makeParallelParam(nThreads = workerPlan$outer,
-                                                                        tasks = length(multiGroups)))
+                                                                        tasks = length(multiGroups),
+                                                                        RNGseed = seed))
 
     for (groupName in multiGroups) {
       consensusRanges <- consensusRegions::consensusRanges(groupObjects[[groupName]])
@@ -407,6 +450,7 @@ loadConsensusPeaks <-
     }
 
     if (!is.null(listRanges$greylist)) {
+      regionSet@greylist <- listRanges$greylist
       regionSet@parameters$greylist <- list(n.regions = length(listRanges$greylist),
                                             covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))),
                                             applied.to = "peaks")
@@ -425,6 +469,8 @@ loadConsensusPeaks <-
                                                     n.groups = length(groupLevels),
                                                     n.blacklist.regions = if (is.null(listRanges$blacklist)) {0L} else {length(listRanges$blacklist)},
                                                     n.greylist.regions = if (is.null(listRanges$greylist)) {0L} else {length(listRanges$greylist)},
+                                                    seed = recordedSeed,
+                                                    seed.source = seedSource,
                                                     consensusArguments = Filter(is.atomic, consensusArguments))
 
     methods::validObject(regionSet)

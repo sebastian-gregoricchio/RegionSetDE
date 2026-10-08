@@ -12,6 +12,8 @@ Virtual class collecting the filters and the parameters shared by all the Region
 \describe{
 \item{\code{blacklist}}{\code{GRanges} with the regions removed by \code{\link{applyBlacklist}}, \code{NULL} when no blacklist has been applied.}
 
+\item{\code{greylist}}{\code{GRanges} with the regions removed by \code{\link{applyGreylist}}, by the \code{greylist} argument of \code{\link{countReads}} or by \code{\link{loadConsensusPeaks}}, \code{NULL} when no greylist has been applied. Several greylists applied one after the other are merged.}
+
 \item{\code{whitelist}}{\code{GRanges} with the regions used by \code{\link{applyWhitelist}} to restrict the sets, \code{NULL} when no whitelist has been applied.}
 
 \item{\code{genome.assembly}}{String with the genome assembly of the regions, \code{NULL} when not declared.}

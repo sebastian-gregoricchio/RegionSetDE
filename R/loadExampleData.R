@@ -41,6 +41,8 @@
 #' @seealso \code{\link{loadRegions}}, \code{\link{splitLoadRegions}}, \code{\link{applyBlacklist}}, \code{\link{countReads}}, \code{\link{countBackground}}, \code{\link{fitRegions}}
 #'
 #' @importFrom stats as.formula
+#' @importFrom methods is
+#' @importFrom BiocGenerics updateObject
 #'
 #' @export loadExampleData
 
@@ -89,7 +91,14 @@ loadExampleData <-
         stop("The example object '", objectName, "' is not installed with RegionSetDE, please reinstall the package.", call. = FALSE)
       }
 
-      return(readRDS(filePath))
+      # Objects saved by an earlier version of the package are brought to the current definition of their class
+      storedObject <- readRDS(filePath)
+
+      if (methods::is(storedObject, "RegionSetDE.provenance")) {
+        storedObject <- BiocGenerics::updateObject(storedObject)
+      }
+
+      return(storedObject)
     }
 
     if (dataset != "fit") {

@@ -54,7 +54,7 @@ Suggests:
   BiocManager,
   circlize,
   ComplexHeatmap,
-  consensusRegions,
+  consensusRegions (>= 0.99.2),
   covr,
   DESeq2,
   ggrepel,

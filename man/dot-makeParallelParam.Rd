@@ -4,12 +4,7 @@
 \alias{.makeParallelParam}
 \title{.makeParallelParam}
 \usage{
-.makeParallelParam(
-  nThreads = 1,
-  tasks = 0L,
-  progressBar = FALSE,
-  RNGseed = NULL
-)
+.makeParallelParam(nThreads = 1, tasks = 0L, progressBar = FALSE)
 }
 \arguments{
 \item{nThreads}{Number of threads. Default: \code{1}.}
@@ -17,8 +12,6 @@
 \item{tasks}{Number of tasks the work is split into, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the threads become free. Default: \code{0}, one task per thread.}
 
 \item{progressBar}{Logical value to indicate whether the back end must draw its progress bar, which advances by one step for every task that comes back. Default: \code{FALSE}.}
-
-\item{RNGseed}{Number seeding the random number streams of the tasks, see \code{\link[BiocParallel]{SerialParam}}. The same seed gives the same draws on any number of threads, and leaves the random numbers of the session untouched. Default: \code{NULL}, the stream \code{BiocParallel} keeps for the session, which \code{set.seed()} does not reset.}
 }
 \value{
 A \code{BiocParallelParam} object.

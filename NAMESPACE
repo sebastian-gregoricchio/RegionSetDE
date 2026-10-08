@@ -389,6 +389,7 @@ importFrom(utils,
   combn,
   head,
   modifyList,
+  packageVersion,
   read.delim,
   read.table,
   write.table

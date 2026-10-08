@@ -274,7 +274,6 @@
 #' @param nThreads Number of threads. Default: \code{1}.
 #' @param tasks Number of tasks the work is split into, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the threads become free. Default: \code{0}, one task per thread.
 #' @param progressBar Logical value to indicate whether the back end must draw its progress bar, which advances by one step for every task that comes back. Default: \code{FALSE}.
-#' @param RNGseed Number seeding the random number streams of the tasks, see \code{\link[BiocParallel]{SerialParam}}. The same seed gives the same draws on any number of threads, and leaves the random numbers of the session untouched. Default: \code{NULL}, the stream \code{BiocParallel} keeps for the session, which \code{set.seed()} does not reset.
 #'
 #' @return A \code{BiocParallelParam} object.
 #'
@@ -287,8 +286,7 @@
 .makeParallelParam <-
   function(nThreads = 1,
            tasks = 0L,
-           progressBar = FALSE,
-           RNGseed = NULL) {
+           progressBar = FALSE) {
     nThreads <- as.integer(nThreads[1])
     progressBar <- isTRUE(progressBar)
 
@@ -297,16 +295,16 @@
     }
 
     if (nThreads == 1) {
-      return(BiocParallel::SerialParam(progressbar = progressBar, RNGseed = RNGseed))
+      return(BiocParallel::SerialParam(progressbar = progressBar))
     }
 
     # Windows has no forking, sockets give the same result at a higher start-up cost
     if (.Platform$OS.type == "windows") {
-      return(BiocParallel::SnowParam(workers = nThreads, tasks = as.integer(tasks), progressbar = progressBar, RNGseed = RNGseed))
+      return(BiocParallel::SnowParam(workers = nThreads, tasks = as.integer(tasks), progressbar = progressBar))
     }
 
     # Forked workers already see the options of the session, sending them along with every task only costs time
-    return(BiocParallel::MulticoreParam(workers = nThreads, tasks = as.integer(tasks), exportglobals = FALSE, progressbar = progressBar, RNGseed = RNGseed))
+    return(BiocParallel::MulticoreParam(workers = nThreads, tasks = as.integer(tasks), exportglobals = FALSE, progressbar = progressBar))
   } # END function
 
 

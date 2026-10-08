@@ -226,6 +226,12 @@ test_that("a seed makes a calibrated consensus reproducible on any number of thr
   expect_identical(seeded@parameters$loadConsensusPeaks$seed, 3)
   expect_identical(seeded@parameters$loadConsensusPeaks$seed.source, "seed")
 
+  # The seed reached consensusRegions, which keeps it with the calibration of every group
+  for (consensusObject in consensusData(seeded)$objects) {
+    expect_equal(consensusObject@calibration$seed, 3)
+    expect_identical(consensusObject@calibration$seedSource, "seed")
+  }
+
   if (.Platform$OS.type != "windows") {
     expect_identical(nullDraws(buildCalibrated(seed = 3, nThreads = 2)), nullDraws(seeded))
   }

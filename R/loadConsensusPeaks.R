@@ -14,7 +14,7 @@
 #' @param seqlevelsStyle String indicating the chromosome naming style, one among \code{"UCSC"}, \code{"Ensembl"} or \code{"NCBI"}, or \code{NULL} to keep the names as they are. Default: \code{"UCSC"}.
 #' @param genomeAssembly String indicating the genome assembly to store with the regions, e.g. \code{"hg38"}. Default: \code{NULL}.
 #' @param nThreads Number of threads. The groups with more than one sample are built side by side, one worker per group, and the threads left over go to the calibration of the threshold inside each group when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Default: \code{1}.
-#' @param seed Number seeding the random numbers of the calibration, when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Every group draws its permutations from it, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of threads. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.
+#' @param seed Number seeding the random numbers of the calibration, when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. It goes to \code{runConsensus} for every group, which hands it to the \code{BiocParallel} back end of the permutations as its \code{RNGseed}, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of threads. Needs consensusRegions 0.99.2 or later. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #' @param ... Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.
 #'
@@ -32,7 +32,7 @@
 #'
 #' The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident.
 #'
-#' The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} gives every group a seeded back end, so that the same seed returns the same consensus whatever the number of threads, and leaves the random numbers of the session as they were. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BPPARAM} passed in \code{...} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BPPARAM} passed in \code{...} is used as it is, so \code{seed} is ignored with it, with a warning.
+#' The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} is passed on to \code{consensusRegions::runConsensus} in every group, which gives it to the back end of the permutations as its \code{RNGseed}: the same seed returns the same consensus whatever the number of threads, and the random numbers of the session are left as they were. Neither package calls \code{set.seed()}. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BPPARAM} passed in \code{...} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BPPARAM} passed in \code{...} is used as it is, so \code{seed} is ignored with it, with a warning.
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
@@ -73,6 +73,7 @@
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom BiocParallel bplapply bpRNGseed
 #' @importFrom methods is validObject
+#' @importFrom utils packageVersion
 #'
 #' @export loadConsensusPeaks
 
@@ -280,6 +281,12 @@ loadConsensusPeaks <-
 
     recordedSeed <- switch(seedSource, "seed" = seed, "BPPARAM" = userRNGseed, NULL)
 
+    # Earlier versions of consensusRegions would take the seed for an argument of buildConsensus, and stop there
+    if (seedSource == "seed" && utils::packageVersion("consensusRegions") < "0.99.2") {
+      stop("The 'seed' parameter needs consensusRegions 0.99.2 or later, which passes it on to the calibration. ",
+           "Update consensusRegions, or leave 'seed' out.", call. = FALSE)
+    }
+
     if (isTRUE(verbose) & seedSource == "unseeded") {
       message("The calibration draws random positions and no seed was given: the consensus may change from one call to the next. ",
               "Set 'seed' to build it again identically.")
@@ -304,13 +311,12 @@ loadConsensusPeaks <-
                groupSamples <- sampleTable$sample[sampleTable$group == groupName]
 
                groupArguments <- consensusArguments
-
-               # Every group draws the permutations of its calibration from the same seed, so that its consensus
-               # depends neither on the number of threads nor on the other groups
-               if (is.null(groupArguments$BPPARAM)) {
-                 groupArguments$BPPARAM <- if (is.null(seed)) {workerPlan$inner} else {.makeParallelParam(nThreads = workerPlan$inner, RNGseed = seed)}
-               }
+               if (is.null(groupArguments$BPPARAM)) {groupArguments$BPPARAM <- workerPlan$inner}
                if (is.null(groupArguments$verbose)) {groupArguments$verbose <- FALSE}
+
+               # Every group calibrates with the same seed, so that its consensus depends neither on the number of
+               # threads nor on the other groups. consensusRegions hands it to its back end as the RNGseed
+               if (seedSource == "seed") {groupArguments$seed <- seed}
 
                # runConsensus renames the chromosomes to UCSC on its own, which would leave the consensus in
                # one style and the peaks it came from in another, and every overlap between the two empty
@@ -334,13 +340,11 @@ loadConsensusPeaks <-
               if (workerPlan$inner > 1) {paste(",", workerPlan$inner, "threads each for the calibration")} else {""}, ".")
     }
 
-    # The groups do not depend on each other, so they run side by side. With a seed the back end of the groups gets it
-    # too, so that not even its start-up draws from the random numbers of the session
+    # The groups do not depend on each other, so they run side by side
     groupObjects <- BiocParallel::bplapply(X = groupArgumentList,
                                            FUN = .runGroupConsensus,
                                            BPPARAM = .makeParallelParam(nThreads = workerPlan$outer,
-                                                                        tasks = length(multiGroups),
-                                                                        RNGseed = seed))
+                                                                        tasks = length(multiGroups)))
 
     for (groupName in multiGroups) {
       consensusRanges <- consensusRegions::consensusRanges(groupObjects[[groupName]])

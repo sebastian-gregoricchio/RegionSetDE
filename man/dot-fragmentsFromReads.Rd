@@ -33,7 +33,7 @@
 \item{discard}{\code{IRanges} with the discarded regions of the chromosome, or \code{NULL}. Only for records of a single chromosome.}
 }
 \value{
-A list with the \code{start}, the \code{end} and the \code{point} of every fragment, the point being its centre for paired-end data and the 5' end of the read for single-end data, the \code{index} of the record each fragment comes from, and \code{mate.mapq.found}.
+A list with the \code{start}, the \code{end} and the \code{point} of every fragment, the point being its centre for paired-end data and the 5' end of the read for single-end data, the \code{index} of the record each fragment comes from, \code{discarded}, the number of fragments that passed the other filters and were dropped by the discarded regions, and \code{mate.mapq.found}.
 }
 \description{
 Turns the records returned by \code{scanBam} into fragments. Paired-end fragments are rebuilt from the first mate of each proper pair, single-end reads are extended from their 5' end to the fragment length. The records of a pair longer than the maximum, of a mate below the mapping quality, or starting in a discarded region are dropped.

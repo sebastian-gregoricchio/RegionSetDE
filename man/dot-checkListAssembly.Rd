@@ -4,7 +4,7 @@
 \alias{.checkListAssembly}
 \title{.checkListAssembly}
 \usage{
-.checkListAssembly(listInput, genomeAssembly, listLabel)
+.checkListAssembly(listInput, genomeAssembly, listLabel, regionLabel = "peaks")
 }
 \arguments{
 \item{listInput}{The list as given: a \code{GRanges}, a path, a data.frame, or a list of them.}
@@ -12,6 +12,8 @@
 \item{genomeAssembly}{String with the assembly of the peaks, or \code{NULL}.}
 
 \item{listLabel}{String with the name of the parameter the list came from.}
+
+\item{regionLabel}{String naming what the list is applied to in the message. Default: \code{"peaks"}.}
 }
 \value{
 Nothing, it stops when the two assemblies differ.

@@ -218,7 +218,7 @@
 #' @param progressBar Logical value to indicate whether a progress bar must be drawn, one step for every job that comes back. Default: \code{FALSE}.
 #' @param nThreads Number of threads. Default: \code{1}.
 #'
-#' @return A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
+#' @return A list with four elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{discarded}, the number of fragments of the same chromosomes that passed every other filter and were dropped by \code{discardRegions}; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -272,13 +272,14 @@
 
     countMatrix <- matrix(0L, nrow = length(ranges), ncol = length(bamFiles))
     librarySizes <- numeric(length(bamFiles))
+    discardedFragments <- numeric(length(bamFiles))
     mateMapqFound <- ifelse(pairedEnd, FALSE, NA)
 
     # One length per file, so that libraries of different fragment sizes are each extended to their own
     fragmentLength <- rep_len(as.integer(round(fragmentLength)), length(bamFiles))
 
     if (nrow(chromosomeTable) == 0) {
-      return(list(counts = countMatrix, library.size = librarySizes, mate.mapq.found = mateMapqFound))
+      return(list(counts = countMatrix, library.size = librarySizes, discarded = discardedFragments, mate.mapq.found = mateMapqFound))
     }
 
     #--------------------------#
@@ -370,10 +371,11 @@
       fileIndex <- jobResult$file.index
       countMatrix[jobResult$range.index, fileIndex] <- countMatrix[jobResult$range.index, fileIndex] + jobResult$counts
       librarySizes[fileIndex] <- librarySizes[fileIndex] + jobResult$total.fragments
+      discardedFragments[fileIndex] <- discardedFragments[fileIndex] + jobResult$discarded.fragments
       if (isTRUE(jobResult$mate.mapq.found)) {mateMapqFound[fileIndex] <- TRUE}
     }
 
-    return(list(counts = countMatrix, library.size = librarySizes, mate.mapq.found = mateMapqFound))
+    return(list(counts = countMatrix, library.size = librarySizes, discarded = discardedFragments, mate.mapq.found = mateMapqFound))
   } # END function
 
 
@@ -392,7 +394,7 @@
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
 #' @param countMode String, either \code{"overlap"} or \code{"bin"}, see \code{.countBamFragments}.
 #'
-#' @return A list with the \code{file.index} and \code{range.index} of the job, the \code{counts} of its ranges, the \code{total.fragments} that went through the filters and \code{mate.mapq.found}.
+#' @return A list with the \code{file.index} and \code{range.index} of the job, the \code{counts} of its ranges, the \code{total.fragments} that went through the filters, the \code{discarded.fragments} dropped by the discarded regions alone, and \code{mate.mapq.found}.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -421,6 +423,7 @@
 
     jobCounts <- integer(length(job$range.index))
     totalFragments <- 0
+    discardedFragments <- 0
     mateMapqFound <- FALSE
 
     if (nrow(pieces) == 0) {
@@ -428,6 +431,7 @@
                   range.index = job$range.index,
                   counts = jobCounts,
                   total.fragments = totalFragments,
+                  discarded.fragments = discardedFragments,
                   mate.mapq.found = mateMapqFound))
     }
 
@@ -463,6 +467,7 @@
       # An excluded chromosome is read for its ranges only, its fragments stay out of the library size
       if (pieces$in.library[i]) {
         totalFragments <- totalFragments + length(pieceFragments$start)
+        discardedFragments <- discardedFragments + pieceFragments$discarded
       }
 
       #--------------------------#
@@ -486,6 +491,7 @@
                 range.index = job$range.index,
                 counts = jobCounts,
                 total.fragments = totalFragments,
+                discarded.fragments = discardedFragments,
                 mate.mapq.found = mateMapqFound))
   } # END function
 
@@ -546,7 +552,7 @@
 #' @param chromosomeLength Numeric value, or one value per record, with the length of the chromosome the fragments are clipped to.
 #' @param discard \code{IRanges} with the discarded regions of the chromosome, or \code{NULL}. Only for records of a single chromosome.
 #'
-#' @return A list with the \code{start}, the \code{end} and the \code{point} of every fragment, the point being its centre for paired-end data and the 5' end of the read for single-end data, the \code{index} of the record each fragment comes from, and \code{mate.mapq.found}.
+#' @return A list with the \code{start}, the \code{end} and the \code{point} of every fragment, the point being its centre for paired-end data and the 5' end of the read for single-end data, the \code{index} of the record each fragment comes from, \code{discarded}, the number of fragments that passed the other filters and were dropped by the discarded regions, and \code{mate.mapq.found}.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -588,11 +594,18 @@
       readStarts <- list(reads$pos)
     }
 
-    # A read starting in a discarded region takes its whole fragment away
+    # A read starting in a discarded region takes its whole fragment away. The fragments lost here are
+    # counted apart, they are what the library size would hold without the discarded regions
+    discardedFragments <- 0
+
     if (!is.null(discard)) {
+      keptBefore <- sum(keep, na.rm = TRUE)
+
       for (readStart in readStarts) {
         keep <- keep & !IRanges::overlapsAny(IRanges::IRanges(start = readStart, width = 1), discard)
       }
+
+      discardedFragments <- keptBefore - sum(keep, na.rm = TRUE)
     }
 
     #--------------------------#
@@ -619,6 +632,7 @@
                 end = fragmentEnd,
                 point = as.integer(fragmentPoint),
                 index = which(keep),
+                discarded = discardedFragments,
                 mate.mapq.found = mateMapqFound))
   } # END function
 

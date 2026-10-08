@@ -20,6 +20,9 @@ countReads(
   minMapq = 20,
   removeDuplicates = TRUE,
   excludeChromosomes = NULL,
+  blacklist = NULL,
+  greylist = FALSE,
+  discardListedReads = TRUE,
   discardRegions = NULL,
   fullLibrarySize = TRUE,
   inputFiles = NULL,
@@ -62,7 +65,13 @@ countReads(
 
 \item{excludeChromosomes}{Character vector with the chromosomes left out of the library sizes, written in either naming style, \code{chrM} and \code{MT} both reaching the mitochondrial genome of a file naming it either way, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. A name matching no chromosome once converted raises a warning, since it would leave that chromosome inside the library sizes without a word. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.}
 
-\item{discardRegions}{\code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.}
+\item{blacklist}{Regions of the assembly that must be dropped before the counting, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}, when there is one. Default: \code{NULL}.}
+
+\item{greylist}{Either a logical value or the regions of a greylist. \code{TRUE} builds the greylist from the inputs of the samples with \code{\link{makeGreylist}}, at its default settings and with the read filters of this call, and stops when no sample has an input. A greylist already built is accepted in the same forms as \code{blacklist}, which is the way to use other settings. The regions overlapping it are removed as \code{\link{applyGreylist}} removes them. Default: \code{FALSE}, no greylist is applied.}
+
+\item{discardListedReads}{Logical value: \code{TRUE} ignores the reads lying on the blacklist and on the greylist, the way \code{discardRegions} does, so that they enter neither the counts nor the library sizes. It covers the lists given here, the blacklist stored in \code{regionSet} by \code{\link{applyBlacklist}} or \code{\link{loadConsensusPeaks}}, and the greylist of a consensus. \code{FALSE} removes the regions and leaves the reads in the library sizes. Default: \code{TRUE}.}
+
+\item{discardRegions}{\code{GRanges} with further regions whose reads must be ignored, on top of the lists handled by \code{discardListedReads}. A fragment is dropped when one of its reads starts inside them. Unlike \code{blacklist}, it removes no region. Default: \code{NULL}.}
 
 \item{fullLibrarySize}{Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.}
 
@@ -81,7 +90,7 @@ countReads(
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region.
+A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist}.
 }
 \description{
 Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the fragment length before the overlap is evaluated. The regions can be recentred on the summit of the signal, as DiffBind does with the peaks of a consensus, or cut into tiles of fixed width, in which case each tile becomes a row of the resulting object. The input libraries of the samples, when there are any, are counted over the same rows and stored beside the counts.
@@ -93,6 +102,10 @@ A paired-end fragment is counted in every region it overlaps, including the regi
 
 Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
 
+The blacklist and the greylist act before the counting, and on two things. The regions overlapping them are removed, as \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} do: taking rows out of a counts object would leave library sizes, inputs and summits computed on regions that are no longer there, which is why those two functions refuse it. With \code{discardListedReads = TRUE} the reads lying on the lists are ignored as well. These regions collect reads in amounts that change from one sample to the next, so leaving them in the library sizes shifts the scaling of each sample by a different amount. \code{discarded.reads} tells how many fragments each sample lost this way, and \code{library.size} plus \code{discarded.reads} is the library size the sample would have with nothing discarded.
+
+Lists given here add to the ones the object already carries. A blacklist is merged with the stored one, and the reads of all of them are discarded together with those of \code{discardRegions}. A greylist applied beforehand with \code{\link{applyGreylist}} leaves only its size in the object, so it has to be passed again through \code{greylist} for its reads to be ignored. \code{greylist = TRUE} reuses the greylist of a consensus built by \code{\link{loadConsensusPeaks}} rather than building a second one. A set left without any region by the lists is dropped with a warning.
+
 Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to their fragment length, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
 
 Single-end libraries rarely share the same fragment length, and a read extended too far spills into the neighbouring regions while one extended too little misses the centre of its own. The length can come from the pipeline that produced the files, as a column of the sample sheet, or from \code{fragmentLength = "auto"}, which runs the strand cross-correlation of \code{\link{estimateFragmentLength}} over the regions being counted. \code{\link{countBackground}} and \code{\link{countGreenlist}} reuse the lengths chosen here, sample by sample.
@@ -101,7 +114,7 @@ The inputs are counted with the same filters as the samples, over the same rows,
 
 A consensus of peaks has regions of every width, and a wide region collects more background than a narrow one around the same summit. With \code{summits}, every region is replaced by a window of fixed width centred on its summit, which is what DiffBind does by default. With \code{summitSource = "reads"} the summit is the middle of the highest stretch of fragment pileup in each sample, averaged over the samples with weights proportional to the height of their pileup, scaled by their depth, so that the samples carrying signal decide where it sits. With \code{summitSource = "peaks"} it is the average of the summits the peak caller wrote for the peaks overlapping the region, weighted by their significance, which needs no BAM file but works only for narrowPeak files. A region with neither reads nor peaks keeps its midpoint. The regions keep their identifiers, so each window can be traced back to the region it came from, and windows of neighbouring regions may overlap, as in DiffBind.
 
-Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
+Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, the lists, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
 
 A single \code{GRanges} is taken as one set of regions. It goes through \code{\link{loadRegions}} with its order and its chromosome names kept, the regions with identical coordinates collapsed into one, and the set is called \code{regions}. To give the set another name, to sort it or to split it into several sets, call \code{\link{loadRegions}} or \code{\link{splitLoadRegions}} first.
 }
@@ -122,6 +135,11 @@ counts <- countReads(peakRegions,
                      sampleMetadata = sampleSheet[, c("sample", "condition")],
                      verbose = FALSE)
 
+# The ENCODE blacklist on the way: its regions are removed and its reads ignored
+blacklist <- loadBlacklist("hg38", verbose = FALSE)
+cleanCounts <- countReads(peakRegions, sampleSheet = sampleSheet, blacklist = blacklist, verbose = FALSE)
+filteringLog(cleanCounts)
+
 # Windows of 401 bp centred on the summit of the reads, as DiffBind counts a consensus
 summitCounts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)
 head(SummarizedExperiment::rowRanges(summitCounts), 3)
@@ -132,7 +150,7 @@ head(SummarizedExperiment::rowData(tiledCounts), 3)
 
 }
 \seealso{
-\code{\link{estimateFragmentLength}}, \code{\link{countBigwig}}, \code{\link{loadCounts}}, \code{\link{countBackground}}, \code{\link{libInfo}}
+\code{\link{estimateFragmentLength}}, \code{\link{countBigwig}}, \code{\link{loadCounts}}, \code{\link{countBackground}}, \code{\link{libInfo}}, \code{\link{applyBlacklist}}, \code{\link{makeGreylist}}
 }
 \author{
 Sebastian Gregoricchio

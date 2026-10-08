@@ -86,6 +86,56 @@
 
 
 
+#' @title .poolStoredList
+#'
+#' @description Puts the list a filter has just applied together with the one the object already stores, so that the slot describes every call rather than the last one only. Blacklists add up, while whitelists restrict each other.
+#'
+#' @param storedList \code{GRanges} already stored in the object, or \code{NULL}.
+#' @param newList \code{GRanges} with the list just applied, already reduced.
+#' @param sharedOnly Logical value: \code{FALSE} returns the union of the two lists, as for a blacklist, \code{TRUE} the stretches they have in common, as for a whitelist. Default: \code{FALSE}.
+#'
+#' @return A \code{GRanges} without overlaps, \code{newList} itself when nothing was stored.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomicRanges GRanges granges intersect
+#' @importFrom GenomeInfoDb seqnames
+#' @importFrom IRanges ranges reduce
+#'
+#' @keywords internal
+#' @noRd
+
+.poolStoredList <-
+  function(storedList,
+           newList,
+           sharedOnly = FALSE) {
+
+    if (is.null(storedList)) {
+      return(newList)
+    }
+
+    combineLists <- function(firstList, secondList) {
+      if (isTRUE(sharedOnly)) {
+        return(GenomicRanges::intersect(firstList, secondList, ignore.strand = TRUE))
+      }
+      return(IRanges::reduce(c(firstList, secondList), ignore.strand = TRUE))
+    }
+
+    plainRanges <- function(gr) {
+      return(GenomicRanges::GRanges(seqnames = as.character(GenomeInfoDb::seqnames(gr)), ranges = IRanges::ranges(gr)))
+    }
+
+    # The sequence information is kept as long as the two lists agree on it. Lists loaded at different times
+    # may differ in the chromosome lengths or in the assembly tag, and are then combined on the names alone
+    pooledList <- suppressWarnings(tryCatch(expr = combineLists(GenomicRanges::granges(storedList), GenomicRanges::granges(newList)),
+                                            error = function(e) {return(combineLists(plainRanges(storedList), plainRanges(newList)))}))
+
+    return(pooledList)
+  } # END function
+
+
+
+
 #' @title .applyRegionFilter
 #'
 #' @description Internal function handling the input/output classes, the loading of the reference regions and the logging shared by \code{applyBlacklist}, \code{applyGreylist} and \code{applyWhitelist}.
@@ -185,7 +235,8 @@
     filterAssembly <- filterAssembly[!is.na(filterAssembly) & filterAssembly != ""]
     regionAssembly <- if (is.null(targetAssembly)) {character(0)} else {targetAssembly[!is.na(targetAssembly) & targetAssembly != ""]}
 
-    if (length(filterAssembly) == 1 & length(regionAssembly) == 1 && filterAssembly != regionAssembly) {
+    # GRCh38 and hg38 name the same assembly, the aliases are resolved before the comparison
+    if (length(filterAssembly) == 1 & length(regionAssembly) == 1 && .resolveGenomeName(filterAssembly) != .resolveGenomeName(regionAssembly)) {
       stop("The ", filterLabel, " was built for ", filterAssembly, " and the regions for ", regionAssembly,
            ". Overlapping them would match the chromosome names and nothing else. Clear the assembly with genome() on one of the two to force it.", call. = FALSE)
     }
@@ -280,11 +331,12 @@
                                                 trimRegions = trimRegions,
                                                 ignoreStrand = ignoreStrand)
 
+    # A second list adds to the one already stored, replacing it would lose track of the first.
     # The greylist leaves the stored blacklist alone, its size is kept with the parameters instead
     if (keepOverlapping == TRUE) {
-      regionSet@whitelist <- filterRegions
+      regionSet@whitelist <- .poolStoredList(storedList = regionSet@whitelist, newList = filterRegions, sharedOnly = TRUE)
     } else if (filterLabel == "blacklist") {
-      regionSet@blacklist <- filterRegions
+      regionSet@blacklist <- .poolStoredList(storedList = regionSet@blacklist, newList = filterRegions)
     } else {
       regionSet@parameters[[filterLabel]]$n.regions <- length(filterRegions)
       regionSet@parameters[[filterLabel]]$covered.bp <- sum(as.numeric(BiocGenerics::width(IRanges::reduce(filterRegions))))
@@ -292,6 +344,131 @@
 
     methods::validObject(regionSet)
     return(regionSet)
+  } # END function
+
+
+
+
+#' @title .applyCountingLists
+#'
+#' @description Applies a blacklist and a greylist to the region sets right before they are counted, for \code{countReads} and \code{countBigwig}. The regions overlapping a list are removed as \code{applyBlacklist} and \code{applyGreylist} remove them, the steps are recorded, and the sets left without any region are dropped.
+#'
+#' @param regionSet \code{RegionSetDE} object, \code{GRangesList} or named list of \code{GRanges}.
+#' @param blacklist A \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, or \code{NULL}.
+#' @param greylist Same forms as \code{blacklist}, or \code{NULL}.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
+#'
+#' @return A list with \code{regionSet}, the filtered regions in the class they came in; \code{provenance}, the list returned by \code{.provenanceSlots} with the lists and the steps recorded; and \code{lists}, the \code{blacklist} and the \code{greylist} as \code{GRanges}, \code{NULL} for a list that was not given.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocGenerics width
+#' @importFrom methods is
+#'
+#' @keywords internal
+#' @noRd
+
+.applyCountingLists <-
+  function(regionSet,
+           blacklist = NULL,
+           greylist = NULL,
+           verbose = TRUE) {
+
+    isRegionSet <- methods::is(regionSet, "RegionSetDE")
+    provenance <- .provenanceSlots(regionSet)
+    listRanges <- list(blacklist = NULL, greylist = NULL)
+
+    setSizes <- function(x) {
+      regionList <- if (methods::is(x, "RegionSetDE")) {as.list(x@regions)} else {as.list(x)}
+      return(vapply(regionList, length, numeric(1)))
+    }
+
+    for (listLabel in c("blacklist", "greylist")) {
+      listInput <- if (listLabel == "blacklist") {blacklist} else {greylist}
+
+      if (is.null(listInput)) {next}
+
+      # An empty list removes nothing, and it could not be loaded as a set of regions
+      if (methods::is(listInput, "GRanges") && length(listInput) == 0) {
+        if (isTRUE(verbose)) {message("The ", listLabel, " holds no region, nothing is removed.")}
+        next
+      }
+
+      # The filter would name the unnamed sets by itself, and the counting has to refuse them as it always did
+      if (is.null(names(setSizes(regionSet)))) {
+        stop("All the region sets must be named.", call. = FALSE)
+      }
+
+      .checkListAssembly(listInput = listInput, genomeAssembly = provenance$genome.assembly, listLabel = listLabel, regionLabel = "regions")
+      listRanges[[listLabel]] <- .loadExclusionRegions(excludeRegions = listInput, seqlevelsStyle = NULL, listLabel = listLabel)
+
+      sizeBefore <- setSizes(regionSet)
+
+      # The emptied sets are kept for now, they are handled once both lists have gone through
+      regionSet <- .applyRegionFilter(regionSet = regionSet,
+                                      filterSet = listRanges[[listLabel]],
+                                      keepOverlapping = FALSE,
+                                      overlapType = "any",
+                                      minOverlapBp = 1,
+                                      minOverlapFraction = 0,
+                                      trimRegions = FALSE,
+                                      ignoreStrand = TRUE,
+                                      emptySets = "keep",
+                                      verbose = verbose,
+                                      filterLabel = listLabel)
+
+      if (isRegionSet) {next}
+
+      # Plain ranges carry no history: the step is written here, the way the RegionSetDE object writes its own
+      sizeAfter <- setSizes(regionSet)
+
+      provenance$filtering.log <- rbind(provenance$filtering.log,
+                                        data.frame(step = listLabel,
+                                                   region.set = names(sizeBefore),
+                                                   n.before = sizeBefore,
+                                                   n.after = sizeAfter,
+                                                   n.removed = sizeBefore - sizeAfter,
+                                                   row.names = NULL,
+                                                   stringsAsFactors = FALSE))
+
+      if (listLabel == "blacklist") {
+        provenance$blacklist <- listRanges$blacklist
+      } else {
+        provenance$parameters$greylist <- list(n.regions = length(listRanges$greylist),
+                                               covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))))
+      }
+    }
+
+    if (is.null(listRanges$blacklist) & is.null(listRanges$greylist)) {
+      return(list(regionSet = regionSet, provenance = provenance, lists = listRanges))
+    }
+
+    #-----------------------#
+    # Handle the empty sets #
+    #-----------------------#
+    # A set without regions has no row to count, it leaves with a warning rather than stopping the whole counting
+    sizeAfter <- setSizes(regionSet)
+
+    if (all(sizeAfter == 0)) {
+      stop("The blacklist and the greylist left no region to count.", call. = FALSE)
+    }
+
+    if (any(sizeAfter == 0)) {
+      warning("Region sets left without any region by the blacklist or the greylist, and not counted: ",
+              paste(names(sizeAfter)[sizeAfter == 0], collapse = ", "), ".", call. = FALSE)
+
+      if (isRegionSet) {
+        regionSet@regions <- regionSet@regions[sizeAfter > 0]
+      } else {
+        regionSet <- regionSet[sizeAfter > 0]
+      }
+    }
+
+    if (isRegionSet) {
+      provenance <- .provenanceSlots(regionSet)
+    }
+
+    return(list(regionSet = regionSet, provenance = provenance, lists = listRanges))
   } # END function
 
 
@@ -313,6 +490,8 @@
 #'
 #' @return An object of the same class as the input, with the blacklisted regions removed. For a \code{RegionSetDE} object the blacklist and the filtering counts are stored in the corresponding slots.
 #'
+#' @details A blacklist applied to an object that already stores one adds to it. The \code{blacklist} slot then holds the two lists merged, and the \code{filtering.log} one step per call, so nothing is lost when an assay-specific list follows the ENCODE one. \code{\link{countReads}} reads the stored blacklist to leave its reads out of the counts and of the library sizes.
+#'
 #' @examples
 #' regionTable <- loadExampleData("regions", verbose = FALSE)
 #' exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
@@ -327,7 +506,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{applyWhitelist}}, \code{\link{loadRegions}}
+#' @seealso \code{\link{applyWhitelist}}, \code{\link{applyGreylist}}, \code{\link{loadBlacklist}}, \code{\link{countReads}}, \code{\link{loadRegions}}
 #'
 #' @export applyBlacklist
 
@@ -375,6 +554,8 @@ applyBlacklist <-
 #'
 #' @details A greylist removes what the inputs flag as artefacts, and for broad marks some of what it flags is genuine signal: heterochromatin marks such as H3K9me3 sit on satellites and repeats, where inputs pile up too. \code{trimRegions = TRUE} cuts the greylisted stretch out of a broad domain and keeps the rest of it, and \code{minOverlapFraction} removes only the regions mostly covered by the greylist. The messages report how many regions each set keeps, which is the number to look at before going further.
 #'
+#' The regions of the greylist are not kept in the object, only their number. To have \code{\link{countReads}} leave their reads out of the counts and of the library sizes, pass the greylist to its \code{greylist} argument, which also removes the regions and makes this call unnecessary.
+#'
 #' @examples
 #' regionTable <- loadExampleData("regions", verbose = FALSE)
 #'
@@ -392,7 +573,7 @@ applyBlacklist <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{makeGreylist}}, \code{\link{applyBlacklist}}, \code{\link{applyWhitelist}}
+#' @seealso \code{\link{makeGreylist}}, \code{\link{applyBlacklist}}, \code{\link{applyWhitelist}}, \code{\link{countReads}}
 #'
 #' @export applyGreylist
 
@@ -438,6 +619,8 @@ applyGreylist <-
 #' @param verbose Logical value to indicate whether the filtering messages must be printed. Default: \code{TRUE}.
 #'
 #' @return An object of the same class as the input, restricted to the whitelisted regions. For a \code{RegionSetDE} object the whitelist and the filtering counts are stored in the corresponding slots.
+#'
+#' @details A second whitelist restricts the first one: the regions left overlap both lists. The \code{whitelist} slot then holds the stretches the two lists have in common, and the \code{filtering.log} one step per call.
 #'
 #' @examples
 #' regionTable <- loadExampleData("regions", verbose = FALSE)

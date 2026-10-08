@@ -43,6 +43,8 @@ Removes from every region set the regions overlapping a greylist, typically the 
 }
 \details{
 A greylist removes what the inputs flag as artefacts, and for broad marks some of what it flags is genuine signal: heterochromatin marks such as H3K9me3 sit on satellites and repeats, where inputs pile up too. \code{trimRegions = TRUE} cuts the greylisted stretch out of a broad domain and keeps the rest of it, and \code{minOverlapFraction} removes only the regions mostly covered by the greylist. The messages report how many regions each set keeps, which is the number to look at before going further.
+
+The regions of the greylist are not kept in the object, only their number. To have \code{\link{countReads}} leave their reads out of the counts and of the library sizes, pass the greylist to its \code{greylist} argument, which also removes the regions and makes this call unnecessary.
 }
 \examples{
 regionTable <- loadExampleData("regions", verbose = FALSE)
@@ -61,7 +63,7 @@ trimmed <- applyGreylist(regions, greylist = greylist, trimRegions = TRUE, verbo
 
 }
 \seealso{
-\code{\link{makeGreylist}}, \code{\link{applyBlacklist}}, \code{\link{applyWhitelist}}
+\code{\link{makeGreylist}}, \code{\link{applyBlacklist}}, \code{\link{applyWhitelist}}, \code{\link{countReads}}
 }
 \author{
 Sebastian Gregoricchio

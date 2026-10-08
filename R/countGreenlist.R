@@ -20,7 +20,7 @@
 #'
 #' @return The input \code{RegionSetDE.counts} object with the greenlist counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$greenlist}. Its \code{colData} describes every library over the list: \code{totals}, the fragments counted, \code{regions.covered}, the regions holding at least one of them, and \code{library.fraction}, the share of the library they represent.
 #'
-#' @details The read filters are taken from \code{\link{countReads}} unless they are given here, for the same reason as in \code{\link{countBackground}}: a reference counted with another mapping quality or duplicate policy describes a library that is not the one under study.
+#' @details The read filters are taken from \code{\link{countReads}} unless they are given here, for the same reason as in \code{\link{countBackground}}: a reference counted with another mapping quality or duplicate policy describes a library that is not the one under study. The reads \code{\link{countReads}} discarded, those of the blacklist, of the greylist and of \code{discardRegions}, are left out here too.
 #'
 #' Each fragment is counted once, in the region holding its centre, as the background bins do, so the totals stay a share of the library and two neighbouring regions never claim the same fragment. The list is merged beforehand for the same reason. This is the quantification of the greenlist paper, which counted the lists with \code{multiBamSummary --centerReads}. Greenlist regions lying on chromosomes absent from the BAM files are dropped, and how many were is reported, which is what catches a list built for another assembly before it quietly halves the counts.
 #'
@@ -186,6 +186,7 @@ countGreenlist <-
                                           minMapq = minMapq,
                                           removeDuplicates = removeDuplicates,
                                           excludeChromosomes = NULL,
+                                          discardRegions = .storedDiscardRegions(counts = counts, targetSeqlevels = bamSeqlevels),
                                           fullLibrarySize = FALSE,
                                           countMode = "bin",
                                           progressBar = isTRUE(verbose) & isTRUE(progressBar),

@@ -41,6 +41,9 @@ An object of the same class as the input, restricted to the whitelisted regions.
 \description{
 Restricts every region set to the regions overlapping a whitelist, for instance a set of accessible or mappable regions. The whitelist can be provided as a BED-like file, a \code{GRanges} or a data.frame.
 }
+\details{
+A second whitelist restricts the first one: the regions left overlap both lists. The \code{whitelist} slot then holds the stretches the two lists have in common, and the \code{filtering.log} one step per call.
+}
 \examples{
 regionTable <- loadExampleData("regions", verbose = FALSE)
 

@@ -19,7 +19,10 @@
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
 #' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, written in either naming style, \code{chrM} and \code{MT} both reaching the mitochondrial genome of a file naming it either way, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. A name matching no chromosome once converted raises a warning, since it would leave that chromosome inside the library sizes without a word. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.
-#' @param discardRegions \code{GRanges} with regions whose reads must be ignored, for instance a blacklist. A fragment is dropped when one of its reads starts inside them. Default: \code{NULL}.
+#' @param blacklist Regions of the assembly that must be dropped before the counting, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}, when there is one. Default: \code{NULL}.
+#' @param greylist Either a logical value or the regions of a greylist. \code{TRUE} builds the greylist from the inputs of the samples with \code{\link{makeGreylist}}, at its default settings and with the read filters of this call, and stops when no sample has an input. A greylist already built is accepted in the same forms as \code{blacklist}, which is the way to use other settings. The regions overlapping it are removed as \code{\link{applyGreylist}} removes them. Default: \code{FALSE}, no greylist is applied.
+#' @param discardListedReads Logical value: \code{TRUE} ignores the reads lying on the blacklist and on the greylist, the way \code{discardRegions} does, so that they enter neither the counts nor the library sizes. It covers the lists given here, the blacklist stored in \code{regionSet} by \code{\link{applyBlacklist}} or \code{\link{loadConsensusPeaks}}, and the greylist of a consensus. \code{FALSE} removes the regions and leaves the reads in the library sizes. Default: \code{TRUE}.
+#' @param discardRegions \code{GRanges} with further regions whose reads must be ignored, on top of the lists handled by \code{discardListedReads}. A fragment is dropped when one of its reads starts inside them. Unlike \code{blacklist}, it removes no region. Default: \code{NULL}.
 #' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.
 #' @param inputFiles Character vector with the path of the input BAM file of every sample, \code{NA} for a sample without input. One input can serve several samples and is counted once. Default: \code{NULL}, the \code{input} column of the sample sheet or of \code{sampleMetadata}, when there is one.
 #' @param countInput Logical value to indicate whether the input files must be counted. Default: \code{TRUE}.
@@ -29,13 +32,17 @@
 #' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region.
+#' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist}.
 #'
 #' @details Regions shared by several sets are counted only once and the values are then copied to every set they belong to, which keeps the running time proportional to the number of distinct regions.
 #'
 #' A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from the \code{MQ} tag, which \code{samtools fixmate} and Picard write; on files without it only the first mate is checked, and a message says so.
 #'
 #' Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
+#'
+#' The blacklist and the greylist act before the counting, and on two things. The regions overlapping them are removed, as \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} do: taking rows out of a counts object would leave library sizes, inputs and summits computed on regions that are no longer there, which is why those two functions refuse it. With \code{discardListedReads = TRUE} the reads lying on the lists are ignored as well. These regions collect reads in amounts that change from one sample to the next, so leaving them in the library sizes shifts the scaling of each sample by a different amount. \code{discarded.reads} tells how many fragments each sample lost this way, and \code{library.size} plus \code{discarded.reads} is the library size the sample would have with nothing discarded.
+#'
+#' Lists given here add to the ones the object already carries. A blacklist is merged with the stored one, and the reads of all of them are discarded together with those of \code{discardRegions}. A greylist applied beforehand with \code{\link{applyGreylist}} leaves only its size in the object, so it has to be passed again through \code{greylist} for its reads to be ignored. \code{greylist = TRUE} reuses the greylist of a consensus built by \code{\link{loadConsensusPeaks}} rather than building a second one. A set left without any region by the lists is dropped with a warning.
 #'
 #' Paired-end and single-end samples can be mixed in the same call, paired-end libraries being counted as fragments and single-end ones as reads extended to their fragment length, so that both end up with one count per sequenced fragment. Forcing a paired-end file through the single-end path counts each mate on its own and nearly doubles its values, while the opposite mistake finds no pair and returns a column of zeros, which is why the layout is read from the files by default. The resolved layout of each sample is stored in the \code{paired.end} column of the \code{colData}.
 #'
@@ -45,7 +52,7 @@
 #'
 #' A consensus of peaks has regions of every width, and a wide region collects more background than a narrow one around the same summit. With \code{summits}, every region is replaced by a window of fixed width centred on its summit, which is what DiffBind does by default. With \code{summitSource = "reads"} the summit is the middle of the highest stretch of fragment pileup in each sample, averaged over the samples with weights proportional to the height of their pileup, scaled by their depth, so that the samples carrying signal decide where it sits. With \code{summitSource = "peaks"} it is the average of the summits the peak caller wrote for the peaks overlapping the region, weighted by their significance, which needs no BAM file but works only for narrowPeak files. A region with neither reads nor peaks keeps its midpoint. The regions keep their identifiers, so each window can be traced back to the region it came from, and windows of neighbouring regions may overlap, as in DiffBind.
 #'
-#' Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
+#' Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, the lists, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
 #'
 #' A single \code{GRanges} is taken as one set of regions. It goes through \code{\link{loadRegions}} with its order and its chromosome names kept, the regions with identical coordinates collapsed into one, and the set is called \code{regions}. To give the set another name, to sort it or to split it into several sets, call \code{\link{loadRegions}} or \code{\link{splitLoadRegions}} first.
 #'
@@ -66,6 +73,11 @@
 #'                      sampleMetadata = sampleSheet[, c("sample", "condition")],
 #'                      verbose = FALSE)
 #'
+#' # The ENCODE blacklist on the way: its regions are removed and its reads ignored
+#' blacklist <- loadBlacklist("hg38", verbose = FALSE)
+#' cleanCounts <- countReads(peakRegions, sampleSheet = sampleSheet, blacklist = blacklist, verbose = FALSE)
+#' filteringLog(cleanCounts)
+#'
 #' # Windows of 401 bp centred on the summit of the reads, as DiffBind counts a consensus
 #' summitCounts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)
 #' head(SummarizedExperiment::rowRanges(summitCounts), 3)
@@ -76,10 +88,10 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{estimateFragmentLength}}, \code{\link{countBigwig}}, \code{\link{loadCounts}}, \code{\link{countBackground}}, \code{\link{libInfo}}
+#' @seealso \code{\link{estimateFragmentLength}}, \code{\link{countBigwig}}, \code{\link{loadCounts}}, \code{\link{countBackground}}, \code{\link{libInfo}}, \code{\link{applyBlacklist}}, \code{\link{makeGreylist}}
 #'
-#' @importFrom GenomeInfoDb seqnames
-#' @importFrom BiocGenerics start end
+#' @importFrom GenomeInfoDb seqnames seqlevels
+#' @importFrom BiocGenerics start end width
 #' @importFrom IRanges ranges ranges<-
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom SummarizedExperiment assay<-
@@ -105,6 +117,9 @@ countReads <-
            minMapq = 20,
            removeDuplicates = TRUE,
            excludeChromosomes = NULL,
+           blacklist = NULL,
+           greylist = FALSE,
+           discardListedReads = TRUE,
            discardRegions = NULL,
            fullLibrarySize = TRUE,
            inputFiles = NULL,
@@ -205,6 +220,14 @@ countReads <-
       stop("The 'discardRegions' parameter must be a GRanges object.", call. = FALSE)
     }
 
+    if (!is.logical(discardListedReads) | length(discardListedReads) != 1 | any(is.na(discardListedReads))) {
+      stop("The 'discardListedReads' parameter must be TRUE or FALSE.", call. = FALSE)
+    }
+
+    if (is.logical(greylist) && (length(greylist) != 1 || is.na(greylist))) {
+      stop("The 'greylist' parameter must be TRUE, FALSE, or the regions of a greylist.", call. = FALSE)
+    }
+
     if (!is.null(excludeChromosomes) & !is.character(excludeChromosomes)) {
       stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
     }
@@ -225,6 +248,58 @@ countReads <-
                                      sampleMetadata = sampleMetadata,
                                      fileColumn = "bam.file",
                                      extensionPattern = "\\.bam$")
+
+    #------------------------#
+    # Blacklist and greylist #
+    #------------------------#
+    # The greylist of a consensus is already in the object, the peaks were cleaned against it
+    storedGreylist <- if (methods::is(regionSet, "RegionSetDE")) {regionSet@consensus$greylist} else {NULL}
+    greylistSource <- if (is.null(storedGreylist)) {"none"} else {"consensus"}
+    builtGreylist <- NULL
+
+    if (isTRUE(greylist)) {
+      greylist <- NULL
+
+      if (!is.null(storedGreylist)) {
+        if (isTRUE(verbose)) {
+          message("The greylist the consensus was built with is used, no other one is built.")
+        }
+      } else {
+        greylistInputs <- .resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)
+
+        if (is.null(greylistInputs)) {
+          stop("greylist = TRUE builds the greylist from the inputs of the samples, and no sample has one: ",
+               "give them through 'inputFiles' or the 'input' column of the sample sheet, or pass a greylist already built.", call. = FALSE)
+        }
+
+        # makeGreylist takes each distinct input once, and names it after the sample sheet when the inputs come from it
+        greylistSheet <- data.frame(input = greylistInputs, stringsAsFactors = FALSE)
+        if (is.null(inputFiles) & "input.id" %in% colnames(sampleTable)) {
+          greylistSheet$input.id <- as.character(sampleTable$input.id)
+        }
+
+        # In the windows of a greylist a single-end read counts at its 5' end, so the length it is extended to plays no role
+        builtGreylist <- makeGreylist(inputFiles = greylistSheet,
+                                      excludeChromosomes = excludeChromosomes,
+                                      maxFragmentLength = maxFragmentLength[1],
+                                      minMapq = minMapq,
+                                      removeDuplicates = removeDuplicates,
+                                      nThreads = nThreads,
+                                      progressBar = progressBar,
+                                      verbose = verbose)
+        greylist <- builtGreylist
+        greylistSource <- "inputs"
+      }
+    } else if (isFALSE(greylist)) {
+      greylist <- NULL
+    } else if (!is.null(greylist)) {
+      greylistSource <- "given"
+    }
+
+    # The regions lying on the lists leave before anything is counted: taking them out afterwards would leave
+    # library sizes, summits and inputs computed on regions that are no longer there
+    listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = greylist, verbose = verbose)
+    regionSet <- listedRegions$regionSet
 
     allRegions <- .flattenRegionSets(regionSet = regionSet,
                                      tileWidth = tileWidth,
@@ -250,6 +325,21 @@ countReads <-
 
     if (!is.null(discardRegions)) {
       discardRegions <- .matchSeqlevels(x = discardRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
+    }
+
+    # The reads lying on the lists the regions were cleaned against stay out of the counts and of the
+    # library sizes, with those of 'discardRegions'. The stored blacklist already includes the one given here
+    listedDiscard <- if (isTRUE(discardListedReads)) {
+      list(listedRegions$provenance$blacklist, listedRegions$lists$greylist, storedGreylist)
+    } else {
+      list()
+    }
+
+    discardRegions <- .poolDiscardRegions(regionLists = c(listedDiscard, list(discardRegions)), targetSeqlevels = bamSeqlevels)
+
+    if (isTRUE(verbose) & !is.null(discardRegions)) {
+      message("The reads starting in ", format(length(discardRegions), big.mark = ",", trim = TRUE), " discarded regions (",
+              round(sum(as.numeric(BiocGenerics::width(discardRegions))) / 1e6, 2), " Mb) stay out of the counts and of the library sizes.")
     }
 
     # A region on a chromosome missing from the files keeps a count of zero, better to say it than to let it pass for an empty region
@@ -417,6 +507,11 @@ countReads <-
                                  fragment.length = sampleFragmentLength,
                                  library.size = fragmentCounts$library.size)
 
+    # What the discarded regions took out of each library, on the chromosomes entering the library sizes
+    if (!is.null(discardRegions)) {
+      sampleTable <- dplyr::mutate(sampleTable, discarded.reads = fragmentCounts$discarded)
+    }
+
     if (!is.null(inputCounts)) {
       sampleTable <- dplyr::mutate(sampleTable,
                                    input = inputPaths,
@@ -436,20 +531,37 @@ countReads <-
                                             minMapq = minMapq,
                                             removeDuplicates = removeDuplicates,
                                             excludeChromosomes = excludeChromosomes,
+                                            discardListedReads = discardListedReads,
+                                            greylistSource = greylistSource,
+                                            n.discard.regions = if (is.null(discardRegions)) {0L} else {length(discardRegions)},
+                                            discard.covered.bp = if (is.null(discardRegions)) {0} else {sum(as.numeric(BiocGenerics::width(discardRegions)))},
                                             fullLibrarySize = fullLibrarySize,
                                             inputFiles = inputPaths,
                                             summits = summits,
                                             summitSource = if (is.null(summits)) {NULL} else {summitSource}))
+
+    # The discarded regions follow the object under the chromosome names of its regions, for the functions
+    # reading the same BAM files later on. A greylist built here is kept as makeGreylist returned it
+    countsMetadata <- list(signal.type = "reads", count.like = TRUE)
+
+    if (!is.null(discardRegions)) {
+      countsMetadata$discard.regions <- tryCatch(expr = .matchSeqlevels(x = discardRegions, targetSeqlevels = GenomeInfoDb::seqlevels(allRegions), verbose = FALSE),
+                                                error = function(e) {return(discardRegions)})
+    }
+
+    if (!is.null(builtGreylist)) {
+      countsMetadata$greylist <- builtGreylist
+    }
 
     # A tiled object has to say so it is tiled, otherwise testRegions treats every tile as a region
     # and the combination step that puts the tiles back together never runs
     counts <- .newCountsObject(countMatrix = countMatrix,
                                regions = allRegions,
                                sampleTable = sampleTable,
-                               provenance = .provenanceSlots(regionSet),
+                               provenance = listedRegions$provenance,
                                countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
                                newParameters = newParameters,
-                               metadataList = list(signal.type = "reads", count.like = TRUE))
+                               metadataList = countsMetadata)
 
     # The input of every sample over the same rows, a sample without input keeps a column of NA
     if (!is.null(inputCounts)) {
@@ -468,6 +580,53 @@ countReads <-
     }
 
     return(counts)
+  } # END function
+
+
+
+
+#' @title .poolDiscardRegions
+#'
+#' @description Pools the regions whose reads must be ignored into one set of ranges without overlaps, written in the chromosome names of the BAM files. The lists may come in different naming styles, each of them is brought to the files on its own.
+#'
+#' @param regionLists List of \code{GRanges}, \code{NULL} for the lists that were not given.
+#' @param targetSeqlevels Character vector with the chromosome names of the BAM files.
+#'
+#' @return A \code{GRanges} without overlaps, or \code{NULL} when no list holds a region.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomicRanges GRanges
+#' @importFrom GenomeInfoDb seqnames
+#' @importFrom IRanges ranges reduce
+#'
+#' @keywords internal
+
+.poolDiscardRegions <-
+  function(regionLists,
+           targetSeqlevels) {
+
+    matchedLists <-
+      lapply(regionLists,
+             function(listRegions) {
+               if (is.null(listRegions) || length(listRegions) == 0) {return(NULL)}
+
+               # A list sharing no chromosome with the files has no read to take away, and is left out
+               return(tryCatch(expr = .matchSeqlevels(x = listRegions, targetSeqlevels = targetSeqlevels, verbose = FALSE),
+                               error = function(e) {return(NULL)}))
+             })
+
+    matchedLists <- unname(matchedLists[!vapply(matchedLists, is.null, logical(1))])
+
+    if (length(matchedLists) == 0) {
+      return(NULL)
+    }
+
+    # Only the positions are pooled, lists loaded apart rarely agree on their sequence information
+    pooledRegions <- GenomicRanges::GRanges(seqnames = unlist(lapply(matchedLists, function(listRegions) {as.character(GenomeInfoDb::seqnames(listRegions))}), use.names = FALSE),
+                                            ranges = do.call(what = c, args = lapply(matchedLists, IRanges::ranges)))
+
+    return(IRanges::reduce(pooledRegions, ignore.strand = TRUE))
   } # END function
 
 

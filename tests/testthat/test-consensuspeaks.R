@@ -166,6 +166,21 @@ test_that("the two lists and the peaks they removed are recorded in the object",
   counts <- countReads(countedRegions, pairedEnd = FALSE, verbose = FALSE)
   expect_length(counts@blacklist, 1)
   expect_identical(nrow(counts@filtering.log), 10L)
+
+  # The reads of the two lists stay out of the library sizes, the greylist being the one of the consensus
+  expect_length(S4Vectors::metadata(counts)$discard.regions, 2)
+  expect_identical(counts@parameters$countReads$greylistSource, "consensus")
+  expect_true(all(counts$discarded.reads > 0))
+
+  keptReads <- countReads(countedRegions, pairedEnd = FALSE, discardListedReads = FALSE, verbose = FALSE)
+  expect_equal(counts$library.size + counts$discarded.reads, keptReads$library.size)
+  expect_null(S4Vectors::metadata(keptReads)$discard.regions)
+
+  # Asking for a greylist does not build a second one
+  expect_message(reused <- countReads(countedRegions, pairedEnd = FALSE, greylist = TRUE),
+                 "greylist the consensus was built with is used")
+  expect_equal(reused$library.size, counts$library.size)
+  expect_null(S4Vectors::metadata(reused)$greylist)
 })
 
 

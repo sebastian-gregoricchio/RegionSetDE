@@ -647,6 +647,39 @@
 
 
 
+#' @title .storedDiscardRegions
+#'
+#' @description Returns the regions whose reads \code{countReads} discarded, written in the chromosome names of the files about to be read, so that every later reading of the same BAM files ignores the same reads.
+#'
+#' @param counts \code{RegionSetDE.counts} object.
+#' @param targetSeqlevels Character vector with the chromosome names of the files.
+#'
+#' @return A \code{GRanges}, or \code{NULL} when no read was discarded at the counting step.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom S4Vectors metadata
+#'
+#' @keywords internal
+
+.storedDiscardRegions <-
+  function(counts,
+           targetSeqlevels) {
+
+    discardRegions <- S4Vectors::metadata(counts)$discard.regions
+
+    if (is.null(discardRegions) || length(discardRegions) == 0) {
+      return(NULL)
+    }
+
+    # Regions sharing no chromosome with the files have no read to take away
+    return(tryCatch(expr = .matchSeqlevels(x = discardRegions, targetSeqlevels = targetSeqlevels, verbose = FALSE),
+                    error = function(e) {return(NULL)}))
+  } # END function
+
+
+
+
 #' @title .newCountsObject
 #'
 #' @description Assembles a \code{RegionSetDE.counts} object from a matrix of values, the regions and the sample table, carrying over the provenance of the region sets.

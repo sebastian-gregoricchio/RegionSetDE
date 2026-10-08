@@ -15,6 +15,7 @@
 #' @param partialTiles Logical value: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
 #' @param summaryFunction String indicating how the per-base values are collapsed into a single value per region, one among \code{"sum"}, \code{"mean"}, \code{"max"} or \code{"min"}. Default: \code{"sum"}.
 #' @param missingAsZero Logical value indicating whether the positions not covered by the bigWig must be treated as zeros rather than as missing values. Default: \code{TRUE}.
+#' @param blacklist Regions of the assembly that must be dropped before the signal is read, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}. Default: \code{NULL}.
 #' @param countLike Logical value with which you assert that the bigWig holds count-like values, meaning raw, unnormalised coverage that a count model may legitimately be applied to. Default: \code{FALSE}.
 #' @param roundValues Logical value indicating whether the summarised values must be rounded to integers. Rounding is a formatting step and does not turn coverage into counts. Default: \code{FALSE}.
 #' @param nThreads Number of threads used to process the files in parallel. Default: \code{1}.
@@ -29,6 +30,8 @@
 #' The object therefore records where its values came from, and \code{\link{fitRegions}} refuses the count engines on it unless \code{countLike} says otherwise. The engine to reach for on bigWig input is \code{"limma"}, which models the log2 signal directly and asks nothing of the values that they cannot supply. Setting \code{countLike = TRUE} is an assertion about the files, not a setting: it says these are raw, unnormalised coverage tracks and the count model is close enough for the purpose, and it should be stated in the methods when it is used.
 #'
 #' The regions and the bigWig files do not need to share the same chromosome naming style, and neither do the files among themselves: each file is asked for the regions under its own names, chromosome by chromosome, and the object comes back with the names of the input sets. A single \code{GRanges} is taken as one set of regions, loaded by \code{\link{loadRegions}} with its order and its chromosome names kept, and called \code{regions}.
+#'
+#' \code{blacklist} removes regions and nothing else. The signal of a bigWig was summed when the file was written, so the reads behind it cannot be discarded here the way \code{\link{countReads}} discards them, and a greylist, which is built from the input alignments, has to be applied with \code{\link{applyGreylist}} beforehand. A set left without any region by the blacklist is dropped with a warning.
 #'
 #' @examples
 #' # The small bigWig shipped with rtracklayer, with a region set built on its own intervals.
@@ -50,7 +53,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{countReads}}, \code{\link{loadCounts}}
+#' @seealso \code{\link{countReads}}, \code{\link{loadCounts}}, \code{\link{applyBlacklist}}
 #'
 #' @importFrom rtracklayer BigWigFile import
 #' @importFrom GenomeInfoDb seqnames seqlevels
@@ -73,6 +76,7 @@ countBigwig <-
            partialTiles = TRUE,
            summaryFunction = "sum",
            missingAsZero = TRUE,
+           blacklist = NULL,
            countLike = FALSE,
            roundValues = FALSE,
            nThreads = 1,
@@ -131,6 +135,10 @@ countBigwig <-
                                      sampleMetadata = sampleMetadata,
                                      fileColumn = "bigwig.file",
                                      extensionPattern = "\\.(bw|bigwig|bigWig)$")
+
+    # The regions lying on the blacklist leave before the signal is read
+    listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = NULL, verbose = verbose)
+    regionSet <- listedRegions$regionSet
 
     allRegions <- .flattenRegionSets(regionSet = regionSet,
                                      tileWidth = tileWidth,
@@ -222,7 +230,7 @@ countBigwig <-
     counts <- .newCountsObject(countMatrix = signalMatrix,
                                regions = allRegions,
                                sampleTable = sampleTable,
-                               provenance = .provenanceSlots(regionSet),
+                               provenance = listedRegions$provenance,
                                countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
                                newParameters = newParameters,
                                metadataList = list(signal.type = "bigwig", count.like = countLike))

@@ -54,7 +54,7 @@ The input \code{RegionSetDE.counts} object with the greenlist counts stored as a
 Counts the reads falling in the regions of a CUT&RUN or CUT&Tag greenlist, the places where the background of the protocol is reproducible enough to measure how much material was sequenced. The counts are stored in the metadata of the object, where \code{\link{normalizeCounts}} picks them up with \code{method = "greenlist"}.
 }
 \details{
-The read filters are taken from \code{\link{countReads}} unless they are given here, for the same reason as in \code{\link{countBackground}}: a reference counted with another mapping quality or duplicate policy describes a library that is not the one under study.
+The read filters are taken from \code{\link{countReads}} unless they are given here, for the same reason as in \code{\link{countBackground}}: a reference counted with another mapping quality or duplicate policy describes a library that is not the one under study. The reads \code{\link{countReads}} discarded, those of the blacklist, of the greylist and of \code{discardRegions}, are left out here too.
 
 Each fragment is counted once, in the region holding its centre, as the background bins do, so the totals stay a share of the library and two neighbouring regions never claim the same fragment. The list is merged beforehand for the same reason. This is the quantification of the greenlist paper, which counted the lists with \code{multiBamSummary --centerReads}. Greenlist regions lying on chromosomes absent from the BAM files are dropped, and how many were is reported, which is what catches a list built for another assembly before it quietly halves the counts.
 

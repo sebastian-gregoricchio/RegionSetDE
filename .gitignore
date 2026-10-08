@@ -43,3 +43,4 @@ rsconnect/
 
 # R CMD check output folder of the GitHub workflow
 /check/
+*.zip

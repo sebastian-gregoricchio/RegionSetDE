@@ -551,6 +551,7 @@ loadConsensusPeaks <-
 #' @param listInput The list as given: a \code{GRanges}, a path, a data.frame, or a list of them.
 #' @param genomeAssembly String with the assembly of the peaks, or \code{NULL}.
 #' @param listLabel String with the name of the parameter the list came from.
+#' @param regionLabel String naming what the list is applied to in the message. Default: \code{"peaks"}.
 #'
 #' @return Nothing, it stops when the two assemblies differ.
 #'
@@ -564,7 +565,8 @@ loadConsensusPeaks <-
 .checkListAssembly <-
   function(listInput,
            genomeAssembly,
-           listLabel) {
+           listLabel,
+           regionLabel = "peaks") {
 
     if (is.null(genomeAssembly) || is.na(genomeAssembly[1]) || genomeAssembly[1] == "") {
       return(invisible(TRUE))
@@ -581,7 +583,7 @@ loadConsensusPeaks <-
 
       # GRCh38 and hg38 name the same assembly, the aliases are resolved before the comparison
       if (length(listAssembly) == 1 && .resolveGenomeName(listAssembly) != .resolveGenomeName(as.character(genomeAssembly[1]))) {
-        stop("The ", listLabel, " was built for ", listAssembly, " and the peaks are declared as ", genomeAssembly[1],
+        stop("The ", listLabel, " was built for ", listAssembly, " and the ", regionLabel, " are declared as ", genomeAssembly[1],
              ". Overlapping them would match the chromosome names and nothing else. Clear the assembly with genome() on the list to force it.", call. = FALSE)
       }
     }

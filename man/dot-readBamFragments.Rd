@@ -33,7 +33,7 @@
 \item{countMode}{String, either \code{"overlap"} or \code{"bin"}, see \code{.countBamFragments}.}
 }
 \value{
-A list with the \code{file.index} and \code{range.index} of the job, the \code{counts} of its ranges, the \code{total.fragments} that went through the filters and \code{mate.mapq.found}.
+A list with the \code{file.index} and \code{range.index} of the job, the \code{counts} of its ranges, the \code{total.fragments} that went through the filters, the \code{discarded.fragments} dropped by the discarded regions alone, and \code{mate.mapq.found}.
 }
 \description{
 Reads the fragments of one BAM file over a group of pieces of genome and counts them over the ranges of the same chromosomes. It is the job run by every thread of \code{.countBamFragments}.

@@ -21,7 +21,7 @@
 #'
 #' @return The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}. Its \code{totals} column holds the library sizes of the bins.
 #'
-#' @details Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly.
+#' @details Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly. The same goes for the reads \code{\link{countReads}} discarded, those of the blacklist, of the greylist and of \code{discardRegions}: they stay out of the bins and of their library sizes as well.
 #'
 #' The bins cover every chromosome the BAM files have in common except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
 #'
@@ -166,6 +166,7 @@ countBackground <-
                                     minMapq = minMapq,
                                     removeDuplicates = removeDuplicates,
                                     excludeChromosomes = excludeChromosomes,
+                                    discardRegions = .storedDiscardRegions(counts = counts, targetSeqlevels = names(bamChromosomes$lengths)),
                                     fullLibrarySize = TRUE,
                                     countMode = "bin",
                                     progressBar = isTRUE(verbose) & isTRUE(progressBar),

@@ -54,7 +54,7 @@
 \item{nThreads}{Number of threads. Default: \code{1}.}
 }
 \value{
-A list with three elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
+A list with four elements: \code{counts}, an integer matrix with one row per range and one column per file; \code{library.size}, the number of fragments that went through the filters on the chromosomes read and not excluded; \code{discarded}, the number of fragments of the same chromosomes that passed every other filter and were dropped by \code{discardRegions}; \code{mate.mapq.found}, telling for each paired-end file whether the \code{MQ} tag was found (\code{NA} for single-end files).
 }
 \description{
 Counts the fragments of a group of BAM files over a set of ranges. The chromosomes are cut into pieces of at most 50 Mb, and the pieces of all the files are shared among the threads, so that even a single file keeps every thread busy. Paired-end fragments are rebuilt from the first mate of each proper pair, whose position, mate position and template length (TLEN) give the start and the width of the fragment: the two reads never have to be matched. Single-end reads are extended to the fragment length from their 5' end.

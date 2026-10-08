@@ -841,6 +841,9 @@ plotProfile <-
     # Counting parameters           #
     #-------------------------------#
     countingParameters <- counts@parameters$countReads
+
+    # The reads left out of the counting stay out of the profiles as well
+    discardRegions <- if (type == "bam") {.storedDiscardRegions(counts = counts, targetSeqlevels = names(chromosomeLengths))} else {NULL}
     pairedEnd <- if (is.null(countingParameters$pairedEnd)) {rep(FALSE, length(files))} else {rep_len(countingParameters$pairedEnd, length(files))}
     fragmentLength <- if (is.null(countingParameters$fragmentLength)) {rep(150, length(files))} else {rep_len(countingParameters$fragmentLength, length(files))}
 
@@ -858,7 +861,8 @@ plotProfile <-
                                                  fragmentLength = fragmentLength[fileIndex],
                                                  maxFragmentLength = if (is.null(countingParameters$maxFragmentLength)) {1000} else {countingParameters$maxFragmentLength[1]},
                                                  minMapq = if (is.null(countingParameters$minMapq)) {20} else {countingParameters$minMapq},
-                                                 removeDuplicates = if (is.null(countingParameters$removeDuplicates)) {TRUE} else {countingParameters$removeDuplicates})$coverage
+                                                 removeDuplicates = if (is.null(countingParameters$removeDuplicates)) {TRUE} else {countingParameters$removeDuplicates},
+                                                 discardRegions = discardRegions)$coverage
                                } else {
                                  # A bigWig is asked under its own chromosome names, and answers under them
                                  bigwigFile <- rtracklayer::BigWigFile(files[fileIndex])

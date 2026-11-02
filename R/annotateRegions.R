@@ -170,7 +170,7 @@
       # computed on Ensembl names reaches regions written the UCSC way. A name that matches nothing
       # is left as it was and reported below with the links it carries, rather than warned about twice
       translatedNames <- .translateChromosomeNames(chromosomeNames = as.character(linkTable$seqnames),
-                                                  targetSeqlevels = GenomeInfoDb::seqlevels(regions))
+                                                   targetSeqlevels = GenomeInfoDb::seqlevels(regions))
 
       linkTable$seqnames <- ifelse(is.na(translatedNames), as.character(linkTable$seqnames), translatedNames)
       linkTable$region <- .regionKeys(linkTable)
@@ -442,9 +442,28 @@
       linkTable$gene.symbol <- geneLabels[subjectIndex]
     }
 
+    ### A gene can carry several start sites, alternative promoters among them, and a flank wide
+    ### enough reaches more than one of them. The nearest is the one kept: the pair is one link
+    ### however many sites the gene has, which is what every count downstream assumes
+    pairOrder <- order(linkTable$region, linkTable$gene.id, abs(linkTable$distance.to.tss))
+    duplicatedPairs <- duplicated(linkTable[pairOrder, c("region", "gene.id"), drop = FALSE])
+
+    if (any(duplicatedPairs)) {
+      if (isTRUE(verbose)) {
+        message(sum(duplicatedPairs), " region and gene pairs are reached through more than one start site, the nearest of them is kept.")
+      }
+
+      # Sorted to find the nearest, put back in the order the regions came in, which is the
+      # order of the object rather than the alphabetical order of the coordinate keys
+      linkTable <- linkTable[sort(pairOrder[!duplicatedPairs]), , drop = FALSE]
+    }
+
+    rownames(linkTable) <- NULL
+
     ### A link is a promoter one when the region sits inside the window around the start site,
     ### read on the strand of the gene, and distal otherwise. It is what splits the two analyses
-    linkTable$link.type <- ifelse(signedDistance >= tssRegion[1] & signedDistance <= tssRegion[2],
+    linkTable$link.type <- ifelse(linkTable$distance.to.tss >= tssRegion[1] &
+                                    linkTable$distance.to.tss <= tssRegion[2],
                                   "promoter", "distal")
 
     ### Beyond maxDistance the nearest gene is a coordinate accident, the region is recorded as looked at

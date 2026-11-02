@@ -175,11 +175,27 @@ test_that("a flank links every gene within reach, and tssRegion labels what is a
 
   wideLinks <- regionLinks(annotateRegions(counts, genes = geneRanges, flankDistance = 5000,
                                            tssRegion = c(-5000, 5000), verbose = FALSE))
-  expect_true(all(stats::na.omit(wideLinks$link.type) == "promoter"))
+  expect_true(all(wideLinks$link.type[wideLinks$region == firstKey] == "promoter"))
 
   tightLinks <- regionLinks(annotateRegions(counts, genes = geneRanges, flankDistance = 5000,
                                             tssRegion = c(-10, 10), verbose = FALSE))
-  expect_true(all(stats::na.omit(tightLinks$link.type) == "distal"))
+  expect_true(all(tightLinks$link.type[tightLinks$region == firstKey] == "distal"))
+
+  # A gene with two start sites, alternative promoters, reached through both by a wide flank:
+  # one link per pair, through the nearer site, rather than the gene counting twice
+  twoSited <- geneRanges
+  S4Vectors::mcols(twoSited)$gene.id <- c("oneGene", "oneGene")
+
+  pairedLinks <- regionLinks(annotateRegions(counts, genes = twoSited, flankDistance = 5000,
+                                             verbose = FALSE))
+  firstPaired <- pairedLinks[pairedLinks$region == firstKey, , drop = FALSE]
+
+  expect_equal(nrow(firstPaired), 1)
+  expect_equal(abs(firstPaired$distance.to.tss), 50)
+  expect_equal(anyDuplicated(pairedLinks[, c("region", "gene.id")]), 0)
+
+  # The links stay in the order of the regions rather than being sorted by their key
+  expect_identical(unique(pairedLinks$region)[1], firstKey)
 
   expect_error(annotateRegions(counts, genes = geneRanges, maxDistance = 1000,
                                flankDistance = 1000, verbose = FALSE),
@@ -202,7 +218,8 @@ test_that("the link type splits the gene sets and the gene table", {
     seqnames = GenomeInfoDb::seqnames(regions),
     ranges = IRanges::IRanges(start = geneCentres + siteOffset, width = 100L),
     strand = "+")
-  S4Vectors::mcols(geneRanges)$gene.id <- paste0("gene", rep(seq_len(length(regions) / 2), each = 2))
+  geneIdentifiers <- rep(paste0("gene", seq_len(ceiling(length(regions) / 2))), each = 2)
+  S4Vectors::mcols(geneRanges)$gene.id <- geneIdentifiers[seq_along(regions)]
 
   annotatedFit <- annotateRegions(fit, genes = geneRanges, flankDistance = 50000,
                                   tssRegion = c(-1000, 1000), verbose = FALSE)

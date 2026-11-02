@@ -65,8 +65,12 @@ test_that("the regions are named by coordinates, by key or by identifier, and by
                            linkTable = data.frame(region = regionLinks(byCoordinates)$region, gene.id = geneIds),
                            verbose = FALSE)
 
+  # The identifiers the lookup uses, taken the same way the function takes them, so the test
+  # cannot disagree with it about which column holds them
+  regionIdentifiers <- RegionSetDE:::.regionIdentifiers(SummarizedExperiment::rowRanges(counts))
+
   byIdentifier <- annotateRegions(counts,
-                                  linkTable = data.frame(region.id = as.character(SummarizedExperiment::rowData(counts)$region.id)[1:4],
+                                  linkTable = data.frame(region.id = regionIdentifiers[1:4],
                                                          gene.id = geneIds),
                                   verbose = FALSE)
 
@@ -77,6 +81,14 @@ test_that("the regions are named by coordinates, by key or by identifier, and by
   for (annotated in list(byKey, byIdentifier, byRanges)) {
     expect_identical(regionLinks(annotated)$gene.id, regionLinks(byCoordinates)$gene.id)
   }
+
+  # Identifiers from somewhere else are a different failure from coordinates that do not match,
+  # and the message has to name the identifiers rather than keys it does not have
+  expect_error(annotateRegions(counts,
+                               linkTable = data.frame(region.id = paste0("elsewhere", 1:4),
+                                                      gene.id = geneIds),
+                               verbose = FALSE),
+               "Not one 'region.id'")
 })
 
 

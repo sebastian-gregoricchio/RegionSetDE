@@ -180,8 +180,16 @@
 
     } else {
       # The identifiers of the object are not unique across the sets, one link then reaches every set holding it
-      identifierKeys <- stats::setNames(regionKeys, as.character(.regionIdentifiers(regions)))
+      regionIdentifiers <- as.character(.regionIdentifiers(regions))
+      identifierKeys <- stats::setNames(regionKeys, regionIdentifiers)
       linkTable$region <- unname(identifierKeys[as.character(linkTable$region.id)])
+
+      if (all(is.na(linkTable$region))) {
+        stop("Not one 'region.id' of the 'linkTable' parameter matches a region of the object. The table names ",
+             paste(utils::head(unique(as.character(linkTable$region.id)), 2), collapse = ", "),
+             " while the object holds ", paste(utils::head(regionIdentifiers, 2), collapse = ", "),
+             ". Name the regions by their coordinates instead when the identifiers come from elsewhere.", call. = FALSE)
+      }
     }
 
     #-------------------------------#
@@ -207,9 +215,11 @@
     unmatchedLinks <- is.na(linkTable$region) | !(linkTable$region %in% regionKeys)
 
     if (all(unmatchedLinks)) {
-      stop("Not one link of the 'linkTable' parameter falls on a region of the object. The table names regions such as ",
-           paste(utils::head(stats::na.omit(linkTable$region), 2), collapse = ", "), " while the object holds ",
-           paste(utils::head(regionKeys, 2), collapse = ", "), ".", call. = FALSE)
+      namedRegions <- utils::head(stats::na.omit(linkTable$region), 2)
+
+      stop("Not one link of the 'linkTable' parameter falls on a region of the object. The table names regions ",
+           if (length(namedRegions) == 0) {"nowhere the object knows"} else {c("such as ", paste(namedRegions, collapse = ", "))},
+           " while the object holds ", paste(utils::head(regionKeys, 2), collapse = ", "), ".", call. = FALSE)
     }
 
     if (any(unmatchedLinks)) {

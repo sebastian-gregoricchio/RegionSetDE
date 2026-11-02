@@ -16,7 +16,7 @@ plotResultsMA(
   showCounts = TRUE,
   showTrend = TRUE,
   colours = NULL,
-  pointSize = 0.8,
+  pointSize = 2,
   maxPoints = 20000,
   title = NULL,
   subtitle = NULL,
@@ -47,7 +47,7 @@ plotResultsMA(
 
 \item{colours}{Named character vector with the colours. Default: \code{NULL}.}
 
-\item{pointSize}{Numeric value with the size of the points. Default: \code{0.8}.}
+\item{pointSize}{Numeric value with the size of the points. Default: \code{2}.}
 
 \item{maxPoints}{Numeric value with the number of non-changing points drawn per panel. Default: \code{20000}.}
 

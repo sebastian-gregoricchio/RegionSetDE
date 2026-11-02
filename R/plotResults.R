@@ -17,7 +17,7 @@
 #' @param labelTop Numeric value with the number of top regions to label, per panel. Default: \code{0}.
 #' @param labelColumn String with the column holding the labels. Default: \code{"region.id"}.
 #' @param colours Named character vector with the colours. Default: \code{NULL}, a grey, blue and red palette for \code{"diff.status"}.
-#' @param pointSize Numeric value with the size of the points. Default: \code{0.8}.
+#' @param pointSize Numeric value with the size of the points. Default: \code{2}.
 #' @param maxPoints Numeric value with the number of non-changing points drawn per panel. Default: \code{20000}.
 #' @param title String with the title of the plot, rendered as markdown. Default: \code{NULL}, the contrast.
 #' @param subtitle String with the subtitle of the plot, rendered as markdown. Default: \code{NULL}.
@@ -66,7 +66,7 @@ plotVolcano <-
            labelTop = 0,
            labelColumn = "region.id",
            colours = NULL,
-           pointSize = 0.8,
+           pointSize = 2,
            maxPoints = 20000,
            title = NULL,
            subtitle = NULL,
@@ -201,7 +201,7 @@ plotVolcano <-
 #' @param showCounts Logical value to indicate whether the number of changing regions must be written in the corners of each panel, on the right hand side and on the same side of zero as the regions they count. Default: \code{TRUE}.
 #' @param showTrend Logical value to indicate whether a loess trend must be drawn. Default: \code{TRUE}.
 #' @param colours Named character vector with the colours. Default: \code{NULL}.
-#' @param pointSize Numeric value with the size of the points. Default: \code{0.8}.
+#' @param pointSize Numeric value with the size of the points. Default: \code{2}.
 #' @param maxPoints Numeric value with the number of non-changing points drawn per panel. Default: \code{20000}.
 #' @param title String with the title of the plot, rendered as markdown. Default: \code{NULL}, the contrast.
 #' @param subtitle String with the subtitle of the plot, rendered as markdown. Default: \code{NULL}.
@@ -243,7 +243,7 @@ plotResultsMA <-
            showCounts = TRUE,
            showTrend = TRUE,
            colours = NULL,
-           pointSize = 0.8,
+           pointSize = 2,
            maxPoints = 20000,
            title = NULL,
            subtitle = NULL,

@@ -180,7 +180,7 @@
 
     } else {
       # The identifiers of the object are not unique across the sets, one link then reaches every set holding it
-      regionIdentifiers <- as.character(.regionIdentifiers(regions))
+      regionIdentifiers <- as.character(.storedRegionIds(regions))
       identifierKeys <- stats::setNames(regionKeys, regionIdentifiers)
       linkTable$region <- unname(identifierKeys[as.character(linkTable$region.id)])
 
@@ -247,9 +247,9 @@
 
 
 
-#' @title .regionIdentifiers
+#' @title .storedRegionIds
 #'
-#' @description Returns the identifier of every region, the \code{region.id} metadata column when the regions carry one and their names otherwise.
+#' @description Returns the identifier a counted object already carries for every region, the \code{region.id} metadata column when the rows have one and their names otherwise. Not to be confused with \code{.regionIdentifiers}, which assigns the identifiers in the first place while a region set is loaded.
 #'
 #' @param regions \code{GRanges} with the regions of the object.
 #'
@@ -261,7 +261,7 @@
 #'
 #' @keywords internal
 
-.regionIdentifiers <-
+.storedRegionIds <-
   function(regions) {
 
     if ("region.id" %in% colnames(S4Vectors::mcols(regions))) {

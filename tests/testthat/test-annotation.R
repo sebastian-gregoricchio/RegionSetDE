@@ -67,7 +67,7 @@ test_that("the regions are named by coordinates, by key or by identifier, and by
 
   # The identifiers the lookup uses, taken the same way the function takes them, so the test
   # cannot disagree with it about which column holds them
-  regionIdentifiers <- RegionSetDE:::.regionIdentifiers(SummarizedExperiment::rowRanges(counts))
+  regionIdentifiers <- RegionSetDE:::.storedRegionIds(SummarizedExperiment::rowRanges(counts))
 
   byIdentifier <- annotateRegions(counts,
                                   linkTable = data.frame(region.id = regionIdentifiers[1:4],

@@ -1136,7 +1136,7 @@ setMethod(f = "show",
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @name updateObject-RegionSetDE
+#' @rdname updateObject-RegionSetDE
 #'
 #' @importFrom BiocGenerics updateObject
 #' @importFrom methods setMethod
@@ -1302,6 +1302,8 @@ setValidity(Class = "RegionSetDE.geneResults",
 
 #' @importFrom methods setMethod
 #' @importFrom utils head
+#'
+#' @export
 setMethod(f = "show",
           signature = "RegionSetDE.geneResults",
           definition = function(object) {

@@ -70,7 +70,7 @@ test_that("the Simes combination matches its definition and carries the right fo
   regionTable <- resultsTable(results)
   links <- regionLinks(geneResults)
 
-  regionKeys <- paste0(regionTable$seqnames, ":", regionTable$start, "-", regionTable$end)
+  regionKeys <- RegionSetDE:::.regionKeys(regionTable)
 
   for (geneId in utils::head(geneTable$gene.id, 5)) {
     regionIndex <- match(links$region[links$gene.id == geneId], regionKeys)
@@ -126,13 +126,24 @@ test_that("the weighting falls back from the link weight to the distance to noth
                                   method = "potential", verbose = FALSE)
   expect_identical(bothResults@weighting, "link.weight")
 
-  # A region weighted zero cannot reach the score of its gene
+  # A region weighted zero cannot reach the score of its gene, so every score is the fold change
+  # of the one region of that gene that kept a weight
   zeroWeights <- rep(c(1, 0, 0, 0), length.out = regionNumber)
-  zeroResults <- aggregateToGenes(annotatedResults(weights = zeroWeights), method = "potential", verbose = FALSE)
+  zeroSource <- annotatedResults(weights = zeroWeights)
+  zeroResults <- aggregateToGenes(zeroSource, method = "potential", verbose = FALSE)
 
-  regionTable <- resultsTable(annotatedResults(weights = zeroWeights))
-  firstGeneScore <- resultsTable(zeroResults)$score[resultsTable(zeroResults)$gene.id == "gene1"]
-  expect_equal(firstGeneScore, regionTable$log2FC[1], tolerance = 1e-10)
+  regionTable <- resultsTable(zeroSource)
+  regionKeys <- RegionSetDE:::.regionKeys(regionTable)
+  links <- regionLinks(zeroResults)
+
+  for (geneId in utils::head(resultsTable(zeroResults)$gene.id, 5)) {
+    weightedRegion <- links$region[links$gene.id == geneId & links$link.weight > 0]
+    expect_length(weightedRegion, 1)
+
+    expect_equal(resultsTable(zeroResults)$score[resultsTable(zeroResults)$gene.id == geneId],
+                 regionTable$log2FC[match(weightedRegion, regionKeys)],
+                 tolerance = 1e-10)
+  }
 })
 
 

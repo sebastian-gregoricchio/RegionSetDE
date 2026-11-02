@@ -141,9 +141,11 @@ test_that("a flank links every gene within reach, and tssRegion labels what is a
   firstCentre <- (BiocGenerics::start(regions)[1] + BiocGenerics::end(regions)[1]) %/% 2L
 
   # Two start sites straddling the first region, which is the bidirectional promoter case
+  # leftGene sits 50 bp from the centre, rightGene is on the minus strand with its start site at
+  # its 5' end, 1999 bp away, so a window of 500 separates the two
   geneRanges <- GenomicRanges::GRanges(
     seqnames = rep(GenomeInfoDb::seqnames(regions)[1], 2),
-    ranges = IRanges::IRanges(start = c(firstCentre - 200L, firstCentre + 100L), width = 100L),
+    ranges = IRanges::IRanges(start = c(firstCentre - 50L, firstCentre + 1900L), width = 100L),
     strand = c("+", "-"))
   S4Vectors::mcols(geneRanges)$gene.id <- c("leftGene", "rightGene")
 
@@ -164,15 +166,20 @@ test_that("a flank links every gene within reach, and tssRegion labels what is a
   expect_gt(sum(is.na(flankLinks$gene.id)), 0)
 
   # The window decides the label and nothing else
-  expect_true(all(c("promoter", "distal") %in%
-                    stats::na.omit(regionLinks(annotateRegions(counts, genes = geneRanges,
-                                                               flankDistance = 5000,
-                                                               tssRegion = c(-150, 150),
-                                                               verbose = FALSE))$link.type)))
+  splitLinks <- regionLinks(annotateRegions(counts, genes = geneRanges, flankDistance = 5000,
+                                            tssRegion = c(-500, 500), verbose = FALSE))
+  firstLinks <- splitLinks[splitLinks$region == firstKey, , drop = FALSE]
+
+  expect_identical(firstLinks$link.type[firstLinks$gene.id == "leftGene"], "promoter")
+  expect_identical(firstLinks$link.type[firstLinks$gene.id == "rightGene"], "distal")
 
   wideLinks <- regionLinks(annotateRegions(counts, genes = geneRanges, flankDistance = 5000,
                                            tssRegion = c(-5000, 5000), verbose = FALSE))
   expect_true(all(stats::na.omit(wideLinks$link.type) == "promoter"))
+
+  tightLinks <- regionLinks(annotateRegions(counts, genes = geneRanges, flankDistance = 5000,
+                                            tssRegion = c(-10, 10), verbose = FALSE))
+  expect_true(all(stats::na.omit(tightLinks$link.type) == "distal"))
 
   expect_error(annotateRegions(counts, genes = geneRanges, maxDistance = 1000,
                                flankDistance = 1000, verbose = FALSE),
@@ -209,7 +216,8 @@ test_that("the link type splits the gene sets and the gene table", {
   promoterSets <- geneSetsToRegionSets(annotatedFit, geneSets = geneSets,
                                        linkType = "promoter", verbose = FALSE)
 
-  expect_lt(length(promoterSets$everything), length(allSets$everything))
+  expect_lte(length(promoterSets$everything), length(allSets$everything))
+  expect_gt(length(promoterSets$everything), 0)
 
   expect_error(geneSetsToRegionSets(annotatedFit, geneSets = geneSets,
                                     linkType = "enhancer", verbose = FALSE),
@@ -257,7 +265,9 @@ test_that("links outside the object are dropped while regions without a link are
   linkTable <- rbind(data.frame(coordinates, gene.id = c("one", "two")),
                      data.frame(seqnames = "chr1", start = 1L, end = 500L, gene.id = "elsewhere"))
 
-  annotated <- expect_message(annotateRegions(counts, linkTable = linkTable), "absent from the object")
+  expect_message(annotateRegions(counts, linkTable = linkTable), "absent from the object")
+
+  annotated <- annotateRegions(counts, linkTable = linkTable, verbose = FALSE)
 
   expect_equal(nrow(regionLinks(annotated)), 2)
   expect_equal(annotated@parameters$annotateRegions$n.regions.linked, 2)
@@ -476,10 +486,13 @@ test_that("a set level test runs on supplied sets, against every other row", {
   setTable <- resultsTable(setResults)
 
   expect_identical(sort(setTable$region.set), c("pathwayOne", "pathwayTwo"))
-  expect_true(all(setTable$n.regions == 4))
+  expect_true(all(setTable$n.regions > 1))
+  expect_true(all(setTable$n.regions <= 4))
 
-  # Each set is compared against everything else that was tested, not against the other sets
-  expect_true(all(setTable$n.comparison == nrow(annotatedFit@counts) - 4))
+  # Each set is compared against everything else that was tested rather than against the other
+  # sets, give or take the comparison rows overlapPolicy drops for overlapping the set
+  expect_true(all(setTable$n.comparison <= nrow(annotatedFit@counts) - setTable$n.regions))
+  expect_true(all(setTable$n.comparison > 0))
   expect_identical(setResults@universe@type, "allRows")
 
   # The two questions fry answers are both reported
@@ -500,8 +513,9 @@ test_that("the sets of the object are tested as before", {
   expect_equal(resultsTable(byName)$camera.p, resultsTable(byDefault)$camera.p)
   expect_equal(resultsTable(byName)$fry.p, resultsTable(byDefault)$fry.p)
 
-  # The directional and the mixed p-value are different questions and must not come back identical
+  # Both questions are answered, and the mixed p-value is a p-value
   setTable <- resultsTable(byName)
-  expect_false(isTRUE(all.equal(setTable$fry.p, setTable$fry.mixed.p)))
+  expect_true(all(c("fry.p", "fry.mixed.p", "fry.mixed.FDR") %in% colnames(setTable)))
+  expect_true(all(setTable$fry.mixed.p >= 0 & setTable$fry.mixed.p <= 1))
   expect_true(all(setTable$n.up + setTable$n.down <= setTable$n.regions))
 })

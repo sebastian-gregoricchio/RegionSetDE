@@ -305,7 +305,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
 > 1      5353 0.09351198 0.1836287         2  114488             362     161
 >   greylisted.bp
@@ -329,7 +329,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments      mean      size threshold windows flagged.windows regions
 > 1      5353 0.9131696 0.1003771        15   11724               3       2
 >   greylisted.bp
@@ -550,25 +550,25 @@ consensusInfo$samples
 > 8 AR_R1881_24h_r2 R1881_24h
 > 9 AR_R1881_24h_r3 R1881_24h
 >                                                                                                 peak.file
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
 >                                                                                          bam
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >   n.peaks n.blacklist n.greylist n.excluded
 > 1      13           0          0          0
 > 2      13           0          0          0
@@ -814,20 +814,20 @@ countTable(counts, format = "long") %>%
 > 3          TRUE           TRUE           2            6 AR_DMSO_r1      0
 > 4          TRUE           TRUE           2            5 AR_DMSO_r1      2
 >                                                                                bam.file
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
 >                                                                                                peaks
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
 >                                                                              input
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r1       TRUE              NA
@@ -1175,35 +1175,35 @@ sampleInfo(counts)
 > 8 AR_R1881_24h_r2
 > 9 AR_R1881_24h_r3
 >                                                                                     bam.file
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >                                                                                                     peaks
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
 >                                                                              input
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 5 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 6 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 5 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 6 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r2       TRUE              NA

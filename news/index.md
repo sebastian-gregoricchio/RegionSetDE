@@ -659,6 +659,210 @@ First version.
   `RegionSetDE.universe` records them in `comparison.sets` and prints
   them, since a competitive p-value is relative to the sets that happen
   to be loaded.
+- [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
+  reports both questions `fry` answers instead of one. `fry.p` and
+  `fry.FDR` stay the directional test, and `fry.mixed.p` and
+  `fry.mixed.FDR` are added for the set changing in either direction,
+  which does not cancel when the regions of a set disagree. `n.up` and
+  `n.down` count the regions of each set changing each way, corrected
+  within the set the way
+  [`csaw::combineTests()`](https://rdrr.io/pkg/csaw/man/combineTests.html)
+  counts them inside a cluster. A set with both counts large and only
+  the mixed p-value significant is being rearranged rather than shifted,
+  which is a finding and the one the directional test cannot see.
+- `testRegionSets(regionSets = )` accepts a named list of region keys as
+  well as the names of the sets of the object. The sets of the object
+  are a partition, one region belonging to one set, while supplied sets
+  overlap freely, which is what gene sets do. Supplied sets are each
+  compared against every other row of the object rather than against the
+  other supplied sets, so `universe`, `matchOn` and `universeSets` do
+  not apply to them and the universe recorded in the result says
+  `allRows`.
+
+### Region to gene links
+
+- [`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+  links the regions of an object to genes and stores the full
+  region-to-gene table in it, one row per link. A region linked to three
+  genes keeps all three: nothing decides which link is right, since that
+  decision is the weakest step of any functional analysis built on
+  chromatin data and is better left visible and replaceable than
+  resolved on the fly. The representative link of every region is
+  written next to the regions as `gene.id`, `gene.symbol`,
+  `distance.to.tss` and `n.links`, for reading and for labelling plots,
+  and is never the quantity anything is computed from.
+- The links come from proximity to a transcription start site read from
+  a `TxDb` or an `EnsDb`, or from a table of your own, which is how
+  measured and predicted contacts arrive: Hi-C loops, ABC scores, a
+  `universalEPI` prediction or anything else. A `GRanges` carrying the
+  gene identifiers in its metadata columns is accepted as it is, which
+  is the shape `ChIPseeker::annotatePeak()` returns, and the usual
+  column spellings are recognised. Regions can be named by coordinates,
+  by the `chr:start-end` key or by their `region.id`, and the
+  chromosomes of the table are brought to the names of the regions one
+  by one, so a table computed on Ensembl names reaches regions written
+  the UCSC way.
+- Weights are optional and carry no assumed scale. A contact
+  probability, an ABC score and a Hi-C loop score are stored as they
+  are, with `weightSource` naming which of them it was, and nothing is
+  normalised. Links with no weight at all are the normal case and fully
+  supported. A weight cannot reach the set-level tests, since neither
+  `camera` nor `fry` takes a per-region weight, and is used as a
+  confidence filter instead, through `minWeight` in
+  [`geneSetsToRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md).
+  Asking for that filter on unweighted links stops rather than quietly
+  keeping everything.
+- `maxDistance` makes the unassigned regions explicit. A region whose
+  nearest start site is hundreds of kilobases away has a nearest gene in
+  the arithmetic sense only, so beyond that distance it is written into
+  the table with a missing `gene.id`: in the universe, out of every gene
+  set, and visible in the object rather than buried in the choice of
+  which rows were loaded.
+- The two kinds of mismatch between a link table and an object are
+  handled differently on purpose. Links on regions the object does not
+  hold are dropped, since a contact map is routinely computed over a
+  wider peak set than the one being analysed. Regions the table says
+  nothing about are kept with a missing gene, since dropping them would
+  shrink the universe of every enrichment computed afterwards without
+  anything in the output saying so. Both counts are reported and
+  recorded. A table holding duplicated region-gene pairs, or a weight
+  that is negative or missing, is refused rather than collapsed or
+  guessed at.
+- `annotateRegions(genes = )` builds the links by proximity to gene
+  ranges handed over directly, a `GRanges` carrying its identifiers in a
+  `gene.id` column or in the names of the ranges, and optionally a
+  `gene.symbol` column. It is the same computation `txdb` does and it is
+  the route for an annotation read from a GTF, for a species with no
+  `TxDb`, and for a vignette or an example that should not depend on a
+  full annotation package. Recorded as `nearestGene` in
+  `parameters$annotateRegions$source`, against `nearestTSS` for the
+  `txdb` route. One of `txdb`, `genes` and `linkTable` at a time, the
+  error naming whichever were combined.
+- The start site of a gene is taken on its strand, so a gene on the
+  minus strand is linked from its 5’ end, the higher coordinate, and
+  `distance.to.tss` stays negative upstream and positive downstream for
+  both strands.
+- Both vignettes run their gene and pathway sections on real gene
+  identifiers. `inst/extdata/euratrans_genes.rds`,
+  `euratrans_geneSets.rds` and `inst/extdata/lncapAR/chr19_genes.rds`,
+  `chr19_geneSets.rds` are slices of the annotation each vignette names
+  in its own chunks, the gene start sites of the window the example
+  covers and the GO biological process terms over them, written by
+  `inst/scripts/make-example-annotation.R`. Shipping the slice rather
+  than depending on the full `TxDb` keeps the vignettes buildable
+  anywhere while the identifiers, the symbols and everything computed
+  from them stay real; the scale of the example is stated in the
+  vignettes and in `SOURCES.md` rather than left for the reader to
+  infer.
+- `annotateRegions(flankDistance = )` links every gene whose start site
+  falls within that distance, rather than the single nearest one, which
+  is what makes the proximity route many-to-many and how a region over a
+  bidirectional promoter keeps both of its genes. Regions the flank
+  reaches nothing on are written back unassigned, so they stay in the
+  object and in the universe. It replaces the nearest-gene search rather
+  than capping it, so it cannot be combined with `maxDistance` and the
+  error says why. Until this existed the proximity route gave exactly
+  one gene per region, which the documentation of the first round
+  described wrongly.
+- `annotateRegions(tssRegion = )` fills a `link.type` column with
+  `promoter` or `distal`. The window is signed and read on the strand of
+  the gene, so a region upstream of a minus-strand gene sits at a higher
+  coordinate than its start site and is still upstream. The default
+  `c(-3000, 3000)` is the one `ChIPseeker` uses. The column labels and
+  decides nothing by itself.
+- `geneSetsToRegionSets(linkType = )` and
+  `aggregateToGenes(linkType = )` follow only the links of the kinds
+  named, which turns the promoter-proximal against distal split from
+  advice into something runnable on an undifferentiated set of peaks.
+  `regionSets` remains the other route, for regions already split into
+  sets at load time. Asking for a kind the links do not hold stops and
+  says which kinds they do, and asking at all on links that carry no
+  type stops rather than silently keeping everything.
+- What
+  [`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+  deliberately does not do is classify a region into a genomic feature,
+  promoter against intron against exon against downstream, with a
+  priority order between them. That is what `ChIPseeker::annotatePeak()`
+  is for, and its output goes into `linkTable` directly with whatever
+  categories it assigned.
+- [`regionLinks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionLinks.md)
+  reads the links back and `regionLinks() <-` attaches them, so a
+  contact table computed elsewhere goes onto an object that never saw an
+  annotation package, through the same checks.
+- [`geneSetsToRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md)
+  maps gene sets through the links and returns them as region sets ready
+  for
+  [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md),
+  with a `geneSetSummary` attribute reporting how many genes of every
+  set the links reached and how many regions it holds. `regionSets`
+  restricts the regions to one class of element, promoters for instance,
+  which is worth doing: much of the apparent disagreement within a gene
+  is promoters staying put while enhancers move. What it returns is keys
+  rather than a `GRangesList`, because a promoter belonging to fifty
+  pathways is one row that fifty sets reach and a list of ranges would
+  have to repeat it fifty times.
+- The directionality problem is reported rather than decided. A gene
+  carrying several regions that move in different directions is
+  ordinarily collapsed into one signed number before a gene list can be
+  written, which either cancels the signal or picks a winner
+  arbitrarily. Nothing is collapsed here: the regions stay the unit of
+  analysis, and the directional and mixed outcomes of the test say which
+  of the two situations a set is in.
+- [`aggregateToGenes()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/aggregateToGenes.md)
+  turns a per-region result into one row per gene, through the stored
+  links, for the cases where an external tool needs a gene table or a
+  reviewer asks for a conventional over-representation result. It
+  returns a `RegionSetDE.geneResults` object carrying the provenance
+  slots, read with
+  [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
+  and printed by `show`. The documentation says plainly that this is the
+  weaker of the two routes and why: aggregating to genes throws away the
+  ranking of the regions and replaces several measurements with one,
+  which is the step the set level route avoids, so for asking which
+  pathways responded the sets are still what to test.
+- `direction` is the answer to the problem the whole thing exists for. A
+  gene reached by one region that opened and another that closed is
+  `mixed`, and nothing decides which of the two wins, because there is
+  no defensible way to decide it. `up`, `down`, `mixed` and `unchanged`
+  are reported as four classes rather than collapsed into a sign, since
+  a gene with three regions up and three down is a different statement
+  from a gene with nothing happening and a signed score cannot tell the
+  two apart.
+- `n.up` and `n.down` are read from the `diff.status` column of the
+  region table rather than recomputed, so the gene table honours the
+  `FDR` and `log2FC` the regions were labelled with and follows
+  [`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md)
+  when they change. The two tables therefore cannot disagree about what
+  counts as up.
+- `method = "simes"` combines the p-values of the regions of a gene
+  through
+  [`csaw::combineTests()`](https://rdrr.io/pkg/csaw/man/combineTests.html),
+  which is valid under the positive dependence regions of one locus have
+  and corrects for how many regions a gene carries, unlike a minimum
+  p-value. The fold change reported beside it belongs to the region that
+  carried the p-value rather than to an average. `method = "potential"`
+  sums the fold changes weighted by how plausible the links are, as
+  `score`, with the same sum on the absolute fold changes as
+  `score.magnitude`: the first cancels on a discordant gene and the
+  second does not, so a gene high in one and near zero in the other is a
+  rearranged one. Both can be asked for at once, as
+  [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
+  takes `camera` and `fry` together.
+- The weights of the score fall back in a fixed order, recorded in the
+  `weighting` slot and printed by `show`: a weight stored on the link
+  itself, whatever it measures, then `exp(-d / decay)` on the distance
+  to the start site, then nothing, every region of a gene counting the
+  same. The last is a legitimate answer and not a failure.
+- Two limits are documented rather than papered over. The rows of the
+  table are not independent, since a region linked to three genes
+  contributes to all three, so anything tested on them afterwards is
+  anti-conservative to an unquantified degree. And the number of regions
+  a gene carries follows the length of its regulatory locus, so a gene
+  set rich in long-locus genes is easier to hit; `chipenrich` or
+  `polyenrich` is the comparison to run when that matters. A tiled
+  result that was not combined back to regions is refused outright, its
+  rows being tiles and a gene being weighted by how finely its regions
+  were cut.
 
 ### Region set scores
 

@@ -307,12 +307,14 @@ style.
 
 ``` r
 
+sampleTable <- data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+                          condition = c("BN", "BN", "SHR", "SHR"))
+
 counts <-
   countReads(regions,
              bamFiles = bamPaths,
-             sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-             sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-                                         condition = c("BN", "BN", "SHR", "SHR")),
+             sampleNames = sampleTable$sample,
+             sampleMetadata = sampleTable,
              pairedEnd = FALSE,
              fragmentLength = 180,
              minMapq = 10,
@@ -339,11 +341,12 @@ and the contigs can be collected from their header:
 ``` r
 
 bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+extraContigs <- grep("_|EBV", bamChromosomes, value = TRUE)
 
 counts <-
   countReads(regions,
              bamFiles = bamPaths,
-             excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+             excludeChromosomes = c("chrM", "chrY", extraContigs),
              nThreads = 4)
 ```
 
@@ -676,7 +679,10 @@ background bins and keeps what rises above them by a given fold change.
 nrow(counts)
 > [1] 3224
 
-counts <- filterRegions(counts, method = "background", foldChange = 2, verbose = FALSE)
+counts <- filterRegions(counts,
+                        method = "background",
+                        foldChange = 2,
+                        verbose = FALSE)
 
 nrow(counts)
 > [1] 1895
@@ -928,7 +934,10 @@ object, the ones the plots draw and
 writes down:
 
 ``` r
-strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+strictResults <- updateThresholds(results,
+                                  FDR = 0.01,
+                                  log2FC = 1,
+                                  verbose = FALSE)
 
 table(resultsTable(results)$diff.status)
 > 
@@ -1119,7 +1128,10 @@ reports for it:
 
 ``` r
 
-plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "model")
+plotRegion(results,
+           region = topRegion,
+           groupBy = "condition",
+           pairwiseTest = "model")
 ```
 
 ![](RegionSetDE.vignette_files/figure-html/plot_region_model-1.png)
@@ -1134,7 +1146,10 @@ groups that no contrast compared. The caption says which test was run.
 
 ``` r
 
-plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t.test")
+plotRegion(results,
+           region = topRegion,
+           groupBy = "condition",
+           pairwiseTest = "t.test")
 ```
 
 ![](RegionSetDE.vignette_files/figure-html/plot_region_ttest-1.png)
@@ -1187,11 +1202,11 @@ setResults
 setTable <- resultsTable(setResults)
 
 setTable
->       region.set n.regions n.comparison n.comparison.overlapping
-> 1    promoterCpG       269          314                        0
-> 2       geneBody       909          986                        0
-> 3     intergenic       440         1354                        0
-> 4 promoterNonCpG       277         1378                        0
+>       region.set n.regions n.up n.down n.comparison n.comparison.overlapping
+> 1    promoterCpG       269    0      0          314                        0
+> 2       geneBody       909    0      3          986                        0
+> 3     intergenic       440    3      8         1354                        0
+> 4 promoterNonCpG       277    1      2         1378                        0
 >   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
 > 1                    0 -0.83367077    -0.9443600             0.09704300
 > 2                    0  0.29148227     0.1692341            -0.11505923
@@ -1212,16 +1227,16 @@ setTable
 > 2         1000         0.292923395      0.14544165               2
 > 3         1000         0.097886686      0.06250318               2
 > 4         1000        -0.006188815      0.05976724               2
->   sample.delta.p camera.direction  camera.p fry.direction     fry.p camera.FDR
-> 1      0.1416115             Down 0.3213638          Down 0.2396483  0.9384488
-> 2      0.1816079               Up 0.5187249            Up 0.1814759  0.9384488
-> 3      0.2578184               Up 0.7773973            Up 0.6689405  0.9384488
-> 4      0.9269756             Down 0.9384488          Down 0.5189608  0.9384488
->     fry.FDR sample.delta.FDR
-> 1 0.4792965        0.3437579
-> 2 0.4792965        0.3437579
-> 3 0.6689405        0.3437579
-> 4 0.6689405        0.9269756
+>   sample.delta.p camera.direction  camera.p fry.direction     fry.p fry.mixed.p
+> 1      0.1416115             Down 0.3213638          Down 0.2396483 0.224143841
+> 2      0.1816079               Up 0.5187249            Up 0.1814759 0.009029908
+> 3      0.2578184               Up 0.7773973            Up 0.6689405 0.011930645
+> 4      0.9269756             Down 0.9384488          Down 0.5189608 0.154649652
+>   camera.FDR   fry.FDR fry.mixed.FDR sample.delta.FDR
+> 1  0.9384488 0.4792965    0.22414384        0.3437579
+> 2  0.9384488 0.4792965    0.02386129        0.3437579
+> 3  0.9384488 0.6689405    0.02386129        0.3437579
+> 4  0.9384488 0.6689405    0.20619954        0.9269756
 ```
 
 | Column | Meaning |
@@ -1317,6 +1332,18 @@ removes exactly that before the test sees the data. If the question is
 whether the mark changed in absolute terms, the answer has to come from
 a spike-in.
 
+**`fry` answers two questions, and both are in the table.** `fry.p` is
+directional: it asks whether the regions of the set moved the same way,
+so a set holding regions that gained and regions that lost sees them
+cancel and comes out unremarkable. `fry.mixed.p` asks whether they
+changed at all, in either direction, and does not cancel. A set
+returning the mixed p-value without the directional one is being
+rearranged rather than shifted, and that is a finding rather than a null
+result. `n.up` and `n.down` show the same thing from the region level:
+both large is the signature of a set whose regions are moving in
+opposite directions, which is what a rewired enhancer landscape looks
+like and exactly what the directional test is blind to by construction.
+
 The competitive test is the one to lead with. It runs on the per-region
 statistics through
 [`limma::cameraPR`](https://rdrr.io/pkg/limma/man/camera.html), which
@@ -1355,10 +1382,28 @@ promoterResults <- testRegionSets(fit,
                                   universeSets = "intergenic",
                                   verbose = FALSE)
 
-resultsTable(promoterResults)[, c("region.set", "n.comparison", "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR")]
->       region.set n.comparison delta.log2FC   CI.lower  CI.upper camera.FDR
-> 1    promoterCpG          274   -1.1855763 -2.1710078 0.6674211  0.4902984
-> 2 promoterNonCpG          440   -0.2858877 -0.5198742 0.3213950  0.7871227
+resultsTable(promoterResults)
+>       region.set n.regions n.up n.down n.comparison n.comparison.overlapping
+> 1    promoterCpG       269    0      0          274                        0
+> 2 promoterNonCpG       277    1      2          440                        0
+>   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
+> 1                    0 -0.83367077    -0.9443600              0.3519056
+> 2                    0 -0.02089479    -0.1571407              0.2649929
+>   delta.log2FC   CI.lower  CI.upper CI.type heterogeneity.CI.lower
+> 1   -1.1855763 -2.1710078 0.6674211  sample              -2.926757
+> 2   -0.2858877 -0.5198742 0.3213950  sample              -2.246329
+>   heterogeneity.CI.upper inter.region.cor inter.region.cor.universe
+> 1              0.5556047         0.858368                 0.2810258
+> 2              1.6745539         0.443314                 0.2733108
+>   median.width sample.delta.log2FC sample.delta.SE sample.delta.df
+> 1         1000         -0.75179339      0.32984639               2
+> 2         1000         -0.09923963      0.09776169               2
+>   sample.delta.p camera.direction  camera.p fry.direction     fry.p fry.mixed.p
+> 1      0.1502803             Down 0.2451492          Down 0.2396483   0.2241438
+> 2      0.4168747             Down 0.7871227          Down 0.5189608   0.1546497
+>   camera.FDR   fry.FDR fry.mixed.FDR sample.delta.FDR
+> 1  0.4902984 0.4792965     0.2241438        0.3005605
+> 2  0.7871227 0.5189608     0.2241438        0.4168747
 ```
 
 The numbers differ from those of `setResults` because the comparison
@@ -1437,6 +1482,561 @@ setContrast
 Use this whenever the hypothesis is comparative. Comparing two `camera`
 p-values by eye is not the same test, and it is wrong in the usual way:
 a difference in significance is not a significant difference.
+
+  
+
+### Gene sets as region sets
+
+Everything above tests sets of regions you defined. The other question
+people arrive with is the functional one: *which pathways are affected*.
+Getting from differential regions to that answer means linking regions
+to genes, and the step is worth doing carefully, because it is where
+most of the error in a functional result comes from and almost none of
+the attention goes.
+
+**The problem with the usual route.** Annotate the regions, take the
+significant ones, collect their nearest genes, run an
+over-representation test. Each step loses something. The nearest gene is
+wrong for a large share of distal elements. The threshold throws away
+the ranking. And the step that breaks most quietly: one gene usually
+carries several regions, and they do not have to move in the same
+direction. Collapsing them into one signed number per gene either
+cancels a real signal or picks a winner arbitrarily, and nothing in the
+output says which happened.
+
+`RegionSetDE` does not collapse. The links are stored as a table, the
+gene sets become region sets, and the existing set-level machinery tests
+them, so the directionality is reported rather than decided in advance.
+
+The regions here were defined in advance, so each of them already came
+with a gene attached and the linking step is close to free. Where it
+does the real work is on regions derived from peak calls, which arrive
+as intervals with nothing attached to them at all. The peak-based
+vignette carries the worked version of this section on an AR ChIP-seq
+experiment, including what to do about promoters and distal sites
+separately, and is the better place to start if that is the shape of
+your data.
+
+#### Linking the regions to genes
+
+[`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+stores a region-to-gene table inside the object. The links are
+many-to-many on purpose: a region overlapping a bidirectional promoter
+links to both genes and keeps both.
+
+The usual source is proximity to a transcription start site, read from a
+`TxDb` or an `EnsDb`:
+
+``` r
+
+txdb <- TxDb.Rnorvegicus.UCSC.rn4.ensGene::TxDb.Rnorvegicus.UCSC.rn4.ensGene
+
+annotatedFit <- annotateRegions(fit,
+                                txdb = txdb,
+                                maxDistance = 1e5)
+```
+
+`maxDistance` is worth setting. A region whose nearest start site is 800
+kb away has a nearest gene in the arithmetic sense only, and assigning
+it adds noise to every set it lands in. Those regions are written into
+the table with a missing `gene.id` rather than left out of it, which
+keeps them in the universe, keeps them out of every gene set, and leaves
+the decision visible in the object.
+
+Proximity is the default because it is always available, not because it
+is good. When contacts have been measured or predicted, Hi-C loops, ABC
+scores, a `universalEPI` prediction, hand them over as a table instead.
+One row per link, and `link.weight` is optional and carries no assumed
+scale:
+
+``` r
+
+annotatedFit <- annotateRegions(fit,
+                                linkTable = abcLinks,
+                                weightSource = "ABC score")
+```
+
+A full `TxDb` is a large thing for a vignette to depend on, so the
+annotation that runs here is a slice of it: the gene start sites of the
+window these regions cover, taken from the same `TxDb` the example
+promoters were built from and shipped with the package. The genes are
+real, and `inst/scripts/make-example-annotation.R` records how the slice
+was made.
+
+``` r
+geneSites <- readRDS(system.file("extdata", "euratrans_genes.rds",
+                                 package = "RegionSetDE"))
+
+annotatedFit <- annotateRegions(fit,
+                                genes = geneSites,
+                                maxDistance = 1e5,
+                                verbose = FALSE)
+
+head(regionLinks(annotatedFit), 4)
+>              region            gene.id gene.symbol distance.to.tss link.type
+> 1 chr12:26988-27987 ENSRNOG00000036038        <NA>               2  promoter
+> 2 chr12:39449-40448 ENSRNOG00000036349        <NA>               2  promoter
+> 3 chr12:44116-45115 ENSRNOG00000044431        <NA>               2  promoter
+> 4 chr12:46527-47526 ENSRNOG00000036346        <NA>               2  promoter
+```
+
+The table also accepts a `GRanges` with the gene identifiers in its
+metadata columns, which is the shape `ChIPseeker::annotatePeak()`
+returns, so its output can go straight in. Column names follow the
+package (`gene.id`, `distance.to.tss`) and the common aliases (`geneId`,
+`SYMBOL`, `distanceToTSS`) are recognised.
+
+Two kinds of mismatch are handled differently, and the asymmetry is
+deliberate. Links falling on regions the object does not hold are
+dropped, because a contact map is normally computed over a wider peak
+set than the one being tested. Regions the table says nothing about are
+**kept**, with a missing gene, because dropping them would shrink the
+universe of every enrichment run afterwards without anything in the
+output saying so.
+
+#### Turning gene sets into region sets
+
+``` r
+geneSets <- readRDS(system.file("extdata", "euratrans_geneSets.rds",
+                                package = "RegionSetDE"))
+
+regionSets <- geneSetsToRegionSets(annotatedFit,
+                                   geneSets = geneSets,
+                                   verbose = FALSE)
+
+head(attr(regionSets, "geneSetSummary"))
+>                                 set.name n.genes n.genes.linked n.regions
+> 1        regulation of DNA recombination       5              5        12
+> 2        DNA damage checkpoint signaling       5              5        17
+> 3    response to reactive oxygen species       5              5        15
+> 4                       action potential       5              5        15
+> 5                temperature homeostasis       5              5        19
+> 6 morphogenesis of a branching structure       5              5        21
+```
+
+Those are GO biological process terms over the genes of the same window,
+shipped beside the start sites. `n.genes` is how many genes a term
+holds, `n.genes.linked` how many of them a region of this object
+reached, and `n.regions` how many regions that adds up to. The gap
+between the first two is the scale of the example rather than a property
+of the method: one chromosome reaches a small part of any pathway.
+
+The result is a named list of region keys rather than a `GRangesList`,
+and the reason is that gene sets overlap while region sets of this
+package do not. A promoter belonging to fifty pathways is one row of the
+object that fifty sets reach; a list of ranges would have to repeat that
+row fifty times and the counting would then be wrong in fifty ways.
+
+[`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
+takes that list straight through its `regionSets` argument:
+
+``` r
+geneSetResults <- testRegionSets(annotatedFit,
+                                 contrast = c("condition", "SHR", "BN"),
+                                 regionSets = regionSets,
+                                 verbose = FALSE)
+
+resultsTable(geneSetResults)
+>                                                                                                                                          region.set
+> 1                                                                                                                   regulation of DNA recombination
+> 2                                                                                                                              placenta development
+> 3                                                                                                               response to reactive oxygen species
+> 4                                                                                                                                      cell killing
+> 5                                                                                                                   leukocyte mediated cytotoxicity
+> 6                                                                                                            morphogenesis of a branching structure
+> 7                                                                                                positive regulation of leukocyte mediated immunity
+> 8                                                                                               positive regulation of lymphocyte mediated immunity
+> 9                                                                                                   positive regulation of adaptive immune response
+> 10 positive regulation of adaptive immune response based on somatic recombination of immune receptors built from immunoglobulin superfamily domains
+> 11                                                                                                         positive regulation of peptide secretion
+> 12                                                                                                                                 action potential
+> 13                                                                                                                      acute inflammatory response
+> 14                                                                                                      positive regulation of leukocyte chemotaxis
+> 15                                                                                                                            leukocyte homeostasis
+> 16                                                                                                       regulation of nucleotide metabolic process
+> 17                                                                                                                       pyruvate metabolic process
+> 18                                                                                                    hematopoietic progenitor cell differentiation
+> 19                                                                                                                  DNA damage checkpoint signaling
+> 20                                                                                                                 polysaccharide metabolic process
+> 21                                                                                                                       glycogen metabolic process
+> 22                                                                                                                          temperature homeostasis
+> 23                                                                                              myeloid cell activation involved in immune response
+> 24                                                                                                                         T cell mediated immunity
+> 25                                                                                                           regulation of T cell mediated immunity
+>    n.regions n.up n.down n.comparison n.comparison.overlapping
+> 1         12    0      0         1883                        0
+> 2          8    0      0         1887                        0
+> 3         15    0      0         1880                        0
+> 4         12    0      0         1883                        0
+> 5         12    0      0         1883                        0
+> 6         21    0      0         1874                        0
+> 7         11    0      0         1884                        0
+> 8         11    0      0         1884                        0
+> 9         11    0      0         1884                        0
+> 10        11    0      0         1884                        0
+> 11        18    0      1         1877                        0
+> 12        15    0      1         1880                        0
+> 13         8    0      0         1887                        0
+> 14        16    0      0         1879                        0
+> 15        19    0      0         1876                        0
+> 16        18    0      0         1877                        0
+> 17        17    0      0         1878                        0
+> 18        15    0      0         1880                        0
+> 19        17    0      0         1878                        0
+> 20        18    0      0         1877                        0
+> 21        18    0      0         1877                        0
+> 22        19    0      0         1876                        0
+> 23        10    0      0         1885                        0
+> 24        13    0      0         1882                        0
+> 25        13    0      0         1882                        0
+>    n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
+> 1                     0 -0.69836471   -0.86860386             0.08491204
+> 2                     0 -0.49795424   -0.65155729             0.08240202
+> 3                     0 -0.36455621   -0.41486785             0.08349858
+> 4                     0  0.41939024   -0.16119216             0.07778880
+> 5                     0  0.41939024   -0.16119216             0.07778880
+> 6                     0 -0.22554832   -0.35990482             0.08337540
+> 7                     0 -0.22664609   -0.23929674             0.08174209
+> 8                     0 -0.22664609   -0.23929674             0.08174209
+> 9                     0 -0.22664609   -0.23929674             0.08174209
+> 10                    0 -0.22664609   -0.23929674             0.08174209
+> 11                    0 -0.22090465   -0.51706045             0.08283712
+> 12                    0 -0.20967110   -0.21742714             0.08226279
+> 13                    0 -0.18903217   -0.23871859             0.08109234
+> 14                    0 -0.16412358   -0.23614500             0.08203032
+> 15                    0 -0.11962489   -0.03597348             0.08197327
+> 16                    0 -0.11355274   -0.40788908             0.08180764
+> 17                    0 -0.09999909   -0.23929674             0.08158092
+> 18                    0 -0.06461275   -0.16972509             0.08110541
+> 19                    0  0.20408067    0.06760289             0.07882834
+> 20                    0 -0.03067419   -0.36591013             0.08101285
+> 21                    0 -0.03067419   -0.36591013             0.08101285
+> 22                    0  0.16732028   -0.35856320             0.07906711
+> 23                    0  0.16569226    0.20271899             0.07949712
+> 24                    0  0.03061238   -0.08308758             0.08029279
+> 25                    0  0.03061238   -0.08308758             0.08029279
+>    delta.log2FC    CI.lower   CI.upper CI.type heterogeneity.CI.lower
+> 1   -0.78327675 -1.21065154 0.26481828  sample              -2.455476
+> 2   -0.58035627 -0.69789849 0.06533152  sample              -2.216643
+> 3   -0.44805479 -0.58130148 0.11427418  sample              -1.986621
+> 4    0.34160144 -0.37015016 0.70886819  sample              -2.676027
+> 5    0.34160144 -0.37015016 0.70886819  sample              -2.676027
+> 6   -0.30892372 -0.50006002 0.09643013  sample              -2.027425
+> 7   -0.30838818 -0.51407525 0.35551678  sample              -2.298280
+> 8   -0.30838818 -0.51407525 0.35551678  sample              -2.298280
+> 9   -0.30838818 -0.51407525 0.35551678  sample              -2.298280
+> 10  -0.30838818 -0.51407525 0.35551678  sample              -2.298280
+> 11  -0.30374177 -0.53575706 0.32290385  sample              -2.288307
+> 12  -0.29193389 -0.65818064 0.51691957  sample              -1.969335
+> 13  -0.27012451 -0.35646451 0.08112392  sample              -2.045688
+> 14  -0.24615390 -0.48300710 0.56797578  sample              -1.810170
+> 15  -0.20159817 -0.25801661 0.41106899  sample              -1.982452
+> 16  -0.19536038 -0.26500104 0.20919652  sample              -1.954559
+> 17  -0.18158001 -0.47946498 0.43858969  sample              -1.876765
+> 18  -0.14571817 -0.74028803 0.55244177  sample              -1.707641
+> 19   0.12525233 -0.17472669 0.25374162  sample              -1.421975
+> 20  -0.11168704 -0.37992547 0.52389380  sample              -1.715452
+> 21  -0.11168704 -0.37992547 0.52389380  sample              -1.715452
+> 22   0.08825317 -0.08197534 0.04810013  sample              -2.120883
+> 23   0.08619514  0.15728921 0.57684372  sample              -1.607968
+> 24  -0.04968041  0.10127781 0.26108698  sample              -1.899869
+> 25  -0.04968041  0.10127781 0.26108698  sample              -1.899869
+>    heterogeneity.CI.upper inter.region.cor inter.region.cor.universe
+> 1               0.8889223       0.84366582                 0.3579524
+> 2               1.0559308       0.52507922                 0.3596527
+> 3               1.0905112       0.17056703                 0.3617551
+> 4               3.3592298       0.83787848                 0.3579653
+> 5               3.3592298       0.83787848                 0.3579653
+> 6               1.4095776       0.27305755                 0.3611650
+> 7               1.6815035       0.86679266                 0.3582657
+> 8               1.6815035       0.86679266                 0.3582657
+> 9               1.6815035       0.86679266                 0.3582657
+> 10              1.6815035       0.86679266                 0.3582657
+> 11              1.6808238       0.50473221                 0.3592694
+> 12              1.3854672       0.13872486                 0.3620350
+> 13              1.5054386       0.46041508                 0.3597993
+> 14              1.3178623       0.14580903                 0.3622703
+> 15              1.5792556       0.51716519                 0.3591034
+> 16              1.5638384       0.38615718                 0.3604217
+> 17              1.5136052       0.29963683                 0.3612416
+> 18              1.4162045       0.03906540                 0.3631832
+> 19              1.6724801       0.09252171                 0.3628363
+> 20              1.4920779       0.08949491                 0.3630523
+> 21              1.4920779       0.08949491                 0.3630523
+> 22              2.2973895       0.35546390                 0.3601853
+> 23              1.7803585       0.43866740                 0.3598155
+> 24              1.8005085       0.62019854                 0.3587677
+> 25              1.8005085       0.62019854                 0.3587677
+>    median.width sample.delta.log2FC sample.delta.SE sample.delta.df
+> 1          1000         -0.47291663      0.17146048               2
+> 2          1000         -0.31628348      0.08869296               2
+> 3          1000         -0.23351365      0.08083103               2
+> 4          1000          0.16935901      0.12538990               2
+> 5          1000          0.16935901      0.12538990               2
+> 6          1000         -0.20181495      0.06931656               2
+> 7          1000         -0.07927924      0.10105301               2
+> 8          1000         -0.07927924      0.10105301               2
+> 9          1000         -0.07927924      0.10105301               2
+> 10         1000         -0.07927924      0.10105301               2
+> 11         1000         -0.10642661      0.09978273               2
+> 12         1000         -0.07063054      0.13655532               2
+> 13         1000         -0.13767029      0.05085100               2
+> 14         1000          0.04248434      0.12213197               2
+> 15         1000          0.07652619      0.07775268               2
+> 16         1000         -0.02790226      0.05510526               2
+> 17         1000         -0.02043765      0.10668473               2
+> 18         1000         -0.09392313      0.15022474               2
+> 19         1000          0.03950747      0.04979118               2
+> 20         1000          0.07198416      0.10503047               2
+> 21         1000          0.07198416      0.10503047               2
+> 22         1000         -0.01693760      0.01511573               2
+> 23         1000          0.36706646      0.04875533               2
+> 24         1000          0.18118239      0.01857101               2
+> 25         1000          0.18118239      0.01857101               2
+>    sample.delta.p camera.direction  camera.p fry.direction      fry.p
+> 1      0.11015228             Down 0.4923268          Down 0.20190000
+> 2      0.07043018             Down 0.5288222          Down 0.17336576
+> 3      0.10184356             Down 0.3607313          Down 0.03981221
+> 4      0.30932948               Up 0.8747974          Down 0.99689676
+> 5      0.30932948               Up 0.8747974          Down 0.99689676
+> 6      0.10049887             Down 0.5943697          Down 0.08816882
+> 7      0.51489725             Down 0.8817702          Down 0.47196135
+> 8      0.51489725             Down 0.8817702          Down 0.47196135
+> 9      0.51489725             Down 0.8817702          Down 0.47196135
+> 10     0.51489725             Down 0.8817702          Down 0.47196135
+> 11     0.39786203             Down 0.6064211          Down 0.27124450
+> 12     0.65651510             Down 0.4226984          Down 0.05166146
+> 13     0.11364287             Down 0.9000312          Down 0.30067445
+> 14     0.76114804             Down 0.7671684          Down 0.21753383
+> 15     0.42876933             Down 0.9332962          Down 0.49530789
+> 16     0.66291474             Down 0.9605831          Down 0.30822805
+> 17     0.86576518             Down 0.9533242          Down 0.31483360
+> 18     0.59565632             Down 0.6553356          Down 0.03784561
+> 19     0.51069094               Up 0.7061699          Down 0.70651538
+> 20     0.56388866             Down 0.9790150          Down 0.37140438
+> 21     0.56388866             Down 0.9790150          Down 0.37140438
+> 22     0.37897597             Down 0.9290715          Down 0.26490843
+> 23     0.01718873               Up 0.7599698            Up 0.71039735
+> 24     0.01034332               Up 0.8819006          Down 0.93084457
+> 25     0.01034332               Up 0.8819006          Down 0.93084457
+>    fry.mixed.p camera.FDR   fry.FDR fry.mixed.FDR sample.delta.FDR
+> 1   0.20797061   0.979015 0.6517209     0.3171251        0.3551340
+> 2   0.27889017   0.979015 0.6517209     0.3171251        0.3551340
+> 3   0.26714347   0.979015 0.4305122     0.3171251        0.3551340
+> 4   0.24876207   0.979015 0.9968968     0.3171251        0.7048608
+> 5   0.24876207   0.979015 0.9968968     0.3171251        0.7048608
+> 6   0.15083697   0.979015 0.5510552     0.3171251        0.3551340
+> 7   0.20593708   0.979015 0.6517209     0.3171251        0.7048608
+> 8   0.20593708   0.979015 0.6517209     0.3171251        0.7048608
+> 9   0.20593708   0.979015 0.6517209     0.3171251        0.7048608
+> 10  0.20593708   0.979015 0.6517209     0.3171251        0.7048608
+> 11  0.13912015   0.979015 0.6517209     0.3171251        0.7048608
+> 12  0.06136328   0.979015 0.4305122     0.3171251        0.7205595
+> 13  0.49012402   0.979015 0.6517209     0.5105459        0.3551340
+> 14  0.19639541   0.979015 0.6517209     0.3171251        0.7928625
+> 15  0.13082989   0.979015 0.6517209     0.3171251        0.7048608
+> 16  0.21770067   0.979015 0.6517209     0.3171251        0.7205595
+> 17  0.27907005   0.979015 0.6517209     0.3171251        0.8657652
+> 18  0.20906620   0.979015 0.4305122     0.3171251        0.7091147
+> 19  0.68104440   0.979015 0.8457111     0.6810444        0.7048608
+> 20  0.09754117   0.979015 0.6517209     0.3171251        0.7048608
+> 21  0.09754117   0.979015 0.6517209     0.3171251        0.7048608
+> 22  0.22047685   0.979015 0.6517209     0.3171251        0.7048608
+> 23  0.45476385   0.979015 0.8457111     0.4943085        0.1432394
+> 24  0.10756284   0.979015 0.9968968     0.3171251        0.1292915
+> 25  0.10756284   0.979015 0.9968968     0.3171251        0.1292915
+```
+
+**The comparison changes, and it changes correctly.** Sets supplied this
+way are each compared against every other row of the object rather than
+against the other supplied sets, and `universe`, `matchOn` and
+`universeSets` are ignored. That is the comparison a pathway wants: the
+question is whether its regions moved more than the rest of what was
+tested, not whether they moved more than the other pathways. It also
+means the background is the annotated and tested regions and nothing
+wider, which is the background this kind of analysis should have and the
+one most often got wrong.
+
+**The directionality shows up in the output instead of being resolved in
+the input.** Read `n.up` against `n.down` and `fry.FDR` against
+`fry.mixed.FDR`. A pathway whose regions all gain shows a directional
+result. A pathway whose regions are being rearranged, some opening and
+some closing, shows the mixed result without the directional one. Both
+are findings; the second is the one the conventional gene-list route
+destroys.
+
+#### What this does not fix
+
+**Locus length.** A gene with a long regulatory locus carries more
+regions than a gene with a short one, so a set rich in such genes
+reaches more rows. `camera` corrects for the correlation between those
+rows and not for how many of them there are, and the genes with the
+largest regulatory domains are disproportionately developmental
+transcription factors and signalling receptors, which is why
+under-corrected analyses of this kind so often return the same
+plausible-looking developmental terms whatever the biology. Where that
+matters, compare against a count-based method built for it, `chipenrich`
+or `polyenrich`, run on the regions.
+
+**Assignment error.** None of the statistics repairs a wrong link. A
+well-calibrated p-value for a mis-specified hypothesis is still wrong,
+and the gap between the best and the worst method here is smaller than
+the gap between proximity and measured contacts.
+
+Two habits make the result more trustworthy. Run the analysis separately
+on promoter-proximal and on distal regions, through `regionSets =` on
+[`geneSetsToRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md):
+much of the apparent disagreement within a gene is promoters staying put
+while enhancers move, and splitting them makes both the result and the
+reading of it simpler. And treat motif enrichment on the regions that
+gained against the ones that lost as the primary claim for accessibility
+data, with the pathway result as the secondary, hypothesis-generating
+layer: motifs skip the linking step entirely and test something the
+assay actually measured.
+
+  
+
+#### A table of genes, when one is needed
+
+Everything above keeps the region as the unit and never writes a gene
+score. Sometimes a gene table is what you need anyway: an external tool
+expects one, a reviewer asks for a conventional over-representation
+result, or the gene really is the unit of the question.
+[`aggregateToGenes()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/aggregateToGenes.md)
+builds it, and the documentation is explicit that this is the weaker of
+the two routes, because aggregating replaces several measurements with
+one and throws away the ranking of the regions.
+
+``` r
+# Tested on the annotated fit, so the regions carry the links
+annotatedResults <- testRegions(annotatedFit,
+                                contrast = c("condition", "SHR", "BN"),
+                                verbose = FALSE)
+
+geneResults <- aggregateToGenes(annotatedResults,
+                                method = c("simes", "potential"),
+                                verbose = FALSE)
+geneResults
+> An object of class 'RegionSetDE.geneResults'
+>   contrast        : condition: SHR vs BN 
+>   engine          : edgeR 
+>   aggregation     : simes, potential 
+>   weighting       : distance 
+>   genes           : 627 
+>   links           : 1739 
+>   direction       : up 3, down 8, mixed 0, unchanged 616 
+> 
+>             gene.id gene.symbol n.regions n.up n.down direction  score  p.value
+>  ENSRNOG00000030808        <NA>         1    0      1      down -5.200 1.15e-08
+>  ENSRNOG00000000705        <NA>         4    0      1      down -0.516 1.10e-05
+>  ENSRNOG00000001001        Retn         1    0      1      down -3.200 1.37e-05
+>  ENSRNOG00000043519        <NA>         1    1      0        up  0.188 4.21e-05
+>  ENSRNOG00000043257        <NA>         1    1      0        up  2.860 1.53e-04
+>  ENSRNOG00000000893     Tmem248         7    0      1      down -0.562 2.34e-04
+>       FDR
+>  7.20e-06
+>  2.87e-03
+>  2.87e-03
+>  6.59e-03
+>  1.92e-02
+>  2.45e-02
+```
+
+``` r
+geneTable <- resultsTable(geneResults)
+table(geneTable$direction)
+> 
+>      down unchanged        up 
+>         8       616         3
+```
+
+**The four direction classes are the point.** A gene reached by one
+region that opened and another that closed is `mixed`. Nothing here
+picks a winner between them, because there is no defensible way to pick
+one: cancelling loses a real signal and taking the stronger region is
+arbitrary. Keep the mixed genes as their own category rather than
+dropping them or forcing them into a sign. A gene with three regions up
+and three down is a different biological statement from a gene with
+nothing happening, and a signed score cannot tell those two apart.
+
+`n.up` and `n.down` are read from the `diff.status` column of the region
+table rather than recomputed, so they follow whatever `FDR` and `log2FC`
+the regions were labelled with. Run
+[`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md)
+on the result and rebuild the gene table, and the labels move with it.
+The two tables cannot disagree about what counts as up.
+
+**The two aggregations answer different needs.** `"simes"` gives the
+p-value, through
+[`csaw::combineTests()`](https://rdrr.io/pkg/csaw/man/combineTests.html),
+the same procedure the package uses to combine tiles into a region. It
+asks whether *any* region of the gene changed, is valid under the
+positive dependence that regions of one locus have, and corrects for how
+many regions a gene carries, which taking the smallest p-value does not.
+The `log2FC` beside it belongs to the region that produced the p-value,
+not to an average, so a gene with one strong region among many quiet
+ones is described by that region.
+
+`"potential"` gives the ranked score a gene-level GSEA wants. It is a
+score and not a test: no error model, no p-value of its own, which is
+why keeping the Simes columns alongside it is worth doing. `score` is
+the weighted sum of the fold changes and cancels on a discordant gene;
+`score.magnitude` is the same sum on the absolute values and does not.
+Genes high in the second and near zero in the first are the rearranged
+ones, which is `direction == "mixed"` seen as a number.
+
+The weights come from the links, in a fixed order: a weight stored on
+the link itself if there is one, whatever it measures; failing that
+`exp(-d / decay)` on the distance to the start site, which is a guess
+about contact rather than a measure of it; failing both, every region of
+a gene counts the same. Which applied is in the object and `show` prints
+it.
+
+``` r
+
+# The table an over-representation tool expects, split by direction
+upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
+universe <- geneTable$gene.id
+
+clusterProfiler::enrichGO(upGenes,
+                          universe = universe,
+                          OrgDb = org.Rn.eg.db::org.Rn.eg.db,
+                          keyType = "ENTREZID",
+                          ont = "BP")
+```
+
+Note what the universe is there: the genes the links actually reached,
+not every gene with a GO annotation. That is the background this kind of
+test should have and the one most often got wrong, and it comes for free
+from building the table this way.
+
+For a ranked GSEA rather than a thresholded list, `score` is the
+statistic:
+
+``` r
+
+geneRanks <- stats::setNames(geneTable$score, geneTable$gene.id)
+
+fgsea::fgseaMultilevel(pathways = geneSets, stats = geneRanks, minSize = 5)
+```
+
+Ranking on `score.magnitude` instead asks which pathways were remodelled
+rather than which shifted, and `sign(score) * -log10(p.value)` ranks by
+significance rather than by effect. The caveat for the methods is that
+the genes are not independent, a region linked to three genes
+contributing to all three, so the permutation is anti-conservative by an
+amount the data cannot quantify. The set-level route above avoids that
+by never leaving the region as the unit.
+
+**Two limits worth a line in the methods.** The rows are not
+independent: a region linked to three genes contributes to all three, so
+the genes share data and anything tested on them afterwards is
+anti-conservative to a degree nobody can quantify. And the number of
+regions a gene carries follows the length of its regulatory locus, so a
+gene set rich in long-locus genes is easier to hit. Neither is fixed
+here. `polyenrich` run on the regions is the comparison that addresses
+the second, and agreement between it and this table is a much stronger
+claim than either alone.
 
   
 
@@ -1913,11 +2513,11 @@ singleSetResults <- testRegionSets(singleFit,
                                    verbose = FALSE)
 
 resultsTable(singleSetResults)
->       region.set n.regions n.comparison n.comparison.overlapping
-> 1    promoterCpG       273          322                        0
-> 2       geneBody      1178         1420                        0
-> 3 promoterNonCpG       371         1855                        0
-> 4     intergenic       776         1813                        0
+>       region.set n.regions n.up n.down n.comparison n.comparison.overlapping
+> 1    promoterCpG       273    0      0          322                        0
+> 2       geneBody      1178    0      1         1420                        0
+> 3 promoterNonCpG       371    1      1         1855                        0
+> 4     intergenic       776    2      1         1813                        0
 >   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
 > 1                    0 -0.34574769   -0.35028835            0.287725959
 > 2                    0  0.20023317    0.04587859           -0.005591536
@@ -1962,8 +2562,10 @@ singleTable <- resultsTable(singleResults)
 sharedRegions <- intersect(replicatedTable$region.id, singleTable$region.id)
 
 comparisonTable <- data.frame(
-  replicated = replicatedTable$log2FC[match(sharedRegions, replicatedTable$region.id)],
-  singleSample = singleTable$log2FC[match(sharedRegions, singleTable$region.id)])
+  replicated = replicatedTable$log2FC[match(sharedRegions,
+                                            replicatedTable$region.id)],
+  singleSample = singleTable$log2FC[match(sharedRegions,
+                                          singleTable$region.id)])
 
 correlationTest <- stats::cor.test(comparisonTable$replicated,
                                    comparisonTable$singleSample,
@@ -2134,7 +2736,7 @@ genome-wide catalogue.
 
 ``` r
 sessionInfo()
-> R version 4.6.1 (2026-06-24)
+> R version 4.6.2 (2026-10-29)
 > Platform: x86_64-pc-linux-gnu
 > Running under: Ubuntu 24.04.5 LTS
 > 
@@ -2165,31 +2767,31 @@ sessionInfo()
 >   [1] bitops_1.1-0                rlang_1.3.0                
 >   [3] magrittr_2.0.5              clue_0.3-68                
 >   [5] GetoptLong_1.1.1            otel_0.2.0                 
->   [7] matrixStats_1.5.0           compiler_4.6.1             
+>   [7] matrixStats_1.5.0           compiler_4.6.2             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
 >  [11] systemfonts_1.3.2           vctrs_0.7.3                
 >  [13] stringr_1.6.0               shape_1.4.6.1              
 >  [15] pkgconfig_2.0.3             crayon_1.5.3               
 >  [17] fastmap_1.2.0               XVector_0.52.0             
 >  [19] labeling_0.4.3              Rsamtools_2.28.0           
->  [21] rmarkdown_2.32              markdown_2.0               
+>  [21] rmarkdown_2.32              markdown_2.1               
 >  [23] UCSC.utils_1.8.0            ragg_1.5.2                 
->  [25] xfun_0.61                   cachem_1.1.0               
+>  [25] xfun_0.62                   cachem_1.1.0               
 >  [27] cigarillo_1.2.1             litedown_0.11              
 >  [29] GenomeInfoDb_1.48.0         jsonlite_2.0.0             
 >  [31] DelayedArray_0.38.2         BiocParallel_1.46.0        
->  [33] cluster_2.1.8.2             parallel_4.6.1             
+>  [33] cluster_2.1.8.3             parallel_4.6.2             
 >  [35] R6_2.6.1                    bslib_0.12.0               
 >  [37] stringi_1.8.9               RColorBrewer_1.1-3         
 >  [39] limma_3.68.5                rtracklayer_1.72.0         
 >  [41] jquerylib_0.1.4             iterators_1.0.14           
 >  [43] Rcpp_1.1.2                  bookdown_0.48              
 >  [45] SummarizedExperiment_1.42.0 knitr_1.52                 
->  [47] Matrix_1.7-5                splines_4.6.1              
+>  [47] Matrix_1.7-6                splines_4.6.2              
 >  [49] tidyselect_1.2.1            abind_1.4-8                
 >  [51] yaml_2.3.12                 doParallel_1.0.17          
 >  [53] ggtext_0.2.0                codetools_0.2-20           
->  [55] curl_8.0.0                  lattice_0.22-9             
+>  [55] curl_8.1.0                  lattice_0.23-1             
 >  [57] tibble_3.3.1                Biobase_2.72.0             
 >  [59] withr_3.0.3                 S7_0.2.2                   
 >  [61] csaw_1.46.0                 evaluate_1.0.5             
@@ -2199,20 +2801,20 @@ sessionInfo()
 >  [69] MatrixGenerics_1.24.0       foreach_1.5.2              
 >  [71] RCurl_1.98-1.20             commonmark_2.0.0           
 >  [73] scales_1.4.0                glue_1.8.1                 
->  [75] metapod_1.20.0              tools_4.6.1                
+>  [75] metapod_1.20.0              tools_4.6.2                
 >  [77] BiocIO_1.22.0               locfit_1.5-9.12            
 >  [79] GenomicAlignments_1.48.0    fs_2.1.0                   
->  [81] XML_3.99-0.25               grid_4.6.1                 
->  [83] colorspace_2.1-3            edgeR_4.10.5               
->  [85] nlme_3.1-169                restfulr_0.0.17            
+>  [81] XML_3.99-0.25               grid_4.6.2                 
+>  [83] colorspace_2.1-4            edgeR_4.10.7               
+>  [85] nlme_3.1-171                restfulr_0.0.17            
 >  [87] cli_3.6.6                   textshaping_1.0.5          
 >  [89] viridisLite_0.4.3           S4Arrays_1.12.1            
 >  [91] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [93] sass_0.4.10                 digest_0.6.39              
 >  [95] SparseArray_1.12.3          ggrepel_0.9.8              
->  [97] rjson_0.2.23                htmlwidgets_1.6.4          
->  [99] farver_2.1.2                htmltools_0.5.9            
-> [101] pkgdown_2.2.1               lifecycle_1.0.5            
-> [103] httr_1.4.9                  GlobalOptions_0.1.4        
-> [105] statmod_1.5.2               gridtext_0.1.6
+>  [97] rjson_0.2.23                farver_2.1.2               
+>  [99] htmltools_0.5.9             pkgdown_2.2.1              
+> [101] lifecycle_1.0.5             httr_1.4.9                 
+> [103] GlobalOptions_0.1.4         statmod_1.5.2              
+> [105] gridtext_0.1.6
 ```

@@ -764,6 +764,12 @@ First version.
   error says why. Until this existed the proximity route gave exactly
   one gene per region, which the documentation of the first round
   described wrongly.
+- A gene reached through more than one start site, alternative promoters
+  among them, which a wide `flankDistance` can do and which a
+  transcript-level annotation makes common, now yields one link through
+  the nearer site rather than one per site. The links keep the order of
+  the regions rather than the alphabetical order of their coordinate
+  keys.
 - `annotateRegions(tssRegion = )` fills a `link.type` column with
   `promoter` or `distal`. The window is signed and read on the strand of
   the gene, so a region upstream of a minus-strand gene sits at a higher
@@ -785,6 +791,26 @@ First version.
   priority order between them. That is what `ChIPseeker::annotatePeak()`
   is for, and its output goes into `linkTable` directly with whatever
   categories it assigned.
+- [`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+  reads the stored identifiers through
+  [`.storedRegionIds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-storedRegionIds.md).
+  It had been given the name `.regionIdentifiers`, which `countsUtils.R`
+  already uses for a different function, and since that file collates
+  later its version won: naming the regions of a `linkTable` by
+  `region.id` matched nothing, because the identifiers were being read
+  as the names of the ranges rather than from the `region.id` column.
+- The `show` method of `RegionSetDE.geneResults` carries `@export`, as
+  every other `show` method does, so it is documented rather than
+  exported without an Rd entry. The first `updateObject` method uses
+  `@rdname` rather than `@name`, which aliases the method it sits on;
+  without it the method was reported as undocumented and its usage as
+  unaliased.
+- A `linkTable` naming the regions by `region.id` whose identifiers
+  match nothing now says so in terms of the identifiers, naming the ones
+  it was given and the ones the object holds. It was reported as a
+  coordinate mismatch before, which named nothing useful since the keys
+  it would have printed were exactly the ones that could not be built. A
+  coordinate table whose keys are all missing is reported as such too.
 - [`regionLinks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionLinks.md)
   reads the links back and `regionLinks() <-` attaches them, so a
   contact table computed elsewhere goes onto an object that never saw an

@@ -65,12 +65,14 @@ availableRegionLists(type = "blacklist")
 loadBlacklist("hg38", verbose = FALSE)
 
 ## ----count_reads, eval = FALSE------------------------------------------------
+# sampleTable <- data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+#                           condition = c("BN", "BN", "SHR", "SHR"))
+# 
 # counts <-
 #   countReads(regions,
 #              bamFiles = bamPaths,
-#              sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-#              sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-#                                          condition = c("BN", "BN", "SHR", "SHR")),
+#              sampleNames = sampleTable$sample,
+#              sampleMetadata = sampleTable,
 #              pairedEnd = FALSE,
 #              fragmentLength = 180,
 #              minMapq = 10,
@@ -78,11 +80,12 @@ loadBlacklist("hg38", verbose = FALSE)
 
 ## ----count_reads_exclude, eval = FALSE----------------------------------------
 # bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+# extraContigs <- grep("_|EBV", bamChromosomes, value = TRUE)
 # 
 # counts <-
 #   countReads(regions,
 #              bamFiles = bamPaths,
-#              excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+#              excludeChromosomes = c("chrM", "chrY", extraContigs),
 #              nThreads = 4)
 
 ## ----counts_structure---------------------------------------------------------
@@ -138,7 +141,10 @@ plotSetMA(counts, groupBy = "condition")
 ## ----filter_regions-----------------------------------------------------------
 nrow(counts)
 
-counts <- filterRegions(counts, method = "background", foldChange = 2, verbose = FALSE)
+counts <- filterRegions(counts,
+                        method = "background",
+                        foldChange = 2,
+                        verbose = FALSE)
 
 nrow(counts)
 
@@ -186,7 +192,10 @@ resultTable <- resultsTable(results)
 head(resultTable, 3)
 
 ## ----update_thresholds--------------------------------------------------------
-strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+strictResults <- updateThresholds(results,
+                                  FDR = 0.01,
+                                  log2FC = 1,
+                                  verbose = FALSE)
 
 table(resultsTable(results)$diff.status)
 table(resultsTable(strictResults)$diff.status)
@@ -219,10 +228,16 @@ topRegion <- topRegions(results, n = 1, FDR = 1)$region.id
 plotRegion(results, region = topRegion, groupBy = "condition")
 
 ## ----plot_region_model, fig.height = 4----------------------------------------
-plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "model")
+plotRegion(results,
+           region = topRegion,
+           groupBy = "condition",
+           pairwiseTest = "model")
 
 ## ----plot_region_ttest, fig.height = 4----------------------------------------
-plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t.test")
+plotRegion(results,
+           region = topRegion,
+           groupBy = "condition",
+           pairwiseTest = "t.test")
 
 ## ----plot_heatmap, fig.height = 7---------------------------------------------
 plotTopHeatmap(results, n = 20, FDR = 1)
@@ -247,7 +262,7 @@ promoterResults <- testRegionSets(fit,
                                   universeSets = "intergenic",
                                   verbose = FALSE)
 
-resultsTable(promoterResults)[, c("region.set", "n.comparison", "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR")]
+resultsTable(promoterResults)
 
 ## ----plot_set_effect, fig.height = 4------------------------------------------
 plotSetEffect(setResults)
@@ -266,6 +281,78 @@ setContrast <- testSetContrast(fit,
                                verbose = FALSE)
 
 setContrast
+
+## ----annotate_txdb, eval = FALSE----------------------------------------------
+# txdb <- TxDb.Rnorvegicus.UCSC.rn4.ensGene::TxDb.Rnorvegicus.UCSC.rn4.ensGene
+# 
+# annotatedFit <- annotateRegions(fit,
+#                                 txdb = txdb,
+#                                 maxDistance = 1e5)
+
+## ----annotate_contacts, eval = FALSE------------------------------------------
+# annotatedFit <- annotateRegions(fit,
+#                                 linkTable = abcLinks,
+#                                 weightSource = "ABC score")
+
+## ----annotate_links-----------------------------------------------------------
+geneSites <- readRDS(system.file("extdata", "euratrans_genes.rds",
+                                 package = "RegionSetDE"))
+
+annotatedFit <- annotateRegions(fit,
+                                genes = geneSites,
+                                maxDistance = 1e5,
+                                verbose = FALSE)
+
+head(regionLinks(annotatedFit), 4)
+
+## ----gene_sets----------------------------------------------------------------
+geneSets <- readRDS(system.file("extdata", "euratrans_geneSets.rds",
+                                package = "RegionSetDE"))
+
+regionSets <- geneSetsToRegionSets(annotatedFit,
+                                   geneSets = geneSets,
+                                   verbose = FALSE)
+
+head(attr(regionSets, "geneSetSummary"))
+
+## ----test_gene_sets-----------------------------------------------------------
+geneSetResults <- testRegionSets(annotatedFit,
+                                 contrast = c("condition", "SHR", "BN"),
+                                 regionSets = regionSets,
+                                 verbose = FALSE)
+
+resultsTable(geneSetResults)
+
+## ----aggregate_genes----------------------------------------------------------
+# Tested on the annotated fit, so the regions carry the links
+annotatedResults <- testRegions(annotatedFit,
+                                contrast = c("condition", "SHR", "BN"),
+                                verbose = FALSE)
+
+geneResults <- aggregateToGenes(annotatedResults,
+                                method = c("simes", "potential"),
+                                verbose = FALSE)
+geneResults
+
+## ----gene_table---------------------------------------------------------------
+geneTable <- resultsTable(geneResults)
+table(geneTable$direction)
+
+## ----gene_table_ora, eval = FALSE---------------------------------------------
+# # The table an over-representation tool expects, split by direction
+# upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
+# universe <- geneTable$gene.id
+# 
+# clusterProfiler::enrichGO(upGenes,
+#                           universe = universe,
+#                           OrgDb = org.Rn.eg.db::org.Rn.eg.db,
+#                           keyType = "ENTREZID",
+#                           ont = "BP")
+
+## ----gsea_genes, eval = FALSE-------------------------------------------------
+# geneRanks <- stats::setNames(geneTable$score, geneTable$gene.id)
+# 
+# fgsea::fgseaMultilevel(pathways = geneSets, stats = geneRanks, minSize = 5)
 
 ## ----score_sets---------------------------------------------------------------
 setScores <- scoreRegionSets(loadExampleData("counts", verbose = FALSE),
@@ -391,8 +478,10 @@ singleTable <- resultsTable(singleResults)
 sharedRegions <- intersect(replicatedTable$region.id, singleTable$region.id)
 
 comparisonTable <- data.frame(
-  replicated = replicatedTable$log2FC[match(sharedRegions, replicatedTable$region.id)],
-  singleSample = singleTable$log2FC[match(sharedRegions, singleTable$region.id)])
+  replicated = replicatedTable$log2FC[match(sharedRegions,
+                                            replicatedTable$region.id)],
+  singleSample = singleTable$log2FC[match(sharedRegions,
+                                          singleTable$region.id)])
 
 correlationTest <- stats::cor.test(comparisonTable$replicated,
                                    comparisonTable$singleSample,

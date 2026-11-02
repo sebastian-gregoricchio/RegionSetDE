@@ -22,6 +22,9 @@ resultsTable(results)
 
 # S4 method for class 'RegionSetDE.setScores'
 resultsTable(results)
+
+# S4 method for class 'RegionSetDE.geneResults'
+resultsTable(results)
 ```
 
 ## Arguments

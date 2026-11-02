@@ -69,18 +69,31 @@ sheet.
 ``` r
 sampleSheet <- loadExampleData("peakSheet")
 
+# Every column, with the file columns shown as names alone: the paths point at
+# wherever the package was installed and say nothing useful here
 sampleSheet %>%
-  dplyr::select(sample, condition, treatment, time, replicate)
->            sample condition treatment time replicate
-> 1      AR_DMSO_r1      DMSO      DMSO   4h        r1
-> 2      AR_DMSO_r2      DMSO      DMSO   4h        r2
-> 3      AR_DMSO_r3      DMSO      DMSO   4h        r3
-> 4  AR_R1881_4h_r1  R1881_4h     R1881   4h        r1
-> 5  AR_R1881_4h_r2  R1881_4h     R1881   4h        r2
-> 6  AR_R1881_4h_r3  R1881_4h     R1881   4h        r3
-> 7 AR_R1881_24h_r1 R1881_24h     R1881  24h        r1
-> 8 AR_R1881_24h_r2 R1881_24h     R1881  24h        r2
-> 9 AR_R1881_24h_r3 R1881_24h     R1881  24h        r3
+  dplyr::mutate(dplyr::across(dplyr::any_of(c("bam", "peaks", "input")),
+                              basename))
+>            sample                 bam                            peaks
+> 1      AR_DMSO_r1      AR_DMSO_r1.bam      AR_DMSO_r1_peaks.narrowPeak
+> 2      AR_DMSO_r2      AR_DMSO_r2.bam      AR_DMSO_r2_peaks.narrowPeak
+> 3      AR_DMSO_r3      AR_DMSO_r3.bam      AR_DMSO_r3_peaks.narrowPeak
+> 4  AR_R1881_4h_r1  AR_R1881_4h_r1.bam  AR_R1881_4h_r1_peaks.narrowPeak
+> 5  AR_R1881_4h_r2  AR_R1881_4h_r2.bam  AR_R1881_4h_r2_peaks.narrowPeak
+> 6  AR_R1881_4h_r3  AR_R1881_4h_r3.bam  AR_R1881_4h_r3_peaks.narrowPeak
+> 7 AR_R1881_24h_r1 AR_R1881_24h_r1.bam AR_R1881_24h_r1_peaks.narrowPeak
+> 8 AR_R1881_24h_r2 AR_R1881_24h_r2.bam AR_R1881_24h_r2_peaks.narrowPeak
+> 9 AR_R1881_24h_r3 AR_R1881_24h_r3.bam AR_R1881_24h_r3_peaks.narrowPeak
+>       input input.id condition treatment time replicate
+> 1 input.bam    input      DMSO      DMSO   4h        r1
+> 2 input.bam    input      DMSO      DMSO   4h        r2
+> 3 input.bam    input      DMSO      DMSO   4h        r3
+> 4 input.bam    input  R1881_4h     R1881   4h        r1
+> 5 input.bam    input  R1881_4h     R1881   4h        r2
+> 6 input.bam    input  R1881_4h     R1881   4h        r3
+> 7 input.bam    input R1881_24h     R1881  24h        r1
+> 8 input.bam    input R1881_24h     R1881  24h        r2
+> 9 input.bam    input R1881_24h     R1881  24h        r3
 ```
 
 The `sample`, `bam`, `peaks` and `input` columns are the ones the
@@ -292,7 +305,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpN5DVVW/temp_libpath2f26716997ab3a/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
 > 1      5353 0.09351198 0.1836287         2  114488             362     161
 >   greylisted.bp
@@ -312,10 +325,15 @@ fragments each.
 ``` r
 greylist <- makeGreylist(sampleSheet, binSize = 10000)
 
-S4Vectors::metadata(greylist)$thresholds %>%
-  dplyr::select(input, fragments, mean, threshold, regions, greylisted.bp)
->   input fragments      mean threshold regions greylisted.bp
-> 1 input      5353 0.9131696        15       2         25000
+S4Vectors::metadata(greylist)$thresholds
+>   input
+> 1 input
+>                                                                               file
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+>   fragments      mean      size threshold windows flagged.windows regions
+> 1      5353 0.9131696 0.1003771        15   11724               3       2
+>   greylisted.bp
+> 1         25000
 ```
 
 On a complete input library the default windows are the right choice.
@@ -520,18 +538,47 @@ human chr1 share a name and nothing else.
 ``` r
 consensusInfo <- consensusData(consensus)
 
-consensusInfo$samples %>%
-  dplyr::select(sample, group, n.peaks, n.blacklist, n.greylist)
->            sample     group n.peaks n.blacklist n.greylist
-> 1      AR_DMSO_r1      DMSO      13           0          0
-> 2      AR_DMSO_r2      DMSO      13           0          0
-> 3      AR_DMSO_r3      DMSO      13           0          0
-> 4  AR_R1881_4h_r1  R1881_4h      67           0          0
-> 5  AR_R1881_4h_r2  R1881_4h      80           0          0
-> 6  AR_R1881_4h_r3  R1881_4h      68           0          0
-> 7 AR_R1881_24h_r1 R1881_24h     101           0          0
-> 8 AR_R1881_24h_r2 R1881_24h     117           0          0
-> 9 AR_R1881_24h_r3 R1881_24h      97           0          0
+consensusInfo$samples
+>            sample     group
+> 1      AR_DMSO_r1      DMSO
+> 2      AR_DMSO_r2      DMSO
+> 3      AR_DMSO_r3      DMSO
+> 4  AR_R1881_4h_r1  R1881_4h
+> 5  AR_R1881_4h_r2  R1881_4h
+> 6  AR_R1881_4h_r3  R1881_4h
+> 7 AR_R1881_24h_r1 R1881_24h
+> 8 AR_R1881_24h_r2 R1881_24h
+> 9 AR_R1881_24h_r3 R1881_24h
+>                                                                                                 peak.file
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+>                                                                                          bam
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+>   n.peaks n.blacklist n.greylist n.excluded
+> 1      13           0          0          0
+> 2      13           0          0          0
+> 3      13           0          0          0
+> 4      67           0          0          0
+> 5      80           0          0          0
+> 6      68           0          0          0
+> 7     101           0          0          0
+> 8     117           0          0          0
+> 9      97           0          0          0
 ```
 
 Thirteen peaks without ligand against roughly a hundred after a day of
@@ -545,7 +592,7 @@ so nothing has to be recomputed to look at where the groups agree.
 lengths(consensusInfo$groups)           # the consensus of every group
 >      DMSO  R1881_4h R1881_24h 
 >        12        70       101
-length(consensusInfo$total)             # the pooled region set that will be counted
+length(consensusInfo$total)             # the pooled set that is counted
 > [1] 109
 ```
 
@@ -559,11 +606,13 @@ groups can be annotated one by one and compared.
 
 ``` r
 
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+
 groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
 
 annotationList <- lapply(groupList,
                          ChIPseeker::annotatePeak,
-                         TxDb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene)
+                         TxDb = txdb)
 
 ChIPseeker::plotAnnoBar(annotationList)
 ```
@@ -573,7 +622,6 @@ groups and of samples that called a peak on it.
 
 ``` r
 as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
-  dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 >   peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups peak.samples
 > 1     FALSE          TRUE           TRUE           2            5
@@ -754,13 +802,42 @@ annotation attached, ready for `ggplot2`:
 
 ``` r
 countTable(counts, format = "long") %>%
-  dplyr::select(region.id, sample, condition, counts) %>%
   head(4)
->              region.id     sample condition counts
-> 1 19:46089709-46090037 AR_DMSO_r1      DMSO      0
-> 2 19:46182368-46182658 AR_DMSO_r1      DMSO      0
-> 3 19:46300807-46301375 AR_DMSO_r1      DMSO      0
-> 4 19:46313848-46314455 AR_DMSO_r1      DMSO      2
+>   region.set            region.id seqnames    start      end width peak.DMSO
+> 1  consensus 19:46089709-46090037       19 46089709 46090037   329     FALSE
+> 2  consensus 19:46182368-46182658       19 46182368 46182658   291     FALSE
+> 3  consensus 19:46300807-46301375       19 46300807 46301375   569     FALSE
+> 4  consensus 19:46313848-46314455       19 46313848 46314455   608     FALSE
+>   peak.R1881_4h peak.R1881_24h peak.groups peak.samples     sample counts
+> 1          TRUE           TRUE           2            5 AR_DMSO_r1      0
+> 2          TRUE          FALSE           1            2 AR_DMSO_r1      0
+> 3          TRUE           TRUE           2            6 AR_DMSO_r1      0
+> 4          TRUE           TRUE           2            5 AR_DMSO_r1      2
+>                                                                                bam.file
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+>                                                                                                peaks
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+>                                                                              input
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+>   input.id condition treatment time replicate paired.end fragment.length
+> 1    input      DMSO      DMSO   4h        r1       TRUE              NA
+> 2    input      DMSO      DMSO   4h        r1       TRUE              NA
+> 3    input      DMSO      DMSO   4h        r1       TRUE              NA
+> 4    input      DMSO      DMSO   4h        r1       TRUE              NA
+>   library.size discarded.reads input.library.size
+> 1         3570              18               5306
+> 2         3570              18               5306
+> 3         3570              18               5306
+> 4         3570              18               5306
 ```
 
 On a tiled object `level` chooses between one row per tile and the tiles
@@ -871,7 +948,8 @@ puts the methods side by side before any of them is committed to.
 ``` r
 
 plotNormComparison(counts,
-                   methods = c("librarySize", "background", "TMM", "readsInRegions"))
+                   methods = c("librarySize", "background",
+                               "TMM", "readsInRegions"))
 ```
 
 ![](RegionSetDE.peaks.vignette_files/figure-html/norm_comparison-1.png)
@@ -883,11 +961,19 @@ and changing nothing but the normalisation.
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts, method = method, verbose = FALSE)
-           fitted <- fitRegions(normalised, design = ~ condition, engine = "edgeR", verbose = FALSE)
-           tested <- resultsTable(testRegions(fitted,
-                                              contrast = c("condition", "R1881_24h", "DMSO"),
-                                              verbose = FALSE))
+           normalised <- normalizeCounts(counts,
+                                         method = method,
+                                         verbose = FALSE)
+
+           fitted <- fitRegions(normalised,
+                                design = ~ condition,
+                                engine = "edgeR",
+                                verbose = FALSE)
+
+           tested <- testRegions(fitted,
+                                 contrast = c("condition", "R1881_24h", "DMSO"),
+                                 verbose = FALSE)
+           tested <- resultsTable(tested)
 
            data.frame(method = method,
                       up = sum(tested$diff.status == "up"),
@@ -1022,7 +1108,9 @@ matched to the samples by name and may cover samples absent from the
 object.
 
 ``` r
-backgroundCounts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+backgroundCounts <- normalizeCounts(counts,
+                                    method = "background",
+                                    verbose = FALSE)
 
 backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
@@ -1071,20 +1159,71 @@ normalised values next to the raw ones.
 [`sampleInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/sampleInfo.md)
 returns the sample table, the annotation of the sheet together with what
 the package added to it, from a counts object, a fit or the results
-alike; `columns` keeps only the ones named.
+alike. `columns` keeps only the ones named, when the table is wider than
+the question.
 
 ``` r
-sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
->            sample condition library.size scaling.factor
-> 1      AR_DMSO_r1      DMSO         3570      0.8202212
-> 2      AR_DMSO_r2      DMSO         5443      1.2742403
-> 3      AR_DMSO_r3      DMSO         4158      0.9680969
-> 4  AR_R1881_4h_r1  R1881_4h         3562      0.7082455
-> 5  AR_R1881_4h_r2  R1881_4h         5096      1.0084424
-> 6  AR_R1881_4h_r3  R1881_4h         5779      1.2155428
-> 7 AR_R1881_24h_r1 R1881_24h         6295      1.2480119
-> 8 AR_R1881_24h_r2 R1881_24h         4871      0.8910149
-> 9 AR_R1881_24h_r3 R1881_24h         4623      0.8661840
+sampleInfo(counts)
+>            sample
+> 1      AR_DMSO_r1
+> 2      AR_DMSO_r2
+> 3      AR_DMSO_r3
+> 4  AR_R1881_4h_r1
+> 5  AR_R1881_4h_r2
+> 6  AR_R1881_4h_r3
+> 7 AR_R1881_24h_r1
+> 8 AR_R1881_24h_r2
+> 9 AR_R1881_24h_r3
+>                                                                                     bam.file
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+>                                                                                                     peaks
+> 1      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+>                                                                              input
+> 1 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 5 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 6 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 7 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 8 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+> 9 /tmp/RtmpC4ltfM/temp_libpath275ef824947136/RegionSetDE/extdata/lncapAR/input.bam
+>   input.id condition treatment time replicate paired.end fragment.length
+> 1    input      DMSO      DMSO   4h        r1       TRUE              NA
+> 2    input      DMSO      DMSO   4h        r2       TRUE              NA
+> 3    input      DMSO      DMSO   4h        r3       TRUE              NA
+> 4    input  R1881_4h     R1881   4h        r1       TRUE              NA
+> 5    input  R1881_4h     R1881   4h        r2       TRUE              NA
+> 6    input  R1881_4h     R1881   4h        r3       TRUE              NA
+> 7    input R1881_24h     R1881  24h        r1       TRUE              NA
+> 8    input R1881_24h     R1881  24h        r2       TRUE              NA
+> 9    input R1881_24h     R1881  24h        r3       TRUE              NA
+>   library.size discarded.reads input.library.size norm.factor scaling.factor
+> 1         3570              18               5306   1.1087917      0.8202212
+> 2         5443              26               5306   1.1297964      1.2742403
+> 3         4158              25               5306   1.1236254      0.9680969
+> 4         3562              20               5306   0.9595710      0.7082455
+> 5         5096              25               5306   0.9550120      1.0084424
+> 6         5779              27               5306   1.0150905      1.2155428
+> 7         6295              31               5306   0.9567758      1.2480119
+> 8         4871              18               5306   0.8827831      0.8910149
+> 9         4623              28               5306   0.9042186      0.8661840
 ```
 
 [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
@@ -1385,14 +1524,37 @@ resultsTable(results) %>%
 sorts and trims, and takes the contrast by name:
 
 ``` r
-topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5) %>%
-  dplyr::select(region.id, log2FC, FDR, peak.R1881_4h, peak.R1881_24h)
->              region.id    log2FC          FDR peak.R1881_4h peak.R1881_24h
-> 1 19:55670391-55670922 -4.679189 2.298771e-09          TRUE          FALSE
-> 2 19:52645106-52645397  5.332455 3.877685e-03         FALSE           TRUE
-> 3 19:46300807-46301375  1.837375 3.877685e-03          TRUE           TRUE
-> 4 19:50010024-50010865  1.702553 3.877685e-03          TRUE           TRUE
-> 5 19:48582156-48582622  2.441680 1.751699e-02          TRUE           TRUE
+topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5)
+>   region.set            region.id tile.id seqnames    start      end width
+> 1  consensus 19:55670391-55670922      NA       19 55670391 55670922   532
+> 2  consensus 19:52645106-52645397      NA       19 52645106 52645397   292
+> 3  consensus 19:46300807-46301375      NA       19 46300807 46301375   569
+> 4  consensus 19:50010024-50010865      NA       19 50010024 50010865   842
+> 5  consensus 19:48582156-48582622      NA       19 48582156 48582622   467
+>      log2FC average.signal average.signal.DMSO average.signal.R1881_4h
+> 1 -4.679189      11.268556           11.343671               12.122663
+> 2  5.332455       9.551916            8.830140                8.697849
+> 3  1.837375      10.970159            9.047782               10.491821
+> 4  1.702553      11.184304            9.252016               10.751582
+> 5  2.441680      10.216178            9.831098                9.436726
+>   average.signal.R1881_24h     stat stat.distribution df1 df2      p.value
+> 1                 8.975919 46.47823                 f   1 654 2.108964e-11
+> 2                10.354043 15.46444                 f   1 654 9.304772e-05
+> 3                11.921445 14.91237                 f   1 654 1.238165e-04
+> 4                12.110644 14.64404                 f   1 654 1.423004e-04
+> 5                10.887098 11.32884                 f   1 654 8.077833e-04
+>            FDR diff.status peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups
+> 1 2.298771e-09        down     FALSE          TRUE          FALSE           1
+> 2 3.877685e-03          up     FALSE         FALSE           TRUE           1
+> 3 3.877685e-03          up     FALSE          TRUE           TRUE           2
+> 4 3.877685e-03          up     FALSE          TRUE           TRUE           2
+> 5 1.751699e-02          up     FALSE          TRUE           TRUE           2
+>   peak.samples
+> 1            2
+> 2            2
+> 3            6
+> 4            6
+> 5            6
 ```
 
 The strongest change between the two time points is a loss: a site bound
@@ -1481,7 +1643,10 @@ The same plot after TMM would have been centred on zero by construction.
 
 ``` r
 
-plotTopHeatmap(results, contrast = "R1881_24h_vs_DMSO", n = 30, annotationColumns = "condition")
+plotTopHeatmap(results,
+               contrast = "R1881_24h_vs_DMSO",
+               n = 30,
+               annotationColumns = "condition")
 ```
 
 ![](RegionSetDE.peaks.vignette_files/figure-html/heatmap-1.png)
@@ -1572,8 +1737,9 @@ against those found only after it:
 consensusRanges <- regionRanges(consensus)$consensus
 
 plotProfile(counts,
-            regions = list(boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
-                           newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
+            regions = list(
+              boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
+              newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
             groupBy = "condition",
             style = "lines")
 ```
@@ -1757,18 +1923,28 @@ summitCounts <- countReads(consensus,
                            summits = 200,
                            verbose = FALSE)
 
-head(SummarizedExperiment::rowRanges(summitCounts)[, c("region.id", "summit")], 3)
-> GRanges object with 3 ranges and 2 metadata columns:
+head(SummarizedExperiment::rowRanges(summitCounts), 3)
+> GRanges object with 3 ranges and 9 metadata columns:
 >                                  seqnames            ranges strand |
 >                                     <Rle>         <IRanges>  <Rle> |
 >   consensus|19:46089709-46090037       19 46089703-46090103      * |
 >   consensus|19:46182368-46182658       19 46182400-46182800      * |
 >   consensus|19:46300807-46301375       19 46300862-46301262      * |
->                                             region.id    summit
->                                           <character> <integer>
->   consensus|19:46089709-46090037 19:46089709-46090037  46089903
->   consensus|19:46182368-46182658 19:46182368-46182658  46182600
->   consensus|19:46300807-46301375 19:46300807-46301375  46301062
+>                                   region.set            region.id   tile.id
+>                                  <character>          <character> <integer>
+>   consensus|19:46089709-46090037   consensus 19:46089709-46090037      <NA>
+>   consensus|19:46182368-46182658   consensus 19:46182368-46182658      <NA>
+>   consensus|19:46300807-46301375   consensus 19:46300807-46301375      <NA>
+>                                  peak.DMSO peak.R1881_4h peak.R1881_24h
+>                                  <logical>     <logical>      <logical>
+>   consensus|19:46089709-46090037     FALSE          TRUE           TRUE
+>   consensus|19:46182368-46182658     FALSE          TRUE          FALSE
+>   consensus|19:46300807-46301375     FALSE          TRUE           TRUE
+>                                  peak.groups peak.samples    summit
+>                                    <integer>    <integer> <integer>
+>   consensus|19:46089709-46090037           2            5  46089903
+>   consensus|19:46182368-46182658           1            2  46182600
+>   consensus|19:46300807-46301375           2            6  46301062
 >   -------
 >   seqinfo: 1 sequence from an unspecified genome; no seqlengths
 
@@ -1825,6 +2001,479 @@ works on the pooled regions and gives them all the same width.
 
 ------------------------------------------------------------------------
 
+## **From peaks to genes and pathways**
+
+This is where a peak-based analysis differs most from one over regions
+you defined. A promoter set loaded by name already knows which gene each
+of its regions belongs to, so the functional question is half answered
+before it is asked. A consensus built from peak calls is a list of
+intervals with no gene attached to any of them, and every functional
+claim made about it rests on a linking step that is rarely examined.
+
+The step is also where one gene ends up carrying several peaks, which do
+not have to move in the same direction. `RegionSetDE` does not resolve
+that disagreement into a signed number per gene. It stores the links,
+keeps the peak as the unit of analysis, and reports the disagreement.
+
+  
+
+### Linking the peaks to genes
+
+[`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+stores a region-to-gene table inside the object, one row per link. Links
+are many-to-many: a peak over a bidirectional promoter keeps both genes.
+
+``` r
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+
+annotatedFit <- annotateRegions(fit,
+                                txdb = txdb,
+                                orgdb = org.Hs.eg.db::org.Hs.eg.db,
+                                maxDistance = 1e5)
+```
+
+Two things worth noticing against the `ChIPseeker` call earlier in this
+vignette. The chromosomes do not have to be renamed first: the regions
+here are named `19` and a UCSC `TxDb` says `chr19`, and
+[`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+reconciles the two itself rather than requiring
+`seqlevelsStyle = "UCSC"`. And `maxDistance` draws a line past which no
+gene is assigned. A peak whose nearest start site is 800 kb away has a
+nearest gene in the arithmetic sense only; beyond the limit it is
+recorded with a missing `gene.id`, which keeps it in the universe, keeps
+it out of every gene set, and leaves the decision visible in the object
+instead of buried in the choice of which rows were loaded.
+
+Proximity is the default because it is always available, not because it
+is good. It is wrong for a substantial share of distal elements, which
+skip over genes. When contacts have been measured or predicted, Hi-C
+loops, ABC scores or a `universalEPI` prediction, hand those over
+instead and the rest of the section is unchanged:
+
+``` r
+
+# One row per link. link.weight is optional and carries no assumed scale.
+annotatedFit <- annotateRegions(fit,
+                                linkTable = abcLinks,
+                                weightSource = "ABC score")
+```
+
+The output of
+[`ChIPseeker::annotatePeak()`](https://rdrr.io/pkg/ChIPseeker/man/annotatePeak.html)
+goes in directly, as a `GRanges` with the genes in its metadata columns;
+its column spellings are recognised.
+
+``` r
+
+peakAnnotation <- ChIPseeker::annotatePeak(regionRanges(consensus)$consensus,
+                                           TxDb = txdb)
+
+peakLinks <- GenomicRanges::granges(peakAnnotation, use.mcols = TRUE)
+
+annotatedFit <- annotateRegions(fit, linkTable = peakLinks)
+```
+
+A full `TxDb` is a large thing to ask a vignette to depend on, so the
+one that runs here is a slice of it: the gene start sites of the window
+these peaks cover, taken from `TxDb.Hsapiens.UCSC.hg38.knownGene` with
+its symbols from `org.Hs.eg.db` and shipped with the package. The genes
+are real and so is everything computed from them below, and
+`inst/scripts/make-example-annotation.R` records how the slice was made.
+
+``` r
+geneSites <- readRDS(system.file("extdata", "lncapAR", "chr19_genes.rds",
+                                 package = "RegionSetDE"))
+
+annotatedFit <- annotateRegions(fit,
+                                genes = geneSites,
+                                maxDistance = 1e5,
+                                verbose = FALSE)
+
+head(regionLinks(annotatedFit), 4)
+>                 region   gene.id  gene.symbol distance.to.tss link.type
+> 1 19:46089709-46090037    147920        IGFL2          -11249    distal
+> 2 19:46182368-46182658 105372424 LOC105372424           -1632  promoter
+> 3 19:46300807-46301375     64344        HIF3A            4049    distal
+> 4 19:46313848-46314455     64344        HIF3A           17109    distal
+```
+
+`genes` takes the start sites and builds the links by proximity, exactly
+as `txdb` does, which is also the route for an annotation read from a
+GTF or for a species with no `TxDb` at all. The chromosome names were
+reconciled on the way in: the sites say `chr19` and the regions say
+`19`.
+
+  
+
+### Pathways, without ever writing a gene score
+
+[`geneSetsToRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md)
+maps a collection of gene sets through the links and returns them as
+region sets, which
+[`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
+takes directly. No gene-level statistic is computed anywhere: a pathway
+is a set of peaks, and the peaks stay the unit.
+
+``` r
+geneSets <- readRDS(system.file("extdata", "lncapAR", "chr19_geneSets.rds",
+                                package = "RegionSetDE"))
+
+regionSets <- geneSetsToRegionSets(annotatedFit,
+                                   geneSets = geneSets,
+                                   verbose = FALSE)
+
+head(attr(regionSets, "geneSetSummary"))
+>                                          set.name n.genes n.genes.linked
+> 6                     leukocyte mediated immunity       5              3
+> 7  positive regulation of immune effector process       5              2
+> 8  regulation of systemic arterial blood pressure       5              2
+> 18                                   axonogenesis       5              1
+> 22                               cell recognition       5              2
+> 23                   regulation of blood pressure       5              2
+>    n.regions
+> 6          3
+> 7          3
+> 8          5
+> 18         3
+> 22         4
+> 23         5
+```
+
+Those are GO biological process terms over the genes of the same window,
+shipped beside the start sites. `n.genes` is how many genes the term
+holds, `n.genes.linked` how many of them a peak of this experiment
+reached, and `n.regions` how many peaks that adds up to. The gap between
+the first two is the honest scale of the analysis: a slice of one
+chromosome reaches a small part of any pathway, and the p-values below
+should be read with that in mind rather than as a finding about androgen
+signalling.
+
+``` r
+geneSetResults <- testRegionSets(annotatedFit,
+                                 contrast = c("condition", "R1881_24h", "DMSO"),
+                                 regionSets = regionSets,
+                                 verbose = FALSE)
+
+resultsTable(geneSetResults)
+>                                       region.set n.regions n.up n.down
+> 1                    leukocyte mediated immunity         3    2      1
+> 2                                   axonogenesis         3    0      0
+> 3                               cell recognition         4    1      0
+> 4 regulation of systemic arterial blood pressure         5    5      0
+> 5                   regulation of blood pressure         5    5      0
+> 6 positive regulation of immune effector process         3    3      0
+> 7                              protein secretion         3    2      0
+>   n.comparison n.comparison.overlapping n.overlapping.within mean.log2FC
+> 1          106                        0                    0   0.4752368
+> 2          106                        0                    0   1.4829868
+> 3          105                        0                    0   1.6018540
+> 4          104                        0                    0   2.3421405
+> 5          104                        0                    0   2.3421405
+> 6          106                        0                    0   2.5411034
+> 7          106                        0                    0   2.9944442
+>   median.log2FC mean.log2FC.comparison delta.log2FC      CI.lower    CI.upper
+> 1      2.118980               2.961874   -2.4866376 -1.5363488021 -0.02256697
+> 2      1.684666               2.933353   -1.4503664 -1.4058442320 -0.84270149
+> 3      1.821561               2.942638   -1.3407840 -1.0916217727 -0.64491441
+> 4      2.216710               2.919939   -0.5777989  0.0004663243  0.63428257
+> 5      2.216710               2.919939   -0.5777989  0.0004663243  0.63428257
+> 6      2.807857               2.903407   -0.3623032 -0.1341421413  0.72667879
+> 7      2.231478               2.890576    0.1038681 -1.0246264475  0.21961775
+>   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
+> 1  sample              -7.282843               2.309568        0.1796360
+> 2  sample              -3.169317               0.268584        0.0000000
+> 3  sample              -3.008020               0.326452        0.0000000
+> 4  sample              -2.230417               1.074819        0.5301351
+> 5  sample              -2.230417               1.074819        0.5301351
+> 6  sample              -2.118901               1.394295        0.4445880
+> 7  sample              -2.155018               2.362754        0.0000000
+>   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE
+> 1                 0.2581338        410.0          -0.7794579      0.30932496
+> 2                 0.2554739        319.0          -1.1242729      0.11507213
+> 3                 0.2551143        322.5          -0.8682681      0.09127982
+> 4                 0.2382502        473.0           0.3173744      0.12951350
+> 5                 0.2382502        473.0           0.3173744      0.12951350
+> 6                 0.2435374        296.0           0.2962683      0.17589946
+> 7                 0.2576767        300.0          -0.4025043      0.25424786
+>   sample.delta.df sample.delta.p camera.direction   camera.p fry.direction
+> 1               6   4.529521e-02             Down 0.08857037            Up
+> 2               6   6.612194e-05             Down 0.05031989            Up
+> 3               6   7.697930e-05             Down 0.06829183            Up
+> 4               6   4.975612e-02               Up 0.46591083            Up
+> 5               6   4.975612e-02               Up 0.46591083            Up
+> 6               6   1.431060e-01               Up 0.49435724            Up
+> 7               6   1.644832e-01             Down 0.40515444            Up
+>          fry.p fry.mixed.p camera.FDR     fry.FDR fry.mixed.FDR
+> 1 0.0609328781 0.173464892  0.2066642 0.060932878   0.267104447
+> 2 0.0314734945 0.890129960  0.2066642 0.036719077   0.890129960
+> 3 0.0037837538 0.190788891  0.2066642 0.005297255   0.267104447
+> 4 0.0006494620 0.002840667  0.4943572 0.001515411   0.009942335
+> 5 0.0006494620 0.002840667  0.4943572 0.001515411   0.009942335
+> 6 0.0006087384 0.028752728  0.4943572 0.001515411   0.067089699
+> 7 0.0030160084 0.237520569  0.4943572 0.005278015   0.277107331
+>   sample.delta.FDR
+> 1     0.0696585676
+> 2     0.0002694275
+> 3     0.0002694275
+> 4     0.0696585676
+> 5     0.0696585676
+> 6     0.1644832348
+> 7     0.1644832348
+```
+
+Each pathway is compared against every other region of the object rather
+than against the other pathways, so `universe`, `matchOn` and
+`universeSets` do not apply and the universe is recorded as `allRows`.
+That is the comparison a pathway wants, and it makes the background the
+peaks that were actually annotated and tested, which is the background
+this kind of analysis should have and the one most often got wrong.
+
+Read the three p-values as three questions. `camera.FDR` asks whether
+the pathway moved more than the rest. `fry.FDR` asks whether its peaks
+moved in the same direction. `fry.mixed.FDR` asks whether they changed
+at all, in either direction, and is the only one that survives a pathway
+whose peaks move both ways. `n.up` against `n.down` shows the same thing
+from the peak level.
+
+  
+
+### A table of genes, when one is needed
+
+For an external over-representation tool, or for a reviewer who asks for
+one,
+[`aggregateToGenes()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/aggregateToGenes.md)
+builds the gene table. It is the weaker route and the documentation says
+so: aggregating replaces several measurements with one and discards the
+ranking of the peaks, which is the step the set-level route avoids.
+
+``` r
+annotatedLate <- testRegions(annotatedFit,
+                             contrast = c("condition", "R1881_24h", "DMSO"),
+                             FDR = 0.05, log2FC = 1, verbose = FALSE)
+
+geneResults <- aggregateToGenes(annotatedLate,
+                                method = c("simes", "potential"),
+                                verbose = FALSE)
+geneResults
+> An object of class 'RegionSetDE.geneResults'
+>   contrast        : condition: R1881_24h vs DMSO 
+>   engine          : edgeR 
+>   aggregation     : simes, potential 
+>   weighting       : distance 
+>   genes           : 79 
+>   links           : 106 
+>   direction       : up 63, down 1, mixed 1, unchanged 14 
+> 
+>    gene.id  gene.symbol n.regions n.up n.down direction score  p.value      FDR
+>     606293        KLKP1         1    1      0        up 0.956 1.14e-17 8.97e-16
+>        354         KLK3         2    2      0        up 3.180 2.77e-14 1.09e-12
+>  107985325      GP6-AS1         2    1      0        up 2.140 1.31e-13 3.45e-12
+>  124904782 LOC124904782         1    1      0        up 0.168 2.02e-13 3.99e-12
+>      26085        KLK13         2    2      0        up 2.910 1.42e-12 2.25e-11
+>      25888       ZNF473         1    1      0        up 0.225 3.10e-12 4.08e-11
+```
+
+``` r
+table(resultsTable(geneResults)$direction)
+> 
+>      down     mixed unchanged        up 
+>         1         1        14        63
+```
+
+`direction` is the four-way answer: `up` and `down` when the peaks that
+changed agree, `mixed` when they do not, `unchanged` when none of them
+changed. The mixed genes are a category and not a problem to be cleaned
+up, because a gene with three peaks up and three down is a different
+statement from a gene with nothing happening and no signed score can
+tell those apart. `n.up` and `n.down` are read from the `diff.status`
+column of the peak table, so they follow the `FDR` and `log2FC` set
+above and move with
+[`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md).
+
+``` r
+
+geneTable <- resultsTable(geneResults)
+
+upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
+
+clusterProfiler::enrichGO(upGenes,
+                          universe = geneTable$gene.id,
+                          OrgDb = org.Hs.eg.db::org.Hs.eg.db,
+                          keyType = "ENTREZID",
+                          ont = "BP")
+```
+
+The universe there is the genes the links reached, not every gene
+carrying a GO annotation, which comes for free from building the table
+this way.
+
+#### What the two columns are
+
+`p.value` and `FDR` come from `"simes"`: the p-values of the peaks of a
+gene combined, which asks whether *any* of them changed. The `log2FC`
+beside them belongs to the peak that carried the combination, not to an
+average.
+
+`score` and `score.magnitude` come from `"potential"`. For a gene
+reached by peaks $`i`$ with weights $`w_i`$:
+
+``` math
+\mathrm{score} = \sum_i w_i \cdot \mathrm{log2FC}_i, \qquad \mathrm{score.magnitude} = \sum_i w_i \cdot |\mathrm{log2FC}_i|
+```
+
+The weight is whatever the links carry, in a fixed order: `link.weight`
+when the annotation supplied one, otherwise $`e^{-d/\mathrm{decay}}`$ on
+the distance to the start site with `decay` at 5 kb by default,
+otherwise 1 for every peak. `weighting` in the object says which
+applied.
+
+The two differ only on a gene whose peaks disagree, and that is what
+they are for. `score` is signed, so a gene gaining at one peak and
+losing at another lands near zero; `score.magnitude` ignores sign, so
+the same gene scores high. A gene high in the second and near zero in
+the first is being rearranged rather than shifted, and it is the same
+thing `direction == "mixed"` reports as a label.
+
+Neither is a test. There is no error model behind a weighted sum and no
+p-value comes out of it, which is why the Simes columns are worth
+keeping alongside.
+
+#### Gene set enrichment on the ranked genes
+
+`score` is a ranked gene-level statistic, which is exactly what a GSEA
+takes:
+
+``` r
+
+geneRanks <- stats::setNames(geneTable$score, geneTable$gene.id)
+
+fgsea::fgseaMultilevel(pathways = geneSets,
+                       stats = geneRanks,
+                       minSize = 5)
+```
+
+Rank on `score.magnitude` instead and the question changes from *which
+pathways shifted* to *which pathways were remodelled*, the second being
+the one a signed ranking cannot see. To weight by significance rather
+than by effect, build the statistic from both columns:
+
+``` r
+
+geneRanks <- stats::setNames(sign(geneTable$score) * -log10(geneTable$p.value),
+                             geneTable$gene.id)
+```
+
+Two things to say in the methods if you take this route. The ranking is
+over the genes the peaks reached, so the implicit universe is again the
+annotated and tested peaks rather than the genome, which is correct and
+worth stating. And the genes are not independent: a peak linked to three
+genes contributes to all three, so the permutation `fgsea` runs is
+anti-conservative by an amount nobody can quantify from the data. The
+set-level route earlier in this section does not have that problem,
+because it never leaves the peak as the unit, which is the reason to
+prefer it when the question is which pathways responded.
+
+  
+
+### What this example can and cannot show
+
+Androgen recruits AR to sites it was not occupying, so the DMSO
+comparison is a one-directional experiment by construction: almost every
+peak that changes goes up, and the `mixed` class is nearly empty. That
+is a property of the biology and not a reassuring result. A
+redistribution, if there is one here, would sit in
+`R1881_24h_vs_R1881_4h`, where sites gained early can be lost late, and
+that is the contrast to run the same three p-values on when the question
+is whether the landscape was rearranged rather than extended.
+
+Two limits stay open whatever the contrast. The rows of the gene table
+are not independent, since a peak linked to three genes contributes to
+all three, so anything tested on them afterwards is anti-conservative to
+an unquantified degree. And the number of peaks a gene carries follows
+the length of its regulatory locus, so a gene set rich in long-locus
+genes is easier to hit; `camera` corrects for the correlation between
+those peaks and not for how many of them a gene contributes. A
+count-based method built for that bias, `chipenrich` or `polyenrich` run
+on the peaks, is the comparison worth making, and agreement between it
+and the set-level result is a far stronger claim than either alone.
+
+  
+
+### Promoters and distal sites, separately
+
+Much of the apparent disagreement within a gene is promoters staying put
+while enhancers move, so splitting the two usually makes both the result
+and the reading of it simpler.
+
+[`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+labels every link while it builds it. `tssRegion` is the window around a
+start site, signed and read on the strand of the gene, inside which a
+link counts as a promoter one; everything else is distal. And
+`flankDistance` changes what gets linked at all: instead of the single
+nearest start site it takes every gene whose start site falls within
+that distance, which is what lets a peak over a bidirectional promoter
+keep both of its genes.
+
+``` r
+annotatedFlank <- annotateRegions(fit,
+                                  genes = geneSites,
+                                  flankDistance = 5e4,
+                                  tssRegion = c(-2000, 500),
+                                  verbose = FALSE)
+
+table(regionLinks(annotatedFlank)$link.type, useNA = "ifany")
+> 
+>   distal promoter     <NA> 
+>      460        9        9
+```
+
+The links are many-to-many now: more links than peaks, each with its own
+signed distance, and the peaks that reached nothing inside the flank
+kept a row with a missing gene so they stay in the universe.
+
+`linkType` then runs the two analyses separately, on the same object:
+
+``` r
+promoterSets <- geneSetsToRegionSets(annotatedFlank,
+                                     geneSets = geneSets,
+                                     linkType = "promoter",
+                                     verbose = FALSE)
+
+distalSets <- geneSetsToRegionSets(annotatedFlank,
+                                   geneSets = geneSets,
+                                   linkType = "distal",
+                                   verbose = FALSE)
+
+c(promoter = length(promoterSets), distal = length(distalSets))
+> promoter   distal 
+>        1       19
+```
+
+`aggregateToGenes(linkType = )` takes the same argument, so the gene
+table splits the same way.
+
+That is one of two routes, and the other is worth knowing about.
+`loadConsensusPeaks(regionSets = , regionMode = "split")` divides the
+consensus by overlap with an annotation at load time, and the halves
+become region sets in their own right, which
+`geneSetsToRegionSets(regionSets = )` and
+`aggregateToGenes(regionSets = )` select on instead. Use that one when
+the split is part of how the regions were defined, and `linkType` when
+the peaks are one undifferentiated set and the split belongs to the
+annotation.
+
+What none of this does is classify a peak into a genomic feature,
+promoter against intron against exon against downstream, with a priority
+order between them. That is
+[`ChIPseeker::annotatePeak()`](https://rdrr.io/pkg/ChIPseeker/man/annotatePeak.html),
+and its output goes into `linkTable` directly, bringing whatever
+categories it assigned along with it.
+
+  
+
+------------------------------------------------------------------------
+
 ## **Where to go next**
 
 The consensus built here is an ordinary region set, so everything in the
@@ -1836,7 +2485,12 @@ the rest at the moment they are loaded. The set then becomes the unit of
 the test through
 [`testRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md),
 which asks whether a whole class of elements moved instead of counting
-how many of its members passed a threshold.
+how many of its members passed a threshold, and the section above shows
+that split carried through to the gene and pathway level.
+
+The main vignette covers the same annotation and gene-set functions over
+regions defined in advance, where the linking step is easier and matters
+less.
 
   
 
@@ -1886,7 +2540,7 @@ sessionInfo()
 >  [15] Rsamtools_2.28.0            RCurl_1.98-1.20            
 >  [17] htmltools_0.5.9             S4Arrays_1.12.1            
 >  [19] curl_8.0.0                  SparseArray_1.12.3         
->  [21] sass_0.4.10                 consensusRegions_0.99.0    
+>  [21] sass_0.4.10                 consensusRegions_0.99.2    
 >  [23] bslib_0.12.0                htmlwidgets_1.6.4          
 >  [25] desc_1.4.3                  cachem_1.1.0               
 >  [27] GenomicAlignments_1.48.0    commonmark_2.0.0           

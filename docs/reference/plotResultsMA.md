@@ -19,7 +19,7 @@ plotResultsMA(
   showCounts = TRUE,
   showTrend = TRUE,
   colours = NULL,
-  pointSize = 0.8,
+  pointSize = 2,
   maxPoints = 20000,
   title = NULL,
   subtitle = NULL,
@@ -87,7 +87,7 @@ plotResultsMA(
 
 - pointSize:
 
-  Numeric value with the size of the points. Default: `0.8`.
+  Numeric value with the size of the points. Default: `2`.
 
 - maxPoints:
 

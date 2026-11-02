@@ -137,8 +137,11 @@ testRegionSets(
 
 - regionSets:
 
-  Character vector with the names of the sets to test. Default: `NULL`,
-  all of them.
+  The sets to test. Either a character vector with the names of the sets
+  of the object, or a named list of region keys, which is what
+  [`geneSetsToRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md)
+  returns and the way to test sets that overlap each other, gene sets
+  among them. Default: `NULL`, every set of the object.
 
 - carryCounts:
 
@@ -161,7 +164,11 @@ when `contrast` is a named list. The table carries `CI.lower` and
 which one that is, and `heterogeneity.CI.lower` and
 `heterogeneity.CI.upper` for the region-level one, always.
 `n.overlapping.within` counts the regions of the set overlapping another
-region of the same set.
+region of the same set, while `n.up` and `n.down` count the regions of
+it changing in each direction, corrected within the set. The
+self-contained test reports `fry.p` and `fry.FDR` for the set moving in
+one direction, and `fry.mixed.p` and `fry.mixed.FDR` for it changing in
+either.
 
 ## Details
 
@@ -232,6 +239,18 @@ evidence and not as mechanism:
 - neither significant: neither test found evidence, which is not the
   same as evidence of no effect.
 
+`fry` answers two questions rather than one and both are reported.
+`fry.p` is directional: it asks whether the regions of the set moved the
+same way, so a set holding regions that gained and regions that lost
+sees them cancel and comes out unremarkable. `fry.mixed.p` asks whether
+they changed at all, in either direction, and does not cancel. A set
+returning the mixed p-value without the directional one is being
+rearranged rather than shifted, which is a finding and not a null
+result: it is what an enhancer landscape being rewired looks like, and
+the directional test is blind to it by construction. Quote both, and
+read a large `n.up` alongside a large `n.down` as the same thing seen
+from the region level.
+
 The word for a set gaining what another set lost is redistribution, and
 it is a claim about two sets rather than about one set and its universe,
 so it belongs to
@@ -292,6 +311,31 @@ back together first, which keeps the region as the unit and matches what
 does at its own level. `"keep"` is the base-pair version, and is a
 deliberate choice rather than a default.
 
+Sets supplied through `regionSets` as a named list are handled
+differently from the sets of the object, and the difference is worth
+knowing about. The sets of the object are a partition, one region
+belonging to one set, which is what lets them be compared against each
+other. Supplied sets overlap: a promoter belonging to fifty pathways is
+one row that fifty sets reach. Each of them is therefore compared
+against every other row of the object rather than against the other
+supplied sets, `universe`, `matchOn` and `universeSets` are ignored, and
+the universe recorded in the result says `allRows`. That is the
+comparison a pathway wants, and it also means the background is the
+regions that were annotated and tested and nothing wider, which is the
+background this kind of enrichment should have.
+
+What the two tests do for such a set is worth stating too, because it is
+the answer to the problem that otherwise has to be solved before a gene
+list can be written. One gene often carries several regions moving in
+different directions, and collapsing them into one signed number either
+cancels the signal or picks a winner arbitrarily. Here nothing is
+collapsed: `fry` reports a self-contained p-value for the set moving
+away from zero, which cancels when the regions disagree, alongside the
+mixed p-value `limma` computes for the set changing in either direction,
+which does not. A pathway whose regions are being rearranged rather than
+shifted shows up as the second without the first, and that is a result
+rather than a failure to produce one.
+
 A fit with no replicates loses the self-contained test. `fry` builds a
 linear model inside each set and needs a residual to measure it against,
 which a design with one sample per level does not have, so it is dropped
@@ -340,11 +384,11 @@ fit <- loadExampleData("fit", verbose = FALSE)
 # The universe comes from the fit and travels into the result
 setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 resultsTable(setRes)
-#>       region.set n.regions n.comparison n.comparison.overlapping
-#> 1    promoterCpG       269          314                        0
-#> 2       geneBody       909          986                        0
-#> 3     intergenic       440         1354                        0
-#> 4 promoterNonCpG       277         1378                        0
+#>       region.set n.regions n.up n.down n.comparison n.comparison.overlapping
+#> 1    promoterCpG       269    0      0          314                        0
+#> 2       geneBody       909    0      3          986                        0
+#> 3     intergenic       440    3      8         1354                        0
+#> 4 promoterNonCpG       277    1      2         1378                        0
 #>   n.overlapping.within mean.log2FC median.log2FC mean.log2FC.comparison
 #> 1                    0 -0.83367077    -0.9443600             0.09704300
 #> 2                    0  0.29148227     0.1692341            -0.11505923
@@ -365,16 +409,16 @@ resultsTable(setRes)
 #> 2         1000         0.292923395      0.14544165               2
 #> 3         1000         0.097886686      0.06250318               2
 #> 4         1000        -0.006188815      0.05976724               2
-#>   sample.delta.p camera.direction  camera.p fry.direction     fry.p camera.FDR
-#> 1      0.1416115             Down 0.3213638          Down 0.2396483  0.9384488
-#> 2      0.1816079               Up 0.5187249            Up 0.1814759  0.9384488
-#> 3      0.2578184               Up 0.7773973            Up 0.6689405  0.9384488
-#> 4      0.9269756             Down 0.9384488          Down 0.5189608  0.9384488
-#>     fry.FDR sample.delta.FDR
-#> 1 0.4792965        0.3437579
-#> 2 0.4792965        0.3437579
-#> 3 0.6689405        0.3437579
-#> 4 0.6689405        0.9269756
+#>   sample.delta.p camera.direction  camera.p fry.direction     fry.p fry.mixed.p
+#> 1      0.1416115             Down 0.3213638          Down 0.2396483 0.224143841
+#> 2      0.1816079               Up 0.5187249            Up 0.1814759 0.009029908
+#> 3      0.2578184               Up 0.7773973            Up 0.6689405 0.011930645
+#> 4      0.9269756             Down 0.9384488          Down 0.5189608 0.154649652
+#>   camera.FDR   fry.FDR fry.mixed.FDR sample.delta.FDR
+#> 1  0.9384488 0.4792965    0.22414384        0.3437579
+#> 2  0.9384488 0.4792965    0.02386129        0.3437579
+#> 3  0.9384488 0.6689405    0.02386129        0.3437579
+#> 4  0.9384488 0.6689405    0.20619954        0.9269756
 
 plotUniverseMatching(setRes)
 

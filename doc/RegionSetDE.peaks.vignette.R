@@ -10,8 +10,11 @@ library(ggplot2)
 ## ----load_sheet---------------------------------------------------------------
 sampleSheet <- loadExampleData("peakSheet")
 
+# Every column, with the file columns shown as names alone: the paths point at
+# wherever the package was installed and say nothing useful here
 sampleSheet %>%
-  dplyr::select(sample, condition, treatment, time, replicate)
+  dplyr::mutate(dplyr::across(dplyr::any_of(c("bam", "peaks", "input")),
+                              basename))
 
 ## ----sheet_columns------------------------------------------------------------
 colnames(sampleSheet)
@@ -51,8 +54,7 @@ S4Vectors::metadata(greylist)$thresholds
 ## ----greylist-----------------------------------------------------------------
 greylist <- makeGreylist(sampleSheet, binSize = 10000)
 
-S4Vectors::metadata(greylist)$thresholds %>%
-  dplyr::select(input, fragments, mean, threshold, regions, greylisted.bp)
+S4Vectors::metadata(greylist)$thresholds
 
 ## ----consensus----------------------------------------------------------------
 consensus <- loadConsensusPeaks(sampleSheet,
@@ -84,25 +86,25 @@ data.frame(group = names(consensusData(consensus)$groups),
 ## ----consensus_data-----------------------------------------------------------
 consensusInfo <- consensusData(consensus)
 
-consensusInfo$samples %>%
-  dplyr::select(sample, group, n.peaks, n.blacklist, n.greylist)
+consensusInfo$samples
 
 ## ----consensus_parts----------------------------------------------------------
 lengths(consensusInfo$groups)           # the consensus of every group
-length(consensusInfo$total)             # the pooled region set that will be counted
+length(consensusInfo$total)             # the pooled set that is counted
 
 ## ----group_list, eval = FALSE-------------------------------------------------
+# txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+# 
 # groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
 # 
 # annotationList <- lapply(groupList,
 #                          ChIPseeker::annotatePeak,
-#                          TxDb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene)
+#                          TxDb = txdb)
 # 
 # ChIPseeker::plotAnnoBar(annotationList)
 
 ## ----occupancy_columns--------------------------------------------------------
 as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
-  dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 
 ## ----upset--------------------------------------------------------------------
@@ -132,7 +134,6 @@ countTable(counts, format = "matrix")[1:3, 1:4]
 
 ## ----count_table_long---------------------------------------------------------
 countTable(counts, format = "long") %>%
-  dplyr::select(region.id, sample, condition, counts) %>%
   head(4)
 
 ## ----lib_info-----------------------------------------------------------------
@@ -143,17 +144,26 @@ counts <- countBackground(counts, binSize = 10000)
 
 ## ----norm_comparison, fig.height = 5------------------------------------------
 plotNormComparison(counts,
-                   methods = c("librarySize", "background", "TMM", "readsInRegions"))
+                   methods = c("librarySize", "background",
+                               "TMM", "readsInRegions"))
 
 ## ----norm_effect--------------------------------------------------------------
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts, method = method, verbose = FALSE)
-           fitted <- fitRegions(normalised, design = ~ condition, engine = "edgeR", verbose = FALSE)
-           tested <- resultsTable(testRegions(fitted,
-                                              contrast = c("condition", "R1881_24h", "DMSO"),
-                                              verbose = FALSE))
+           normalised <- normalizeCounts(counts,
+                                         method = method,
+                                         verbose = FALSE)
+
+           fitted <- fitRegions(normalised,
+                                design = ~ condition,
+                                engine = "edgeR",
+                                verbose = FALSE)
+
+           tested <- testRegions(fitted,
+                                 contrast = c("condition", "R1881_24h", "DMSO"),
+                                 verbose = FALSE)
+           tested <- resultsTable(tested)
 
            data.frame(method = method,
                       up = sum(tested$diff.status == "up"),
@@ -173,7 +183,9 @@ dplyr::bind_rows(normalisationEffect)
 # SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
 
 ## ----manual_factors-----------------------------------------------------------
-backgroundCounts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+backgroundCounts <- normalizeCounts(counts,
+                                    method = "background",
+                                    verbose = FALSE)
 
 backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
@@ -192,7 +204,7 @@ all.equal(countTable(manualCounts, normalized = TRUE, format = "matrix"),
 counts <- normalizeCounts(counts, method = "background")
 
 ## ----scaling_factors----------------------------------------------------------
-sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
+sampleInfo(counts)
 
 ## ----normalised_counts--------------------------------------------------------
 countTable(counts, normalized = TRUE) %>%
@@ -247,8 +259,7 @@ resultsTable(results) %>%
   dplyr::count(contrast, diff.status)
 
 ## ----top_regions--------------------------------------------------------------
-topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5) %>%
-  dplyr::select(region.id, log2FC, FDR, peak.R1881_4h, peak.R1881_24h)
+topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5)
 
 ## ----contrast_info------------------------------------------------------------
 contrastInfo(results)
@@ -263,7 +274,10 @@ plotVolcano(results, contrast = "R1881_24h_vs_R1881_4h", labelTop = 5)
 plotResultsMA(results, contrast = "R1881_24h_vs_DMSO")
 
 ## ----heatmap, fig.height = 6--------------------------------------------------
-plotTopHeatmap(results, contrast = "R1881_24h_vs_DMSO", n = 30, annotationColumns = "condition")
+plotTopHeatmap(results,
+               contrast = "R1881_24h_vs_DMSO",
+               n = 30,
+               annotationColumns = "condition")
 
 ## ----profile, fig.height = 6, fig.width = 8-----------------------------------
 plotProfile(results,
@@ -285,8 +299,9 @@ plotProfile(profileData, style = "lines")
 consensusRanges <- regionRanges(consensus)$consensus
 
 plotProfile(counts,
-            regions = list(boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
-                           newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
+            regions = list(
+              boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
+              newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
             groupBy = "condition",
             style = "lines")
 
@@ -326,9 +341,117 @@ summitCounts <- countReads(consensus,
                            summits = 200,
                            verbose = FALSE)
 
-head(SummarizedExperiment::rowRanges(summitCounts)[, c("region.id", "summit")], 3)
+head(SummarizedExperiment::rowRanges(summitCounts), 3)
 
 table(BiocGenerics::width(SummarizedExperiment::rowRanges(summitCounts)))
+
+## ----annotate_txdb, eval = FALSE----------------------------------------------
+# txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+# 
+# annotatedFit <- annotateRegions(fit,
+#                                 txdb = txdb,
+#                                 orgdb = org.Hs.eg.db::org.Hs.eg.db,
+#                                 maxDistance = 1e5)
+
+## ----annotate_contacts, eval = FALSE------------------------------------------
+# # One row per link. link.weight is optional and carries no assumed scale.
+# annotatedFit <- annotateRegions(fit,
+#                                 linkTable = abcLinks,
+#                                 weightSource = "ABC score")
+
+## ----annotate_chipseeker, eval = FALSE----------------------------------------
+# peakAnnotation <- ChIPseeker::annotatePeak(regionRanges(consensus)$consensus,
+#                                            TxDb = txdb)
+# 
+# peakLinks <- GenomicRanges::granges(peakAnnotation, use.mcols = TRUE)
+# 
+# annotatedFit <- annotateRegions(fit, linkTable = peakLinks)
+
+## ----annotate_real------------------------------------------------------------
+geneSites <- readRDS(system.file("extdata", "lncapAR", "chr19_genes.rds",
+                                 package = "RegionSetDE"))
+
+annotatedFit <- annotateRegions(fit,
+                                genes = geneSites,
+                                maxDistance = 1e5,
+                                verbose = FALSE)
+
+head(regionLinks(annotatedFit), 4)
+
+## ----gene_sets_peaks----------------------------------------------------------
+geneSets <- readRDS(system.file("extdata", "lncapAR", "chr19_geneSets.rds",
+                                package = "RegionSetDE"))
+
+regionSets <- geneSetsToRegionSets(annotatedFit,
+                                   geneSets = geneSets,
+                                   verbose = FALSE)
+
+head(attr(regionSets, "geneSetSummary"))
+
+## ----test_gene_sets_peaks-----------------------------------------------------
+geneSetResults <- testRegionSets(annotatedFit,
+                                 contrast = c("condition", "R1881_24h", "DMSO"),
+                                 regionSets = regionSets,
+                                 verbose = FALSE)
+
+resultsTable(geneSetResults)
+
+## ----aggregate_peaks----------------------------------------------------------
+annotatedLate <- testRegions(annotatedFit,
+                             contrast = c("condition", "R1881_24h", "DMSO"),
+                             FDR = 0.05, log2FC = 1, verbose = FALSE)
+
+geneResults <- aggregateToGenes(annotatedLate,
+                                method = c("simes", "potential"),
+                                verbose = FALSE)
+geneResults
+
+## ----gene_directions_peaks----------------------------------------------------
+table(resultsTable(geneResults)$direction)
+
+## ----gene_ora_peaks, eval = FALSE---------------------------------------------
+# geneTable <- resultsTable(geneResults)
+# 
+# upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
+# 
+# clusterProfiler::enrichGO(upGenes,
+#                           universe = geneTable$gene.id,
+#                           OrgDb = org.Hs.eg.db::org.Hs.eg.db,
+#                           keyType = "ENTREZID",
+#                           ont = "BP")
+
+## ----gsea_peaks, eval = FALSE-------------------------------------------------
+# geneRanks <- stats::setNames(geneTable$score, geneTable$gene.id)
+# 
+# fgsea::fgseaMultilevel(pathways = geneSets,
+#                        stats = geneRanks,
+#                        minSize = 5)
+
+## ----gsea_signed, eval = FALSE------------------------------------------------
+# geneRanks <- stats::setNames(sign(geneTable$score) * -log10(geneTable$p.value),
+#                              geneTable$gene.id)
+
+## ----annotate_flank-----------------------------------------------------------
+annotatedFlank <- annotateRegions(fit,
+                                  genes = geneSites,
+                                  flankDistance = 5e4,
+                                  tssRegion = c(-2000, 500),
+                                  verbose = FALSE)
+
+table(regionLinks(annotatedFlank)$link.type, useNA = "ifany")
+
+## ----link_type_split----------------------------------------------------------
+promoterSets <- geneSetsToRegionSets(annotatedFlank,
+                                     geneSets = geneSets,
+                                     linkType = "promoter",
+                                     verbose = FALSE)
+
+distalSets <- geneSetsToRegionSets(annotatedFlank,
+                                   geneSets = geneSets,
+                                   linkType = "distal",
+                                   verbose = FALSE)
+
+c(promoter = length(promoterSets), distal = length(distalSets))
 
 ## ----session_info-------------------------------------------------------------
 sessionInfo()

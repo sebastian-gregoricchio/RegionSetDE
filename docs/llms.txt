@@ -311,6 +311,8 @@ This package is under a GNU General Public License (version 3).
   : RegionSetDE.counts class
 - [`RegionSetDE.fit-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.fit-class.md)
   : RegionSetDE.fit class
+- [`RegionSetDE.geneResults-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.geneResults-class.md)
+  : RegionSetDE.geneResults class
 - [`RegionSetDE.provenance-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.provenance-class.md)
   : RegionSetDE.provenance class
 - [`RegionSetDE.results-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.results-class.md)
@@ -325,6 +327,10 @@ This package is under a GNU General Public License (version 3).
   : RegionSetDE.setScores class
 - [`RegionSetDE.universe-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.md)
   : RegionSetDE.universe class
+- [`aggregateToGenes()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/aggregateToGenes.md)
+  : aggregateToGenes
+- [`annotateRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/annotateRegions.md)
+  : annotateRegions
 - [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
   : applyBlacklist
 - [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md)
@@ -386,6 +392,8 @@ This package is under a GNU General Public License (version 3).
   : fitObject
 - [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
   : fitRegions
+- [`geneSetsToRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md)
+  : geneSetsToRegionSets
 - [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md)
   : genomeAssembly
 - [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
@@ -446,6 +454,9 @@ This package is under a GNU General Public License (version 3).
   : plotUniverseMatching
 - [`plotVolcano()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotVolcano.md)
   : plotVolcano
+- [`regionLinks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionLinks.md)
+  [`` `regionLinks<-`() ``](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionLinks.md)
+  : regionLinks
 - [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md)
   : regionRanges
 - [`regionSetNames()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionSetNames.md)

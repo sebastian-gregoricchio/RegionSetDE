@@ -141,7 +141,6 @@ Sebastian Gregoricchio
 
 ``` r
 fit <- loadExampleData("fit", verbose = FALSE)
-#> calcNormFactors has been renamed to normLibSizes
 
 # The background bins carry no strain effect, so the p-values should be flat
 calibration <- checkNullCalibration(fit,

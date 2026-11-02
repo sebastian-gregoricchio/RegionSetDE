@@ -20,11 +20,11 @@
 #' @param useRanks Logical value to indicate whether \code{camera} must work on the ranks rather than on the statistics, which is more robust and less powerful. Default: \code{FALSE}.
 #' @param FDR Numeric value with the adjusted p-value cut-off reported in the output. Default: \code{0.05}.
 #' @param adjustMethod String with the multiple testing correction across the sets. Default: \code{"BH"}.
-#' @param regionSets Character vector with the names of the sets to test. Default: \code{NULL}, all of them.
+#' @param regionSets The sets to test. Either a character vector with the names of the sets of the object, or a named list of region keys, which is what \code{\link{geneSetsToRegionSets}} returns and the way to test sets that overlap each other, gene sets among them. Default: \code{NULL}, every set of the object.
 #' @param carryCounts Logical value to indicate whether the counts must travel inside the result, so that \code{\link{plotSetSignal}} can draw the signal without being handed the counts object again. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always. \code{n.overlapping.within} counts the regions of the set overlapping another region of the same set.
+#' @return A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always. \code{n.overlapping.within} counts the regions of the set overlapping another region of the same set, while \code{n.up} and \code{n.down} count the regions of it changing in each direction, corrected within the set. The self-contained test reports \code{fry.p} and \code{fry.FDR} for the set moving in one direction, and \code{fry.mixed.p} and \code{fry.mixed.FDR} for it changing in either.
 #'
 #' @details The effect size, not the p-value, is the primary output here. A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which says nothing about whether the shift matters.
 #'
@@ -41,6 +41,8 @@
 #'   \item camera not significant, fry significant: evidence that the set moved, none that it moved differently from its comparison.
 #'   \item neither significant: neither test found evidence, which is not the same as evidence of no effect.
 #' }
+#' \code{fry} answers two questions rather than one and both are reported. \code{fry.p} is directional: it asks whether the regions of the set moved the same way, so a set holding regions that gained and regions that lost sees them cancel and comes out unremarkable. \code{fry.mixed.p} asks whether they changed at all, in either direction, and does not cancel. A set returning the mixed p-value without the directional one is being rearranged rather than shifted, which is a finding and not a null result: it is what an enhancer landscape being rewired looks like, and the directional test is blind to it by construction. Quote both, and read a large \code{n.up} alongside a large \code{n.down} as the same thing seen from the region level.
+#'
 #' The word for a set gaining what another set lost is redistribution, and it is a claim about two sets rather than about one set and its universe, so it belongs to \code{\link{testSetContrast}}. To argue that a mark did not change globally, an equivalence test against a bounded near-zero interval is what the claim needs; a non-significant \code{fry} is not that. Bear in mind too that any centring normalisation, TMM and background included, removes a genuinely global shift from the data before \code{fry} ever sees it, so the self-contained test is not the place to look for one.
 #'
 #' The comparison universe comes from the fit, which built it once, and travels on into the result, so \code{\link{plotUniverseMatching}} can check the matching afterwards without anything being kept on the side. Passing a \code{RegionSetDE.universe} object, or one of the two keywords, overrides it for this test alone. Whatever it is, it is made of the other sets loaded into the object, and the competitive p-value is a statement about the set relative to those and not relative to the genome. Load two sets and the test compares them to each other; load four that behave alike and every one of them can come out unremarkable against the other three. \code{\link{makeSetUniverse}} takes \code{universeSets} for choosing that comparison pool explicitly, which is worth doing when the sets were not all picked for the same reason.
@@ -52,6 +54,10 @@
 #' Regions of the same set can overlap each other too, for instance windows recentred on nearby summits or an annotation listing alternative promoters of one gene. The bases they share are then counted in two rows, so the set leans towards those loci, and the rows move together for a reason the correlation between regions was not estimated for. When the question is the average response per region this can be what is wanted, and \code{overlapWithinSet = "allow"} keeps quiet about it. The default warns, and \code{"stop"} refuses the set. The count is in \code{n.overlapping.within}, and \code{loadRegions(reduceRegions = TRUE)} merges such regions before counting.
 #'
 #' On a tiled fit the row is a tile, and a set assembled from tiles weights each region by how many tiles it was cut into: a 40 kb domain would count forty times a 2 kb one. That changes the question from the average response of the regions in the set to the average response of the base pairs in it. \code{tileHandling = "collapse"} averages the tiles of a region back together first, which keeps the region as the unit and matches what \code{\link{testRegions}} does at its own level. \code{"keep"} is the base-pair version, and is a deliberate choice rather than a default.
+#'
+#' Sets supplied through \code{regionSets} as a named list are handled differently from the sets of the object, and the difference is worth knowing about. The sets of the object are a partition, one region belonging to one set, which is what lets them be compared against each other. Supplied sets overlap: a promoter belonging to fifty pathways is one row that fifty sets reach. Each of them is therefore compared against every other row of the object rather than against the other supplied sets, \code{universe}, \code{matchOn} and \code{universeSets} are ignored, and the universe recorded in the result says \code{allRows}. That is the comparison a pathway wants, and it also means the background is the regions that were annotated and tested and nothing wider, which is the background this kind of enrichment should have.
+#'
+#' What the two tests do for such a set is worth stating too, because it is the answer to the problem that otherwise has to be solved before a gene list can be written. One gene often carries several regions moving in different directions, and collapsing them into one signed number either cancels the signal or picks a winner arbitrarily. Here nothing is collapsed: \code{fry} reports a self-contained p-value for the set moving away from zero, which cancels when the regions disagree, alongside the mixed p-value \code{limma} computes for the set changing in either direction, which does not. A pathway whose regions are being rearranged rather than shifted shows up as the second without the first, and that is a result rather than a failure to produce one.
 #'
 #' A fit with no replicates loses the self-contained test. \code{fry} builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value \code{limma} uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and \code{interRegionCor} is worth setting by hand from a replicated experiment on the same assay when one exists.
 #' The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the five engines. The self-contained test needs the values themselves. For \code{voom}, \code{limma} and \code{dream} they are the log values the model was fitted on. For \code{edgeR} and \code{DESeq2} the counts are turned into z-scores under the null model of the fit, with its offsets and its dispersion of every region, which is what \code{edgeR} does for its own \code{fry} method, and \code{fry} runs on those without standardising them again. The test then rests on the negative binomial model the regions were tested with rather than on a log-CPM approximation of it. For \code{DESeq2} the null model is refitted by \code{edgeR::glmFit} with the dispersions and normalisation factors of \code{DESeq2}, the same model fitted by another routine. On a fit collapsed from tiles the z-scores of a region are pooled as \code{sum(z) / sqrt(n.tiles)}, which keeps them on the scale of a single z-score. \code{fryInput = "logCPM"} brings back the earlier behaviour, which is worth keeping for comparing results with an older analysis.
@@ -218,7 +224,18 @@ testRegionSets <-
     #-------------------------------#
     # Universe of the sets          #
     #-------------------------------#
-    if ("camera" %in% method) {
+    # Sets supplied as a list overlap each other, so a universe matched set by set against the other
+    # sets of the object describes a comparison that is not the one being made. Every other tested row
+    # is, and the loop below reaches it through an empty index
+    suppliedSets <- is.list(regionSets)
+
+    if (isTRUE(suppliedSets)) {
+      if (!is.null(universe) & isTRUE(verbose)) {
+        message("The 'universe' argument is ignored for sets supplied as a list, each of them is compared against every other row of the object.")
+      }
+      universe <- new(Class = "RegionSetDE.universe", type = "allRows", n.rows = nrow(fit@counts))
+
+    } else if ("camera" %in% method) {
       universe <- .setUniverseOf(fit = fit, universe = universe, matchOn = matchOn,
                                  universeRatio = universeRatio, regionSets = regionSets,
                                  universeSets = universeSets, verbose = verbose)
@@ -259,14 +276,10 @@ testRegionSets <-
       }
     }
 
-    setNames <- unique(as.character(regionStats$region.set))
-    if (!is.null(regionSets)) {
-      absentSets <- setdiff(regionSets, setNames)
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      setNames <- regionSets
-    }
+    # The sets of the object are a partition and supplied sets are not, so both are resolved to
+    # row positions once, here, rather than being looked up inside the loop
+    setIndexList <- .setIndexList(regionStats = regionStats, regionSets = regionSets)
+    setNames <- names(setIndexList)
 
     if (isTRUE(verbose)) {
       message("Testing ", length(setNames), " region sets for '", contrastObject$label, "'.")
@@ -302,7 +315,7 @@ testRegionSets <-
     resultList <-
       lapply(setNames,
              function(setName) {
-               setIndex <- which(regionStats$region.set == setName)
+               setIndex <- setIndexList[[setName]]
 
                if (length(setIndex) < 2) {
                  stop("The set '", setName, "' holds fewer than 2 regions, a set level test needs more.", call. = FALSE)
@@ -316,8 +329,11 @@ testRegionSets <-
                       "Merge them with loadRegions(reduceRegions = TRUE), or set 'overlapWithinSet' to 'warn' or 'allow'.", call. = FALSE)
                }
 
-               # The universe holds the set as well, the comparison is what is left once it is taken out
-               backgroundIndex <- if (length(universe@index) == 0) {
+               # The universe holds the set as well, the comparison is what is left once it is taken out.
+               # A supplied set is in no universe built from the sets of the object, and every other row
+               # is the comparison it wants anyway: a pathway is asked about against the rest of what was
+               # tested, not against the other pathways
+               backgroundIndex <- if (length(universe@index) == 0 | isTRUE(suppliedSets)) {
                  setdiff(seq_len(nrow(regionStats)), setIndex)
                } else {
                  setdiff(universe@index[[setName]], setIndex)
@@ -387,8 +403,16 @@ testRegionSets <-
                  NULL
                }
 
+               # Regions moving each way inside the set, corrected within it the way csaw counts them
+               # inside a cluster. A set with both counts large is being rearranged rather than shifted,
+               # which is what the directional p-value cannot show
+               setAdjusted <- stats::p.adjust(regionStats$p.value[setIndex], method = adjustMethod)
+               setChanging <- !is.na(setAdjusted) & setAdjusted <= FDR
+
                setRow <- data.frame(region.set = setName,
                                     n.regions = length(setIndex),
+                                    n.up = sum(setChanging & regionStats$log2FC[setIndex] > 0),
+                                    n.down = sum(setChanging & regionStats$log2FC[setIndex] < 0),
                                     n.comparison = length(backgroundIndex),
                                     n.comparison.overlapping = length(overlappingRows),
                                     n.overlapping.within = withinOverlap,
@@ -442,6 +466,10 @@ testRegionSets <-
 
                  setRow$fry.direction <- as.character(fryTable$Direction[1])
                  setRow$fry.p <- fryTable$PValue[1]
+
+                 # The directional p-value cancels when the regions of a set disagree, the mixed one does
+                 # not, which is the only place a set being rearranged rather than shifted is visible
+                 setRow$fry.mixed.p <- if ("PValue.Mixed" %in% colnames(fryTable)) {fryTable$PValue.Mixed[1]} else {NA_real_}
                }
 
                return(setRow)
@@ -461,6 +489,10 @@ testRegionSets <-
     }
     if ("fry" %in% method) {
       resultTable$fry.FDR <- stats::p.adjust(resultTable$fry.p, method = adjustMethod)
+
+      if (!all(is.na(resultTable$fry.mixed.p))) {
+        resultTable$fry.mixed.FDR <- stats::p.adjust(resultTable$fry.mixed.p, method = adjustMethod)
+      }
     }
     if ("sample.delta.p" %in% colnames(resultTable)) {
       resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)

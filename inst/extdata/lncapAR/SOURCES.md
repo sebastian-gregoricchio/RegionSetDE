@@ -54,3 +54,24 @@ shipped next to them, which is why a region can hold few fragments and still be 
 
 The window was chosen for size, not for biology. Anything read off these files describes the
 example, not the androgen response of LNCaP cells, and the paper is the place to look for that.
+
+
+## Gene annotation
+
+`chr19_genes.rds` and `chr19_geneSets.rds` are slices of the annotation the vignette names in its
+own chunks, shipped so that the vignette can run real gene identifiers without depending on a full
+`TxDb` at build time:
+
+1. `chr19_genes.rds` holds the gene start sites of the window the peaks cover plus a megabase on
+   either side, taken from `TxDb.Hsapiens.UCSC.hg38.knownGene` with the symbols read from
+   `org.Hs.eg.db`. The chromosome is named the UCSC way, `chr19`, while the peaks are named `19`,
+   so the vignette also shows `annotateRegions()` reconciling the two.
+2. `chr19_geneSets.rds` holds GO biological process terms over those genes, from `org.Hs.eg.db`
+   and `GO.db`, kept at between 5 and 40 genes and reduced to the 25 most specific.
+
+Both are written by `inst/scripts/make-example-annotation.R`, which prints the versions of the
+annotation packages it read and the exact window, to be recorded here on every rebuild.
+
+A slice of one chromosome reaches a small part of any pathway, so `n.genes.linked` in the vignette
+is far below `n.genes` and the set level p-values describe the example rather than the androgen
+response. The same caveat as for the alignments applies: the window was chosen for size.

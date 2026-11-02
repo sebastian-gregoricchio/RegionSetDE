@@ -770,3 +770,28 @@ setMethod(f = "regionSetNames",
 
     return(dplyr::relocate(resultTable, "contrast", "contrast.description"))
   } # END function
+
+
+#' @rdname resultsTable
+#' @export
+
+setMethod(f = "resultsTable",
+          signature = "RegionSetDE.geneResults",
+          definition = function(results) {
+            # One row per gene rather than per region
+            return(results@results)
+          })
+
+
+#' @rdname regionLinks
+#'
+#' @importFrom methods setMethod
+#'
+#' @export
+
+setMethod(f = "regionLinks",
+          signature = "RegionSetDE.geneResults",
+          definition = function(object) {
+            # The gene table carries the links it was built from, there being no counts slot under it
+            return(object@links)
+          })

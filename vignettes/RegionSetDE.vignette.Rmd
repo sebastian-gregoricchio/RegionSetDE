@@ -196,12 +196,14 @@ Naming an assay returns the high signal regions of that protocol instead, `loadB
 The BAM files have to be aligned to the same assembly, but they do not have to name its chromosomes alike. Files written `chr1` and files written `1` are counted together, and the regions can follow either style.
 
 ```{r count_reads, eval = FALSE}
+sampleTable <- data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
+                          condition = c("BN", "BN", "SHR", "SHR"))
+
 counts <-
   countReads(regions,
              bamFiles = bamPaths,
-             sampleNames = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-             sampleMetadata = data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
-                                         condition = c("BN", "BN", "SHR", "SHR")),
+             sampleNames = sampleTable$sample,
+             sampleMetadata = sampleTable,
              pairedEnd = FALSE,
              fragmentLength = 180,
              minMapq = 10,
@@ -214,11 +216,12 @@ The counts and the library sizes are two separate things. Every region is counte
 
 ```{r count_reads_exclude, eval = FALSE}
 bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
+extraContigs <- grep("_|EBV", bamChromosomes, value = TRUE)
 
 counts <-
   countReads(regions,
              bamFiles = bamPaths,
-             excludeChromosomes = c("chrM", "chrY", grep("_|EBV", bamChromosomes, value = TRUE)),
+             excludeChromosomes = c("chrM", "chrY", extraContigs),
              nThreads = 4)
 ```
 
@@ -341,7 +344,10 @@ plotSetMA(counts, groupBy = "condition")
 ```{r filter_regions}
 nrow(counts)
 
-counts <- filterRegions(counts, method = "background", foldChange = 2, verbose = FALSE)
+counts <- filterRegions(counts,
+                        method = "background",
+                        foldChange = 2,
+                        verbose = FALSE)
 
 nrow(counts)
 
@@ -470,7 +476,10 @@ Notice that the correction is applied over all the rows of the object, across th
 The labels of `diff.status` come from the `FDR` and `log2FC` given to `testRegions()`, 0.05 and 0 by default. They decide nothing in the test, so they can be changed afterwards with `updateThresholds()`, which fills the column again and replaces the cut-offs stored in the object, the ones the plots draw and `exportResults()` writes down:
 
 ```{r update_thresholds}
-strictResults <- updateThresholds(results, FDR = 0.01, log2FC = 1, verbose = FALSE)
+strictResults <- updateThresholds(results,
+                                  FDR = 0.01,
+                                  log2FC = 1,
+                                  verbose = FALSE)
 
 table(resultsTable(results)$diff.status)
 table(resultsTable(strictResults)$diff.status)
@@ -537,13 +546,19 @@ plotRegion(results, region = topRegion, groupBy = "condition")
 The same figure can carry a bracket between the groups. With `pairwiseTest = "model"` the bracket holds the fold change and the FDR the fit gave to this region, the same numbers `topRegions()` reports for it:
 
 ```{r plot_region_model, fig.height = 4}
-plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "model")
+plotRegion(results,
+           region = topRegion,
+           groupBy = "condition",
+           pairwiseTest = "model")
 ```
 
 `pairwiseTest = "t.test"` and `"wilcox.test"` test the plotted values instead, paired through a `colData` column when `pairBy` names one. These tests see neither the offsets, nor the dispersion, nor the thousands of other regions, so their p-value and the FDR above rarely agree, and with two samples per group the Wilcoxon test cannot go below 0.33. They are useful on counts that were never fitted, or between groups that no contrast compared. The caption says which test was run.
 
 ```{r plot_region_ttest, fig.height = 4}
-plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t.test")
+plotRegion(results,
+           region = topRegion,
+           groupBy = "condition",
+           pairwiseTest = "t.test")
 ```
 
 ```{r plot_heatmap, fig.height = 7}
@@ -616,6 +631,8 @@ The second row used to be read here as redistribution. It does not support that 
 
 One more thing the self-contained test cannot do: detect a genuinely global shift. Every centring normalisation, background and TMM included, removes exactly that before the test sees the data. If the question is whether the mark changed in absolute terms, the answer has to come from a spike-in.
 
+**`fry` answers two questions, and both are in the table.** `fry.p` is directional: it asks whether the regions of the set moved the same way, so a set holding regions that gained and regions that lost sees them cancel and comes out unremarkable. `fry.mixed.p` asks whether they changed at all, in either direction, and does not cancel. A set returning the mixed p-value without the directional one is being rearranged rather than shifted, and that is a finding rather than a null result. `n.up` and `n.down` show the same thing from the region level: both large is the signature of a set whose regions are moving in opposite directions, which is what a rewired enhancer landscape looks like and exactly what the directional test is blind to by construction.
+
 The competitive test is the one to lead with. It runs on the per-region statistics through `limma::cameraPR`, which makes it behave identically across the engines. The self-contained test needs values rather than statistics. With `voom`, `limma` and `dream` it reads the log values the model was fitted on. With `edgeR` and `DESeq2` it reads the counts turned into z-scores under the null model of the fit, with the same offsets and dispersions, the way `edgeR` runs `fry` on its own objects, so both tests stay on the model the regions were tested with. `fryInput = "logCPM"` goes back to the log-CPM matrix, which only matters when comparing with an older analysis.
 
 **"More" means more than the sets you loaded.** The comparison universe is drawn from the other region sets in the object, so a competitive p-value is relative to those and not to the genome. With two sets loaded, the test compares them to each other. With four sets that respond alike, each is being asked whether it stands out against three sets behaving as it does, and adjusted p-values clustered near one is what that looks like: a property of the comparison, not a finding. `makeSetUniverse(universeSets = )`, or the same argument on `fitRegions()` and `testRegionSets()`, fixes the pool explicitly, and the sets forming it are printed with the universe object.
@@ -629,7 +646,7 @@ promoterResults <- testRegionSets(fit,
                                   universeSets = "intergenic",
                                   verbose = FALSE)
 
-resultsTable(promoterResults)[, c("region.set", "n.comparison", "delta.log2FC", "CI.lower", "CI.upper", "camera.FDR")]
+resultsTable(promoterResults)
 ```
 
 The numbers differ from those of `setResults` because the comparison did. `plotUniverseMatching(promoterResults)` shows how closely the intergenic rows match the promoters on width and abundance.
@@ -674,6 +691,163 @@ setContrast
 Use this whenever the hypothesis is comparative. Comparing two `camera` p-values by eye is not the same test, and it is wrong in the usual way: a difference in significance is not a significant difference.
 
 <br>
+
+## Gene sets as region sets {#gene_sets}
+
+Everything above tests sets of regions you defined. The other question people arrive with is the functional one: *which pathways are affected*. Getting from differential regions to that answer means linking regions to genes, and the step is worth doing carefully, because it is where most of the error in a functional result comes from and almost none of the attention goes.
+
+**The problem with the usual route.** Annotate the regions, take the significant ones, collect their nearest genes, run an over-representation test. Each step loses something. The nearest gene is wrong for a large share of distal elements. The threshold throws away the ranking. And the step that breaks most quietly: one gene usually carries several regions, and they do not have to move in the same direction. Collapsing them into one signed number per gene either cancels a real signal or picks a winner arbitrarily, and nothing in the output says which happened.
+
+`RegionSetDE` does not collapse. The links are stored as a table, the gene sets become region sets, and the existing set-level machinery tests them, so the directionality is reported rather than decided in advance.
+
+The regions here were defined in advance, so each of them already came with a gene attached and the linking step is close to free. Where it does the real work is on regions derived from peak calls, which arrive as intervals with nothing attached to them at all. The peak-based vignette carries the worked version of this section on an AR ChIP-seq experiment, including what to do about promoters and distal sites separately, and is the better place to start if that is the shape of your data.
+
+### Linking the regions to genes
+
+`annotateRegions()` stores a region-to-gene table inside the object. The links are many-to-many on purpose: a region overlapping a bidirectional promoter links to both genes and keeps both.
+
+The usual source is proximity to a transcription start site, read from a `TxDb` or an `EnsDb`:
+
+```{r annotate_txdb, eval = FALSE}
+txdb <- TxDb.Rnorvegicus.UCSC.rn4.ensGene::TxDb.Rnorvegicus.UCSC.rn4.ensGene
+
+annotatedFit <- annotateRegions(fit,
+                                txdb = txdb,
+                                maxDistance = 1e5)
+```
+
+`maxDistance` is worth setting. A region whose nearest start site is 800 kb away has a nearest gene in the arithmetic sense only, and assigning it adds noise to every set it lands in. Those regions are written into the table with a missing `gene.id` rather than left out of it, which keeps them in the universe, keeps them out of every gene set, and leaves the decision visible in the object.
+
+Proximity is the default because it is always available, not because it is good. When contacts have been measured or predicted, Hi-C loops, ABC scores, a `universalEPI` prediction, hand them over as a table instead. One row per link, and `link.weight` is optional and carries no assumed scale:
+
+```{r annotate_contacts, eval = FALSE}
+annotatedFit <- annotateRegions(fit,
+                                linkTable = abcLinks,
+                                weightSource = "ABC score")
+```
+
+A full `TxDb` is a large thing for a vignette to depend on, so the annotation that runs here is a slice of it: the gene start sites of the window these regions cover, taken from the same `TxDb` the example promoters were built from and shipped with the package. The genes are real, and `inst/scripts/make-example-annotation.R` records how the slice was made.
+
+```{r annotate_links}
+geneSites <- readRDS(system.file("extdata", "euratrans_genes.rds",
+                                 package = "RegionSetDE"))
+
+annotatedFit <- annotateRegions(fit,
+                                genes = geneSites,
+                                maxDistance = 1e5,
+                                verbose = FALSE)
+
+head(regionLinks(annotatedFit), 4)
+```
+
+The table also accepts a `GRanges` with the gene identifiers in its metadata columns, which is the shape `ChIPseeker::annotatePeak()` returns, so its output can go straight in. Column names follow the package (`gene.id`, `distance.to.tss`) and the common aliases (`geneId`, `SYMBOL`, `distanceToTSS`) are recognised.
+
+Two kinds of mismatch are handled differently, and the asymmetry is deliberate. Links falling on regions the object does not hold are dropped, because a contact map is normally computed over a wider peak set than the one being tested. Regions the table says nothing about are **kept**, with a missing gene, because dropping them would shrink the universe of every enrichment run afterwards without anything in the output saying so.
+
+### Turning gene sets into region sets
+
+```{r gene_sets}
+geneSets <- readRDS(system.file("extdata", "euratrans_geneSets.rds",
+                                package = "RegionSetDE"))
+
+regionSets <- geneSetsToRegionSets(annotatedFit,
+                                   geneSets = geneSets,
+                                   verbose = FALSE)
+
+head(attr(regionSets, "geneSetSummary"))
+```
+
+Those are GO biological process terms over the genes of the same window, shipped beside the start sites. `n.genes` is how many genes a term holds, `n.genes.linked` how many of them a region of this object reached, and `n.regions` how many regions that adds up to. The gap between the first two is the scale of the example rather than a property of the method: one chromosome reaches a small part of any pathway.
+
+The result is a named list of region keys rather than a `GRangesList`, and the reason is that gene sets overlap while region sets of this package do not. A promoter belonging to fifty pathways is one row of the object that fifty sets reach; a list of ranges would have to repeat that row fifty times and the counting would then be wrong in fifty ways.
+
+`testRegionSets()` takes that list straight through its `regionSets` argument:
+
+```{r test_gene_sets}
+geneSetResults <- testRegionSets(annotatedFit,
+                                 contrast = c("condition", "SHR", "BN"),
+                                 regionSets = regionSets,
+                                 verbose = FALSE)
+
+resultsTable(geneSetResults)
+```
+
+**The comparison changes, and it changes correctly.** Sets supplied this way are each compared against every other row of the object rather than against the other supplied sets, and `universe`, `matchOn` and `universeSets` are ignored. That is the comparison a pathway wants: the question is whether its regions moved more than the rest of what was tested, not whether they moved more than the other pathways. It also means the background is the annotated and tested regions and nothing wider, which is the background this kind of analysis should have and the one most often got wrong.
+
+**The directionality shows up in the output instead of being resolved in the input.** Read `n.up` against `n.down` and `fry.FDR` against `fry.mixed.FDR`. A pathway whose regions all gain shows a directional result. A pathway whose regions are being rearranged, some opening and some closing, shows the mixed result without the directional one. Both are findings; the second is the one the conventional gene-list route destroys.
+
+### What this does not fix
+
+**Locus length.** A gene with a long regulatory locus carries more regions than a gene with a short one, so a set rich in such genes reaches more rows. `camera` corrects for the correlation between those rows and not for how many of them there are, and the genes with the largest regulatory domains are disproportionately developmental transcription factors and signalling receptors, which is why under-corrected analyses of this kind so often return the same plausible-looking developmental terms whatever the biology. Where that matters, compare against a count-based method built for it, `chipenrich` or `polyenrich`, run on the regions.
+
+**Assignment error.** None of the statistics repairs a wrong link. A well-calibrated p-value for a mis-specified hypothesis is still wrong, and the gap between the best and the worst method here is smaller than the gap between proximity and measured contacts.
+
+Two habits make the result more trustworthy. Run the analysis separately on promoter-proximal and on distal regions, through `regionSets =` on `geneSetsToRegionSets()`: much of the apparent disagreement within a gene is promoters staying put while enhancers move, and splitting them makes both the result and the reading of it simpler. And treat motif enrichment on the regions that gained against the ones that lost as the primary claim for accessibility data, with the pathway result as the secondary, hypothesis-generating layer: motifs skip the linking step entirely and test something the assay actually measured.
+
+
+<br>
+
+
+### A table of genes, when one is needed {#gene_table}
+
+Everything above keeps the region as the unit and never writes a gene score. Sometimes a gene table is what you need anyway: an external tool expects one, a reviewer asks for a conventional over-representation result, or the gene really is the unit of the question. `aggregateToGenes()` builds it, and the documentation is explicit that this is the weaker of the two routes, because aggregating replaces several measurements with one and throws away the ranking of the regions.
+
+```{r aggregate_genes}
+# Tested on the annotated fit, so the regions carry the links
+annotatedResults <- testRegions(annotatedFit,
+                                contrast = c("condition", "SHR", "BN"),
+                                verbose = FALSE)
+
+geneResults <- aggregateToGenes(annotatedResults,
+                                method = c("simes", "potential"),
+                                verbose = FALSE)
+geneResults
+```
+
+```{r gene_table}
+geneTable <- resultsTable(geneResults)
+table(geneTable$direction)
+```
+
+**The four direction classes are the point.** A gene reached by one region that opened and another that closed is `mixed`. Nothing here picks a winner between them, because there is no defensible way to pick one: cancelling loses a real signal and taking the stronger region is arbitrary. Keep the mixed genes as their own category rather than dropping them or forcing them into a sign. A gene with three regions up and three down is a different biological statement from a gene with nothing happening, and a signed score cannot tell those two apart.
+
+`n.up` and `n.down` are read from the `diff.status` column of the region table rather than recomputed, so they follow whatever `FDR` and `log2FC` the regions were labelled with. Run `updateThresholds()` on the result and rebuild the gene table, and the labels move with it. The two tables cannot disagree about what counts as up.
+
+**The two aggregations answer different needs.** `"simes"` gives the p-value, through `csaw::combineTests()`, the same procedure the package uses to combine tiles into a region. It asks whether *any* region of the gene changed, is valid under the positive dependence that regions of one locus have, and corrects for how many regions a gene carries, which taking the smallest p-value does not. The `log2FC` beside it belongs to the region that produced the p-value, not to an average, so a gene with one strong region among many quiet ones is described by that region.
+
+`"potential"` gives the ranked score a gene-level GSEA wants. It is a score and not a test: no error model, no p-value of its own, which is why keeping the Simes columns alongside it is worth doing. `score` is the weighted sum of the fold changes and cancels on a discordant gene; `score.magnitude` is the same sum on the absolute values and does not. Genes high in the second and near zero in the first are the rearranged ones, which is `direction == "mixed"` seen as a number.
+
+The weights come from the links, in a fixed order: a weight stored on the link itself if there is one, whatever it measures; failing that `exp(-d / decay)` on the distance to the start site, which is a guess about contact rather than a measure of it; failing both, every region of a gene counts the same. Which applied is in the object and `show` prints it.
+
+```{r gene_table_ora, eval = FALSE}
+# The table an over-representation tool expects, split by direction
+upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
+universe <- geneTable$gene.id
+
+clusterProfiler::enrichGO(upGenes,
+                          universe = universe,
+                          OrgDb = org.Rn.eg.db::org.Rn.eg.db,
+                          keyType = "ENTREZID",
+                          ont = "BP")
+```
+
+Note what the universe is there: the genes the links actually reached, not every gene with a GO annotation. That is the background this kind of test should have and the one most often got wrong, and it comes for free from building the table this way.
+
+For a ranked GSEA rather than a thresholded list, `score` is the statistic:
+
+```{r gsea_genes, eval = FALSE}
+geneRanks <- stats::setNames(geneTable$score, geneTable$gene.id)
+
+fgsea::fgseaMultilevel(pathways = geneSets, stats = geneRanks, minSize = 5)
+```
+
+Ranking on `score.magnitude` instead asks which pathways were remodelled rather than which shifted, and `sign(score) * -log10(p.value)` ranks by significance rather than by effect. The caveat for the methods is that the genes are not independent, a region linked to three genes contributing to all three, so the permutation is anti-conservative by an amount the data cannot quantify. The set-level route above avoids that by never leaving the region as the unit.
+
+**Two limits worth a line in the methods.** The rows are not independent: a region linked to three genes contributes to all three, so the genes share data and anything tested on them afterwards is anti-conservative to a degree nobody can quantify. And the number of regions a gene carries follows the length of its regulatory locus, so a gene set rich in long-locus genes is easier to hit. Neither is fixed here. `polyenrich` run on the regions is the comparison that addresses the second, and agreement between it and this table is a much stronger claim than either alone.
+
+
+<br>
+
 
 ## When there is no contrast at all {#set_scores}
 
@@ -907,8 +1081,10 @@ singleTable <- resultsTable(singleResults)
 sharedRegions <- intersect(replicatedTable$region.id, singleTable$region.id)
 
 comparisonTable <- data.frame(
-  replicated = replicatedTable$log2FC[match(sharedRegions, replicatedTable$region.id)],
-  singleSample = singleTable$log2FC[match(sharedRegions, singleTable$region.id)])
+  replicated = replicatedTable$log2FC[match(sharedRegions,
+                                            replicatedTable$region.id)],
+  singleSample = singleTable$log2FC[match(sharedRegions,
+                                          singleTable$region.id)])
 
 correlationTest <- stats::cor.test(comparisonTable$replicated,
                                    comparisonTable$singleSample,

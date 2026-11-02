@@ -66,8 +66,11 @@ Everything starts from a table with one row per library. `loadSampleSheet()` rea
 ```{r load_sheet}
 sampleSheet <- loadExampleData("peakSheet")
 
+# Every column, with the file columns shown as names alone: the paths point at
+# wherever the package was installed and say nothing useful here
 sampleSheet %>%
-  dplyr::select(sample, condition, treatment, time, replicate)
+  dplyr::mutate(dplyr::across(dplyr::any_of(c("bam", "peaks", "input")),
+                              basename))
 ```
 
 The `sample`, `bam`, `peaks` and `input` columns are the ones the package looks for. Names used by *DiffBind* are understood as well, so a sheet written for it can be read without editing: `bamReads` is taken as `bam` and `bamControl` as `input`. Anything else in the table is metadata, kept as it is and available later to the design formula and to the annotations of the plots.
@@ -164,8 +167,7 @@ This is where the example earns its place. The input shipped here is a subsample
 ```{r greylist}
 greylist <- makeGreylist(sampleSheet, binSize = 10000)
 
-S4Vectors::metadata(greylist)$thresholds %>%
-  dplyr::select(input, fragments, mean, threshold, regions, greylisted.bp)
+S4Vectors::metadata(greylist)$thresholds
 ```
 
 On a complete input library the default windows are the right choice. What transfers from this example is the habit: look at the threshold before trusting the list.
@@ -263,8 +265,7 @@ Assemblies are checked separately and more strictly: a list built for another ge
 ```{r consensus_data}
 consensusInfo <- consensusData(consensus)
 
-consensusInfo$samples %>%
-  dplyr::select(sample, group, n.peaks, n.blacklist, n.greylist)
+consensusInfo$samples
 ```
 
 Thirteen peaks without ligand against roughly a hundred after a day of it: the treatment is doing what a nuclear receptor agonist does, and the experiment would be hard to interpret if it were not.
@@ -273,17 +274,19 @@ The per-group consensus and the peaks of each sample are kept as well, so nothin
 
 ```{r consensus_parts}
 lengths(consensusInfo$groups)           # the consensus of every group
-length(consensusInfo$total)             # the pooled region set that will be counted
+length(consensusInfo$total)             # the pooled set that is counted
 ```
 
 `consensusGroupList()` returns the consensus of every group as a named list of `GRanges`, the form the functions of *ChIPseeker* take for several peak sets, so the groups can be annotated one by one and compared. `seqlevelsStyle = "UCSC"` renames the chromosomes to match a UCSC `TxDb`, which would otherwise find no gene next to any region named `19`:
 
 ```{r group_list, eval = FALSE}
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+
 groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
 
 annotationList <- lapply(groupList,
                          ChIPseeker::annotatePeak,
-                         TxDb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene)
+                         TxDb = txdb)
 
 ChIPseeker::plotAnnoBar(annotationList)
 ```
@@ -292,7 +295,6 @@ Every region carries one logical column per group, plus the number of groups and
 
 ```{r occupancy_columns}
 as.data.frame(S4Vectors::mcols(regionRanges(consensus)$consensus)) %>%
-  dplyr::select(dplyr::starts_with("peak.")) %>%
   head(4)
 ```
 
@@ -369,7 +371,6 @@ countTable(counts, format = "matrix")[1:3, 1:4]
 
 ```{r count_table_long}
 countTable(counts, format = "long") %>%
-  dplyr::select(region.id, sample, condition, counts) %>%
   head(4)
 ```
 
@@ -415,7 +416,8 @@ The methods that come from RNA-seq, TMM, RLE and upper quartile, rest on one ass
 
 ```{r norm_comparison, fig.height = 5}
 plotNormComparison(counts,
-                   methods = c("librarySize", "background", "TMM", "readsInRegions"))
+                   methods = c("librarySize", "background",
+                               "TMM", "readsInRegions"))
 ```
 
 The consequence is easiest to see by running the same test several times and changing nothing but the normalisation.
@@ -424,11 +426,19 @@ The consequence is easiest to see by running the same test several times and cha
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts, method = method, verbose = FALSE)
-           fitted <- fitRegions(normalised, design = ~ condition, engine = "edgeR", verbose = FALSE)
-           tested <- resultsTable(testRegions(fitted,
-                                              contrast = c("condition", "R1881_24h", "DMSO"),
-                                              verbose = FALSE))
+           normalised <- normalizeCounts(counts,
+                                         method = method,
+                                         verbose = FALSE)
+
+           fitted <- fitRegions(normalised,
+                                design = ~ condition,
+                                engine = "edgeR",
+                                verbose = FALSE)
+
+           tested <- testRegions(fitted,
+                                 contrast = c("condition", "R1881_24h", "DMSO"),
+                                 verbose = FALSE)
+           tested <- resultsTable(tested)
 
            data.frame(method = method,
                       up = sum(tested$diff.status == "up"),
@@ -481,7 +491,9 @@ SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
 When the factors come from outside the data, a spike-in counted with another pipeline, deepTools, or a previous analysis, `method = "manual"` takes them as they are. `factorType` says how they apply: `"division"` for size factors the counts are divided by, as DESeq2 writes them, `"multiplication"` for scale factors the counts are multiplied by, as deepTools and most spike-in protocols write them. Named factors are matched to the samples by name and may cover samples absent from the object.
 
 ```{r manual_factors}
-backgroundCounts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+backgroundCounts <- normalizeCounts(counts,
+                                    method = "background",
+                                    verbose = FALSE)
 
 backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
@@ -513,10 +525,10 @@ counts <- normalizeCounts(counts, method = "background")
 
 ## Normalised counts {#normalised_counts}
 
-The factors are stored in the sample table of the object, and the normalised values next to the raw ones. `sampleInfo()` returns the sample table, the annotation of the sheet together with what the package added to it, from a counts object, a fit or the results alike; `columns` keeps only the ones named.
+The factors are stored in the sample table of the object, and the normalised values next to the raw ones. `sampleInfo()` returns the sample table, the annotation of the sheet together with what the package added to it, from a counts object, a fit or the results alike. `columns` keeps only the ones named, when the table is wider than the question.
 
 ```{r scaling_factors}
-sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
+sampleInfo(counts)
 ```
 
 `countTable()` returns the normalised values with `normalized = TRUE`, in any of its three formats.
@@ -659,8 +671,7 @@ resultsTable(results) %>%
 `topRegions()` sorts and trims, and takes the contrast by name:
 
 ```{r top_regions}
-topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5) %>%
-  dplyr::select(region.id, log2FC, FDR, peak.R1881_4h, peak.R1881_24h)
+topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5)
 ```
 
 The strongest change between the two time points is a loss: a site bound after four hours and released by twenty-four, which the comparisons against DMSO alone would not have shown.
@@ -702,7 +713,10 @@ The same fold change cut-off appears here as two dashed horizontal lines.
 The whole cloud sits above zero, as it should after a ligand that recruits its receptor genome-wide, and it does so at every abundance. The same plot after TMM would have been centred on zero by construction.
 
 ```{r heatmap, fig.height = 6}
-plotTopHeatmap(results, contrast = "R1881_24h_vs_DMSO", n = 30, annotationColumns = "condition")
+plotTopHeatmap(results,
+               contrast = "R1881_24h_vs_DMSO",
+               n = 30,
+               annotationColumns = "condition")
 ```
 
 <br>
@@ -744,8 +758,9 @@ The regions need not come from the test. `regions` takes any `GRanges`, a named 
 consensusRanges <- regionRanges(consensus)$consensus
 
 plotProfile(counts,
-            regions = list(boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
-                           newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
+            regions = list(
+              boundInDMSO = consensusRanges[consensusRanges$peak.DMSO],
+              newWithR1881 = consensusRanges[!consensusRanges$peak.DMSO]),
             groupBy = "condition",
             style = "lines")
 ```
@@ -849,7 +864,7 @@ summitCounts <- countReads(consensus,
                            summits = 200,
                            verbose = FALSE)
 
-head(SummarizedExperiment::rowRanges(summitCounts)[, c("region.id", "summit")], 3)
+head(SummarizedExperiment::rowRanges(summitCounts), 3)
 
 table(BiocGenerics::width(SummarizedExperiment::rowRanges(summitCounts)))
 ```
@@ -868,9 +883,230 @@ On this dataset the summits sit a median of 32 bp from the midpoints of the cons
 
 ----------------------------------------------------------
 
+# **From peaks to genes and pathways** {#genes}
+
+This is where a peak-based analysis differs most from one over regions you defined. A promoter set loaded by name already knows which gene each of its regions belongs to, so the functional question is half answered before it is asked. A consensus built from peak calls is a list of intervals with no gene attached to any of them, and every functional claim made about it rests on a linking step that is rarely examined.
+
+The step is also where one gene ends up carrying several peaks, which do not have to move in the same direction. `RegionSetDE` does not resolve that disagreement into a signed number per gene. It stores the links, keeps the peak as the unit of analysis, and reports the disagreement.
+
+<br>
+
+## Linking the peaks to genes
+
+`annotateRegions()` stores a region-to-gene table inside the object, one row per link. Links are many-to-many: a peak over a bidirectional promoter keeps both genes.
+
+```{r annotate_txdb, eval = FALSE}
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+
+annotatedFit <- annotateRegions(fit,
+                                txdb = txdb,
+                                orgdb = org.Hs.eg.db::org.Hs.eg.db,
+                                maxDistance = 1e5)
+```
+
+Two things worth noticing against the `ChIPseeker` call earlier in this vignette. The chromosomes do not have to be renamed first: the regions here are named `19` and a UCSC `TxDb` says `chr19`, and `annotateRegions()` reconciles the two itself rather than requiring `seqlevelsStyle = "UCSC"`. And `maxDistance` draws a line past which no gene is assigned. A peak whose nearest start site is 800 kb away has a nearest gene in the arithmetic sense only; beyond the limit it is recorded with a missing `gene.id`, which keeps it in the universe, keeps it out of every gene set, and leaves the decision visible in the object instead of buried in the choice of which rows were loaded.
+
+Proximity is the default because it is always available, not because it is good. It is wrong for a substantial share of distal elements, which skip over genes. When contacts have been measured or predicted, Hi-C loops, ABC scores or a `universalEPI` prediction, hand those over instead and the rest of the section is unchanged:
+
+```{r annotate_contacts, eval = FALSE}
+# One row per link. link.weight is optional and carries no assumed scale.
+annotatedFit <- annotateRegions(fit,
+                                linkTable = abcLinks,
+                                weightSource = "ABC score")
+```
+
+The output of `ChIPseeker::annotatePeak()` goes in directly, as a `GRanges` with the genes in its metadata columns; its column spellings are recognised.
+
+```{r annotate_chipseeker, eval = FALSE}
+peakAnnotation <- ChIPseeker::annotatePeak(regionRanges(consensus)$consensus,
+                                           TxDb = txdb)
+
+peakLinks <- GenomicRanges::granges(peakAnnotation, use.mcols = TRUE)
+
+annotatedFit <- annotateRegions(fit, linkTable = peakLinks)
+```
+
+A full `TxDb` is a large thing to ask a vignette to depend on, so the one that runs here is a slice of it: the gene start sites of the window these peaks cover, taken from `TxDb.Hsapiens.UCSC.hg38.knownGene` with its symbols from `org.Hs.eg.db` and shipped with the package. The genes are real and so is everything computed from them below, and `inst/scripts/make-example-annotation.R` records how the slice was made.
+
+```{r annotate_real}
+geneSites <- readRDS(system.file("extdata", "lncapAR", "chr19_genes.rds",
+                                 package = "RegionSetDE"))
+
+annotatedFit <- annotateRegions(fit,
+                                genes = geneSites,
+                                maxDistance = 1e5,
+                                verbose = FALSE)
+
+head(regionLinks(annotatedFit), 4)
+```
+
+`genes` takes the start sites and builds the links by proximity, exactly as `txdb` does, which is also the route for an annotation read from a GTF or for a species with no `TxDb` at all. The chromosome names were reconciled on the way in: the sites say `chr19` and the regions say `19`.
+
+<br>
+
+## Pathways, without ever writing a gene score
+
+`geneSetsToRegionSets()` maps a collection of gene sets through the links and returns them as region sets, which `testRegionSets()` takes directly. No gene-level statistic is computed anywhere: a pathway is a set of peaks, and the peaks stay the unit.
+
+```{r gene_sets_peaks}
+geneSets <- readRDS(system.file("extdata", "lncapAR", "chr19_geneSets.rds",
+                                package = "RegionSetDE"))
+
+regionSets <- geneSetsToRegionSets(annotatedFit,
+                                   geneSets = geneSets,
+                                   verbose = FALSE)
+
+head(attr(regionSets, "geneSetSummary"))
+```
+
+Those are GO biological process terms over the genes of the same window, shipped beside the start sites. `n.genes` is how many genes the term holds, `n.genes.linked` how many of them a peak of this experiment reached, and `n.regions` how many peaks that adds up to. The gap between the first two is the honest scale of the analysis: a slice of one chromosome reaches a small part of any pathway, and the p-values below should be read with that in mind rather than as a finding about androgen signalling.
+
+```{r test_gene_sets_peaks}
+geneSetResults <- testRegionSets(annotatedFit,
+                                 contrast = c("condition", "R1881_24h", "DMSO"),
+                                 regionSets = regionSets,
+                                 verbose = FALSE)
+
+resultsTable(geneSetResults)
+```
+
+Each pathway is compared against every other region of the object rather than against the other pathways, so `universe`, `matchOn` and `universeSets` do not apply and the universe is recorded as `allRows`. That is the comparison a pathway wants, and it makes the background the peaks that were actually annotated and tested, which is the background this kind of analysis should have and the one most often got wrong.
+
+Read the three p-values as three questions. `camera.FDR` asks whether the pathway moved more than the rest. `fry.FDR` asks whether its peaks moved in the same direction. `fry.mixed.FDR` asks whether they changed at all, in either direction, and is the only one that survives a pathway whose peaks move both ways. `n.up` against `n.down` shows the same thing from the peak level.
+
+<br>
+
+## A table of genes, when one is needed
+
+For an external over-representation tool, or for a reviewer who asks for one, `aggregateToGenes()` builds the gene table. It is the weaker route and the documentation says so: aggregating replaces several measurements with one and discards the ranking of the peaks, which is the step the set-level route avoids.
+
+```{r aggregate_peaks}
+annotatedLate <- testRegions(annotatedFit,
+                             contrast = c("condition", "R1881_24h", "DMSO"),
+                             FDR = 0.05, log2FC = 1, verbose = FALSE)
+
+geneResults <- aggregateToGenes(annotatedLate,
+                                method = c("simes", "potential"),
+                                verbose = FALSE)
+geneResults
+```
+
+```{r gene_directions_peaks}
+table(resultsTable(geneResults)$direction)
+```
+
+`direction` is the four-way answer: `up` and `down` when the peaks that changed agree, `mixed` when they do not, `unchanged` when none of them changed. The mixed genes are a category and not a problem to be cleaned up, because a gene with three peaks up and three down is a different statement from a gene with nothing happening and no signed score can tell those apart. `n.up` and `n.down` are read from the `diff.status` column of the peak table, so they follow the `FDR` and `log2FC` set above and move with `updateThresholds()`.
+
+```{r gene_ora_peaks, eval = FALSE}
+geneTable <- resultsTable(geneResults)
+
+upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
+
+clusterProfiler::enrichGO(upGenes,
+                          universe = geneTable$gene.id,
+                          OrgDb = org.Hs.eg.db::org.Hs.eg.db,
+                          keyType = "ENTREZID",
+                          ont = "BP")
+```
+
+The universe there is the genes the links reached, not every gene carrying a GO annotation, which comes for free from building the table this way.
+
+### What the two columns are
+
+`p.value` and `FDR` come from `"simes"`: the p-values of the peaks of a gene combined, which asks whether *any* of them changed. The `log2FC` beside them belongs to the peak that carried the combination, not to an average.
+
+`score` and `score.magnitude` come from `"potential"`. For a gene reached by peaks $i$ with weights $w_i$:
+
+$$\mathrm{score} = \sum_i w_i \cdot \mathrm{log2FC}_i, \qquad \mathrm{score.magnitude} = \sum_i w_i \cdot |\mathrm{log2FC}_i|$$
+
+The weight is whatever the links carry, in a fixed order: `link.weight` when the annotation supplied one, otherwise $e^{-d/\mathrm{decay}}$ on the distance to the start site with `decay` at 5 kb by default, otherwise 1 for every peak. `weighting` in the object says which applied.
+
+The two differ only on a gene whose peaks disagree, and that is what they are for. `score` is signed, so a gene gaining at one peak and losing at another lands near zero; `score.magnitude` ignores sign, so the same gene scores high. A gene high in the second and near zero in the first is being rearranged rather than shifted, and it is the same thing `direction == "mixed"` reports as a label.
+
+Neither is a test. There is no error model behind a weighted sum and no p-value comes out of it, which is why the Simes columns are worth keeping alongside.
+
+### Gene set enrichment on the ranked genes
+
+`score` is a ranked gene-level statistic, which is exactly what a GSEA takes:
+
+```{r gsea_peaks, eval = FALSE}
+geneRanks <- stats::setNames(geneTable$score, geneTable$gene.id)
+
+fgsea::fgseaMultilevel(pathways = geneSets,
+                       stats = geneRanks,
+                       minSize = 5)
+```
+
+Rank on `score.magnitude` instead and the question changes from *which pathways shifted* to *which pathways were remodelled*, the second being the one a signed ranking cannot see. To weight by significance rather than by effect, build the statistic from both columns:
+
+```{r gsea_signed, eval = FALSE}
+geneRanks <- stats::setNames(sign(geneTable$score) * -log10(geneTable$p.value),
+                             geneTable$gene.id)
+```
+
+Two things to say in the methods if you take this route. The ranking is over the genes the peaks reached, so the implicit universe is again the annotated and tested peaks rather than the genome, which is correct and worth stating. And the genes are not independent: a peak linked to three genes contributes to all three, so the permutation `fgsea` runs is anti-conservative by an amount nobody can quantify from the data. The set-level route earlier in this section does not have that problem, because it never leaves the peak as the unit, which is the reason to prefer it when the question is which pathways responded.
+
+<br>
+
+## What this example can and cannot show
+
+Androgen recruits AR to sites it was not occupying, so the DMSO comparison is a one-directional experiment by construction: almost every peak that changes goes up, and the `mixed` class is nearly empty. That is a property of the biology and not a reassuring result. A redistribution, if there is one here, would sit in `R1881_24h_vs_R1881_4h`, where sites gained early can be lost late, and that is the contrast to run the same three p-values on when the question is whether the landscape was rearranged rather than extended.
+
+Two limits stay open whatever the contrast. The rows of the gene table are not independent, since a peak linked to three genes contributes to all three, so anything tested on them afterwards is anti-conservative to an unquantified degree. And the number of peaks a gene carries follows the length of its regulatory locus, so a gene set rich in long-locus genes is easier to hit; `camera` corrects for the correlation between those peaks and not for how many of them a gene contributes. A count-based method built for that bias, `chipenrich` or `polyenrich` run on the peaks, is the comparison worth making, and agreement between it and the set-level result is a far stronger claim than either alone.
+
+<br>
+
+## Promoters and distal sites, separately
+
+Much of the apparent disagreement within a gene is promoters staying put while enhancers move, so splitting the two usually makes both the result and the reading of it simpler.
+
+`annotateRegions()` labels every link while it builds it. `tssRegion` is the window around a start site, signed and read on the strand of the gene, inside which a link counts as a promoter one; everything else is distal. And `flankDistance` changes what gets linked at all: instead of the single nearest start site it takes every gene whose start site falls within that distance, which is what lets a peak over a bidirectional promoter keep both of its genes.
+
+```{r annotate_flank}
+annotatedFlank <- annotateRegions(fit,
+                                  genes = geneSites,
+                                  flankDistance = 5e4,
+                                  tssRegion = c(-2000, 500),
+                                  verbose = FALSE)
+
+table(regionLinks(annotatedFlank)$link.type, useNA = "ifany")
+```
+
+The links are many-to-many now: more links than peaks, each with its own signed distance, and the peaks that reached nothing inside the flank kept a row with a missing gene so they stay in the universe.
+
+`linkType` then runs the two analyses separately, on the same object:
+
+```{r link_type_split}
+promoterSets <- geneSetsToRegionSets(annotatedFlank,
+                                     geneSets = geneSets,
+                                     linkType = "promoter",
+                                     verbose = FALSE)
+
+distalSets <- geneSetsToRegionSets(annotatedFlank,
+                                   geneSets = geneSets,
+                                   linkType = "distal",
+                                   verbose = FALSE)
+
+c(promoter = length(promoterSets), distal = length(distalSets))
+```
+
+`aggregateToGenes(linkType = )` takes the same argument, so the gene table splits the same way.
+
+That is one of two routes, and the other is worth knowing about. `loadConsensusPeaks(regionSets = , regionMode = "split")` divides the consensus by overlap with an annotation at load time, and the halves become region sets in their own right, which `geneSetsToRegionSets(regionSets = )` and `aggregateToGenes(regionSets = )` select on instead. Use that one when the split is part of how the regions were defined, and `linkType` when the peaks are one undifferentiated set and the split belongs to the annotation.
+
+What none of this does is classify a peak into a genomic feature, promoter against intron against exon against downstream, with a priority order between them. That is `ChIPseeker::annotatePeak()`, and its output goes into `linkTable` directly, bringing whatever categories it assigned along with it.
+
+<br>
+
+
+
+----------------------------------------------------------
+
 # **Where to go next** {#next}
 
-The consensus built here is an ordinary region set, so everything in the main vignette applies to it unchanged. `loadConsensusPeaks()` takes a `regionSets` argument that splits the consensus by overlap with an annotation, so the peaks can be divided into promoters, enhancers and the rest at the moment they are loaded. The set then becomes the unit of the test through `testRegionSets()`, which asks whether a whole class of elements moved instead of counting how many of its members passed a threshold.
+The consensus built here is an ordinary region set, so everything in the main vignette applies to it unchanged. `loadConsensusPeaks()` takes a `regionSets` argument that splits the consensus by overlap with an annotation, so the peaks can be divided into promoters, enhancers and the rest at the moment they are loaded. The set then becomes the unit of the test through `testRegionSets()`, which asks whether a whole class of elements moved instead of counting how many of its members passed a threshold, and the section above shows that split carried through to the gene and pathway level.
+
+The main vignette covers the same annotation and gene-set functions over regions defined in advance, where the linking step is easier and matters less.
 
 <br>
 

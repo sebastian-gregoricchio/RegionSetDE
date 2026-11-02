@@ -50,6 +50,7 @@ Imports:
   utils,
   viridisLite
 Suggests:
+  AnnotationDbi,
   BiocStyle,
   BiocManager,
   circlize,
@@ -57,6 +58,7 @@ Suggests:
   consensusRegions (>= 0.99.2),
   covr,
   DESeq2,
+  GenomicFeatures,
   ggrepel,
   knitr,
   lme4,
@@ -67,6 +69,7 @@ Remotes:
   sebastian-gregoricchio/consensusRegions
 biocViews:
   Software,
+  Annotation,
   ChIPSeq,
   ATACSeq,
   Epigenetics,

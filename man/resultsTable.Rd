@@ -7,6 +7,7 @@
 \alias{resultsTable,RegionSetDE.resultsList-method}
 \alias{resultsTable,RegionSetDE.setResultsList-method}
 \alias{resultsTable,RegionSetDE.setScores-method}
+\alias{resultsTable,RegionSetDE.geneResults-method}
 \title{resultsTable}
 \usage{
 resultsTable(results)
@@ -20,6 +21,8 @@ resultsTable(results)
 \S4method{resultsTable}{RegionSetDE.setResultsList}(results)
 
 \S4method{resultsTable}{RegionSetDE.setScores}(results)
+
+\S4method{resultsTable}{RegionSetDE.geneResults}(results)
 }
 \arguments{
 \item{results}{\code{RegionSetDE.results} object, or one of the list classes holding several contrasts. A single contrast is taken out of a list by name, \code{results$name} or \code{results[["name"]]}.}

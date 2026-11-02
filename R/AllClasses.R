@@ -1238,3 +1238,96 @@ setMethod(f = "updateObject",
             object@results <- lapply(object@results, BiocGenerics::updateObject, verbose = verbose)
             return(object)
           })
+
+
+
+
+#' @title RegionSetDE.geneResults class
+#'
+#' @description S4 class holding the per-gene table built by \code{\link{aggregateToGenes}} from a per-region result. One row per gene, with the regions that reached it counted and their directions reported rather than resolved, and the filters applied upstream still readable in the inherited provenance slots.
+#'
+#' @slot results Data.frame with one row per gene. Read it with \code{\link{resultsTable}}.
+#' @slot contrast String with the contrast the regions were tested on.
+#' @slot method String with the aggregation used, \code{"simes"} or \code{"potential"}.
+#' @slot links Data.frame with the region to gene links the aggregation was built on, one row per link.
+#' @slot weighting String saying what weighted the regions of a gene, one among \code{"link.weight"}, \code{"distance"} and \code{"none"}.
+#' @slot engine String with the engine the regions were fitted with.
+#' @slot thresholds List with the cut-offs the directions were read at.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom methods setClass representation prototype
+#'
+#' @export
+setClass(Class = "RegionSetDE.geneResults",
+         contains = "RegionSetDE.provenance",
+         representation = representation(results = "data.frame",
+                                         contrast = "character",
+                                         method = "character",
+                                         links = "data.frame",
+                                         weighting = "character",
+                                         engine = "character",
+                                         thresholds = "list"),
+         prototype = prototype(results = data.frame(),
+                               contrast = NA_character_,
+                               method = "simes",
+                               links = data.frame(),
+                               weighting = NA_character_,
+                               engine = NA_character_,
+                               thresholds = list()))
+
+
+#' @importFrom methods setValidity
+setValidity(Class = "RegionSetDE.geneResults",
+            method = function(object) {
+              issues <- character(0)
+
+              if (length(object@method) == 0 | !all(object@method %in% c("simes", "potential"))) {
+                issues <- c(issues, "The 'method' slot must hold only simes and potential.")
+              }
+
+              if (!(object@weighting %in% c("link.weight", "distance", "none"))) {
+                issues <- c(issues, "The 'weighting' slot must be one among link.weight, distance and none.")
+              }
+
+              # A gene appearing twice would be counted twice by anything reading the table
+              if (nrow(object@results) > 0 & anyDuplicated(object@results$gene.id) > 0) {
+                issues <- c(issues, "The 'results' slot holds the same gene more than once.")
+              }
+
+              if (length(issues) == 0) {return(TRUE)}
+              return(issues)
+            })
+
+
+#' @importFrom methods setMethod
+#' @importFrom utils head
+setMethod(f = "show",
+          signature = "RegionSetDE.geneResults",
+          definition = function(object) {
+            cat("An object of class 'RegionSetDE.geneResults'\n")
+            cat("  contrast        :", object@contrast, "\n")
+            cat("  engine          :", object@engine, "\n")
+            cat("  aggregation     :", paste(object@method, collapse = ", "), "\n")
+            cat("  weighting       :", object@weighting, "\n")
+            cat("  genes           :", nrow(object@results), "\n")
+            cat("  links           :", nrow(object@links), "\n")
+
+            if (nrow(object@results) > 0 & "direction" %in% colnames(object@results)) {
+              directionCounts <- table(factor(object@results$direction, levels = c("up", "down", "mixed", "unchanged")))
+              cat("  direction       :", paste(names(directionCounts), directionCounts, sep = " ", collapse = ", "), "\n")
+            }
+
+            if (nrow(object@results) > 0) {
+              shownColumns <- intersect(c("gene.id", "gene.symbol", "n.regions", "n.up", "n.down",
+                                          "direction", "score", "p.value", "FDR"),
+                                        colnames(object@results))
+              printTable <- utils::head(object@results[, shownColumns, drop = FALSE], 6)
+              numericColumns <- vapply(printTable, is.numeric, logical(1))
+              printTable[numericColumns] <- lapply(printTable[numericColumns], signif, digits = 3)
+
+              cat("\n")
+              print(printTable, row.names = FALSE)
+            }
+            invisible(NULL)
+          })

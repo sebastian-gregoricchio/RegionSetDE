@@ -489,6 +489,8 @@ This package is under a GNU General Public License (version 3).
   : show method for RegionSetDE objects
 - [`show(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.fit-method.md)
   : show method for RegionSetDE.fit
+- [`show(`*`<RegionSetDE.geneResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.geneResults-method.md)
+  : show method for RegionSetDE.geneResults
 - [`show(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.results-method.md)
   : show method for RegionSetDE.results
 - [`show(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.resultsList-method.md)

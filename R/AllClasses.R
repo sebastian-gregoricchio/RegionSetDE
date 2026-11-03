@@ -1300,6 +1300,16 @@ setValidity(Class = "RegionSetDE.geneResults",
             })
 
 
+#' @title show method for RegionSetDE.geneResults
+#'
+#' @description Prints a summary of a per-gene table: the contrast it came from, how it was aggregated and weighted, how many genes and links it holds, how the genes split between the four directions, and the first rows of the table.
+#'
+#' @param object \code{RegionSetDE.geneResults} object.
+#'
+#' @return Prints the summary to the console.
+#'
+#' @author Sebastian Gregoricchio
+#'
 #' @importFrom methods setMethod
 #' @importFrom utils head
 #'

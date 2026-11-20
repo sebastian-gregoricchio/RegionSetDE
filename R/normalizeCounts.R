@@ -32,6 +32,13 @@
 #'
 #' \code{"librarySize"} and \code{"readsInRegions"} are the two depth-based options, and they differ in what they call depth. The first takes the whole library, so a sample where the immunoprecipitation worked better keeps that advantage, which is what makes it the honest choice when the question is how much signal each sample carries. The second takes the reads collected in the regions, the quantity DiffBind calls reads in peaks, so the samples are put on the same total enrichment before anything is compared. That assumes the fraction of the library sitting in the regions is a property of the protocol rather than of the biology, and a treatment that genuinely redistributes a mark violates it in the direction that hides the effect.
 #'
+#' @references
+#' Robinson M.D., Oshlack A. (2010). A scaling normalization method for differential expression analysis of RNA-seq data. \emph{Genome Biology} 11:R25.
+#'
+#' Lun A.T.L., Smyth G.K. (2016). csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows. \emph{Nucleic Acids Research} 44(5):e45.
+#'
+#' de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. \emph{Briefings in Bioinformatics} 25(2):bbad538.
+#'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #'
@@ -65,251 +72,317 @@
 #' @export normalizeCounts
 
 normalizeCounts <-
-  function(counts,
-           method = "TMM",
-           scalingFactors = NULL,
-           factorType = "division",
-           spikeInCounts = NULL,
-           greenlistCounts = NULL,
-           greenlistEstimator = "medianRatio",
-           useRegionSets = NULL,
-           minCount = 1,
-           referenceSample = NULL,
-           backgroundHoldout = 0,
-           normalizedAssay = "norm.counts",
-           verbose = TRUE) {
+    function(counts,
+             method = "TMM",
+             scalingFactors = NULL,
+             factorType = "division",
+             spikeInCounts = NULL,
+             greenlistCounts = NULL,
+             greenlistEstimator = "medianRatio",
+             useRegionSets = NULL,
+             minCount = 1,
+             referenceSample = NULL,
+             backgroundHoldout = 0,
+             normalizedAssay = "norm.counts",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkNormalizeCountsArguments(
+            counts = counts,
+            method = method,
+            scalingFactors = scalingFactors,
+            factorType = factorType,
+            spikeInCounts = spikeInCounts,
+            greenlistEstimator = greenlistEstimator,
+            backgroundHoldout = backgroundHoldout
+        )
+        backgroundHoldout <- checkedArguments$backgroundHoldout
+        countMatrix <- checkedArguments$countMatrix
+        factorType <- checkedArguments$factorType
+        greenlistEstimator <- checkedArguments$greenlistEstimator
+        method <- checkedArguments$method
+        sampleNumber <- checkedArguments$sampleNumber
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        #-------------------------------------#
+        # Sequencing depth of each sample     #
+        #-------------------------------------#
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
 
-    method <- method[1]
-    if (!(method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "readsInRegions", "background", "greenlist", "loess", "spikeIn", "manual", "none"))) {
-      stop("The 'method' parameter must be one among 'TMM', 'TMMwsp', 'RLE', 'upperQuartile', 'librarySize', 'readsInRegions', 'background', 'greenlist', 'loess', 'spikeIn', 'manual' or 'none'.", call. = FALSE)
-    }
-
-    greenlistEstimator <- greenlistEstimator[1]
-    if (!(greenlistEstimator %in% c("medianRatio", "TMM", "sum"))) {
-      stop("The 'greenlistEstimator' parameter must be one among 'medianRatio', 'TMM' or 'sum'.", call. = FALSE)
-    }
-
-    factorType <- tolower(factorType[1])
-    if (!(factorType %in% c("division", "multiplication"))) {
-      stop("The 'factorType' parameter must be either 'division' or 'multiplication'.", call. = FALSE)
-    }
-
-    # Silently ignoring the factors would leave the user convinced that they have been applied
-    if (!is.null(scalingFactors) & method != "manual") {
-      stop("The 'scalingFactors' parameter is used only by the 'manual' method, set 'method' accordingly.", call. = FALSE)
-    }
-
-    if (is.null(scalingFactors) & method == "manual") {
-      stop("The 'manual' method requires the 'scalingFactors' parameter.", call. = FALSE)
-    }
-
-    if (is.null(spikeInCounts) & method == "spikeIn") {
-      stop("The 'spikeIn' method requires the 'spikeInCounts' parameter.", call. = FALSE)
-    }
-
-    if (!is.numeric(backgroundHoldout) | backgroundHoldout[1] < 0 | backgroundHoldout[1] >= 1) {
-      stop("The 'backgroundHoldout' parameter must lie between 0 and 1, and leave something to estimate from.", call. = FALSE)
-    }
-    backgroundHoldout <- backgroundHoldout[1]
-
-    if (backgroundHoldout > 0 & method != "background") {
-      stop("The 'backgroundHoldout' parameter applies to the 'background' method only.", call. = FALSE)
-    }
-
-    countMatrix <- SummarizedExperiment::assay(counts, "counts")
-    sampleNumber <- ncol(counts)
-
-    #-------------------------------------#
-    # Sequencing depth of each sample     #
-    #-------------------------------------#
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-
-    # bigWig and external matrices come without a depth, the signal collected in the regions is the closest stand-in
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- as.numeric(colSums(countMatrix))
-      if (isTRUE(verbose) & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize")) {
-        message("The library sizes are unknown, the column sums of the counts are used in their place.")
-      }
-    }
-
-    # Library sizes counted on the chromosomes of the regions alone would carry their bias into every factor built on them
-    if (isFALSE(counts@parameters$countReads$fullLibrarySize) & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "background")) {
-      warning("The library sizes cover only the chromosomes carrying regions (countReads with fullLibrarySize = FALSE), and the '", method,
-              "' method relies on them. Count again with 'fullLibrarySize = TRUE', or supply the factors through the 'manual' or 'spikeIn' methods.", call. = FALSE)
-    }
-
-    #-----------------------------------#
-    # Regions used for the estimation   #
-    #-----------------------------------#
-    rowTable <- data.frame(row.index = seq_len(nrow(counts)),
-                           region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
-                           total.count = as.numeric(rowSums(countMatrix)),
-                           stringsAsFactors = FALSE)
-
-    estimationRows <- dplyr::filter(rowTable, .data$total.count >= minCount)
-
-    if (!is.null(useRegionSets)) {
-      absentSets <- setdiff(useRegionSets, unique(rowTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      estimationRows <- dplyr::filter(estimationRows, .data$region.set %in% useRegionSets)
-    }
-
-    if (nrow(estimationRows) == 0 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "readsInRegions", "loess")) {
-      stop("No region passes 'minCount', the factors cannot be estimated.", call. = FALSE)
-    }
-
-    # A handful of regions gives a factor that reflects those regions rather than the experiment
-    if (nrow(estimationRows) < 100 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "readsInRegions", "loess")) {
-      warning("Only ", nrow(estimationRows), " regions are used to estimate the factors, consider 'background' or 'spikeIn' normalisation.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Estimate the scaling factors  #
-    #-------------------------------#
-    normFactorVector <- rep(NA_real_, sampleNumber)
-    offsetMatrix <- NULL
-
-    if (method == "none") {
-      normFactorVector <- rep(1, sampleNumber)
-      scalingFactorVector <- rep(1, sampleNumber)
-
-    } else if (method == "manual") {
-      scalingFactors <- as.numeric(.orderSampleValues(values = scalingFactors, sampleNames = colnames(counts), parameterName = "scalingFactors"))
-
-      # Everything downstream divides, the multiplicative factors are inverted here and only here
-      scalingFactorVector <- if (factorType == "division") {scalingFactors} else {1 / scalingFactors}
-
-    } else if (method == "spikeIn") {
-      spikeInCounts <- as.numeric(.orderSampleValues(values = spikeInCounts, sampleNames = colnames(counts), parameterName = "spikeInCounts"))
-
-      # More exogenous reads means more material sequenced, the endogenous signal is scaled down accordingly
-      scalingFactorVector <- spikeInCounts / mean(spikeInCounts)
-
-    } else if (method == "librarySize") {
-      scalingFactorVector <- librarySizes / mean(librarySizes)
-
-    } else if (method == "readsInRegions") {
-      # The depth of a sample is taken as what it put in the regions, the reads in peaks of DiffBind
-      regionTotals <- as.numeric(colSums(countMatrix[estimationRows$row.index, , drop = FALSE]))
-
-      if (any(regionTotals == 0)) {
-        stop("Some samples carry no read in the regions, their factors cannot be estimated this way.", call. = FALSE)
-      }
-
-      scalingFactorVector <- regionTotals / mean(regionTotals)
-
-    } else if (method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile")) {
-      edgeRMethod <- c("TMM" = "TMM", "TMMwsp" = "TMMwsp", "RLE" = "RLE", "upperQuartile" = "upperquartile")[method]
-
-      # normLibSizes is the name edgeR gave to calcNormFactors from version 4.0, the old one now prints a notice at every call
-      normFactorVector <- edgeR::normLibSizes(object = countMatrix[estimationRows$row.index, , drop = FALSE],
-                                              lib.size = librarySizes,
-                                              method = as.character(edgeRMethod),
-                                              refColumn = .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts)))
-
-      scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
-
-    } else if (method == "greenlist") {
-      # The greenlist carries the noise of the protocol, so its counts follow the material sequenced and already hold the depth
-      scalingFactorVector <- .greenlistFactors(greenlistMatrix = .greenlistMatrix(counts = counts, greenlistCounts = greenlistCounts),
-                                               estimator = greenlistEstimator,
-                                               verbose = verbose)
-
-    } else if (method == "background") {
-      backgroundBins <- S4Vectors::metadata(counts)$background
-
-      if (is.null(backgroundBins)) {
-        stop("No background bin is stored in the object, run 'countBackground' before normalising with this method.", call. = FALSE)
-      }
-
-      # Bins put aside here never reach the factors, which is what makes them usable as a calibration check later
-      holdoutBins <- integer(0)
-      estimationBins <- seq_len(nrow(backgroundBins))
-
-      if (backgroundHoldout > 0) {
-        estimationBins <- .thinIndex(n = nrow(backgroundBins),
-                                     maxPoints = ceiling(nrow(backgroundBins) * (1 - backgroundHoldout)))
-        holdoutBins <- setdiff(seq_len(nrow(backgroundBins)), estimationBins)
-
-        if (length(estimationBins) < 100) {
-          stop("Only ", length(estimationBins), " background bins are left to estimate the factors from, lower 'backgroundHoldout'.", call. = FALSE)
+        # bigWig and external matrices come without a depth, the signal collected in the regions is the closest stand-in
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- as.numeric(colSums(countMatrix))
+            if (isTRUE(verbose) & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize")) {
+                message("The library sizes are unknown, the column sums of the counts are used in their place.")
+            }
         }
-      }
 
-      # The bins carry mostly noise, the factors they give describe the depth rather than the biology of the regions
-      normFactorVector <- as.numeric(csaw::normFactors(object = backgroundBins[estimationBins, ], se.out = FALSE))
-      scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
-
-      S4Vectors::metadata(counts)$background.holdout <- holdoutBins
-
-    } else {
-      # A bias that changes along the abundance needs one value per region and per sample, not one per sample
-      offsetMatrix <- csaw::normOffsets(object = countMatrix, se.out = FALSE)
-      scalingFactorVector <- rep(NA_real_, sampleNumber)
-    }
-
-    if (method != "loess") {
-      if (any(!is.finite(scalingFactorVector)) | any(scalingFactorVector <= 0)) {
-        stop("The scaling factors must be finite and strictly positive.", call. = FALSE)
-      }
-    }
-
-    #-------------------------------#
-    # Store factors and values      #
-    #-------------------------------#
-    if (is.null(offsetMatrix)) {
-      normalizedMatrix <- sweep(countMatrix, MARGIN = 2, STATS = scalingFactorVector, FUN = "/")
-    } else {
-      # Centring the offsets on the row keeps the normalised values around the magnitude of the raw ones
-      normalizedMatrix <- countMatrix / exp(offsetMatrix - rowMeans(offsetMatrix))
-      SummarizedExperiment::assay(counts, "offset") <- offsetMatrix
-    }
-
-    SummarizedExperiment::colData(counts)$norm.factor <- normFactorVector
-    SummarizedExperiment::colData(counts)$scaling.factor <- scalingFactorVector
-    SummarizedExperiment::assay(counts, normalizedAssay) <- normalizedMatrix
-
-    S4Vectors::metadata(counts)$normalization <- list(method = method,
-                                                      factor.type = "division",
-                                                      normalized.assay = normalizedAssay,
-                                                      offsets = !is.null(offsetMatrix))
-
-    counts@parameters <- c(counts@parameters,
-                           list(normalizeCounts = list(method = method,
-                                                       factorType = factorType,
-                                                       useRegionSets = useRegionSets,
-                                                       minCount = minCount,
-                                                       referenceSample = referenceSample,
-                                                       backgroundHoldout = backgroundHoldout,
-                                                       n.regions.used = nrow(estimationRows))))
-
-    if (isTRUE(verbose)) {
-      if (method == "loess") {
-        message("Done. A matrix of log offsets has been stored in the 'offset' assay, no single factor per sample applies.")
-      } else {
-        message("Done. The counts have been divided by the scaling factors (",
-                paste(round(range(scalingFactorVector), 3), collapse = " - "), ").")
-
-        if (method == "background" & backgroundHoldout > 0) {
-          message(length(S4Vectors::metadata(counts)$background.holdout),
-                  " background bins were kept out of the estimation and are available to estimateNullDispersion.")
+        # Library sizes counted on the chromosomes of the regions alone would carry their bias into every factor built on them
+        if (isFALSE(parameterLog(counts)$countReads$fullLibrarySize) & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "background")) {
+            warning("The library sizes cover only the chromosomes carrying regions (countReads with fullLibrarySize = FALSE), and the '", method,
+                "' method relies on them. Count again with 'fullLibrarySize = TRUE', or supply the factors through the 'manual' or 'spikeIn' methods.",
+                call. = FALSE
+            )
         }
-      }
-    }
 
-    return(counts)
-  } # END function
+        #-----------------------------------#
+        # Regions used for the estimation   #
+        #-----------------------------------#
+        rowTable <- data.frame(
+            row.index = seq_len(nrow(counts)),
+            region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
+            total.count = as.numeric(rowSums(countMatrix)),
+            stringsAsFactors = FALSE
+        )
+
+        estimationRows <- dplyr::filter(rowTable, .data$total.count >= minCount)
+
+        if (!is.null(useRegionSets)) {
+            absentSets <- setdiff(useRegionSets, unique(rowTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            estimationRows <- dplyr::filter(estimationRows, .data$region.set %in% useRegionSets)
+        }
+
+        if (nrow(estimationRows) == 0 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "readsInRegions", "loess")) {
+            stop("No region passes 'minCount', the factors cannot be estimated.", call. = FALSE)
+        }
+
+        # A handful of regions gives a factor that reflects those regions rather than the experiment
+        if (nrow(estimationRows) < 100 & method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "readsInRegions", "loess")) {
+            warning("Only ", nrow(estimationRows), " regions are used to estimate the factors, consider 'background' or 'spikeIn' normalisation.", call. = FALSE)
+        }
+
+        #-------------------------------#
+        # Estimate the scaling factors  #
+        #-------------------------------#
+        normFactorVector <- rep(NA_real_, sampleNumber)
+        offsetMatrix <- NULL
+
+        if (method == "none") {
+            normFactorVector <- rep(1, sampleNumber)
+            scalingFactorVector <- rep(1, sampleNumber)
+        } else if (method == "manual") {
+            scalingFactors <- as.numeric(.orderSampleValues(values = scalingFactors, sampleNames = colnames(counts), parameterName = "scalingFactors"))
+
+            # Everything downstream divides, the multiplicative factors are inverted here and only here
+            scalingFactorVector <- if (factorType == "division") {
+                scalingFactors
+            } else {
+                1 / scalingFactors
+            }
+        } else if (method == "spikeIn") {
+            spikeInCounts <- as.numeric(.orderSampleValues(values = spikeInCounts, sampleNames = colnames(counts), parameterName = "spikeInCounts"))
+
+            # More exogenous reads means more material sequenced, the endogenous signal is scaled down accordingly
+            scalingFactorVector <- spikeInCounts / mean(spikeInCounts)
+        } else if (method == "librarySize") {
+            scalingFactorVector <- librarySizes / mean(librarySizes)
+        } else if (method == "readsInRegions") {
+            # The depth of a sample is taken as what it put in the regions, the reads in peaks of DiffBind
+            regionTotals <- as.numeric(colSums(countMatrix[estimationRows$row.index, , drop = FALSE]))
+
+            if (any(regionTotals == 0)) {
+                stop("Some samples carry no read in the regions, their factors cannot be estimated this way.", call. = FALSE)
+            }
+
+            scalingFactorVector <- regionTotals / mean(regionTotals)
+        } else if (method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile")) {
+            edgeRMethod <- c("TMM" = "TMM", "TMMwsp" = "TMMwsp", "RLE" = "RLE", "upperQuartile" = "upperquartile")[method]
+
+            # normLibSizes is the name edgeR gave to calcNormFactors from version 4.0, the old one now prints a notice at every call
+            normFactorVector <- edgeR::normLibSizes(
+                object = countMatrix[estimationRows$row.index, , drop = FALSE],
+                lib.size = librarySizes,
+                method = as.character(edgeRMethod),
+                refColumn = .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts))
+            )
+
+            scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
+        } else if (method == "greenlist") {
+            # The greenlist carries the noise of the protocol, so its counts follow the material sequenced and already hold the depth
+            scalingFactorVector <- .greenlistFactors(
+                greenlistMatrix = .greenlistMatrix(counts = counts, greenlistCounts = greenlistCounts),
+                estimator = greenlistEstimator,
+                verbose = verbose
+            )
+        } else if (method == "background") {
+            backgroundBins <- S4Vectors::metadata(counts)$background
+
+            if (is.null(backgroundBins)) {
+                stop("No background bin is stored in the object, run 'countBackground' before normalising with this method.", call. = FALSE)
+            }
+
+            # Bins put aside here never reach the factors, which is what makes them usable as a calibration check later
+            holdoutBins <- integer(0)
+            estimationBins <- seq_len(nrow(backgroundBins))
+
+            if (backgroundHoldout > 0) {
+                estimationBins <- .thinIndex(
+                    n = nrow(backgroundBins),
+                    maxPoints = ceiling(nrow(backgroundBins) * (1 - backgroundHoldout))
+                )
+                holdoutBins <- setdiff(seq_len(nrow(backgroundBins)), estimationBins)
+
+                if (length(estimationBins) < 100) {
+                    stop("Only ", length(estimationBins), " background bins are left to estimate the factors from, lower 'backgroundHoldout'.", call. = FALSE)
+                }
+            }
+
+            # The bins carry mostly noise, the factors they give describe the depth rather than the biology of the regions
+            normFactorVector <- as.numeric(csaw::normFactors(object = backgroundBins[estimationBins, ], se.out = FALSE))
+            scalingFactorVector <- (librarySizes * normFactorVector) / mean(librarySizes * normFactorVector)
+
+            S4Vectors::metadata(counts)$background.holdout <- holdoutBins
+        } else {
+            # A bias that changes along the abundance needs one value per region and per sample, not one per sample
+            offsetMatrix <- csaw::normOffsets(object = countMatrix, se.out = FALSE)
+            scalingFactorVector <- rep(NA_real_, sampleNumber)
+        }
+
+        if (method != "loess") {
+            if (any(!is.finite(scalingFactorVector)) | any(scalingFactorVector <= 0)) {
+                stop("The scaling factors must be finite and strictly positive.", call. = FALSE)
+            }
+        }
+
+        #-------------------------------#
+        # Store factors and values      #
+        #-------------------------------#
+        if (is.null(offsetMatrix)) {
+            normalizedMatrix <- sweep(countMatrix, MARGIN = 2, STATS = scalingFactorVector, FUN = "/")
+        } else {
+            # Centring the offsets on the row keeps the normalised values around the magnitude of the raw ones
+            normalizedMatrix <- countMatrix / exp(offsetMatrix - rowMeans(offsetMatrix))
+            SummarizedExperiment::assay(counts, "offset") <- offsetMatrix
+        }
+
+        SummarizedExperiment::colData(counts)$norm.factor <- normFactorVector
+        SummarizedExperiment::colData(counts)$scaling.factor <- scalingFactorVector
+        SummarizedExperiment::assay(counts, normalizedAssay) <- normalizedMatrix
+
+        S4Vectors::metadata(counts)$normalization <- list(
+            method = method,
+            factor.type = "division",
+            normalized.assay = normalizedAssay,
+            offsets = !is.null(offsetMatrix)
+        )
+
+        parameterLog(counts) <- c(
+            parameterLog(counts),
+            list(normalizeCounts = list(
+                method = method,
+                factorType = factorType,
+                useRegionSets = useRegionSets,
+                minCount = minCount,
+                referenceSample = referenceSample,
+                backgroundHoldout = backgroundHoldout,
+                n.regions.used = nrow(estimationRows)
+            ))
+        )
+
+        if (isTRUE(verbose)) {
+            if (method == "loess") {
+                message("Done. A matrix of log offsets has been stored in the 'offset' assay, no single factor per sample applies.")
+            } else {
+                message(
+                    "Done. The counts have been divided by the scaling factors (",
+                    paste(round(range(scalingFactorVector), 3), collapse = " - "), ")."
+                )
+
+                if (method == "background" & backgroundHoldout > 0) {
+                    message(
+                        length(S4Vectors::metadata(counts)$background.holdout),
+                        " background bins were kept out of the estimation and are available to estimateNullDispersion."
+                    )
+                }
+            }
+        }
+
+        return(counts)
+    } # END function
 
 
+#' @title .checkNormalizeCountsArguments
+#'
+#' @description Checks the arguments of \code{\link{normalizeCounts}} and brings them to the form the rest of the function works with.
+#'
+#' @param counts See \code{\link{normalizeCounts}}.
+#' @param method See \code{\link{normalizeCounts}}.
+#' @param scalingFactors See \code{\link{normalizeCounts}}.
+#' @param factorType See \code{\link{normalizeCounts}}.
+#' @param spikeInCounts See \code{\link{normalizeCounts}}.
+#' @param greenlistEstimator See \code{\link{normalizeCounts}}.
+#' @param backgroundHoldout See \code{\link{normalizeCounts}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{backgroundHoldout}, \code{countMatrix}, \code{factorType}, \code{greenlistEstimator}, \code{method}, \code{sampleNumber}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkNormalizeCountsArguments <-
+    function(counts,
+             method,
+             scalingFactors,
+             factorType,
+             spikeInCounts,
+             greenlistEstimator,
+             backgroundHoldout) {
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
+
+        method <- method[1]
+        if (!(method %in% c("TMM", "TMMwsp", "RLE", "upperQuartile", "librarySize", "readsInRegions", "background", "greenlist", "loess", "spikeIn", "manual", "none"))) {
+            stop("The 'method' parameter must be one among 'TMM', 'TMMwsp', 'RLE', 'upperQuartile', 'librarySize', 'readsInRegions', 'background', 'greenlist', 'loess', 'spikeIn', 'manual' or 'none'.", call. = FALSE)
+        }
+
+        greenlistEstimator <- greenlistEstimator[1]
+        if (!(greenlistEstimator %in% c("medianRatio", "TMM", "sum"))) {
+            stop("The 'greenlistEstimator' parameter must be one among 'medianRatio', 'TMM' or 'sum'.", call. = FALSE)
+        }
+
+        factorType <- tolower(factorType[1])
+        if (!(factorType %in% c("division", "multiplication"))) {
+            stop("The 'factorType' parameter must be either 'division' or 'multiplication'.", call. = FALSE)
+        }
+
+        # Silently ignoring the factors would leave the user convinced that they have been applied
+        if (!is.null(scalingFactors) & method != "manual") {
+            stop("The 'scalingFactors' parameter is used only by the 'manual' method, set 'method' accordingly.", call. = FALSE)
+        }
+
+        if (is.null(scalingFactors) & method == "manual") {
+            stop("The 'manual' method requires the 'scalingFactors' parameter.", call. = FALSE)
+        }
+
+        if (is.null(spikeInCounts) & method == "spikeIn") {
+            stop("The 'spikeIn' method requires the 'spikeInCounts' parameter.", call. = FALSE)
+        }
+
+        if (!is.numeric(backgroundHoldout) | backgroundHoldout[1] < 0 | backgroundHoldout[1] >= 1) {
+            stop("The 'backgroundHoldout' parameter must lie between 0 and 1, and leave something to estimate from.", call. = FALSE)
+        }
+        backgroundHoldout <- backgroundHoldout[1]
+
+        if (backgroundHoldout > 0 & method != "background") {
+            stop("The 'backgroundHoldout' parameter applies to the 'background' method only.", call. = FALSE)
+        }
+
+        countMatrix <- SummarizedExperiment::assay(counts, "counts")
+        sampleNumber <- ncol(counts)
+
+        return(list(
+            backgroundHoldout = backgroundHoldout,
+            countMatrix = countMatrix,
+            factorType = factorType,
+            greenlistEstimator = greenlistEstimator,
+            method = method,
+            sampleNumber = sampleNumber
+        ))
+    } # END function
 
 
 #' @title .orderSampleValues
@@ -327,41 +400,38 @@ normalizeCounts <-
 #' @keywords internal
 
 .orderSampleValues <-
-  function(values,
-           sampleNames,
-           parameterName) {
+    function(values,
+             sampleNames,
+             parameterName) {
+        if (!is.numeric(values)) {
+            stop("The '", parameterName, "' parameter must be numeric.", call. = FALSE)
+        }
 
-    if (!is.numeric(values)) {
-      stop("The '", parameterName, "' parameter must be numeric.", call. = FALSE)
-    }
+        # Names are the only way to be sure of the pairing, an unnamed vector is trusted to follow the columns
+        if (!is.null(names(values))) {
+            if (any(duplicated(names(values)))) {
+                stop("The '", parameterName, "' parameter contains duplicated sample names.", call. = FALSE)
+            }
 
-    # Names are the only way to be sure of the pairing, an unnamed vector is trusted to follow the columns
-    if (!is.null(names(values))) {
-      if (any(duplicated(names(values)))) {
-        stop("The '", parameterName, "' parameter contains duplicated sample names.", call. = FALSE)
-      }
+            absentSamples <- setdiff(sampleNames, names(values))
+            if (length(absentSamples) > 0) {
+                stop("The '", parameterName, "' parameter is missing the following samples: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+            }
 
-      absentSamples <- setdiff(sampleNames, names(values))
-      if (length(absentSamples) > 0) {
-        stop("The '", parameterName, "' parameter is missing the following samples: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
-      }
+            # Values for samples absent from the object are dropped, so one table can serve several objects
+            values <- values[sampleNames]
+        } else {
+            if (length(values) != length(sampleNames)) {
+                stop("The '", parameterName, "' parameter must have one value per sample, or be named after the samples.", call. = FALSE)
+            }
+        }
 
-      # Values for samples absent from the object are dropped, so one table can serve several objects
-      values <- values[sampleNames]
-    } else {
-      if (length(values) != length(sampleNames)) {
-        stop("The '", parameterName, "' parameter must have one value per sample, or be named after the samples.", call. = FALSE)
-      }
-    }
+        if (any(is.na(values))) {
+            stop("The '", parameterName, "' parameter contains missing values.", call. = FALSE)
+        }
 
-    if (any(is.na(values))) {
-      stop("The '", parameterName, "' parameter contains missing values.", call. = FALSE)
-    }
-
-    return(values)
-  } # END function
-
-
+        return(values)
+    } # END function
 
 
 #' @title .resolveSampleIndex
@@ -378,24 +448,23 @@ normalizeCounts <-
 #' @keywords internal
 
 .resolveSampleIndex <-
-  function(sample = NULL,
-           sampleNames) {
+    function(sample = NULL,
+             sampleNames) {
+        if (is.null(sample)) {
+            return(NULL)
+        }
 
-    if (is.null(sample)) {
-      return(NULL)
-    }
+        if (is.character(sample)) {
+            if (!(sample[1] %in% sampleNames)) {
+                stop("The sample '", sample[1], "' is absent from the object.", call. = FALSE)
+            }
+            return(match(sample[1], sampleNames))
+        }
 
-    if (is.character(sample)) {
-      if (!(sample[1] %in% sampleNames)) {
-        stop("The sample '", sample[1], "' is absent from the object.", call. = FALSE)
-      }
-      return(match(sample[1], sampleNames))
-    }
+        sampleIndex <- as.integer(sample[1])
+        if (is.na(sampleIndex) | sampleIndex < 1 | sampleIndex > length(sampleNames)) {
+            stop("The reference sample is outside the range of the samples.", call. = FALSE)
+        }
 
-    sampleIndex <- as.integer(sample[1])
-    if (is.na(sampleIndex) | sampleIndex < 1 | sampleIndex > length(sampleNames)) {
-      stop("The reference sample is outside the range of the samples.", call. = FALSE)
-    }
-
-    return(sampleIndex)
-  } # END function
+        return(sampleIndex)
+    } # END function

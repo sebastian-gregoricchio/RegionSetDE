@@ -35,72 +35,72 @@
 #' @export asDGEList
 
 asDGEList <-
-  function(counts,
-           assay = "counts",
-           useOffsets = TRUE,
-           verbose = TRUE) {
+    function(counts,
+             assay = "counts",
+             useOffsets = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        # A fit already carries the list the model saw, rebuilding it could only make it differ
+        if (methods::is(counts, "RegionSetDE.fit")) {
+            if (!is.null(fitComponents(counts)$dge)) {
+                return(fitComponents(counts)$dge)
+            }
+            counts <- fitCounts(counts)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # A fit already carries the list the model saw, rebuilding it could only make it differ
-    if (methods::is(counts, "RegionSetDE.fit")) {
-      if (!is.null(counts@fit$dge)) {
-        return(counts@fit$dge)
-      }
-      counts <- counts@counts
-    }
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts or a RegionSetDE.fit object.", call. = FALSE)
+        }
 
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts or a RegionSetDE.fit object.", call. = FALSE)
-    }
+        if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
+            stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
+        }
 
-    if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Counts, sizes and annotation  #
+        #-------------------------------#
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
 
-    #-------------------------------#
-    # Counts, sizes and annotation  #
-    #-------------------------------#
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(countMatrix)
+        }
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(countMatrix)
-    }
+        rowRangesObject <- SummarizedExperiment::rowRanges(counts)
+        geneTable <- data.frame(as.data.frame(SummarizedExperiment::rowData(counts)),
+            seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
+            start = BiocGenerics::start(rowRangesObject),
+            end = BiocGenerics::end(rowRangesObject),
+            width = BiocGenerics::width(rowRangesObject),
+            stringsAsFactors = FALSE
+        )
 
-    rowRangesObject <- SummarizedExperiment::rowRanges(counts)
-    geneTable <- data.frame(as.data.frame(SummarizedExperiment::rowData(counts)),
-                            seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
-                            start = BiocGenerics::start(rowRangesObject),
-                            end = BiocGenerics::end(rowRangesObject),
-                            width = BiocGenerics::width(rowRangesObject),
-                            stringsAsFactors = FALSE)
+        dgeList <- edgeR::DGEList(
+            counts = countMatrix,
+            samples = as.data.frame(SummarizedExperiment::colData(counts)),
+            genes = geneTable,
+            lib.size = librarySizes
+        )
 
-    dgeList <- edgeR::DGEList(counts = countMatrix,
-                              samples = as.data.frame(SummarizedExperiment::colData(counts)),
-                              genes = geneTable,
-                              lib.size = librarySizes)
+        #-------------------------------#
+        # Normalisation as offsets      #
+        #-------------------------------#
+        offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = FALSE)
 
-    #-------------------------------#
-    # Normalisation as offsets      #
-    #-------------------------------#
-    offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = FALSE)
+        if (!is.null(offsetMatrix)) {
+            dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
 
-    if (!is.null(offsetMatrix)) {
-      dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
+            if (isTRUE(verbose)) {
+                message("The normalisation has been carried across as offsets, so do not set 'norm.factors' or 'lib.size' on top of it.")
+            }
+        } else if (isTRUE(verbose)) {
+            message("No offset was carried across, the list holds the raw counts and the library sizes.")
+        }
 
-      if (isTRUE(verbose)) {
-        message("The normalisation has been carried across as offsets, so do not set 'norm.factors' or 'lib.size' on top of it.")
-      }
-    } else if (isTRUE(verbose)) {
-      message("No offset was carried across, the list holds the raw counts and the library sizes.")
-    }
-
-    return(dgeList)
-  } # END function
-
-
+        return(dgeList)
+    } # END function
 
 
 #' @title asDESeqDataSet
@@ -124,8 +124,8 @@ asDGEList <-
 #' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
 #' if (requireNamespace("DESeq2", quietly = TRUE)) {
-#'   deseqData <- asDESeqDataSet(counts, design = ~ condition, verbose = FALSE)
-#'   deseqData
+#'     deseqData <- asDESeqDataSet(counts, design = ~condition, verbose = FALSE)
+#'     deseqData
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -138,82 +138,89 @@ asDGEList <-
 #' @export asDESeqDataSet
 
 asDESeqDataSet <-
-  function(counts,
-           design = NULL,
-           assay = "counts",
-           useOffsets = TRUE,
-           verbose = TRUE) {
+    function(counts,
+             design = NULL,
+             assay = "counts",
+             useOffsets = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!requireNamespace("DESeq2", quietly = TRUE)) {
+            stop("The 'DESeq2' package is needed for this conversion.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!requireNamespace("DESeq2", quietly = TRUE)) {
-      stop("The 'DESeq2' package is needed for this conversion.", call. = FALSE)
-    }
+        if (methods::is(counts, "RegionSetDE.fit")) {
+            if (is.null(design)) {
+                design <- designMatrix(counts)
+            }
+            counts <- fitCounts(counts)
+        }
 
-    if (methods::is(counts, "RegionSetDE.fit")) {
-      if (is.null(design)) {
-        design <- counts@design
-      }
-      counts <- counts@counts
-    }
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts or a RegionSetDE.fit object.", call. = FALSE)
+        }
 
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts or a RegionSetDE.fit object.", call. = FALSE)
-    }
+        if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
+            stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
+        }
 
-    if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
-    }
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
 
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
+        if (any(abs(countMatrix - round(countMatrix)) > 1e-8)) {
+            stop("DESeq2 needs integer counts, use the raw 'counts' assay and let the offsets carry the normalisation.", call. = FALSE)
+        }
+        storage.mode(countMatrix) <- "integer"
 
-    if (any(abs(countMatrix - round(countMatrix)) > 1e-8)) {
-      stop("DESeq2 needs integer counts, use the raw 'counts' assay and let the offsets carry the normalisation.", call. = FALSE)
-    }
-    storage.mode(countMatrix) <- "integer"
+        #-------------------------------#
+        # Design                        #
+        #-------------------------------#
+        colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        rownames(colTable) <- colnames(counts)
 
-    #-------------------------------#
-    # Design                        #
-    #-------------------------------#
-    colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    rownames(colTable) <- colnames(counts)
+        designMatrix <- NULL
+        if (!is.null(design)) {
+            designMatrix <- .buildDesign(design = design, random = NULL, colTable = colTable, engine = "deseq2")$matrix
+        }
 
-    designMatrix <- NULL
-    if (!is.null(design)) {
-      designMatrix <- .buildDesign(design = design, random = NULL, colTable = colTable, engine = "deseq2")$matrix
-    }
+        dds <- DESeq2::DESeqDataSetFromMatrix(
+            countData = countMatrix,
+            colData = colTable,
+            design = ~1,
+            rowRanges = SummarizedExperiment::rowRanges(counts)
+        )
 
-    dds <- DESeq2::DESeqDataSetFromMatrix(countData = countMatrix,
-                                          colData = colTable,
-                                          design = ~ 1,
-                                          rowRanges = SummarizedExperiment::rowRanges(counts))
+        #-------------------------------#
+        # Normalisation                 #
+        #-------------------------------#
+        offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = FALSE)
 
-    #-------------------------------#
-    # Normalisation                 #
-    #-------------------------------#
-    offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = FALSE)
+        if (!is.null(offsetMatrix)) {
+            # DESeq2 asks the factors to have geometric mean one on each row, which is where the row centring comes from
+            DESeq2::normalizationFactors(dds) <- exp(offsetMatrix - rowMeans(offsetMatrix))
+        }
 
-    if (!is.null(offsetMatrix)) {
-      # DESeq2 asks the factors to have geometric mean one on each row, which is where the row centring comes from
-      DESeq2::normalizationFactors(dds) <- exp(offsetMatrix - rowMeans(offsetMatrix))
-    }
+        if (isTRUE(verbose)) {
+            message(
+                "The object is unfitted. Run DESeq2::DESeq(dds",
+                if (!is.null(designMatrix)) {
+                    ", full = <design matrix>, betaPrior = FALSE"
+                } else {
+                    ""
+                }, ")."
+            )
 
-    if (isTRUE(verbose)) {
-      message("The object is unfitted. Run DESeq2::DESeq(dds",
-              if (!is.null(designMatrix)) {", full = <design matrix>, betaPrior = FALSE"} else {""}, ").")
+            if (!is.null(designMatrix)) {
+                message(
+                    "The design matrix is returned as the 'designMatrix' attribute, with the coefficients: ",
+                    paste(colnames(designMatrix), collapse = ", "), "."
+                )
+            }
+        }
 
-      if (!is.null(designMatrix)) {
-        message("The design matrix is returned as the 'designMatrix' attribute, with the coefficients: ",
-                paste(colnames(designMatrix), collapse = ", "), ".")
-      }
-    }
-
-    attr(dds, "designMatrix") <- designMatrix
-    return(dds)
-  } # END function
-
-
+        attr(dds, "designMatrix") <- designMatrix
+        return(dds)
+    } # END function
 
 
 #' @title Coerce a counts object to a DGEList
@@ -245,10 +252,14 @@ NULL
 # edgeR has carried DGEList as an old-style class, and registering it is what lets setAs point at it.
 # The guard is there in case a future version defines it formally, where re-registering would be an error.
 if (!methods::isClass("DGEList")) {
-  methods::setOldClass("DGEList")
+    methods::setOldClass("DGEList")
 }
 
 
-setAs(from = "RegionSetDE.counts",
-      to = "DGEList",
-      def = function(from) {asDGEList(counts = from, verbose = FALSE)})
+setAs(
+    from = "RegionSetDE.counts",
+    to = "DGEList",
+    def = function(from) {
+        asDGEList(counts = from, verbose = FALSE)
+    }
+)

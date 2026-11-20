@@ -17,7 +17,7 @@
   excludeChromosomes,
   discardRegions,
   fullLibrarySize,
-  nThreads,
+  BPPARAM,
   progressBar = FALSE,
   verbose
 )
@@ -47,7 +47,7 @@
 
 \item{fullLibrarySize}{Logical value indicating whether the library sizes cover every chromosome.}
 
-\item{nThreads}{Number of threads.}
+\item{BPPARAM}{\code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.}
 
 \item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the inputs are read. Default: \code{FALSE}.}
 

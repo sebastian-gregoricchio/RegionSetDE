@@ -70,11 +70,14 @@ counts <- loadExampleData("counts", verbose = FALSE)
 # Links of your own, the shape a contact-based method returns. Weights are optional.
 regionTable <- as.data.frame(SummarizedExperiment::rowRanges(counts))[1:6, 1:3]
 linkTable <- data.frame(regionTable,
-                        gene.id = c("11287", "11287", "66968", "73824", "73824", "20683"),
-                        link.weight = c(0.42, 0.08, 0.31, 0.57, 0.12, 0.66))
+    gene.id = c("11287", "11287", "66968", "73824", "73824", "20683"),
+    link.weight = c(0.42, 0.08, 0.31, 0.57, 0.12, 0.66)
+)
 
-counts <- annotateRegions(counts, linkTable = linkTable,
-                          weightSource = "ABC score", verbose = FALSE)
+counts <- annotateRegions(counts,
+    linkTable = linkTable,
+    weightSource = "ABC score", verbose = FALSE
+)
 
 regionLinks(counts)
 head(SummarizedExperiment::rowData(counts)$gene.id)

@@ -33,15 +33,20 @@
 #'
 #' @details The multiple testing correction is applied over all the rows of the object, across the region sets, and \code{regionSets} subsets the output afterwards. Correcting inside each set separately would make the FDR of a set depend on how many other sets were loaded, which is not a property anyone wants in a result.
 #'
-#' Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, the one between \code{rep.tile.start} and \code{rep.tile.end}, not an average, which is the quantity that matches the p-value and the one \code{diff.status} is read from. It describes that tile, and a sentence such as "the domain gained 3-fold" needs \code{mean.tile.log2FC} instead, which is the closer thing to a fold change of the whole region. When the two are far apart, only part of the region moved. The tile level table stays available in the \code{tiles} slot, and \code{\link{plotRegion}} draws it.
+#' Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, the one between \code{rep.tile.start} and \code{rep.tile.end}, not an average, which is the quantity that matches the p-value and the one \code{diff.status} is read from. It describes that tile, and a sentence such as "the domain gained 3-fold" needs \code{mean.tile.log2FC} instead, which is the closer thing to a fold change of the whole region. When the two are far apart, only part of the region moved. The tile level table stays available in the \code{tiles} slot (read with \code{\link{tileTable}}), and \code{\link{plotRegion}} draws it.
 #'
 #' A design written as \code{~ condition} spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what \code{c("column", "groupA", "groupB")} avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as \code{~ condition} or \code{~ 0 + condition}. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.
 #'
 #' Whatever the regions were loaded with travels through to the result. A gene name, a peak score or any other column attached to the \code{rowData} comes out at the end of the table, which is what makes \code{topRegions()} readable and lets \code{plotVolcano(labelColumn = )} label the points with something other than an identifier. On a tiled object the value is read off the tile the combination reported, the same one the fold change comes from, so a row describes one place rather than an average over several.
 #'
-#' The statistic, the distribution it follows and its degrees of freedom are in the table so that the test can be taken further, into a power or sample size analysis for instance. \code{\link{contrastInfo}} gathers the rest of what such an analysis needs, the engine and the number of samples in each group of the contrast, which is also stored in the \code{n.samples} element of the \code{contrast.groups} slot.
+#' The statistic, the distribution it follows and its degrees of freedom are in the table so that the test can be taken further, into a power or sample size analysis for instance. \code{\link{contrastInfo}} gathers the rest of what such an analysis needs, the engine and the number of samples in each group of the contrast, which is also stored in the \code{n.samples} element of the \code{contrast.groups} slot (read with \code{\link{contrastGroups}}).
 #'
 #' The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
+#'
+#' @references
+#' Lun A.T.L., Smyth G.K. (2014). De novo detection of differentially bound regions for ChIP-seq data using peaks and windows: controlling error rates correctly. \emph{Nucleic Acids Research} 42(11):e95.
+#'
+#' Simes R.J. (1986). An improved Bonferroni procedure for multiple tests of significance. \emph{Biometrika} 73(3):751-754.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -57,9 +62,13 @@
 #' resReverse <- testRegions(fit, contrast = c("condition", "BN", "SHR"), verbose = FALSE)
 #'
 #' # Several contrasts on the same fit
-#' resList <- testRegions(fit, contrast = list(shr = c("condition", "SHR", "BN"),
-#'                                             bn = c("condition", "BN", "SHR")),
-#'                        verbose = FALSE)
+#' resList <- testRegions(fit,
+#'     contrast = list(
+#'         shr = c("condition", "SHR", "BN"),
+#'         bn = c("condition", "BN", "SHR")
+#'     ),
+#'     verbose = FALSE
+#' )
 #' resList
 #' topRegions(resList, contrast = "shr", FDR = 1, n = 3)
 #'
@@ -82,260 +91,304 @@
 #' @export testRegions
 
 testRegions <-
-  function(fit,
-           contrast,
-           combine = TRUE,
-           combineMethod = "simes",
-           lfcThreshold = 0,
-           FDR = 0.05,
-           log2FC = 0,
-           adjustMethod = "BH",
-           regionSets = NULL,
-           signalBy = NULL,
-           extraColumns = TRUE,
-           carryCounts = TRUE,
-           verbose = TRUE) {
+    function(fit,
+             contrast,
+             combine = TRUE,
+             combineMethod = "simes",
+             lfcThreshold = 0,
+             FDR = 0.05,
+             log2FC = 0,
+             adjustMethod = "BH",
+             regionSets = NULL,
+             signalBy = NULL,
+             extraColumns = TRUE,
+             carryCounts = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(fit, "RegionSetDE.fit")) {
+            stop("The 'fit' parameter must be a RegionSetDE.fit object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(fit, "RegionSetDE.fit")) {
-      stop("The 'fit' parameter must be a RegionSetDE.fit object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Several contrasts at once     #
+        #-------------------------------#
+        # One fit, several contrasts: the recursion keeps a single code path for the test itself
+        if (is.list(contrast) & !is.data.frame(contrast)) {
+            if (is.null(names(contrast)) | any(names(contrast) == "")) {
+                names(contrast) <- paste0("contrast", seq_along(contrast))
+            }
 
-    #-------------------------------#
-    # Several contrasts at once     #
-    #-------------------------------#
-    # One fit, several contrasts: the recursion keeps a single code path for the test itself
-    if (is.list(contrast) & !is.data.frame(contrast)) {
-      if (is.null(names(contrast)) | any(names(contrast) == "")) {
-        names(contrast) <- paste0("contrast", seq_along(contrast))
-      }
+            resultsList <-
+                lapply(
+                    names(contrast),
+                    function(contrastName) {
+                        if (isTRUE(verbose)) {
+                            message("--- ", contrastName, " ---")
+                        }
+                        return(testRegions(
+                            fit = fit, contrast = contrast[[contrastName]], combine = combine,
+                            combineMethod = combineMethod, lfcThreshold = lfcThreshold, FDR = FDR,
+                            log2FC = log2FC, adjustMethod = adjustMethod, regionSets = regionSets,
+                            signalBy = signalBy, extraColumns = extraColumns, carryCounts = carryCounts,
+                            verbose = verbose
+                        ))
+                    }
+                )
 
-      resultsList <-
-        lapply(names(contrast),
-               function(contrastName) {
-                 if (isTRUE(verbose)) {
-                   message("--- ", contrastName, " ---")
-                 }
-                 return(testRegions(fit = fit, contrast = contrast[[contrastName]], combine = combine,
-                                    combineMethod = combineMethod, lfcThreshold = lfcThreshold, FDR = FDR,
-                                    log2FC = log2FC, adjustMethod = adjustMethod, regionSets = regionSets,
-                                    signalBy = signalBy, extraColumns = extraColumns, carryCounts = carryCounts,
-                                    verbose = verbose))
-               })
+            names(resultsList) <- names(contrast)
 
-      names(resultsList) <- names(contrast)
+            return(.newObject(
+                Class = "RegionSetDE.resultsList",
+                results = resultsList,
+                contrasts = names(contrast)
+            ))
+        }
 
-      return(new(Class = "RegionSetDE.resultsList",
-                 results = resultsList,
-                 contrasts = names(contrast)))
-    }
+        if (!(combineMethod %in% c("simes", "holm-min"))) {
+            stop("The 'combineMethod' parameter must be either 'simes' or 'holm-min'.", call. = FALSE)
+        }
 
-    if (!(combineMethod %in% c("simes", "holm-min"))) {
-      stop("The 'combineMethod' parameter must be either 'simes' or 'holm-min'.", call. = FALSE)
-    }
+        if (lfcThreshold < 0) {
+            stop("The 'lfcThreshold' parameter cannot be negative.", call. = FALSE)
+        }
 
-    if (lfcThreshold < 0) {
-      stop("The 'lfcThreshold' parameter cannot be negative.", call. = FALSE)
-    }
+        contrastObject <- .resolveContrast(
+            contrast = contrast,
+            design = designMatrix(fit),
+            colData = SummarizedExperiment::colData(fitCounts(fit))
+        )
 
-    contrastObject <- .resolveContrast(contrast = contrast,
-                                       design = fit@design,
-                                       colData = SummarizedExperiment::colData(fit@counts))
+        if (isTRUE(verbose)) {
+            message("Testing '", contrastObject$label, "' on ", nrow(fitCounts(fit)), " ", countingLevel(fit), "s.")
 
-    if (isTRUE(verbose)) {
-      message("Testing '", contrastObject$label, "' on ", nrow(fit@counts), " ", fit@counting.level, "s.")
+            # The p-values are conditional on a number that was assumed rather than measured
+            if (isTRUE(dispersionInfo(fit)$no.replicates)) {
+                message("The fit has no replicates, so the p-values rest entirely on the supplied dispersion. Read them next to checkNullCalibration().")
+            }
+        }
 
-      # The p-values are conditional on a number that was assumed rather than measured
-      if (isTRUE(fit@dispersion$no.replicates)) {
-        message("The fit has no replicates, so the p-values rest entirely on the supplied dispersion. Read them next to checkNullCalibration().")
-      }
-    }
+        #-------------------------------#
+        # Engine specific test          #
+        #-------------------------------#
+        rawTable <- switch(fitEngine(fit),
+            "edgeR" = .testEdgeR(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold),
+            "voom" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold),
+            "limma" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold, trend = TRUE),
+            "dream" = .testDream(fit = fit, contrastObject = contrastObject, lfcThreshold = lfcThreshold, verbose = verbose),
+            "deseq2" = .testDESeq2(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold)
+        )
 
-    #-------------------------------#
-    # Engine specific test          #
-    #-------------------------------#
-    rawTable <- switch(fit@engine,
-                       "edgeR" = .testEdgeR(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold),
-                       "voom" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold),
-                       "limma" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold, trend = TRUE),
-                       "dream" = .testDream(fit = fit, contrastObject = contrastObject, lfcThreshold = lfcThreshold, verbose = verbose),
-                       "deseq2" = .testDESeq2(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = lfcThreshold))
+        #-------------------------------#
+        # Average signal per group      #
+        #-------------------------------#
+        # The column the contrast compares, unless another one was asked for or none at all
+        signalColumn <- if (isFALSE(signalBy)) {
+            NULL
+        } else if (is.null(signalBy)) {
+            contrastObject$column
+        } else {
+            signalBy
+        }
+        groupSignal <- .groupAverageSignal(fit = fit, column = signalColumn)
+        groupSignalColumns <- colnames(groupSignal)
 
-    #-------------------------------#
-    # Average signal per group      #
-    #-------------------------------#
-    # The column the contrast compares, unless another one was asked for or none at all
-    signalColumn <- if (isFALSE(signalBy)) {NULL} else if (is.null(signalBy)) {contrastObject$column} else {signalBy}
-    groupSignal <- .groupAverageSignal(fit = fit, column = signalColumn)
-    groupSignalColumns <- colnames(groupSignal)
+        if (length(groupSignalColumns) > 0) {
+            rawTable <- cbind(rawTable, groupSignal)
+        }
 
-    if (length(groupSignalColumns) > 0) {
-      rawTable <- cbind(rawTable, groupSignal)
-    }
+        # How many samples stand behind each side of the contrast, which a power analysis starts from
+        if (!is.null(contrastObject$column)) {
+            groupValues <- as.character(SummarizedExperiment::colData(fitCounts(fit))[[contrastObject$column]])
+            contrastObject$n.samples <- vapply(contrastObject$groups, function(group) {
+                sum(groupValues == group, na.rm = TRUE)
+            }, integer(1))
+        }
 
-    # How many samples stand behind each side of the contrast, which a power analysis starts from
-    if (!is.null(contrastObject$column)) {
-      groupValues <- as.character(SummarizedExperiment::colData(fit@counts)[[contrastObject$column]])
-      contrastObject$n.samples <- vapply(contrastObject$groups, function(group) {sum(groupValues == group, na.rm = TRUE)}, integer(1))
-    }
+        #-------------------------------#
+        # Attach the row annotation     #
+        #-------------------------------#
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(fitCounts(fit)))
+        rowRangesObject <- SummarizedExperiment::rowRanges(fitCounts(fit))
 
-    #-------------------------------#
-    # Attach the row annotation     #
-    #-------------------------------#
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(fit@counts))
-    rowRangesObject <- SummarizedExperiment::rowRanges(fit@counts)
+        rawTable <- dplyr::mutate(rawTable,
+            region.set = rowTable$region.set,
+            region.id = rowTable$region.id,
+            tile.id = rowTable$tile.id,
+            region.key = paste(rowTable$region.set, rowTable$region.id, sep = "|"),
+            seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
+            start = BiocGenerics::start(rowRangesObject),
+            end = BiocGenerics::end(rowRangesObject),
+            width = BiocGenerics::width(rowRangesObject)
+        )
 
-    rawTable <- dplyr::mutate(rawTable,
-                              region.set = rowTable$region.set,
-                              region.id = rowTable$region.id,
-                              tile.id = rowTable$tile.id,
-                              region.key = paste(rowTable$region.set, rowTable$region.id, sep = "|"),
-                              seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
-                              start = BiocGenerics::start(rowRangesObject),
-                              end = BiocGenerics::end(rowRangesObject),
-                              width = BiocGenerics::width(rowRangesObject))
+        #-------------------------------#
+        # Annotation carried by the rows #
+        #-------------------------------#
+        extraTable <- .extraRowColumns(
+            rowTable = rowTable,
+            extraColumns = extraColumns,
+            reserved = c(colnames(rawTable), .resultColumnNames()),
+            verbose = verbose
+        )
 
-    #-------------------------------#
-    # Annotation carried by the rows #
-    #-------------------------------#
-    extraTable <- .extraRowColumns(rowTable = rowTable,
-                                   extraColumns = extraColumns,
-                                   reserved = c(colnames(rawTable), .resultColumnNames()),
-                                   verbose = verbose)
+        if (ncol(extraTable) > 0) {
+            rawTable <- cbind(rawTable, extraTable)
+        }
 
-    if (ncol(extraTable) > 0) {
-      rawTable <- cbind(rawTable, extraTable)
-    }
+        isTiled <- countingLevel(fit) == "tile"
 
-    isTiled <- fit@counting.level == "tile"
+        #-------------------------------#
+        # Tiles to regions, or not      #
+        #-------------------------------#
+        if (isTiled & isTRUE(combine)) {
+            combinedList <- .combineTiles(
+                tileTable = rawTable,
+                tileRanges = rowRangesObject,
+                extraColumns = c("stat.distribution", "df1", "df2", groupSignalColumns, colnames(extraTable)),
+                method = combineMethod,
+                adjustMethod = adjustMethod,
+                verbose = verbose
+            )
 
-    #-------------------------------#
-    # Tiles to regions, or not      #
-    #-------------------------------#
-    if (isTiled & isTRUE(combine)) {
-      combinedList <- .combineTiles(tileTable = rawTable,
-                                    tileRanges = rowRangesObject,
-                                    extraColumns = c("stat.distribution", "df1", "df2", groupSignalColumns, colnames(extraTable)),
-                                    method = combineMethod,
-                                    adjustMethod = adjustMethod,
-                                    verbose = verbose)
+            resultTable <- combinedList$results
+            regionRanges <- combinedList$regions
+            tileTable <- dplyr::mutate(rawTable, FDR = stats::p.adjust(rawTable$p.value, method = adjustMethod))
+            combinationInfo <- list(applied = TRUE, method = combineMethod)
+        } else {
+            resultTable <- dplyr::mutate(rawTable, FDR = stats::p.adjust(rawTable$p.value, method = adjustMethod))
+            regionRanges <- rowRangesObject
+            S4Vectors::mcols(regionRanges) <- NULL
+            tileTable <- if (isTiled) {
+                resultTable
+            } else {
+                data.frame()
+            }
+            combinationInfo <- list(applied = FALSE, method = NA_character_)
+        }
 
-      resultTable <- combinedList$results
-      regionRanges <- combinedList$regions
-      tileTable <- dplyr::mutate(rawTable, FDR = stats::p.adjust(rawTable$p.value, method = adjustMethod))
-      combinationInfo <- list(applied = TRUE, method = combineMethod)
+        #-------------------------------#
+        # Label and tidy the output     #
+        #-------------------------------#
+        # 'FDR' and 'log2FC' also name two columns of the table, and dplyr reads the column before the argument
+        FDRthreshold <- FDR
+        log2FCthreshold <- log2FC
 
-    } else {
-      resultTable <- dplyr::mutate(rawTable, FDR = stats::p.adjust(rawTable$p.value, method = adjustMethod))
-      regionRanges <- rowRangesObject
-      S4Vectors::mcols(regionRanges) <- NULL
-      tileTable <- if (isTiled) {resultTable} else {data.frame()}
-      combinationInfo <- list(applied = FALSE, method = NA_character_)
-    }
+        resultTable <- dplyr::mutate(resultTable,
+            diff.status = dplyr::case_when(
+                .data$FDR < FDRthreshold & .data$log2FC > log2FCthreshold ~ "up",
+                .data$FDR < FDRthreshold & .data$log2FC < (-log2FCthreshold) ~ "down",
+                TRUE ~ "null"
+            )
+        )
+        resultTable$diff.status <- factor(resultTable$diff.status, levels = c("down", "null", "up"))
 
-    #-------------------------------#
-    # Label and tidy the output     #
-    #-------------------------------#
-    # 'FDR' and 'log2FC' also name two columns of the table, and dplyr reads the column before the argument
-    FDRthreshold <- FDR
-    log2FCthreshold <- log2FC
+        if (!is.null(regionSets)) {
+            absentSets <- setdiff(regionSets, unique(resultTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
 
-    resultTable <- dplyr::mutate(resultTable,
-                                 diff.status = dplyr::case_when(.data$FDR < FDRthreshold & .data$log2FC > log2FCthreshold ~ "up",
-                                                                .data$FDR < FDRthreshold & .data$log2FC < (-log2FCthreshold) ~ "down",
-                                                                TRUE ~ "null"))
-    resultTable$diff.status <- factor(resultTable$diff.status, levels = c("down", "null", "up"))
+            # The correction has already run over every row, subsetting here does not change the FDR of what is kept
+            keptRows <- resultTable$region.set %in% regionSets
+            resultTable <- resultTable[keptRows, , drop = FALSE]
+            regionRanges <- regionRanges[keptRows]
 
-    if (!is.null(regionSets)) {
-      absentSets <- setdiff(regionSets, unique(resultTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
+            if (nrow(tileTable) > 0) {
+                tileTable <- dplyr::filter(tileTable, .data$region.set %in% regionSets)
+            }
+        }
 
-      # The correction has already run over every row, subsetting here does not change the FDR of what is kept
-      keptRows <- resultTable$region.set %in% regionSets
-      resultTable <- resultTable[keptRows, , drop = FALSE]
-      regionRanges <- regionRanges[keptRows]
+        # The statistics first, then what the combination added, then whatever the regions came with
+        statisticColumns <- c(
+            "region.set", "region.id", "tile.id", "seqnames", "start", "end", "width",
+            "log2FC", "average.signal", groupSignalColumns,
+            "stat", "stat.distribution", "df1", "df2", "p.value", "FDR", "diff.status"
+        )
+        combinationColumns <- c("n.tiles", "n.tiles.up", "n.tiles.down", "direction", "rep.tile.start", "rep.tile.end", "mean.tile.log2FC")
 
-      if (nrow(tileTable) > 0) {
-        tileTable <- dplyr::filter(tileTable, .data$region.set %in% regionSets)
-      }
-    }
+        annotationColumns <- setdiff(
+            colnames(resultTable),
+            c(statisticColumns, combinationColumns, "region.key")
+        )
 
-    # The statistics first, then what the combination added, then whatever the regions came with
-    statisticColumns <- c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width",
-                          "log2FC", "average.signal", groupSignalColumns,
-                          "stat", "stat.distribution", "df1", "df2", "p.value", "FDR", "diff.status")
-    combinationColumns <- c("n.tiles", "n.tiles.up", "n.tiles.down", "direction", "rep.tile.start", "rep.tile.end", "mean.tile.log2FC")
+        resultTable <- resultTable[, c(
+            intersect(statisticColumns, colnames(resultTable)),
+            intersect(combinationColumns, colnames(resultTable)),
+            annotationColumns
+        ),
+        drop = FALSE
+        ]
+        rownames(resultTable) <- NULL
 
-    annotationColumns <- setdiff(colnames(resultTable),
-                                 c(statisticColumns, combinationColumns, "region.key"))
+        #-------------------------------#
+        # Counts travelling along        #
+        #-------------------------------#
+        carriedCounts <- .newObject(Class = "RegionSetDE.counts")
 
-    resultTable <- resultTable[, c(intersect(statisticColumns, colnames(resultTable)),
-                                   intersect(combinationColumns, colnames(resultTable)),
-                                   annotationColumns),
-                               drop = FALSE]
-    rownames(resultTable) <- NULL
+        if (isTRUE(carryCounts)) {
+            carriedCounts <- fitCounts(fit)
 
-    #-------------------------------#
-    # Counts travelling along        #
-    #-------------------------------#
-    carriedCounts <- new(Class = "RegionSetDE.counts")
+            # The rows stay at the level the model was fitted on, which is what plotRegion needs to draw a tiled profile
+            if (!is.null(regionSets)) {
+                carriedCounts <- carriedCounts[SummarizedExperiment::rowData(carriedCounts)$region.set %in% regionSets, ]
+            }
+        }
 
-    if (isTRUE(carryCounts)) {
-      carriedCounts <- fit@counts
+        #-------------------------------#
+        # Assemble the object           #
+        #-------------------------------#
+        resultsObject <- .newObject(
+            Class = "RegionSetDE.results",
+            counts = carriedCounts,
+            results = resultTable,
+            tiles = tileTable,
+            regions = regionRanges,
+            contrast = contrastObject$label,
+            contrast.vector = contrastObject$vector,
+            contrast.groups = contrastObject[intersect(c("column", "groups", "n.samples"), names(contrastObject))],
+            engine = fitEngine(fit),
+            counting.level = countingLevel(fit),
+            combination = combinationInfo,
+            thresholds = list(FDR = FDR, log2FC = log2FC, lfcThreshold = lfcThreshold, adjust.method = adjustMethod),
+            blacklist = blacklistRanges(fit),
+            greylist = greylistRanges(fit),
+            whitelist = whitelistRanges(fit),
+            genome.assembly = genomeAssembly(fit),
+            seqlevels.style = chromosomeStyle(fit),
+            filtering.log = filteringLog(fit),
+            parameters = c(
+                parameterLog(fit),
+                list(testRegions = list(
+                    contrast = contrastObject$label,
+                    combine = combine,
+                    combineMethod = combineMethod,
+                    lfcThreshold = lfcThreshold,
+                    FDR = FDR,
+                    log2FC = log2FC,
+                    adjustMethod = adjustMethod,
+                    signalBy = signalColumn,
+                    carryCounts = carryCounts
+                ))
+            )
+        )
 
-      # The rows stay at the level the model was fitted on, which is what plotRegion needs to draw a tiled profile
-      if (!is.null(regionSets)) {
-        carriedCounts <- carriedCounts[SummarizedExperiment::rowData(carriedCounts)$region.set %in% regionSets, ]
-      }
-    }
+        if (isTRUE(verbose)) {
+            statusTable <- table(resultTable$diff.status)
+            message(
+                "Done. ", statusTable[["up"]], " up and ", statusTable[["down"]],
+                " down out of ", nrow(resultTable), " regions (FDR < ", FDR,
+                if (log2FC > 0) {
+                    c(", |log2FC| > ", log2FC)
+                } else {
+                    ""
+                }, ")."
+            )
+        }
 
-    #-------------------------------#
-    # Assemble the object           #
-    #-------------------------------#
-    resultsObject <- new(Class = "RegionSetDE.results",
-                         counts = carriedCounts,
-                         results = resultTable,
-                         tiles = tileTable,
-                         regions = regionRanges,
-                         contrast = contrastObject$label,
-                         contrast.vector = contrastObject$vector,
-                         contrast.groups = contrastObject[intersect(c("column", "groups", "n.samples"), names(contrastObject))],
-                         engine = fit@engine,
-                         counting.level = fit@counting.level,
-                         combination = combinationInfo,
-                         thresholds = list(FDR = FDR, log2FC = log2FC, lfcThreshold = lfcThreshold, adjust.method = adjustMethod),
-                         blacklist = fit@blacklist,
-                         greylist = fit@greylist,
-                         whitelist = fit@whitelist,
-                         genome.assembly = fit@genome.assembly,
-                         seqlevels.style = fit@seqlevels.style,
-                         filtering.log = fit@filtering.log,
-                         parameters = c(fit@parameters,
-                                        list(testRegions = list(contrast = contrastObject$label,
-                                                                combine = combine,
-                                                                combineMethod = combineMethod,
-                                                                lfcThreshold = lfcThreshold,
-                                                                FDR = FDR,
-                                                                log2FC = log2FC,
-                                                                adjustMethod = adjustMethod,
-                                                                signalBy = signalColumn,
-                                                                carryCounts = carryCounts))))
-
-    if (isTRUE(verbose)) {
-      statusTable <- table(resultTable$diff.status)
-      message("Done. ", statusTable[["up"]], " up and ", statusTable[["down"]],
-              " down out of ", nrow(resultTable), " regions (FDR < ", FDR,
-              if (log2FC > 0) {c(", |log2FC| > ", log2FC)} else {""}, ").")
-    }
-
-    return(resultsObject)
-  } # END function
-
-
+        return(resultsObject)
+    } # END function
 
 
 #' @title .resolveContrast
@@ -355,114 +408,127 @@ testRegions <-
 #' @keywords internal
 
 .resolveContrast <-
-  function(contrast,
-           design,
-           colData = NULL) {
+    function(contrast,
+             design,
+             colData = NULL) {
+        coefficientNames <- colnames(design)
 
-    coefficientNames <- colnames(design)
+        #-------------------------------#
+        # A vector is taken as it is    #
+        #-------------------------------#
+        if (is.numeric(contrast)) {
+            if (length(contrast) != length(coefficientNames)) {
+                stop("The contrast vector must have one value per design column (", length(coefficientNames), ").", call. = FALSE)
+            }
+            contrastVector <- as.numeric(contrast)
+            names(contrastVector) <- coefficientNames
 
-    #-------------------------------#
-    # A vector is taken as it is    #
-    #-------------------------------#
-    if (is.numeric(contrast)) {
-      if (length(contrast) != length(coefficientNames)) {
-        stop("The contrast vector must have one value per design column (", length(coefficientNames), ").", call. = FALSE)
-      }
-      contrastVector <- as.numeric(contrast)
-      names(contrastVector) <- coefficientNames
+            nonZero <- coefficientNames[contrastVector != 0]
+            return(c(
+                list(vector = contrastVector, label = paste(nonZero, collapse = " vs ")),
+                .contrastGroups(contrastVector = contrastVector, design = design, colData = colData)
+            ))
+        }
 
-      nonZero <- coefficientNames[contrastVector != 0]
-      return(c(list(vector = contrastVector, label = paste(nonZero, collapse = " vs ")),
-               .contrastGroups(contrastVector = contrastVector, design = design, colData = colData)))
-    }
+        if (!is.character(contrast)) {
+            stop("The \'contrast\' parameter must be a string, a character vector of length three, or a numeric vector.", call. = FALSE)
+        }
 
-    if (!is.character(contrast)) {
-      stop("The \'contrast\' parameter must be a string, a character vector of length three, or a numeric vector.", call. = FALSE)
-    }
+        #-------------------------------#
+        # c("column", "groupA", "groupB")
+        #-------------------------------#
+        if (length(contrast) == 3) {
+            if (is.null(colData)) {
+                stop("The three-element form of \'contrast\' needs the sample metadata, which is not available here.", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # c("column", "groupA", "groupB")
-    #-------------------------------#
-    if (length(contrast) == 3) {
-      if (is.null(colData)) {
-        stop("The three-element form of \'contrast\' needs the sample metadata, which is not available here.", call. = FALSE)
-      }
+            colTable <- as.data.frame(colData)
+            columnName <- contrast[1]
 
-      colTable <- as.data.frame(colData)
-      columnName <- contrast[1]
+            if (!(columnName %in% colnames(colTable))) {
+                stop("The column '", columnName, "' is absent from the colData. Available: ",
+                    paste(colnames(colTable), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      if (!(columnName %in% colnames(colTable))) {
-        stop("The column '", columnName, "' is absent from the colData. Available: ",
-             paste(colnames(colTable), collapse = ", "), ".", call. = FALSE)
-      }
+            columnValues <- as.character(colTable[[columnName]])
+            absentGroups <- setdiff(contrast[2:3], unique(columnValues))
+            if (length(absentGroups) > 0) {
+                stop("The following levels are absent from '", columnName, "': ", paste(absentGroups, collapse = ", "),
+                    ". Available: ", paste(unique(columnValues), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      columnValues <- as.character(colTable[[columnName]])
-      absentGroups <- setdiff(contrast[2:3], unique(columnValues))
-      if (length(absentGroups) > 0) {
-        stop("The following levels are absent from '", columnName, "': ", paste(absentGroups, collapse = ", "),
-             ". Available: ", paste(unique(columnValues), collapse = ", "), ".", call. = FALSE)
-      }
+            firstRows <- which(columnValues == contrast[2])
+            secondRows <- which(columnValues == contrast[3])
 
-      firstRows <- which(columnValues == contrast[2])
-      secondRows <- which(columnValues == contrast[3])
+            # Averaging the design rows of each group gives the same contrast whatever the reference level is,
+            # and works identically for ~ condition and ~ 0 + condition
+            contrastVector <- colMeans(design[firstRows, , drop = FALSE]) - colMeans(design[secondRows, , drop = FALSE])
+            contrastVector[abs(contrastVector) < 1e-10] <- 0
+            names(contrastVector) <- coefficientNames
 
-      # Averaging the design rows of each group gives the same contrast whatever the reference level is,
-      # and works identically for ~ condition and ~ 0 + condition
-      contrastVector <- colMeans(design[firstRows, , drop = FALSE]) - colMeans(design[secondRows, , drop = FALSE])
-      contrastVector[abs(contrastVector) < 1e-10] <- 0
-      names(contrastVector) <- coefficientNames
+            if (all(contrastVector == 0)) {
+                stop("The design does not separate '", contrast[2], "' from '", contrast[3],
+                    "', the two groups share the same coefficients.",
+                    call. = FALSE
+                )
+            }
 
-      if (all(contrastVector == 0)) {
-        stop("The design does not separate '", contrast[2], "' from '", contrast[3],
-             "', the two groups share the same coefficients.", call. = FALSE)
-      }
+            return(list(
+                vector = contrastVector,
+                label = paste0(columnName, ": ", contrast[2], " vs ", contrast[3]),
+                column = columnName,
+                groups = c(contrast[2], contrast[3])
+            ))
+        }
 
-      return(list(vector = contrastVector,
-                  label = paste0(columnName, ": ", contrast[2], " vs ", contrast[3]),
-                  column = columnName,
-                  groups = c(contrast[2], contrast[3])))
-    }
+        if (length(contrast) != 1) {
+            stop("The \'contrast\' parameter must hold one string, or three when naming a column and two of its levels.", call. = FALSE)
+        }
 
-    if (length(contrast) != 1) {
-      stop("The \'contrast\' parameter must hold one string, or three when naming a column and two of its levels.", call. = FALSE)
-    }
+        #-------------------------------#
+        # A plain coefficient name      #
+        #-------------------------------#
+        if (contrast %in% coefficientNames) {
+            contrastVector <- as.numeric(coefficientNames == contrast)
+            names(contrastVector) <- coefficientNames
+            return(c(
+                list(vector = contrastVector, label = contrast),
+                .contrastGroups(contrastVector = contrastVector, design = design, colData = colData)
+            ))
+        }
 
-    #-------------------------------#
-    # A plain coefficient name      #
-    #-------------------------------#
-    if (contrast %in% coefficientNames) {
-      contrastVector <- as.numeric(coefficientNames == contrast)
-      names(contrastVector) <- coefficientNames
-      return(c(list(vector = contrastVector, label = contrast),
-               .contrastGroups(contrastVector = contrastVector, design = design, colData = colData)))
-    }
+        #-------------------------------#
+        # An expression on the names    #
+        #-------------------------------#
+        # makeContrasts needs syntactic names, the design columns are renamed and put back afterwards
+        safeNames <- make.names(coefficientNames)
+        safeContrast <- contrast
+        for (i in order(nchar(coefficientNames), decreasing = TRUE)) {
+            safeContrast <- gsub(pattern = coefficientNames[i], replacement = safeNames[i], x = safeContrast, fixed = TRUE)
+        }
 
-    #-------------------------------#
-    # An expression on the names    #
-    #-------------------------------#
-    # makeContrasts needs syntactic names, the design columns are renamed and put back afterwards
-    safeNames <- make.names(coefficientNames)
-    safeContrast <- contrast
-    for (i in order(nchar(coefficientNames), decreasing = TRUE)) {
-      safeContrast <- gsub(pattern = coefficientNames[i], replacement = safeNames[i], x = safeContrast, fixed = TRUE)
-    }
+        contrastMatrix <- try(limma::makeContrasts(contrasts = safeContrast, levels = safeNames), silent = TRUE)
 
-    contrastMatrix <- try(limma::makeContrasts(contrasts = safeContrast, levels = safeNames), silent = TRUE)
+        if (inherits(contrastMatrix, "try-error")) {
+            stop("The contrast '", contrast, "' could not be read. Available coefficients: ",
+                paste(coefficientNames, collapse = ", "), ".",
+                .contrastSuggestion(contrast = contrast, coefficientNames = coefficientNames, colData = colData),
+                call. = FALSE
+            )
+        }
 
-    if (inherits(contrastMatrix, "try-error")) {
-      stop("The contrast '", contrast, "' could not be read. Available coefficients: ",
-           paste(coefficientNames, collapse = ", "), ".",
-           .contrastSuggestion(contrast = contrast, coefficientNames = coefficientNames, colData = colData), call. = FALSE)
-    }
+        contrastVector <- as.numeric(contrastMatrix[, 1])
+        names(contrastVector) <- coefficientNames
 
-    contrastVector <- as.numeric(contrastMatrix[, 1])
-    names(contrastVector) <- coefficientNames
-
-    return(c(list(vector = contrastVector, label = contrast),
-             .contrastGroups(contrastVector = contrastVector, design = design, colData = colData)))
-  } # END function
-
-
+        return(c(
+            list(vector = contrastVector, label = contrast),
+            .contrastGroups(contrastVector = contrastVector, design = design, colData = colData)
+        ))
+    } # END function
 
 
 #' @title .contrastGroups
@@ -481,62 +547,67 @@ testRegions <-
 #' @keywords internal
 
 .contrastGroups <-
-  function(contrastVector,
-           design,
-           colData = NULL,
-           maxLevels = 20) {
-
-    if (is.null(colData)) {
-      return(list())
-    }
-
-    colTable <- as.data.frame(colData)
-
-    # A variable of the design names its coefficients after itself and its levels, e.g. conditionSHR
-    isDesignColumn <- vapply(colnames(colTable),
-                             function(columnName) {
-                               any(paste0(columnName, unique(as.character(colTable[[columnName]]))) %in% colnames(design))
-                             },
-                             logical(1))
-
-    # A column with one value per sample only names the samples, and any two of them taken from two groups match the contrast
-    isSampleLabel <- vapply(colnames(colTable),
-                            function(columnName) {
-                              columnValues <- as.character(colTable[[columnName]])
-                              anyDuplicated(columnValues[!is.na(columnValues)]) == 0
-                            },
-                            logical(1))
-
-    candidateColumns <- c(colnames(colTable)[isDesignColumn],
-                          colnames(colTable)[!isDesignColumn & !isSampleLabel])
-
-    for (columnName in candidateColumns) {
-      columnValues <- as.character(colTable[[columnName]])
-      columnLevels <- unique(columnValues[!is.na(columnValues)])
-
-      if (length(columnLevels) < 2 | length(columnLevels) > maxLevels) {
-        next
-      }
-
-      # The contrast built by the three-element form is exactly this difference, whatever the reference level was
-      levelMeans <- lapply(columnLevels, function(x) {colMeans(design[columnValues == x, , drop = FALSE])})
-      names(levelMeans) <- columnLevels
-
-      for (firstLevel in columnLevels) {
-        for (secondLevel in setdiff(columnLevels, firstLevel)) {
-          candidateVector <- levelMeans[[firstLevel]] - levelMeans[[secondLevel]]
-
-          if (max(abs(candidateVector - contrastVector)) < 1e-8) {
-            return(list(column = columnName, groups = c(firstLevel, secondLevel)))
-          }
+    function(contrastVector,
+             design,
+             colData = NULL,
+             maxLevels = 20) {
+        if (is.null(colData)) {
+            return(list())
         }
-      }
-    }
 
-    return(list())
-  } # END function
+        colTable <- as.data.frame(colData)
 
+        # A variable of the design names its coefficients after itself and its levels, e.g. conditionSHR
+        isDesignColumn <- vapply(
+            colnames(colTable),
+            function(columnName) {
+                any(paste0(columnName, unique(as.character(colTable[[columnName]]))) %in% colnames(design))
+            },
+            logical(1)
+        )
 
+        # A column with one value per sample only names the samples, and any two of them taken from two groups match the contrast
+        isSampleLabel <- vapply(
+            colnames(colTable),
+            function(columnName) {
+                columnValues <- as.character(colTable[[columnName]])
+                anyDuplicated(columnValues[!is.na(columnValues)]) == 0
+            },
+            logical(1)
+        )
+
+        candidateColumns <- c(
+            colnames(colTable)[isDesignColumn],
+            colnames(colTable)[!isDesignColumn & !isSampleLabel]
+        )
+
+        for (columnName in candidateColumns) {
+            columnValues <- as.character(colTable[[columnName]])
+            columnLevels <- unique(columnValues[!is.na(columnValues)])
+
+            if (length(columnLevels) < 2 | length(columnLevels) > maxLevels) {
+                next
+            }
+
+            # The contrast built by the three-element form is exactly this difference, whatever the reference level was
+            levelMeans <- lapply(columnLevels, function(x) {
+                colMeans(design[columnValues == x, , drop = FALSE])
+            })
+            names(levelMeans) <- columnLevels
+
+            for (firstLevel in columnLevels) {
+                for (secondLevel in setdiff(columnLevels, firstLevel)) {
+                    candidateVector <- levelMeans[[firstLevel]] - levelMeans[[secondLevel]]
+
+                    if (max(abs(candidateVector - contrastVector)) < 1e-8) {
+                        return(list(column = columnName, groups = c(firstLevel, secondLevel)))
+                    }
+                }
+            }
+        }
+
+        return(list())
+    } # END function
 
 
 #' @title .contrastSuggestion
@@ -554,51 +625,58 @@ testRegions <-
 #' @keywords internal
 
 .contrastSuggestion <-
-  function(contrast,
-           coefficientNames,
-           colData = NULL) {
+    function(contrast,
+             coefficientNames,
+             colData = NULL) {
+        if (is.null(colData)) {
+            return("")
+        }
 
-    if (is.null(colData)) {
-      return("")
-    }
+        colTable <- as.data.frame(colData)
 
-    colTable <- as.data.frame(colData)
+        #-------------------------------#
+        # Look for a reference level    #
+        #-------------------------------#
+        # A level that the design took as reference has no coefficient, so writing its name never resolves
+        for (columnName in colnames(colTable)) {
+            columnValues <- unique(as.character(colTable[[columnName]]))
+            if (length(columnValues) < 2) {
+                next
+            }
 
-    #-------------------------------#
-    # Look for a reference level    #
-    #-------------------------------#
-    # A level that the design took as reference has no coefficient, so writing its name never resolves
-    for (columnName in colnames(colTable)) {
-      columnValues <- unique(as.character(colTable[[columnName]]))
-      if (length(columnValues) < 2) {
-        next
-      }
+            writtenLevels <- columnValues[vapply(
+                columnValues,
+                function(x) {
+                    grepl(paste0(columnName, x), contrast, fixed = TRUE)
+                },
+                logical(1)
+            )]
 
-      writtenLevels <- columnValues[vapply(columnValues,
-                                           function(x) {grepl(paste0(columnName, x), contrast, fixed = TRUE)},
-                                           logical(1))]
+            # paste0() would turn an empty vector into the bare column name, and suggest a level called NA
+            if (length(writtenLevels) == 0) {
+                next
+            }
 
-      # paste0() would turn an empty vector into the bare column name, and suggest a level called NA
-      if (length(writtenLevels) == 0) {
-        next
-      }
+            missingLevels <- writtenLevels[!(paste0(columnName, writtenLevels) %in% coefficientNames)]
 
-      missingLevels <- writtenLevels[!(paste0(columnName, writtenLevels) %in% coefficientNames)]
+            if (length(missingLevels) > 0) {
+                otherLevels <- setdiff(writtenLevels, missingLevels)
+                secondLevel <- if (length(otherLevels) > 0) {
+                    otherLevels[1]
+                } else {
+                    setdiff(columnValues, missingLevels)[1]
+                }
 
-      if (length(missingLevels) > 0) {
-        otherLevels <- setdiff(writtenLevels, missingLevels)
-        secondLevel <- if (length(otherLevels) > 0) {otherLevels[1]} else {setdiff(columnValues, missingLevels)[1]}
+                return(paste0(
+                    "\n  \'", missingLevels[1], "\' is the reference level of \'", columnName,
+                    "\' and has no coefficient of its own. Write contrast = c(\"", columnName, "\", \"",
+                    missingLevels[1], "\", \"", secondLevel, "\") instead."
+                ))
+            }
+        }
 
-        return(paste0("\n  \'", missingLevels[1], "\' is the reference level of \'", columnName,
-                      "\' and has no coefficient of its own. Write contrast = c(\"", columnName, "\", \"",
-                      missingLevels[1], "\", \"", secondLevel, "\") instead."))
-      }
-    }
-
-    return("")
-  } # END function
-
-
+        return("")
+    } # END function
 
 
 #' @title .testEdgeR
@@ -618,50 +696,63 @@ testRegions <-
 #' @keywords internal
 
 .testEdgeR <-
-  function(fit,
-           contrastVector,
-           lfcThreshold = 0) {
+    function(fit,
+             contrastVector,
+             lfcThreshold = 0) {
+        # A fixed dispersion leaves nothing for the quasi-likelihood F to account for, so the test is a likelihood ratio
+        isLikelihoodRatio <- identical(fitComponents(fit)$test, "lrt")
 
-    # A fixed dispersion leaves nothing for the quasi-likelihood F to account for, so the test is a likelihood ratio
-    isLikelihoodRatio <- identical(fit@fit$test, "lrt")
+        if (lfcThreshold > 0) {
+            testObject <- edgeR::glmTreat(glmfit = fitComponents(fit)$object, contrast = contrastVector, lfc = lfcThreshold)
+        } else if (isTRUE(isLikelihoodRatio)) {
+            testObject <- edgeR::glmLRT(glmfit = fitComponents(fit)$object, contrast = contrastVector)
+        } else {
+            testObject <- edgeR::glmQLFTest(glmfit = fitComponents(fit)$object, contrast = contrastVector)
+        }
 
-    if (lfcThreshold > 0) {
-      testObject <- edgeR::glmTreat(glmfit = fit@fit$object, contrast = contrastVector, lfc = lfcThreshold)
-    } else if (isTRUE(isLikelihoodRatio)) {
-      testObject <- edgeR::glmLRT(glmfit = fit@fit$object, contrast = contrastVector)
-    } else {
-      testObject <- edgeR::glmQLFTest(glmfit = fit@fit$object, contrast = contrastVector)
-    }
+        # sort.by = "none" keeps the rows aligned with the object, the annotation is bound by position later
+        topTable <- edgeR::topTags(object = testObject, n = Inf, sort.by = "none", adjust.method = "none")$table
 
-    # sort.by = "none" keeps the rows aligned with the object, the annotation is bound by position later
-    topTable <- edgeR::topTags(object = testObject, n = Inf, sort.by = "none", adjust.method = "none")$table
+        statColumn <- if ("F" %in% colnames(topTable)) {
+            topTable$F
+        } else if ("LR" %in% colnames(topTable)) {
+            topTable$LR
+        } else {
+            rep(NA_real_, nrow(topTable))
+        }
 
-    statColumn <- if ("F" %in% colnames(topTable)) {
-      topTable$F
-    } else if ("LR" %in% colnames(topTable)) {
-      topTable$LR
-    } else {
-      rep(NA_real_, nrow(topTable))
-    }
+        # The F of the quasi-likelihood test has the coefficients tested on top and the residual plus prior
+        # degrees of freedom below, the likelihood ratio only the former. glmTreat has no statistic to describe.
+        rowNumber <- nrow(topTable)
+        statDistribution <- if ("F" %in% colnames(topTable)) {
+            "f"
+        } else if ("LR" %in% colnames(topTable)) {
+            "chisq"
+        } else {
+            NA_character_
+        }
+        firstDf <- if (is.null(testObject$df.test)) {
+            rep(NA_real_, rowNumber)
+        } else {
+            rep_len(as.numeric(testObject$df.test), rowNumber)
+        }
+        secondDf <- if (identical(statDistribution, "f") & !is.null(testObject$df.total)) {
+            rep_len(as.numeric(testObject$df.total), rowNumber)
+        } else {
+            rep(NA_real_, rowNumber)
+        }
 
-    # The F of the quasi-likelihood test has the coefficients tested on top and the residual plus prior
-    # degrees of freedom below, the likelihood ratio only the former. glmTreat has no statistic to describe.
-    rowNumber <- nrow(topTable)
-    statDistribution <- if ("F" %in% colnames(topTable)) {"f"} else if ("LR" %in% colnames(topTable)) {"chisq"} else {NA_character_}
-    firstDf <- if (is.null(testObject$df.test)) {rep(NA_real_, rowNumber)} else {rep_len(as.numeric(testObject$df.test), rowNumber)}
-    secondDf <- if (identical(statDistribution, "f") & !is.null(testObject$df.total)) {rep_len(as.numeric(testObject$df.total), rowNumber)} else {rep(NA_real_, rowNumber)}
-
-    return(data.frame(log2FC = topTable$logFC,
-                      average.signal = topTable$logCPM,
-                      stat = statColumn,
-                      stat.distribution = rep(statDistribution, rowNumber),
-                      df1 = firstDf,
-                      df2 = secondDf,
-                      p.value = topTable$PValue,
-                      stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(data.frame(
+            log2FC = topTable$logFC,
+            average.signal = topTable$logCPM,
+            stat = statColumn,
+            stat.distribution = rep(statDistribution, rowNumber),
+            df1 = firstDf,
+            df2 = secondDf,
+            p.value = topTable$PValue,
+            stringsAsFactors = FALSE
+        ))
+    } # END function
 
 
 #' @title .testVoom
@@ -681,36 +772,39 @@ testRegions <-
 #' @keywords internal
 
 .testVoom <-
-  function(fit,
-           contrastVector,
-           lfcThreshold = 0,
-           trend = FALSE) {
+    function(fit,
+             contrastVector,
+             lfcThreshold = 0,
+             trend = FALSE) {
+        contrastFit <- limma::contrasts.fit(fit = fitComponents(fit)$object, contrasts = contrastVector)
 
-    contrastFit <- limma::contrasts.fit(fit = fit@fit$object, contrasts = contrastVector)
+        # voom carries its mean-variance relationship in the weights, limma-trend carries it here instead
+        if (lfcThreshold > 0) {
+            contrastFit <- limma::treat(fit = contrastFit, lfc = lfcThreshold, robust = isTRUE(fitComponents(fit)$robust), trend = trend)
+            topTable <- limma::topTreat(fit = contrastFit, number = Inf, sort.by = "none", adjust.method = "none")
+        } else {
+            contrastFit <- limma::eBayes(fit = contrastFit, robust = isTRUE(fitComponents(fit)$robust), trend = trend)
+            topTable <- limma::topTable(fit = contrastFit, number = Inf, sort.by = "none", adjust.method = "none")
+        }
 
-    # voom carries its mean-variance relationship in the weights, limma-trend carries it here instead
-    if (lfcThreshold > 0) {
-      contrastFit <- limma::treat(fit = contrastFit, lfc = lfcThreshold, robust = isTRUE(fit@fit$robust), trend = trend)
-      topTable <- limma::topTreat(fit = contrastFit, number = Inf, sort.by = "none", adjust.method = "none")
-    } else {
-      contrastFit <- limma::eBayes(fit = contrastFit, robust = isTRUE(fit@fit$robust), trend = trend)
-      topTable <- limma::topTable(fit = contrastFit, number = Inf, sort.by = "none", adjust.method = "none")
-    }
+        # The moderated t follows a t with the residual and the prior degrees of freedom together, TREAT does not
+        rowNumber <- nrow(topTable)
 
-    # The moderated t follows a t with the residual and the prior degrees of freedom together, TREAT does not
-    rowNumber <- nrow(topTable)
-
-    return(data.frame(log2FC = topTable$logFC,
-                      average.signal = topTable$AveExpr,
-                      stat = topTable$t,
-                      stat.distribution = rep(if (lfcThreshold > 0) {NA_character_} else {"t"}, rowNumber),
-                      df1 = rep_len(as.numeric(contrastFit$df.total), rowNumber),
-                      df2 = rep(NA_real_, rowNumber),
-                      p.value = topTable$P.Value,
-                      stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(data.frame(
+            log2FC = topTable$logFC,
+            average.signal = topTable$AveExpr,
+            stat = topTable$t,
+            stat.distribution = rep(if (lfcThreshold > 0) {
+                NA_character_
+            } else {
+                "t"
+            }, rowNumber),
+            df1 = rep_len(as.numeric(contrastFit$df.total), rowNumber),
+            df2 = rep(NA_real_, rowNumber),
+            p.value = topTable$P.Value,
+            stringsAsFactors = FALSE
+        ))
+    } # END function
 
 
 #' @title .testDream
@@ -729,64 +823,80 @@ testRegions <-
 #' @keywords internal
 
 .testDream <-
-  function(fit,
-           contrastObject,
-           lfcThreshold = 0,
-           verbose = TRUE) {
+    function(fit,
+             contrastObject,
+             lfcThreshold = 0,
+             verbose = TRUE) {
+        if (lfcThreshold > 0) {
+            stop("The 'lfcThreshold' parameter is not available for the 'dream' engine, filter on 'log2FC' instead.", call. = FALSE)
+        }
 
-    if (lfcThreshold > 0) {
-      stop("The 'lfcThreshold' parameter is not available for the 'dream' engine, filter on 'log2FC' instead.", call. = FALSE)
-    }
+        contrastVector <- contrastObject$vector
+        isSingleCoefficient <- sum(contrastVector != 0) == 1 & all(contrastVector %in% c(0, 1))
 
-    contrastVector <- contrastObject$vector
-    isSingleCoefficient <- sum(contrastVector != 0) == 1 & all(contrastVector %in% c(0, 1))
+        if (isSingleCoefficient) {
+            mixedFit <- fitComponents(fit)$object
+            coefficientName <- names(contrastVector)[contrastVector == 1]
+        } else {
+            # dream needs the contrast before fitting, so an arbitrary one costs a second pass over the rows
+            if (isTRUE(verbose)) {
+                message("The contrast is not a single coefficient, the mixed model is being fitted again.")
+            }
 
-    if (isSingleCoefficient) {
-      mixedFit <- fit@fit$object
-      coefficientName <- names(contrastVector)[contrastVector == 1]
+            contrastMatrix <- variancePartition::makeContrastsDream(
+                formula = fitComponents(fit)$formula,
+                data = fitComponents(fit)$data,
+                contrasts = stats::setNames(contrastObject$label, "contrast")
+            )
 
-    } else {
-      # dream needs the contrast before fitting, so an arbitrary one costs a second pass over the rows
-      if (isTRUE(verbose)) {
-        message("The contrast is not a single coefficient, the mixed model is being fitted again.")
-      }
+            mixedFit <- variancePartition::dream(
+                exprObj = fitComponents(fit)$voom,
+                formula = fitComponents(fit)$formula,
+                data = fitComponents(fit)$data,
+                L = contrastMatrix,
+                BPPARAM = fitComponents(fit)$BPPARAM,
+                quiet = TRUE
+            )
+            mixedFit <- variancePartition::eBayes(mixedFit)
+            coefficientName <- "contrast"
+        }
 
-      contrastMatrix <- variancePartition::makeContrastsDream(formula = fit@fit$formula,
-                                                              data = fit@fit$data,
-                                                              contrasts = stats::setNames(contrastObject$label, "contrast"))
+        topTable <- variancePartition::topTable(
+            fit = mixedFit, coef = coefficientName,
+            number = Inf, sort.by = "none", adjust.method = "none"
+        )
 
-      mixedFit <- variancePartition::dream(exprObj = fit@fit$voom,
-                                           formula = fit@fit$formula,
-                                           data = fit@fit$data,
-                                           L = contrastMatrix,
-                                           BPPARAM = fit@fit$BPPARAM,
-                                           quiet = TRUE)
-      mixedFit <- variancePartition::eBayes(mixedFit)
-      coefficientName <- "contrast"
-    }
+        # dream gives every region its own Satterthwaite degrees of freedom, one column per coefficient
+        totalDf <- if (!is.null(mixedFit$df.total)) {
+            mixedFit$df.total
+        } else {
+            mixedFit$df.residual
+        }
+        if (is.matrix(totalDf)) {
+            totalDf <- totalDf[, if (coefficientName %in% colnames(totalDf)) {
+                coefficientName
+            } else {
+                1
+            }]
+        }
 
-    topTable <- variancePartition::topTable(fit = mixedFit, coef = coefficientName,
-                                            number = Inf, sort.by = "none", adjust.method = "none")
+        rowNumber <- nrow(topTable)
 
-    # dream gives every region its own Satterthwaite degrees of freedom, one column per coefficient
-    totalDf <- if (!is.null(mixedFit$df.total)) {mixedFit$df.total} else {mixedFit$df.residual}
-    if (is.matrix(totalDf)) {
-      totalDf <- totalDf[, if (coefficientName %in% colnames(totalDf)) {coefficientName} else {1}]
-    }
-
-    rowNumber <- nrow(topTable)
-
-    return(data.frame(log2FC = topTable$logFC,
-                      average.signal = topTable$AveExpr,
-                      stat = topTable$t,
-                      stat.distribution = rep("t", rowNumber),
-                      df1 = if (is.null(totalDf)) {rep(NA_real_, rowNumber)} else {rep_len(as.numeric(totalDf), rowNumber)},
-                      df2 = rep(NA_real_, rowNumber),
-                      p.value = topTable$P.Value,
-                      stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(data.frame(
+            log2FC = topTable$logFC,
+            average.signal = topTable$AveExpr,
+            stat = topTable$t,
+            stat.distribution = rep("t", rowNumber),
+            df1 = if (is.null(totalDf)) {
+                rep(NA_real_, rowNumber)
+            } else {
+                rep_len(as.numeric(totalDf), rowNumber)
+            },
+            df2 = rep(NA_real_, rowNumber),
+            p.value = topTable$P.Value,
+            stringsAsFactors = FALSE
+        ))
+    } # END function
 
 
 #' @title .testDESeq2
@@ -804,32 +914,37 @@ testRegions <-
 #' @keywords internal
 
 .testDESeq2 <-
-  function(fit,
-           contrastVector,
-           lfcThreshold = 0) {
+    function(fit,
+             contrastVector,
+             lfcThreshold = 0) {
+        # independentFiltering removes rows from the correction, which would break the alignment with the region annotation
+        resultTable <- DESeq2::results(
+            object = fitComponents(fit)$object,
+            contrast = as.numeric(contrastVector),
+            lfcThreshold = lfcThreshold,
+            independentFiltering = FALSE,
+            cooksCutoff = FALSE,
+            pAdjustMethod = "none"
+        )
 
-    # independentFiltering removes rows from the correction, which would break the alignment with the region annotation
-    resultTable <- DESeq2::results(object = fit@fit$object,
-                                   contrast = as.numeric(contrastVector),
-                                   lfcThreshold = lfcThreshold,
-                                   independentFiltering = FALSE,
-                                   cooksCutoff = FALSE,
-                                   pAdjustMethod = "none")
+        # The Wald statistic is a standard normal under the null, which has no degrees of freedom
+        rowNumber <- nrow(resultTable)
 
-    # The Wald statistic is a standard normal under the null, which has no degrees of freedom
-    rowNumber <- nrow(resultTable)
-
-    return(data.frame(log2FC = resultTable$log2FoldChange,
-                      average.signal = log2(resultTable$baseMean + 1),
-                      stat = resultTable$stat,
-                      stat.distribution = rep(if (lfcThreshold > 0) {NA_character_} else {"norm"}, rowNumber),
-                      df1 = rep(NA_real_, rowNumber),
-                      df2 = rep(NA_real_, rowNumber),
-                      p.value = resultTable$pvalue,
-                      stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(data.frame(
+            log2FC = resultTable$log2FoldChange,
+            average.signal = log2(resultTable$baseMean + 1),
+            stat = resultTable$stat,
+            stat.distribution = rep(if (lfcThreshold > 0) {
+                NA_character_
+            } else {
+                "norm"
+            }, rowNumber),
+            df1 = rep(NA_real_, rowNumber),
+            df2 = rep(NA_real_, rowNumber),
+            p.value = resultTable$pvalue,
+            stringsAsFactors = FALSE
+        ))
+    } # END function
 
 
 #' @title .combineTiles
@@ -859,97 +974,106 @@ testRegions <-
 #' @keywords internal
 
 .combineTiles <-
-  function(tileTable,
-           tileRanges,
-           extraColumns = character(0),
-           method = "simes",
-           directionFDR = 0.05,
-           adjustMethod = "BH",
-           verbose = TRUE) {
+    function(tileTable,
+             tileRanges,
+             extraColumns = character(0),
+             method = "simes",
+             directionFDR = 0.05,
+             adjustMethod = "BH",
+             verbose = TRUE) {
+        # combineTests reads the grouping as a factor, its level order is what the output rows follow
+        tileGroups <- factor(tileTable$region.key, levels = unique(tileTable$region.key))
 
-    # combineTests reads the grouping as a factor, its level order is what the output rows follow
-    tileGroups <- factor(tileTable$region.key, levels = unique(tileTable$region.key))
+        tileStatistics <- data.frame(
+            logFC = tileTable$log2FC,
+            PValue = tileTable$p.value,
+            stringsAsFactors = FALSE
+        )
 
-    tileStatistics <- data.frame(logFC = tileTable$log2FC,
-                                 PValue = tileTable$p.value,
-                                 stringsAsFactors = FALSE)
+        # csaw has one function per procedure rather than a method argument, and both return the same
+        # columns, so everything below reads them the same way whichever was used
+        combinedTable <-
+            if (method == "holm-min") {
+                csaw::minimalTests(
+                    ids = tileGroups,
+                    tab = tileStatistics,
+                    pval.col = "PValue",
+                    fc.col = "logFC",
+                    fc.threshold = directionFDR
+                )
+            } else {
+                csaw::combineTests(
+                    ids = tileGroups,
+                    tab = tileStatistics,
+                    pval.col = "PValue",
+                    fc.col = "logFC",
+                    fc.threshold = directionFDR
+                )
+            }
 
-    # csaw has one function per procedure rather than a method argument, and both return the same
-    # columns, so everything below reads them the same way whichever was used
-    combinedTable <-
-      if (method == "holm-min") {
-        csaw::minimalTests(ids = tileGroups,
-                           tab = tileStatistics,
-                           pval.col = "PValue",
-                           fc.col = "logFC",
-                           fc.threshold = directionFDR)
-      } else {
-        csaw::combineTests(ids = tileGroups,
-                           tab = tileStatistics,
-                           pval.col = "PValue",
-                           fc.col = "logFC",
-                           fc.threshold = directionFDR)
-      }
+        combinedTable <- as.data.frame(combinedTable)
+        regionKeys <- rownames(combinedTable)
 
-    combinedTable <- as.data.frame(combinedTable)
-    regionKeys <- rownames(combinedTable)
+        #-------------------------------#
+        # Region span from the tiles    #
+        #-------------------------------#
+        rangeList <- GenomicRanges::split(x = tileRanges, f = tileGroups)
+        regionRanges <- unlist(range(rangeList), use.names = FALSE)
+        regionRanges <- regionRanges[match(regionKeys, names(rangeList))]
+        S4Vectors::mcols(regionRanges) <- NULL
 
-    #-------------------------------#
-    # Region span from the tiles    #
-    #-------------------------------#
-    rangeList <- GenomicRanges::split(x = tileRanges, f = tileGroups)
-    regionRanges <- unlist(range(rangeList), use.names = FALSE)
-    regionRanges <- regionRanges[match(regionKeys, names(rangeList))]
-    S4Vectors::mcols(regionRanges) <- NULL
+        #-------------------------------#
+        # Representative tile           #
+        #-------------------------------#
+        # The p-value comes from the best tile, so the fold change reported next to it has to come from the same tile
+        representativeIndex <- combinedTable$rep.test
+        keySplit <- strsplit(regionKeys, split = "|", fixed = TRUE)
 
-    #-------------------------------#
-    # Representative tile           #
-    #-------------------------------#
-    # The p-value comes from the best tile, so the fold change reported next to it has to come from the same tile
-    representativeIndex <- combinedTable$rep.test
-    keySplit <- strsplit(regionKeys, split = "|", fixed = TRUE)
+        # The whole region, every tile weighted by its width, so a narrow trailing tile does not count as a full one
+        tileWidths <- as.numeric(BiocGenerics::width(tileRanges))
+        weightedSum <- rowsum(x = tileTable$log2FC * tileWidths, group = as.character(tileGroups))
+        widthSum <- rowsum(x = tileWidths, group = as.character(tileGroups))
+        meanTileFC <- (weightedSum[, 1] / widthSum[, 1])[regionKeys]
 
-    # The whole region, every tile weighted by its width, so a narrow trailing tile does not count as a full one
-    tileWidths <- as.numeric(BiocGenerics::width(tileRanges))
-    weightedSum <- rowsum(x = tileTable$log2FC * tileWidths, group = as.character(tileGroups))
-    widthSum <- rowsum(x = tileWidths, group = as.character(tileGroups))
-    meanTileFC <- (weightedSum[, 1] / widthSum[, 1])[regionKeys]
+        resultTable <- data.frame(
+            region.set = vapply(keySplit, function(x) {
+                x[1]
+            }, character(1)),
+            region.id = vapply(keySplit, function(x) {
+                paste(x[-1], collapse = "|")
+            }, character(1)),
+            region.key = regionKeys,
+            seqnames = as.character(GenomeInfoDb::seqnames(regionRanges)),
+            start = BiocGenerics::start(regionRanges),
+            end = BiocGenerics::end(regionRanges),
+            width = BiocGenerics::width(regionRanges),
+            log2FC = tileTable$log2FC[representativeIndex],
+            average.signal = tileTable$average.signal[representativeIndex],
+            stat = tileTable$stat[representativeIndex],
+            p.value = combinedTable$PValue,
+            n.tiles = combinedTable$num.tests,
+            n.tiles.up = combinedTable$num.up.logFC,
+            n.tiles.down = combinedTable$num.down.logFC,
+            direction = combinedTable$direction,
+            rep.tile.start = BiocGenerics::start(tileRanges)[representativeIndex],
+            rep.tile.end = BiocGenerics::end(tileRanges)[representativeIndex],
+            mean.tile.log2FC = as.numeric(meanTileFC),
+            stringsAsFactors = FALSE
+        )
 
-    resultTable <- data.frame(region.set = vapply(keySplit, function(x) {x[1]}, character(1)),
-                              region.id = vapply(keySplit, function(x) {paste(x[-1], collapse = "|")}, character(1)),
-                              region.key = regionKeys,
-                              seqnames = as.character(GenomeInfoDb::seqnames(regionRanges)),
-                              start = BiocGenerics::start(regionRanges),
-                              end = BiocGenerics::end(regionRanges),
-                              width = BiocGenerics::width(regionRanges),
-                              log2FC = tileTable$log2FC[representativeIndex],
-                              average.signal = tileTable$average.signal[representativeIndex],
-                              stat = tileTable$stat[representativeIndex],
-                              p.value = combinedTable$PValue,
-                              n.tiles = combinedTable$num.tests,
-                              n.tiles.up = combinedTable$num.up.logFC,
-                              n.tiles.down = combinedTable$num.down.logFC,
-                              direction = combinedTable$direction,
-                              rep.tile.start = BiocGenerics::start(tileRanges)[representativeIndex],
-                              rep.tile.end = BiocGenerics::end(tileRanges)[representativeIndex],
-                              mean.tile.log2FC = as.numeric(meanTileFC),
-                              stringsAsFactors = FALSE)
+        # The statistics come from the representative tile, so its annotation is the one that describes the row
+        if (length(extraColumns) > 0) {
+            resultTable <- cbind(resultTable, tileTable[representativeIndex, extraColumns, drop = FALSE])
+        }
 
-    # The statistics come from the representative tile, so its annotation is the one that describes the row
-    if (length(extraColumns) > 0) {
-      resultTable <- cbind(resultTable, tileTable[representativeIndex, extraColumns, drop = FALSE])
-    }
+        resultTable <- dplyr::mutate(resultTable, FDR = stats::p.adjust(.data$p.value, method = adjustMethod))
 
-    resultTable <- dplyr::mutate(resultTable, FDR = stats::p.adjust(.data$p.value, method = adjustMethod))
+        if (isTRUE(verbose)) {
+            message(nrow(tileTable), " tiles combined into ", nrow(resultTable), " regions by ", method, ".")
+        }
 
-    if (isTRUE(verbose)) {
-      message(nrow(tileTable), " tiles combined into ", nrow(resultTable), " regions by ", method, ".")
-    }
-
-    return(list(results = resultTable, regions = regionRanges))
-  } # END function
-
-
+        return(list(results = resultTable, regions = regionRanges))
+    } # END function
 
 
 #' @title .resultColumnNames
@@ -963,14 +1087,13 @@ testRegions <-
 #' @keywords internal
 
 .resultColumnNames <-
-  function() {
-
-    return(c("log2FC", "average.signal", "stat", "stat.distribution", "df1", "df2", "p.value", "FDR", "diff.status",
-             "n.tiles", "n.tiles.up", "n.tiles.down", "direction",
-             "rep.tile.start", "rep.tile.end", "mean.tile.log2FC"))
-  } # END function
-
-
+    function() {
+        return(c(
+            "log2FC", "average.signal", "stat", "stat.distribution", "df1", "df2", "p.value", "FDR", "diff.status",
+            "n.tiles", "n.tiles.up", "n.tiles.down", "direction",
+            "rep.tile.start", "rep.tile.end", "mean.tile.log2FC"
+        ))
+    } # END function
 
 
 #' @title .groupAverageSignal
@@ -990,46 +1113,50 @@ testRegions <-
 #' @keywords internal
 
 .groupAverageSignal <-
-  function(fit,
-           column) {
+    function(fit,
+             column) {
+        rowNumber <- nrow(fitCounts(fit))
 
-    rowNumber <- nrow(fit@counts)
+        if (is.null(column)) {
+            return(data.frame(row.names = seq_len(rowNumber))[, 0, drop = FALSE])
+        }
 
-    if (is.null(column)) {
-      return(data.frame(row.names = seq_len(rowNumber))[, 0, drop = FALSE])
-    }
+        sampleTable <- as.data.frame(SummarizedExperiment::colData(fitCounts(fit)), optional = TRUE)
 
-    sampleTable <- as.data.frame(SummarizedExperiment::colData(fit@counts), optional = TRUE)
+        if (!is.character(column) | length(column) != 1 || !(column %in% colnames(sampleTable))) {
+            stop("The 'signalBy' parameter must be the name of a column of the colData, or FALSE.", call. = FALSE)
+        }
 
-    if (!is.character(column) | length(column) != 1 || !(column %in% colnames(sampleTable))) {
-      stop("The 'signalBy' parameter must be the name of a column of the colData, or FALSE.", call. = FALSE)
-    }
+        columnValues <- sampleTable[[column]]
+        columnLevels <- if (is.factor(columnValues)) {
+            levels(droplevels(columnValues))
+        } else {
+            unique(as.character(columnValues[!is.na(columnValues)]))
+        }
+        columnValues <- as.character(columnValues)
 
-    columnValues <- sampleTable[[column]]
-    columnLevels <- if (is.factor(columnValues)) {levels(droplevels(columnValues))} else {unique(as.character(columnValues[!is.na(columnValues)]))}
-    columnValues <- as.character(columnValues)
+        # The same quantity as average.signal, computed on a subset of the samples
+        signalList <-
+            lapply(
+                columnLevels,
+                function(level) {
+                    sampleIndex <- which(columnValues == level)
 
-    # The same quantity as average.signal, computed on a subset of the samples
-    signalList <-
-      lapply(columnLevels,
-             function(level) {
-               sampleIndex <- which(columnValues == level)
+                    switch(fitEngine(fit),
+                        "edgeR" = as.numeric(edgeR::aveLogCPM(fitComponents(fit)$dge[, sampleIndex])),
+                        "voom" = ,
+                        "limma" = ,
+                        "dream" = as.numeric(rowMeans(fitComponents(fit)$voom$E[, sampleIndex, drop = FALSE], na.rm = TRUE)),
+                        "deseq2" = as.numeric(log2(rowMeans(DESeq2::counts(fitComponents(fit)$object, normalized = TRUE)[, sampleIndex, drop = FALSE]) + 1))
+                    )
+                }
+            )
 
-               switch(fit@engine,
-                      "edgeR" = as.numeric(edgeR::aveLogCPM(fit@fit$dge[, sampleIndex])),
-                      "voom" = ,
-                      "limma" = ,
-                      "dream" = as.numeric(rowMeans(fit@fit$voom$E[, sampleIndex, drop = FALSE], na.rm = TRUE)),
-                      "deseq2" = as.numeric(log2(rowMeans(DESeq2::counts(fit@fit$object, normalized = TRUE)[, sampleIndex, drop = FALSE]) + 1)))
-             })
+        # The whole name is made syntactic rather than the level, so that a level such as 4h does not become X4h
+        signalTable <- as.data.frame(signalList, col.names = make.names(paste0("average.signal.", columnLevels)), optional = TRUE)
 
-    # The whole name is made syntactic rather than the level, so that a level such as 4h does not become X4h
-    signalTable <- as.data.frame(signalList, col.names = make.names(paste0("average.signal.", columnLevels)), optional = TRUE)
-
-    return(signalTable)
-  } # END function
-
-
+        return(signalTable)
+    } # END function
 
 
 #' @title .extraRowColumns
@@ -1048,68 +1175,73 @@ testRegions <-
 #' @keywords internal
 
 .extraRowColumns <-
-  function(rowTable,
-           extraColumns = TRUE,
-           reserved = character(0),
-           verbose = TRUE) {
+    function(rowTable,
+             extraColumns = TRUE,
+             reserved = character(0),
+             verbose = TRUE) {
+        emptyTable <- data.frame(row.names = seq_len(nrow(rowTable)))
 
-    emptyTable <- data.frame(row.names = seq_len(nrow(rowTable)))
+        if (isFALSE(extraColumns)) {
+            return(emptyTable)
+        }
 
-    if (isFALSE(extraColumns)) {
-      return(emptyTable)
-    }
+        #-------------------------------#
+        # Which columns                 #
+        #-------------------------------#
+        # These three are written by the counting and are already in the result under their own names
+        candidateColumns <- setdiff(colnames(rowTable), c("region.set", "region.id", "tile.id"))
 
-    #-------------------------------#
-    # Which columns                 #
-    #-------------------------------#
-    # These three are written by the counting and are already in the result under their own names
-    candidateColumns <- setdiff(colnames(rowTable), c("region.set", "region.id", "tile.id"))
+        if (is.character(extraColumns)) {
+            absentColumns <- setdiff(extraColumns, colnames(rowTable))
+            if (length(absentColumns) > 0) {
+                stop("The following columns are absent from the region annotation: ",
+                    paste(absentColumns, collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+            candidateColumns <- intersect(extraColumns, candidateColumns)
+        }
 
-    if (is.character(extraColumns)) {
-      absentColumns <- setdiff(extraColumns, colnames(rowTable))
-      if (length(absentColumns) > 0) {
-        stop("The following columns are absent from the region annotation: ",
-             paste(absentColumns, collapse = ", "), ".", call. = FALSE)
-      }
-      candidateColumns <- intersect(extraColumns, candidateColumns)
-    }
+        if (length(candidateColumns) == 0) {
+            return(emptyTable)
+        }
 
-    if (length(candidateColumns) == 0) {
-      return(emptyTable)
-    }
+        #-------------------------------#
+        # What can be bound             #
+        #-------------------------------#
+        # A list column has no place in a flat table and would break the binding rather than the row
+        isAtomic <- vapply(rowTable[candidateColumns], is.atomic, logical(1))
 
-    #-------------------------------#
-    # What can be bound             #
-    #-------------------------------#
-    # A list column has no place in a flat table and would break the binding rather than the row
-    isAtomic <- vapply(rowTable[candidateColumns], is.atomic, logical(1))
+        if (any(!isAtomic) & isTRUE(verbose)) {
+            message(
+                "The following region columns are not atomic and have been left out: ",
+                paste(candidateColumns[!isAtomic], collapse = ", "), "."
+            )
+        }
 
-    if (any(!isAtomic) & isTRUE(verbose)) {
-      message("The following region columns are not atomic and have been left out: ",
-              paste(candidateColumns[!isAtomic], collapse = ", "), ".")
-    }
+        candidateColumns <- candidateColumns[isAtomic]
 
-    candidateColumns <- candidateColumns[isAtomic]
+        if (length(candidateColumns) == 0) {
+            return(emptyTable)
+        }
 
-    if (length(candidateColumns) == 0) {
-      return(emptyTable)
-    }
+        extraTable <- as.data.frame(rowTable[, candidateColumns, drop = FALSE], stringsAsFactors = FALSE)
 
-    extraTable <- as.data.frame(rowTable[, candidateColumns, drop = FALSE], stringsAsFactors = FALSE)
+        #-------------------------------#
+        # Names already spoken for      #
+        #-------------------------------#
+        collidingColumns <- candidateColumns %in% reserved
 
-    #-------------------------------#
-    # Names already spoken for      #
-    #-------------------------------#
-    collidingColumns <- candidateColumns %in% reserved
+        if (any(collidingColumns)) {
+            colnames(extraTable)[collidingColumns] <- paste0(candidateColumns[collidingColumns], ".region")
 
-    if (any(collidingColumns)) {
-      colnames(extraTable)[collidingColumns] <- paste0(candidateColumns[collidingColumns], ".region")
+            if (isTRUE(verbose)) {
+                message(
+                    "The following region columns share a name with another column of the table and carry the suffix '.region': ",
+                    paste(candidateColumns[collidingColumns], collapse = ", "), "."
+                )
+            }
+        }
 
-      if (isTRUE(verbose)) {
-        message("The following region columns share a name with another column of the table and carry the suffix '.region': ",
-                paste(candidateColumns[collidingColumns], collapse = ", "), ".")
-      }
-    }
-
-    return(extraTable)
-  } # END function
+        return(extraTable)
+    } # END function

@@ -16,7 +16,7 @@ countBackground(
   maxFragmentLength = NULL,
   minMapq = NULL,
   removeDuplicates = NULL,
-  nThreads = 1,
+  BPPARAM = NULL,
   progressBar = interactive(),
   verbose = TRUE
 )
@@ -44,9 +44,9 @@ countBackground(
 
 \item{removeDuplicates}{Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.}
 
-\item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are cut into pieces of at most 50 Mb, shared among the workers. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
-\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the workers hand them back, and it is drawn only when \code{verbose = TRUE}. A \code{BPPARAM} given as a \code{BiocParallelParam} object keeps its own \code{progressbar} setting. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
@@ -77,6 +77,9 @@ arCounts <- countBackground(arCounts, binSize = 10000, verbose = FALSE)
 
 dim(S4Vectors::metadata(arCounts)$background)
 
+}
+\references{
+Lun A.T.L., Smyth G.K. (2016). csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows. \emph{Nucleic Acids Research} 44(5):e45.
 }
 \seealso{
 \code{\link{countReads}}

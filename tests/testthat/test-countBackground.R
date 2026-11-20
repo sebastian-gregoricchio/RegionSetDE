@@ -7,154 +7,170 @@ backgroundBinWidth <- 100L
 
 
 test_that("countBackground stores the bins in the metadata", {
+    counts <- toyCounts()
+    counts <- countBackground(counts, binSize = backgroundBinWidth, verbose = FALSE)
 
-  counts <- toyCounts()
-  counts <- countBackground(counts, binSize = backgroundBinWidth, verbose = FALSE)
+    backgroundBins <- S4Vectors::metadata(counts)$background
 
-  backgroundBins <- S4Vectors::metadata(counts)$background
-
-  expect_false(is.null(backgroundBins))
-  expect_gt(nrow(backgroundBins), 0)
-  expect_equal(ncol(backgroundBins), ncol(counts))
-  expect_identical(colnames(backgroundBins), colnames(counts))
+    expect_false(is.null(backgroundBins))
+    expect_gt(nrow(backgroundBins), 0)
+    expect_equal(ncol(backgroundBins), ncol(counts))
+    expect_identical(colnames(backgroundBins), colnames(counts))
 })
 
 
 test_that("countBackground returns the same object rather than a new one", {
+    counts <- toyCounts()
+    withBackground <- countBackground(counts, binSize = backgroundBinWidth, verbose = FALSE)
 
-  counts <- toyCounts()
-  withBackground <- countBackground(counts, binSize = backgroundBinWidth, verbose = FALSE)
+    expect_s4_class(withBackground, "RegionSetDE.counts")
+    expect_equal(nrow(withBackground), nrow(counts))
+    expect_equal(ncol(withBackground), ncol(counts))
 
-  expect_s4_class(withBackground, "RegionSetDE.counts")
-  expect_equal(nrow(withBackground), nrow(counts))
-  expect_equal(ncol(withBackground), ncol(counts))
-
-  # The region counts are untouched by the background step
-  expect_equal(SummarizedExperiment::assay(withBackground, "counts"),
-               SummarizedExperiment::assay(counts, "counts"))
+    # The region counts are untouched by the background step
+    expect_equal(
+        SummarizedExperiment::assay(withBackground, "counts"),
+        SummarizedExperiment::assay(counts, "counts")
+    )
 })
 
 
 test_that("excludeRegions drops the bins overlapping the analysed regions", {
+    counts <- toyCounts()
 
-  counts <- toyCounts()
+    withExclusion <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        excludeRegions = TRUE, verbose = FALSE
+    )
+    withoutExclusion <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        excludeRegions = FALSE, verbose = FALSE
+    )
 
-  withExclusion <- countBackground(counts, binSize = backgroundBinWidth,
-                                   excludeRegions = TRUE, verbose = FALSE)
-  withoutExclusion <- countBackground(counts, binSize = backgroundBinWidth,
-                                      excludeRegions = FALSE, verbose = FALSE)
-
-  expect_lte(nrow(S4Vectors::metadata(withExclusion)$background),
-             nrow(S4Vectors::metadata(withoutExclusion)$background))
+    expect_lte(
+        nrow(S4Vectors::metadata(withExclusion)$background),
+        nrow(S4Vectors::metadata(withoutExclusion)$background)
+    )
 })
 
 
 test_that("a wider bin gives fewer of them", {
+    counts <- toyCounts()
 
-  counts <- toyCounts()
+    narrowBins <- countBackground(counts,
+        binSize = 100L, excludeRegions = FALSE,
+        verbose = FALSE
+    )
+    wideBins <- countBackground(counts,
+        binSize = 400L, excludeRegions = FALSE,
+        verbose = FALSE
+    )
 
-  narrowBins <- countBackground(counts, binSize = 100L, excludeRegions = FALSE,
-                                verbose = FALSE)
-  wideBins <- countBackground(counts, binSize = 400L, excludeRegions = FALSE,
-                              verbose = FALSE)
-
-  expect_gt(nrow(S4Vectors::metadata(narrowBins)$background),
-            nrow(S4Vectors::metadata(wideBins)$background))
+    expect_gt(
+        nrow(S4Vectors::metadata(narrowBins)$background),
+        nrow(S4Vectors::metadata(wideBins)$background)
+    )
 })
 
 
 test_that("minCount removes the empty bins", {
+    counts <- toyCounts()
 
-  counts <- toyCounts()
+    keepingEmpty <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        minCount = 0, excludeRegions = FALSE,
+        verbose = FALSE
+    )
+    droppingEmpty <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        minCount = 5, excludeRegions = FALSE,
+        verbose = FALSE
+    )
 
-  keepingEmpty <- countBackground(counts, binSize = backgroundBinWidth,
-                                  minCount = 0, excludeRegions = FALSE,
-                                  verbose = FALSE)
-  droppingEmpty <- countBackground(counts, binSize = backgroundBinWidth,
-                                   minCount = 5, excludeRegions = FALSE,
-                                   verbose = FALSE)
-
-  expect_gte(nrow(S4Vectors::metadata(keepingEmpty)$background),
-             nrow(S4Vectors::metadata(droppingEmpty)$background))
+    expect_gte(
+        nrow(S4Vectors::metadata(keepingEmpty)$background),
+        nrow(S4Vectors::metadata(droppingEmpty)$background)
+    )
 })
 
 
 test_that("excludeChromosomes leaves a contig out of the bins", {
+    counts <- toyCounts()
 
-  counts <- toyCounts()
+    counts <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        excludeChromosomes = "seq2",
+        excludeRegions = FALSE, verbose = FALSE
+    )
 
-  counts <- countBackground(counts, binSize = backgroundBinWidth,
-                            excludeChromosomes = "seq2",
-                            excludeRegions = FALSE, verbose = FALSE)
+    backgroundBins <- S4Vectors::metadata(counts)$background
 
-  backgroundBins <- S4Vectors::metadata(counts)$background
-
-  expect_gt(nrow(backgroundBins), 0)
-  expect_setequal(unique(as.character(GenomicRanges::seqnames(backgroundBins))), "seq1")
+    expect_gt(nrow(backgroundBins), 0)
+    expect_setequal(unique(as.character(GenomicRanges::seqnames(backgroundBins))), "seq1")
 })
 
 
 test_that("the bins leave out the chromosomes excluded at the counting step", {
+    counts <- toyCounts(excludeChromosomes = "seq2")
+    counts <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        excludeRegions = FALSE, verbose = FALSE
+    )
 
-  counts <- toyCounts(excludeChromosomes = "seq2")
-  counts <- countBackground(counts, binSize = backgroundBinWidth,
-                            excludeRegions = FALSE, verbose = FALSE)
+    backgroundBins <- S4Vectors::metadata(counts)$background
 
-  backgroundBins <- S4Vectors::metadata(counts)$background
-
-  expect_setequal(unique(as.character(GenomicRanges::seqnames(backgroundBins))), "seq1")
+    expect_setequal(unique(as.character(GenomicRanges::seqnames(backgroundBins))), "seq1")
 })
 
 
 test_that("the bins carry counts of the expected shape", {
+    counts <- toyCounts()
+    counts <- countBackground(counts,
+        binSize = backgroundBinWidth,
+        excludeRegions = FALSE, verbose = FALSE
+    )
 
-  counts <- toyCounts()
-  counts <- countBackground(counts, binSize = backgroundBinWidth,
-                            excludeRegions = FALSE, verbose = FALSE)
+    backgroundBins <- S4Vectors::metadata(counts)$background
 
-  backgroundBins <- S4Vectors::metadata(counts)$background
+    # The bins may be a SummarizedExperiment or a rectangular S4 table
+    countMatrix <- if (methods::is(backgroundBins, "SummarizedExperiment")) {
+        SummarizedExperiment::assay(backgroundBins)
+    } else {
+        as.matrix(as.data.frame(backgroundBins))
+    }
 
-  # The bins may be a SummarizedExperiment or a rectangular S4 table
-  countMatrix <- if (methods::is(backgroundBins, "SummarizedExperiment")) {
-    SummarizedExperiment::assay(backgroundBins)
-  } else {
-    as.matrix(as.data.frame(backgroundBins))
-  }
-
-  expect_true(is.numeric(countMatrix))
-  expect_true(all(countMatrix >= 0))
-  expect_equal(ncol(countMatrix), ncol(counts))
+    expect_true(is.numeric(countMatrix))
+    expect_true(all(countMatrix >= 0))
+    expect_equal(ncol(countMatrix), ncol(counts))
 })
 
 
 test_that("bamFiles can be given rather than recovered", {
+    counts <- toyCounts()
 
-  counts <- toyCounts()
+    counts <- countBackground(counts,
+        bamFiles = toyBamFile(),
+        binSize = backgroundBinWidth,
+        excludeRegions = FALSE,
+        verbose = FALSE
+    )
 
-  counts <- countBackground(counts,
-                            bamFiles = toyBamFile(),
-                            binSize = backgroundBinWidth,
-                            excludeRegions = FALSE,
-                            verbose = FALSE)
-
-  expect_gt(nrow(S4Vectors::metadata(counts)$background), 0)
+    expect_gt(nrow(S4Vectors::metadata(counts)$background), 0)
 })
 
 
 test_that("countBackground refuses a file that is not there", {
-
-  expect_error(
-    countBackground(toyCounts(), bamFiles = "there/is/no/such.bam", verbose = FALSE)
-  )
+    expect_error(
+        countBackground(toyCounts(), bamFiles = "there/is/no/such.bam", verbose = FALSE)
+    )
 })
 
 
 test_that("the packaged counts carry bins matching their samples", {
+    counts <- exampleCounts()
+    backgroundBins <- S4Vectors::metadata(counts)$background
 
-  counts <- exampleCounts()
-  backgroundBins <- S4Vectors::metadata(counts)$background
-
-  expect_equal(ncol(backgroundBins), ncol(counts))
-  expect_identical(colnames(backgroundBins), colnames(counts))
-  expect_gt(nrow(backgroundBins), 100)
+    expect_equal(ncol(backgroundBins), ncol(counts))
+    expect_identical(colnames(backgroundBins), colnames(counts))
+    expect_gt(nrow(backgroundBins), 100)
 })

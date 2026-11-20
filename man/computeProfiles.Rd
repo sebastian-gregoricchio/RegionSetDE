@@ -23,7 +23,7 @@ computeProfiles(
   binWidth = 50,
   centre = "summit",
   useOffsets = TRUE,
-  nThreads = 1,
+  BPPARAM = NULL,
   verbose = TRUE
 )
 }
@@ -64,7 +64,7 @@ computeProfiles(
 
 \item{useOffsets}{Logical value to indicate whether the signal read from BAM files must be scaled by the scaling factors of \code{\link{normalizeCounts}}, \code{FALSE} scaling it by the library sizes alone. Ignored for bigWig files, whose signal is taken as it is. Default: \code{TRUE}.}
 
-\item{nThreads}{Number of threads, one file per thread. Default: \code{1}.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. One file goes to each worker. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }

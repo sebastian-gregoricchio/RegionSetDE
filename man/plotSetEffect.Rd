@@ -60,8 +60,10 @@ Both levels of the colour scale are kept in the legend even when only one of the
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-                             verbose = FALSE)
+setResults <- testRegionSets(fit,
+    contrast = c("condition", "SHR", "BN"),
+    verbose = FALSE
+)
 
 # One point per set, with its confidence interval
 plotSetEffect(setResults)

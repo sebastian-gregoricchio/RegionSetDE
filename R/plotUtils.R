@@ -14,17 +14,14 @@
 #' @keywords internal
 
 .thinIndex <-
-  function(n,
-           maxPoints) {
+    function(n,
+             maxPoints) {
+        if (n <= maxPoints) {
+            return(seq_len(n))
+        }
 
-    if (n <= maxPoints) {
-      return(seq_len(n))
-    }
-
-    return(unique(round(seq(from = 1, to = n, length.out = maxPoints))))
-  } # END function
-
-
+        return(unique(round(seq(from = 1, to = n, length.out = maxPoints))))
+    } # END function
 
 
 #' @title .regionSetTheme
@@ -44,24 +41,25 @@
 #' @keywords internal
 
 .regionSetTheme <-
-  function(legendPosition = "right",
-           baseSize = 12) {
-
-    ggplot2::theme_bw(base_size = baseSize) +
-      ggplot2::theme(panel.border = ggplot2::element_blank(),
-                     panel.grid = ggplot2::element_blank(),
-                     axis.line = ggplot2::element_line(colour = "black", linewidth = 0.5),
-                     axis.ticks = ggplot2::element_line(colour = "black", linewidth = 0.5),
-                     axis.text.x = ggplot2::element_text(colour = "black"),
-                     axis.text.y = ggplot2::element_text(colour = "black"),
-                     axis.title.x = ggtext::element_markdown(colour = "black"),
-                     axis.title.y = ggtext::element_markdown(colour = "black"),
-                     plot.title = ggtext::element_markdown(face = "bold", hjust = 0.5),
-                     plot.subtitle = ggtext::element_markdown(hjust = 0.5),
-                     plot.caption = ggplot2::element_text(colour = "gray30"),
-                     strip.background = ggplot2::element_blank(),
-                     strip.text = ggplot2::element_text(face = "bold"),
-                     legend.key = ggplot2::element_blank(),
-                     legend.position = legendPosition,
-                     plot.margin = ggplot2::margin(t = 6, r = 6, b = 6, l = 6))
-  } # END function
+    function(legendPosition = "right",
+             baseSize = 12) {
+        ggplot2::theme_bw(base_size = baseSize) +
+            ggplot2::theme(
+                panel.border = ggplot2::element_blank(),
+                panel.grid = ggplot2::element_blank(),
+                axis.line = ggplot2::element_line(colour = "black", linewidth = 0.5),
+                axis.ticks = ggplot2::element_line(colour = "black", linewidth = 0.5),
+                axis.text.x = ggplot2::element_text(colour = "black"),
+                axis.text.y = ggplot2::element_text(colour = "black"),
+                axis.title.x = ggtext::element_markdown(colour = "black"),
+                axis.title.y = ggtext::element_markdown(colour = "black"),
+                plot.title = ggtext::element_markdown(face = "bold", hjust = 0.5),
+                plot.subtitle = ggtext::element_markdown(hjust = 0.5),
+                plot.caption = ggplot2::element_text(colour = "gray30"),
+                strip.background = ggplot2::element_blank(),
+                strip.text = ggplot2::element_text(face = "bold"),
+                legend.key = ggplot2::element_blank(),
+                legend.position = legendPosition,
+                plot.margin = ggplot2::margin(t = 6, r = 6, b = 6, l = 6)
+            )
+    } # END function

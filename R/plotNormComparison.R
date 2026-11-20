@@ -46,176 +46,207 @@
 #' @export plotNormComparison
 
 plotNormComparison <-
-  function(counts,
-           methods = c("librarySize", "TMM", "RLE", "background"),
-           plotType = "factors",
-           referenceSample = NULL,
-           useBackground = FALSE,
-           useRegionSets = NULL,
-           minCount = 1,
-           priorCount = 1,
-           maxRegions = 20000,
-           pointSize = 3,
-           facetScales = "fixed",
-           title = NULL,
-           returnData = FALSE) {
+    function(counts,
+             methods = c("librarySize", "TMM", "RLE", "background"),
+             plotType = "factors",
+             referenceSample = NULL,
+             useBackground = FALSE,
+             useRegionSets = NULL,
+             minCount = 1,
+             priorCount = 1,
+             maxRegions = 20000,
+             pointSize = 3,
+             facetScales = "fixed",
+             title = NULL,
+             returnData = FALSE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        plotType <- tolower(plotType[1])
+        if (!(plotType %in% c("factors", "ma"))) {
+            stop("The 'plotType' parameter must be either 'factors' or 'ma'.", call. = FALSE)
+        }
 
-    plotType <- tolower(plotType[1])
-    if (!(plotType %in% c("factors", "ma"))) {
-      stop("The 'plotType' parameter must be either 'factors' or 'ma'.", call. = FALSE)
-    }
+        facetScales <- tolower(facetScales[1])
+        if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
+            stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
+        }
 
-    facetScales <- tolower(facetScales[1])
-    if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
-      stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
-    }
+        availableMethods <- c("librarySize", "readsInRegions", "TMM", "TMMwsp", "RLE", "upperQuartile", "background", "greenlist")
+        unknownMethods <- setdiff(methods, availableMethods)
+        if (length(unknownMethods) > 0) {
+            stop("The following methods cannot be compared here: ", paste(unknownMethods, collapse = ", "),
+                ". Only the ones needing no extra input are accepted: ", paste(availableMethods, collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    availableMethods <- c("librarySize", "readsInRegions", "TMM", "TMMwsp", "RLE", "upperQuartile", "background", "greenlist")
-    unknownMethods <- setdiff(methods, availableMethods)
-    if (length(unknownMethods) > 0) {
-      stop("The following methods cannot be compared here: ", paste(unknownMethods, collapse = ", "),
-           ". Only the ones needing no extra input are accepted: ", paste(availableMethods, collapse = ", "), ".", call. = FALSE)
-    }
+        #-----------------------------------#
+        # Collect the factors of each method #
+        #-----------------------------------#
+        factorList <-
+            lapply(
+                methods,
+                function(oneMethod) {
+                    # A method can legitimately fail, background without bins for instance, and that must not stop the comparison
+                    estimated <- tryCatch(
+                        normalizeCounts(
+                            counts = counts,
+                            method = oneMethod,
+                            useRegionSets = useRegionSets,
+                            minCount = minCount,
+                            verbose = FALSE
+                        ),
+                        error = function(e) {
+                            warning("The '", oneMethod, "' method could not be applied: ", conditionMessage(e), call. = FALSE)
+                            return(NULL)
+                        }
+                    )
 
-    #-----------------------------------#
-    # Collect the factors of each method #
-    #-----------------------------------#
-    factorList <-
-      lapply(methods,
-             function(oneMethod) {
-               # A method can legitimately fail, background without bins for instance, and that must not stop the comparison
-               estimated <- tryCatch(normalizeCounts(counts = counts,
-                                                     method = oneMethod,
-                                                     useRegionSets = useRegionSets,
-                                                     minCount = minCount,
-                                                     verbose = FALSE),
-                                     error = function(e) {
-                                       warning("The '", oneMethod, "' method could not be applied: ", conditionMessage(e), call. = FALSE)
-                                       return(NULL)
-                                     })
+                    if (is.null(estimated)) {
+                        return(NULL)
+                    }
 
-               if (is.null(estimated)) {return(NULL)}
+                    return(data.frame(
+                        sample = colnames(counts),
+                        method = oneMethod,
+                        scaling.factor = as.numeric(SummarizedExperiment::colData(estimated)$scaling.factor),
+                        stringsAsFactors = FALSE
+                    ))
+                }
+            )
 
-               return(data.frame(sample = colnames(counts),
-                                 method = oneMethod,
-                                 scaling.factor = as.numeric(SummarizedExperiment::colData(estimated)$scaling.factor),
-                                 stringsAsFactors = FALSE))
-             })
+        # The factors already in the object are the ones the analysis will actually use
+        appliedFactors <- SummarizedExperiment::colData(counts)$scaling.factor
 
-    # The factors already in the object are the ones the analysis will actually use
-    appliedFactors <- SummarizedExperiment::colData(counts)$scaling.factor
+        if (!is.null(appliedFactors) & !all(is.na(appliedFactors))) {
+            appliedMethod <- S4Vectors::metadata(counts)$normalization$method
+            factorList <- c(
+                factorList,
+                list(data.frame(
+                    sample = colnames(counts),
+                    method = paste0("applied (", ifelse(is.null(appliedMethod), "unknown", appliedMethod), ")"),
+                    scaling.factor = as.numeric(appliedFactors),
+                    stringsAsFactors = FALSE
+                ))
+            )
+        }
 
-    if (!is.null(appliedFactors) & !all(is.na(appliedFactors))) {
-      appliedMethod <- S4Vectors::metadata(counts)$normalization$method
-      factorList <- c(factorList,
-                      list(data.frame(sample = colnames(counts),
-                                      method = paste0("applied (", ifelse(is.null(appliedMethod), "unknown", appliedMethod), ")"),
-                                      scaling.factor = as.numeric(appliedFactors),
-                                      stringsAsFactors = FALSE)))
-    }
+        factorTable <- dplyr::bind_rows(factorList)
 
-    factorTable <- dplyr::bind_rows(factorList)
+        if (nrow(factorTable) == 0) {
+            stop("None of the requested methods could be applied to this object.", call. = FALSE)
+        }
 
-    if (nrow(factorTable) == 0) {
-      stop("None of the requested methods could be applied to this object.", call. = FALSE)
-    }
+        factorTable <- dplyr::mutate(factorTable, sample = factor(.data$sample, levels = colnames(counts)))
 
-    factorTable <- dplyr::mutate(factorTable, sample = factor(.data$sample, levels = colnames(counts)))
+        #---------------------------#
+        # One point per sample      #
+        #---------------------------#
+        if (plotType == "factors") {
+            if (isTRUE(returnData)) {
+                return(factorTable)
+            }
 
-    #---------------------------#
-    # One point per sample      #
-    #---------------------------#
-    if (plotType == "factors") {
-      if (isTRUE(returnData)) {return(factorTable)}
+            normalizationPlot <-
+                ggplot2::ggplot(
+                    data = factorTable,
+                    mapping = ggplot2::aes(x = .data$sample, y = .data$scaling.factor, color = .data$method, group = .data$method)
+                ) +
+                ggplot2::geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+                ggplot2::geom_line(alpha = 0.6, show.legend = FALSE) +
+                ggplot2::geom_point(size = pointSize, stroke = NA) +
+                ggplot2::scale_y_continuous(trans = "log2") +
+                ggplot2::labs(
+                    title = ifelse(is.null(title), "Scaling factors across methods", title),
+                    x = NULL,
+                    y = "Scaling factor (divisor, log<sub>2</sub> scale)",
+                    color = "Method"
+                ) +
+                .regionSetTheme(legendPosition = "right") +
+                ggplot2::theme(
+                    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+                    axis.ticks.x = ggplot2::element_blank(),
+                    axis.line = ggplot2::element_blank(),
+                    panel.border = ggplot2::element_rect(fill = NA, color = "black", linewidth = 0.5),
+                    panel.grid.major.x = ggplot2::element_line(colour = "gray", linewidth = 0.2),
+                    panel.grid.minor.y = ggplot2::element_line(colour = "gray", linewidth = 0.2)
+                )
 
-      normalizationPlot <-
-        ggplot2::ggplot(data = factorTable,
-                        mapping = ggplot2::aes(x = .data$sample, y = .data$scaling.factor, color = .data$method, group = .data$method)) +
-        ggplot2::geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
-        ggplot2::geom_line(alpha = 0.6, show.legend = FALSE) +
-        ggplot2::geom_point(size = pointSize, stroke = NA) +
-        ggplot2::scale_y_continuous(trans = "log2") +
-        ggplot2::labs(title = ifelse(is.null(title), "Scaling factors across methods", title),
-                      x = NULL,
-                      y = "Scaling factor (divisor, log<sub>2</sub> scale)",
-                      color = "Method") +
-        .regionSetTheme(legendPosition = "right") +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-                       axis.ticks.x = ggplot2::element_blank(),
-                       axis.line = ggplot2::element_blank(),
-                       panel.border = ggplot2::element_rect(fill = NA, color = "black", linewidth = 0.5),
-                       panel.grid.major.x = ggplot2::element_line(colour = "gray", linewidth = 0.2),
-                       panel.grid.minor.y = ggplot2::element_line(colour = "gray", linewidth = 0.2))
+            return(normalizationPlot)
+        }
 
-      return(normalizationPlot)
-    }
+        #---------------------------#
+        # Counts against a reference #
+        #---------------------------#
+        if (isTRUE(useBackground)) {
+            backgroundBins <- S4Vectors::metadata(counts)$background
+            if (is.null(backgroundBins)) {
+                stop("No background bin is stored in the object, run 'countBackground' before using 'useBackground'.", call. = FALSE)
+            }
+            valueMatrix <- SummarizedExperiment::assay(backgroundBins, "counts")
+        } else {
+            valueMatrix <- SummarizedExperiment::assay(counts, "counts")
+        }
 
-    #---------------------------#
-    # Counts against a reference #
-    #---------------------------#
-    if (isTRUE(useBackground)) {
-      backgroundBins <- S4Vectors::metadata(counts)$background
-      if (is.null(backgroundBins)) {
-        stop("No background bin is stored in the object, run 'countBackground' before using 'useBackground'.", call. = FALSE)
-      }
-      valueMatrix <- SummarizedExperiment::assay(backgroundBins, "counts")
-    } else {
-      valueMatrix <- SummarizedExperiment::assay(counts, "counts")
-    }
+        referenceIndex <- .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts))
+        if (is.null(referenceIndex)) {
+            referenceIndex <- which.min(abs(colSums(valueMatrix) - stats::median(colSums(valueMatrix))))[1]
+        }
 
-    referenceIndex <- .resolveSampleIndex(sample = referenceSample, sampleNames = colnames(counts))
-    if (is.null(referenceIndex)) {
-      referenceIndex <- which.min(abs(colSums(valueMatrix) - stats::median(colSums(valueMatrix))))[1]
-    }
+        # Thinning at regular intervals keeps the picture and avoids drawing millions of points
+        rowIndex <- unique(round(seq(from = 1, to = nrow(valueMatrix), length.out = min(maxRegions, nrow(valueMatrix)))))
+        logMatrix <- log2(valueMatrix[rowIndex, , drop = FALSE] + priorCount)
 
-    # Thinning at regular intervals keeps the picture and avoids drawing millions of points
-    rowIndex <- unique(round(seq(from = 1, to = nrow(valueMatrix), length.out = min(maxRegions, nrow(valueMatrix)))))
-    logMatrix <- log2(valueMatrix[rowIndex, , drop = FALSE] + priorCount)
+        maTable <-
+            dplyr::bind_rows(lapply(
+                setdiff(seq_len(ncol(logMatrix)), referenceIndex),
+                function(sampleIndex) {
+                    data.frame(
+                        sample = colnames(counts)[sampleIndex],
+                        A = (logMatrix[, sampleIndex] + logMatrix[, referenceIndex]) / 2,
+                        M = logMatrix[, sampleIndex] - logMatrix[, referenceIndex],
+                        stringsAsFactors = FALSE
+                    )
+                }
+            ))
 
-    maTable <-
-      dplyr::bind_rows(lapply(setdiff(seq_len(ncol(logMatrix)), referenceIndex),
-                              function(sampleIndex) {
-                                data.frame(sample = colnames(counts)[sampleIndex],
-                                           A = (logMatrix[, sampleIndex] + logMatrix[, referenceIndex]) / 2,
-                                           M = logMatrix[, sampleIndex] - logMatrix[, referenceIndex],
-                                           stringsAsFactors = FALSE)
-                              }))
+        # Regions empty in both samples pile up on the origin and hide the rest of the cloud
+        maTable <- dplyr::filter(maTable, .data$A > log2(priorCount + 1))
+        maTable <- dplyr::mutate(maTable, sample = factor(.data$sample, levels = colnames(counts)))
 
-    # Regions empty in both samples pile up on the origin and hide the rest of the cloud
-    maTable <- dplyr::filter(maTable, .data$A > log2(priorCount + 1))
-    maTable <- dplyr::mutate(maTable, sample = factor(.data$sample, levels = colnames(counts)))
+        referenceFactors <- dplyr::filter(factorTable, .data$sample == colnames(counts)[referenceIndex])
+        referenceFactors <- dplyr::select(referenceFactors, method = "method", reference.factor = "scaling.factor")
 
-    referenceFactors <- dplyr::filter(factorTable, .data$sample == colnames(counts)[referenceIndex])
-    referenceFactors <- dplyr::select(referenceFactors, method = "method", reference.factor = "scaling.factor")
+        lineTable <- dplyr::filter(factorTable, .data$sample != colnames(counts)[referenceIndex])
+        lineTable <- dplyr::left_join(lineTable, referenceFactors, by = "method")
 
-    lineTable <- dplyr::filter(factorTable, .data$sample != colnames(counts)[referenceIndex])
-    lineTable <- dplyr::left_join(lineTable, referenceFactors, by = "method")
+        # The line marks how far the method would move the sample relative to the reference
+        lineTable <- dplyr::mutate(lineTable, shift = log2(.data$scaling.factor / .data$reference.factor))
 
-    # The line marks how far the method would move the sample relative to the reference
-    lineTable <- dplyr::mutate(lineTable, shift = log2(.data$scaling.factor / .data$reference.factor))
+        if (isTRUE(returnData)) {
+            return(list(ma = maTable, lines = lineTable))
+        }
 
-    if (isTRUE(returnData)) {return(list(ma = maTable, lines = lineTable))}
+        maPlot <-
+            ggplot2::ggplot(data = maTable, mapping = ggplot2::aes(x = .data$A, y = .data$M)) +
+            ggplot2::geom_bin2d(bins = 80) +
+            ggplot2::scale_fill_gradient(low = "gray85", high = "gray15", trans = "log10") +
+            ggplot2::geom_hline(yintercept = 0, color = "gray40") +
+            ggplot2::geom_hline(data = lineTable, mapping = ggplot2::aes(yintercept = .data$shift, color = .data$method), linewidth = 0.7) +
+            ggplot2::facet_wrap(facets = ~sample, scales = facetScales) +
+            ggplot2::labs(
+                title = ifelse(is.null(title), paste0("Counts against ", colnames(counts)[referenceIndex]), title),
+                x = "Average log<sub>2</sub> count",
+                y = "log<sub>2</sub> count ratio",
+                color = "Method",
+                fill = "Regions"
+            ) +
+            .regionSetTheme(legendPosition = "right")
 
-    maPlot <-
-      ggplot2::ggplot(data = maTable, mapping = ggplot2::aes(x = .data$A, y = .data$M)) +
-      ggplot2::geom_bin2d(bins = 80) +
-      ggplot2::scale_fill_gradient(low = "gray85", high = "gray15", trans = "log10") +
-      ggplot2::geom_hline(yintercept = 0, color = "gray40") +
-      ggplot2::geom_hline(data = lineTable, mapping = ggplot2::aes(yintercept = .data$shift, color = .data$method), linewidth = 0.7) +
-      ggplot2::facet_wrap(facets = ~ sample, scales = facetScales) +
-      ggplot2::labs(title = ifelse(is.null(title), paste0("Counts against ", colnames(counts)[referenceIndex]), title),
-                    x = "Average log<sub>2</sub> count",
-                    y = "log<sub>2</sub> count ratio",
-                    color = "Method",
-                    fill = "Regions") +
-      .regionSetTheme(legendPosition = "right")
-
-    return(maPlot)
-  } # END function
+        return(maPlot)
+    } # END function

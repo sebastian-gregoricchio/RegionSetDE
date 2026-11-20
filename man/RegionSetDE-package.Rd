@@ -78,17 +78,21 @@ data. \emph{Bioinformatics} 26(1):139-140.
 Law C.W., Chen Y., Shi W., Smyth G.K. (2014). voom: precision weights
 unlock linear model analysis tools for RNA-seq read counts.
 \emph{Genome Biology} 15:R29.
+
+Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold change
+and dispersion for RNA-seq data with DESeq2. \emph{Genome Biology} 15:550.
+
+Ross-Innes C.S., Stark R., Teschendorff A.E., et al. (2012). Differential
+oestrogen receptor binding is associated with clinical outcome in breast
+cancer. \emph{Nature} 481:389-393.
 }
 \seealso{
-Useful links:
-\itemize{
-  \item \url{https://github.com/sebastian-gregoricchio/RegionSetDE/}
-  \item \url{https://sebastian-gregoricchio.github.io/RegionSetDE/}
-  \item Report bugs at \url{https://github.com/sebastian-gregoricchio/RegionSetDE/issues}
-}
-
+The two vignettes walk through the package on an example dataset:
+\code{vignette("RegionSetDE.vignette", package = "RegionSetDE")} starts
+from regions defined by the user, and
+\code{vignette("RegionSetDE.peaks.vignette", package = "RegionSetDE")}
+from the peak calls of every sample.
 }
 \author{
 Sebastian Gregoricchio
 }
-\keyword{internal}

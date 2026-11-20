@@ -20,7 +20,7 @@
 #'
 #' @details Whether a set responds "more than the rest" depends entirely on what the rest is, so the choice is worth making explicitly rather than inheriting it from whatever happened to be loaded. The comparison rows are drawn from the other sets in the object, which asks whether a set responds differently from the others it was loaded alongside. That is usually the interesting claim when the sets were chosen to be compared with each other, and it is the only claim available when the object holds nothing else.
 #'
-#' It is also a claim that changes when the object changes, and that is worth stating in the methods rather than leaving implicit. With two sets loaded, the competitive test compares them to each other and nothing else. With four sets that respond in much the same way, each of them is being asked whether it stands out against three sets behaving like it does, and the honest answer is usually that it does not: four adjusted p-values sitting at the same value near one is what that situation looks like, and it is a property of the comparison rather than a finding about the biology. \code{universeSets} fixes the comparison pool explicitly, which is what to reach for when one of the loaded sets was included for a different reason than the others, or when a large neutral catalogue is available to compare everything against. The sets that ended up forming the pool are recorded in the \code{comparison.sets} slot of the result and printed by its \code{show} method.
+#' It is also a claim that changes when the object changes, and that is worth stating in the methods rather than leaving implicit. With two sets loaded, the competitive test compares them to each other and nothing else. With four sets that respond in much the same way, each of them is being asked whether it stands out against three sets behaving like it does, and the honest answer is usually that it does not: four adjusted p-values sitting at the same value near one is what that situation looks like, and it is a property of the comparison rather than a finding about the biology. \code{universeSets} fixes the comparison pool explicitly, which is what to reach for when one of the loaded sets was included for a different reason than the others, or when a large neutral catalogue is available to compare everything against. The sets that ended up forming the pool are recorded in the \code{comparison.sets} slot (read with \code{\link{comparisonSets}}) of the result and printed by its \code{show} method.
 #'
 #' Matching on width and abundance is what keeps the answer from being about the intervals rather than the biology. A set of 40 kb domains has more reads per region than a set of 400 bp promoter windows, and more reads mean a tighter fold change estimate, so an unmatched competitive test can separate the two sets on precision alone. The rows are binned on the quantiles of each covariate and the comparison is drawn within the bins, at \code{ratio} rows per region of the set. When a stratum runs out of eligible rows the whole stratum is taken and the shortfall shows up in the diagnostics, where the medians of the set and of its comparison should sit close together.
 #'
@@ -50,151 +50,174 @@
 #' @export makeSetUniverse
 
 makeSetUniverse <-
-  function(object,
-           type = "otherSets",
-           match = c("width", "abundance"),
-           ratio = 5,
-           strata = 5,
-           regionSets = NULL,
-           universeSets = NULL,
-           index = NULL,
-           verbose = TRUE) {
+    function(object,
+             type = "otherSets",
+             match = c("width", "abundance"),
+             ratio = 5,
+             strata = 5,
+             regionSets = NULL,
+             universeSets = NULL,
+             index = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (methods::is(object, "RegionSetDE.fit")) {
+            counts <- fitCounts(object)
+        } else if (methods::is(object, "RegionSetDE.counts")) {
+            counts <- object
+        } else {
+            stop("The 'object' parameter must be a RegionSetDE.fit or a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (methods::is(object, "RegionSetDE.fit")) {
-      counts <- object@counts
-    } else if (methods::is(object, "RegionSetDE.counts")) {
-      counts <- object
-    } else {
-      stop("The 'object' parameter must be a RegionSetDE.fit or a RegionSetDE.counts object.", call. = FALSE)
-    }
+        if (!(type %in% c("otherSets", "supplied"))) {
+            stop("The 'type' parameter must be either 'otherSets' or 'supplied'.", call. = FALSE)
+        }
 
-    if (!(type %in% c("otherSets", "supplied"))) {
-      stop("The 'type' parameter must be either 'otherSets' or 'supplied'.", call. = FALSE)
-    }
+        match <- match[!is.na(match)]
+        if (length(match) > 0 & !all(match %in% c("width", "abundance"))) {
+            stop("The 'match' parameter must contain only 'width' and 'abundance'.", call. = FALSE)
+        }
 
-    match <- match[!is.na(match)]
-    if (length(match) > 0 & !all(match %in% c("width", "abundance"))) {
-      stop("The 'match' parameter must contain only 'width' and 'abundance'.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Row level covariates          #
+        #-------------------------------#
+        rowTable <- .universeCovariates(counts = counts)
 
-    #-------------------------------#
-    # Row level covariates          #
-    #-------------------------------#
-    rowTable <- .universeCovariates(counts = counts)
+        setNames <- unique(as.character(rowTable$region.set))
+        if (!is.null(regionSets)) {
+            absentSets <- setdiff(regionSets, setNames)
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            setNames <- regionSets
+        }
 
-    setNames <- unique(as.character(rowTable$region.set))
-    if (!is.null(regionSets)) {
-      absentSets <- setdiff(regionSets, setNames)
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      setNames <- regionSets
-    }
+        if (!is.null(universeSets)) {
+            absentSets <- setdiff(universeSets, unique(as.character(rowTable$region.set)))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+        }
 
-    if (!is.null(universeSets)) {
-      absentSets <- setdiff(universeSets, unique(as.character(rowTable$region.set)))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-    }
+        #-------------------------------#
+        # Supplied comparison rows      #
+        #-------------------------------#
+        if (type == "supplied") {
+            if (is.null(index) | is.null(names(index))) {
+                stop("The 'supplied' type needs a named list in the 'index' parameter.", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # Supplied comparison rows      #
-    #-------------------------------#
-    if (type == "supplied") {
-      if (is.null(index) | is.null(names(index))) {
-        stop("The 'supplied' type needs a named list in the 'index' parameter.", call. = FALSE)
-      }
+            absentSets <- setdiff(setNames, names(index))
+            if (length(absentSets) > 0) {
+                stop("The 'index' list is missing the following sets: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
 
-      absentSets <- setdiff(setNames, names(index))
-      if (length(absentSets) > 0) {
-        stop("The 'index' list is missing the following sets: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
+            universeIndex <- lapply(
+                setNames,
+                function(setName) {
+                    setRows <- rowTable$row.index[rowTable$region.set == setName]
+                    return(sort(unique(c(setRows, as.integer(index[[setName]])))))
+                }
+            )
+            names(universeIndex) <- setNames
 
-      universeIndex <- lapply(setNames,
-                              function(setName) {
-                                setRows <- rowTable$row.index[rowTable$region.set == setName]
-                                return(sort(unique(c(setRows, as.integer(index[[setName]])))))
-                              })
-      names(universeIndex) <- setNames
+            return(.newObject(
+                Class = "RegionSetDE.universe",
+                index = universeIndex,
+                type = type,
+                matching = character(0),
+                comparison.sets = "supplied",
+                diagnostics = .universeDiagnostics(rowTable = rowTable, universeIndex = universeIndex, setNames = setNames),
+                n.rows = nrow(counts)
+            ))
+        }
 
-      return(new(Class = "RegionSetDE.universe",
-                 index = universeIndex,
-                 type = type,
-                 matching = character(0),
-                 comparison.sets = "supplied",
-                 diagnostics = .universeDiagnostics(rowTable = rowTable, universeIndex = universeIndex, setNames = setNames),
-                 n.rows = nrow(counts)))
-    }
+        #-------------------------------#
+        # Other sets, matched or not    #
+        #-------------------------------#
+        if (length(unique(rowTable$region.set)) < 2) {
+            stop("The object holds a single region set ('", unique(rowTable$region.set)[1],
+                "'), and a competitive test needs something to compare it to.",
+                call. = FALSE
+            )
+        }
 
-    #-------------------------------#
-    # Other sets, matched or not    #
-    #-------------------------------#
-    if (length(unique(rowTable$region.set)) < 2) {
-      stop("The object holds a single region set ('", unique(rowTable$region.set)[1],
-           "'), and a competitive test needs something to compare it to.", call. = FALSE)
-    }
+        universeIndex <-
+            lapply(
+                setNames,
+                function(setName) {
+                    setRows <- dplyr::filter(rowTable, .data$region.set == setName)
 
-    universeIndex <-
-      lapply(setNames,
-             function(setName) {
-               setRows <- dplyr::filter(rowTable, .data$region.set == setName)
+                    # The pool is every other set unless one was named, and either way the set itself stays out of it
+                    eligibleRows <- if (is.null(universeSets)) {
+                        dplyr::filter(rowTable, .data$region.set != setName)
+                    } else {
+                        dplyr::filter(rowTable, .data$region.set %in% universeSets & .data$region.set != setName)
+                    }
 
-               # The pool is every other set unless one was named, and either way the set itself stays out of it
-               eligibleRows <- if (is.null(universeSets)) {
-                 dplyr::filter(rowTable, .data$region.set != setName)
-               } else {
-                 dplyr::filter(rowTable, .data$region.set %in% universeSets & .data$region.set != setName)
-               }
+                    if (nrow(eligibleRows) == 0) {
+                        stop("No comparison row is left for the set '", setName,
+                            "' once 'universeSets' is applied.",
+                            call. = FALSE
+                        )
+                    }
 
-               if (nrow(eligibleRows) == 0) {
-                 stop("No comparison row is left for the set '", setName,
-                      "' once 'universeSets' is applied.", call. = FALSE)
-               }
+                    # Without matching every other row is eligible, which is what plain camera does
+                    comparisonIndex <- if (length(match) == 0) {
+                        eligibleRows$row.index
+                    } else {
+                        .matchStrata(
+                            setRows = setRows, eligibleRows = eligibleRows,
+                            match = match, ratio = ratio, strata = strata
+                        )
+                    }
 
-               # Without matching every other row is eligible, which is what plain camera does
-               comparisonIndex <- if (length(match) == 0) {
-                 eligibleRows$row.index
-               } else {
-                 .matchStrata(setRows = setRows, eligibleRows = eligibleRows,
-                              match = match, ratio = ratio, strata = strata)
-               }
+                    return(sort(unique(c(setRows$row.index, comparisonIndex))))
+                }
+            )
 
-               return(sort(unique(c(setRows$row.index, comparisonIndex))))
-             })
+        names(universeIndex) <- setNames
 
-    names(universeIndex) <- setNames
+        diagnosticsTable <- .universeDiagnostics(rowTable = rowTable, universeIndex = universeIndex, setNames = setNames)
 
-    diagnosticsTable <- .universeDiagnostics(rowTable = rowTable, universeIndex = universeIndex, setNames = setNames)
+        comparisonSets <- if (is.null(universeSets)) {
+            setdiff(unique(as.character(rowTable$region.set)), character(0))
+        } else {
+            universeSets
+        }
 
-    comparisonSets <- if (is.null(universeSets)) {setdiff(unique(as.character(rowTable$region.set)), character(0))} else {universeSets}
+        if (isTRUE(verbose)) {
+            message(
+                "Universe built for ", length(setNames), " sets",
+                if (length(match) > 0) {
+                    c(", matched on ", paste(match, collapse = " and "))
+                } else {
+                    ""
+                },
+                ", compared against ", paste(comparisonSets, collapse = ", "), "."
+            )
 
-    if (isTRUE(verbose)) {
-      message("Universe built for ", length(setNames), " sets",
-              if (length(match) > 0) {c(", matched on ", paste(match, collapse = " and "))} else {""},
-              ", compared against ", paste(comparisonSets, collapse = ", "), ".")
+            # One line per set rather than a printed table, so nothing is written outside a show method
+            for (i in seq_len(nrow(diagnosticsTable))) {
+                message(
+                    "  ", diagnosticsTable$region.set[i], ": ", diagnosticsTable$n.regions[i], " regions vs ",
+                    diagnosticsTable$n.comparison[i], " compared against, median abundance ",
+                    diagnosticsTable$median.abundance[i], " vs ", diagnosticsTable$median.abundance.comparison[i]
+                )
+            }
+        }
 
-      # One line per set rather than a printed table, so nothing is written outside a show method
-      for (i in seq_len(nrow(diagnosticsTable))) {
-        message("  ", diagnosticsTable$region.set[i], ": ", diagnosticsTable$n.regions[i], " regions vs ",
-                diagnosticsTable$n.comparison[i], " compared against, median abundance ",
-                diagnosticsTable$median.abundance[i], " vs ", diagnosticsTable$median.abundance.comparison[i])
-      }
-    }
-
-    return(new(Class = "RegionSetDE.universe",
-               index = universeIndex,
-               type = type,
-               matching = match,
-               comparison.sets = comparisonSets,
-               diagnostics = diagnosticsTable,
-               n.rows = nrow(counts)))
-  } # END function
-
-
+        return(.newObject(
+            Class = "RegionSetDE.universe",
+            index = universeIndex,
+            type = type,
+            matching = match,
+            comparison.sets = comparisonSets,
+            diagnostics = diagnosticsTable,
+            n.rows = nrow(counts)
+        ))
+    } # END function
 
 
 #' @title .resolveUniverse
@@ -219,66 +242,75 @@ makeSetUniverse <-
 #' @keywords internal
 
 .resolveUniverse <-
-  function(object,
-           universe = "matched",
-           matchOn = c("width", "abundance"),
-           universeRatio = 5,
-           regionSets = NULL,
-           universeSets = NULL,
-           soft = FALSE,
-           verbose = TRUE) {
-
-    nRows <- if (methods::is(object, "RegionSetDE.fit")) {nrow(object@counts)} else {nrow(object)}
-
-    #-------------------------------#
-    # An object is taken as it is   #
-    #-------------------------------#
-    if (methods::is(universe, "RegionSetDE.universe")) {
-      if (universe@n.rows != nRows) {
-        stop("The universe was built on an object of a different size, rebuild it on this one.", call. = FALSE)
-      }
-      return(universe)
-    }
-
-    if (is.null(universe) | isFALSE(universe)) {
-      return(new(Class = "RegionSetDE.universe"))
-    }
-
-    if (!is.character(universe) | length(universe) != 1) {
-      stop("The 'universe' parameter must be 'matched', 'all', NULL, or a RegionSetDE.universe object.", call. = FALSE)
-    }
-
-    if (!(universe %in% c("matched", "all"))) {
-      stop("The 'universe' parameter must be 'matched', 'all', NULL, or a RegionSetDE.universe object.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Build it                      #
-    #-------------------------------#
-    builtUniverse <- try(makeSetUniverse(object = object,
-                                         type = "otherSets",
-                                         match = if (universe == "matched") {matchOn} else {character(0)},
-                                         ratio = universeRatio,
-                                         regionSets = regionSets,
-                                         universeSets = universeSets,
-                                         verbose = verbose),
-                         silent = TRUE)
-
-    if (inherits(builtUniverse, "try-error")) {
-      # A fit is useful without a universe, so failing to build one there is a remark rather than an error
-      if (isTRUE(soft)) {
-        if (isTRUE(verbose)) {
-          message("No comparison universe was built: ", conditionMessage(attr(builtUniverse, "condition")))
+    function(object,
+             universe = "matched",
+             matchOn = c("width", "abundance"),
+             universeRatio = 5,
+             regionSets = NULL,
+             universeSets = NULL,
+             soft = FALSE,
+             verbose = TRUE) {
+        nRows <- if (methods::is(object, "RegionSetDE.fit")) {
+            nrow(fitCounts(object))
+        } else {
+            nrow(object)
         }
-        return(new(Class = "RegionSetDE.universe"))
-      }
-      stop(conditionMessage(attr(builtUniverse, "condition")), call. = FALSE)
-    }
 
-    return(builtUniverse)
-  } # END function
+        #-------------------------------#
+        # An object is taken as it is   #
+        #-------------------------------#
+        if (methods::is(universe, "RegionSetDE.universe")) {
+            if (universeRows(universe) != nRows) {
+                stop("The universe was built on an object of a different size, rebuild it on this one.", call. = FALSE)
+            }
+            return(universe)
+        }
 
+        if (is.null(universe) | isFALSE(universe)) {
+            return(.newObject(Class = "RegionSetDE.universe"))
+        }
 
+        if (!is.character(universe) | length(universe) != 1) {
+            stop("The 'universe' parameter must be 'matched', 'all', NULL, or a RegionSetDE.universe object.", call. = FALSE)
+        }
+
+        if (!(universe %in% c("matched", "all"))) {
+            stop("The 'universe' parameter must be 'matched', 'all', NULL, or a RegionSetDE.universe object.", call. = FALSE)
+        }
+
+        #-------------------------------#
+        # Build it                      #
+        #-------------------------------#
+        builtUniverse <- try(
+            makeSetUniverse(
+                object = object,
+                type = "otherSets",
+                match = if (universe == "matched") {
+                    matchOn
+                } else {
+                    character(0)
+                },
+                ratio = universeRatio,
+                regionSets = regionSets,
+                universeSets = universeSets,
+                verbose = verbose
+            ),
+            silent = TRUE
+        )
+
+        if (inherits(builtUniverse, "try-error")) {
+            # A fit is useful without a universe, so failing to build one there is a remark rather than an error
+            if (isTRUE(soft)) {
+                if (isTRUE(verbose)) {
+                    message("No comparison universe was built: ", conditionMessage(attr(builtUniverse, "condition")))
+                }
+                return(.newObject(Class = "RegionSetDE.universe"))
+            }
+            stop(conditionMessage(attr(builtUniverse, "condition")), call. = FALSE)
+        }
+
+        return(builtUniverse)
+    } # END function
 
 
 #' @title .universeCovariates
@@ -299,28 +331,28 @@ makeSetUniverse <-
 #' @keywords internal
 
 .universeCovariates <-
-  function(counts) {
+    function(counts) {
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))
+        rowWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(counts))
 
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))
-    rowWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(counts))
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(countMatrix)
+        }
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(countMatrix)
-    }
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
 
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
-
-    return(dplyr::mutate(rowTable,
-                         row.index = seq_len(nrow(counts)),
-                         row.width = rowWidths,
-                         abundance = .regionAbundance(countMatrix = countMatrix,
-                                                      librarySizes = librarySizes,
-                                                      rowWidths = rowWidths,
-                                                      referenceWidth = stats::median(rowWidths))))
-  } # END function
-
-
+        return(dplyr::mutate(rowTable,
+            row.index = seq_len(nrow(counts)),
+            row.width = rowWidths,
+            abundance = .regionAbundance(
+                countMatrix = countMatrix,
+                librarySizes = librarySizes,
+                rowWidths = rowWidths,
+                referenceWidth = stats::median(rowWidths)
+            )
+        ))
+    } # END function
 
 
 #' @title .matchStrata
@@ -342,76 +374,93 @@ makeSetUniverse <-
 #' @keywords internal
 
 .matchStrata <-
-  function(setRows,
-           eligibleRows,
-           match = c("width", "abundance"),
-           ratio = 5,
-           strata = 5) {
+    function(setRows,
+             eligibleRows,
+             match = c("width", "abundance"),
+             ratio = 5,
+             strata = 5) {
+        #-------------------------------#
+        # Cut on the strata of the set  #
+        #-------------------------------#
+        # The breaks come from the set, so its own rows spread evenly over the strata and none of them is left unmatched
+        strataAssignment <-
+            lapply(
+                match,
+                function(covariate) {
+                    columnName <- if (covariate == "width") {
+                        "row.width"
+                    } else {
+                        "abundance"
+                    }
+                    setValues <- setRows[[columnName]]
 
-    #-------------------------------#
-    # Cut on the strata of the set  #
-    #-------------------------------#
-    # The breaks come from the set, so its own rows spread evenly over the strata and none of them is left unmatched
-    strataAssignment <-
-      lapply(match,
-             function(covariate) {
-               columnName <- if (covariate == "width") {"row.width"} else {"abundance"}
-               setValues <- setRows[[columnName]]
+                    breakPoints <- unique(stats::quantile(setValues, probs = seq(0, 1, length.out = strata + 1), na.rm = TRUE))
+                    if (length(breakPoints) < 2) {
+                        return(list(set = rep("1", nrow(setRows)), eligible = rep("1", nrow(eligibleRows))))
+                    }
 
-               breakPoints <- unique(stats::quantile(setValues, probs = seq(0, 1, length.out = strata + 1), na.rm = TRUE))
-               if (length(breakPoints) < 2) {
-                 return(list(set = rep("1", nrow(setRows)), eligible = rep("1", nrow(eligibleRows))))
-               }
+                    # The tails are opened so that comparison rows outside the range of the set fall in the closest stratum
+                    breakPoints[1] <- -Inf
+                    breakPoints[length(breakPoints)] <- Inf
 
-               # The tails are opened so that comparison rows outside the range of the set fall in the closest stratum
-               breakPoints[1] <- -Inf
-               breakPoints[length(breakPoints)] <- Inf
+                    return(list(
+                        set = as.character(cut(setValues, breaks = breakPoints, labels = FALSE)),
+                        eligible = as.character(cut(eligibleRows[[columnName]], breaks = breakPoints, labels = FALSE))
+                    ))
+                }
+            )
 
-               return(list(set = as.character(cut(setValues, breaks = breakPoints, labels = FALSE)),
-                           eligible = as.character(cut(eligibleRows[[columnName]], breaks = breakPoints, labels = FALSE))))
-             })
+        setStratum <- do.call(what = paste, args = c(lapply(strataAssignment, function(x) {
+            x$set
+        }), sep = "|"))
+        eligibleStratum <- do.call(what = paste, args = c(lapply(strataAssignment, function(x) {
+            x$eligible
+        }), sep = "|"))
 
-    setStratum <- do.call(what = paste, args = c(lapply(strataAssignment, function(x) {x$set}), sep = "|"))
-    eligibleStratum <- do.call(what = paste, args = c(lapply(strataAssignment, function(x) {x$eligible}), sep = "|"))
+        #-------------------------------#
+        # Draw within each stratum      #
+        #-------------------------------#
+        setStratumSize <- table(setStratum)
 
-    #-------------------------------#
-    # Draw within each stratum      #
-    #-------------------------------#
-    setStratumSize <- table(setStratum)
-
-    drawnIndex <-
-      unlist(lapply(names(setStratumSize),
+        drawnIndex <-
+            unlist(
+                lapply(
+                    names(setStratumSize),
                     function(stratumName) {
-                      candidateIndex <- eligibleRows$row.index[eligibleStratum == stratumName]
-                      requestedNumber <- ceiling(setStratumSize[[stratumName]] * ratio)
+                        candidateIndex <- eligibleRows$row.index[eligibleStratum == stratumName]
+                        requestedNumber <- ceiling(setStratumSize[[stratumName]] * ratio)
 
-                      if (length(candidateIndex) == 0) {
-                        return(integer(0))
-                      }
+                        if (length(candidateIndex) == 0) {
+                            return(integer(0))
+                        }
 
-                      # A stratum with too few candidates is taken whole, the shortfall shows up in the diagnostics
-                      if (length(candidateIndex) <= requestedNumber) {
-                        return(candidateIndex)
-                      }
+                        # A stratum with too few candidates is taken whole, the shortfall shows up in the diagnostics
+                        if (length(candidateIndex) <= requestedNumber) {
+                            return(candidateIndex)
+                        }
 
-                      # Ordering on the matched covariate and taking evenly spaced candidates spreads the
-                      # comparison over the stratum without touching the random number generator of the session
-                      candidateOrder <- order(eligibleRows[[if (match[1] == "width") {"row.width"} else {"abundance"}]][eligibleStratum == stratumName])
+                        # Ordering on the matched covariate and taking evenly spaced candidates spreads the
+                        # comparison over the stratum without touching the random number generator of the session
+                        candidateOrder <- order(eligibleRows[[if (match[1] == "width") {
+                            "row.width"
+                        } else {
+                            "abundance"
+                        }]][eligibleStratum == stratumName])
 
-                      return(candidateIndex[candidateOrder][.thinIndex(n = length(candidateIndex), maxPoints = requestedNumber)])
-                    }),
-             use.names = FALSE)
+                        return(candidateIndex[candidateOrder][.thinIndex(n = length(candidateIndex), maxPoints = requestedNumber)])
+                    }
+                ),
+                use.names = FALSE
+            )
 
-    drawnIndex <- unique(drawnIndex)
+        drawnIndex <- unique(drawnIndex)
 
-    if (length(drawnIndex) < 10) {
-      stop("Fewer than 10 comparison rows could be matched, loosen 'strata' or drop the matching.", call. = FALSE)
-    }
+        if (length(drawnIndex) < 10) {
+            stop("Fewer than 10 comparison rows could be matched, loosen 'strata' or drop the matching.", call. = FALSE)
+        }
 
-    return(sort(drawnIndex))
-  } # END function
-
-
+        return(sort(drawnIndex))
+    } # END function
 
 
 #' @title .universeDiagnostics
@@ -431,30 +480,33 @@ makeSetUniverse <-
 #' @keywords internal
 
 .universeDiagnostics <-
-  function(rowTable,
-           universeIndex,
-           setNames) {
+    function(rowTable,
+             universeIndex,
+             setNames) {
+        diagnosticsList <-
+            lapply(
+                setNames,
+                function(setName) {
+                    setIndex <- rowTable$row.index[rowTable$region.set == setName]
 
-    diagnosticsList <-
-      lapply(setNames,
-             function(setName) {
-               setIndex <- rowTable$row.index[rowTable$region.set == setName]
+                    # The universe holds the set as well, the diagnostics describe what is left once it is taken out
+                    comparisonIndex <- setdiff(universeIndex[[setName]], setIndex)
 
-               # The universe holds the set as well, the diagnostics describe what is left once it is taken out
-               comparisonIndex <- setdiff(universeIndex[[setName]], setIndex)
+                    setRows <- rowTable[rowTable$row.index %in% setIndex, , drop = FALSE]
+                    comparisonRows <- rowTable[rowTable$row.index %in% comparisonIndex, , drop = FALSE]
 
-               setRows <- rowTable[rowTable$row.index %in% setIndex, , drop = FALSE]
-               comparisonRows <- rowTable[rowTable$row.index %in% comparisonIndex, , drop = FALSE]
+                    return(data.frame(
+                        region.set = setName,
+                        n.regions = nrow(setRows),
+                        n.comparison = nrow(comparisonRows),
+                        median.width = stats::median(setRows$row.width),
+                        median.width.comparison = stats::median(comparisonRows$row.width),
+                        median.abundance = round(stats::median(setRows$abundance), 2),
+                        median.abundance.comparison = round(stats::median(comparisonRows$abundance), 2),
+                        stringsAsFactors = FALSE
+                    ))
+                }
+            )
 
-               return(data.frame(region.set = setName,
-                                 n.regions = nrow(setRows),
-                                 n.comparison = nrow(comparisonRows),
-                                 median.width = stats::median(setRows$row.width),
-                                 median.width.comparison = stats::median(comparisonRows$row.width),
-                                 median.abundance = round(stats::median(setRows$abundance), 2),
-                                 median.abundance.comparison = round(stats::median(comparisonRows$abundance), 2),
-                                 stringsAsFactors = FALSE))
-             })
-
-    return(do.call(what = rbind, args = diagnosticsList))
-  } # END function
+        return(do.call(what = rbind, args = diagnosticsList))
+    } # END function

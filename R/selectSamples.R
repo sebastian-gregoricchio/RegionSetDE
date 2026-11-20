@@ -23,7 +23,8 @@
 #' SummarizedExperiment::colData(brownNorway)
 #'
 #' firstReplicates <- selectSamples(counts, biologicalReplicate == "bio2",
-#'                                  verbose = FALSE)
+#'     verbose = FALSE
+#' )
 #' SummarizedExperiment::colData(firstReplicates)
 #'
 #' @author Sebastian Gregoricchio
@@ -39,116 +40,124 @@
 #' @export selectSamples
 
 selectSamples <-
-  function(counts,
-           ...,
-           samples = NULL,
-           dropNormalization = TRUE,
-           verbose = TRUE) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
-
-    if (ncol(counts) == 0) {
-      stop("The 'counts' object contains no sample.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Resolve the columns to keep   #
-    #-------------------------------#
-    colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    colTable <- dplyr::mutate(colTable,
-                              sample.name = colnames(counts),
-                              column.index = seq_len(ncol(counts)))
-
-    if (!is.null(samples)) {
-      if (is.character(samples)) {
-        absentSamples <- setdiff(samples, colnames(counts))
-        if (length(absentSamples) > 0) {
-          stop("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+    function(counts,
+             ...,
+             samples = NULL,
+             dropNormalization = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
         }
-        colTable <- dplyr::filter(colTable, .data$sample.name %in% samples)
-      } else {
-        samples <- as.integer(samples)
-        if (any(is.na(samples)) | any(samples < 1) | any(samples > ncol(counts))) {
-          stop("The 'samples' parameter contains positions outside the range of the columns.", call. = FALSE)
+
+        if (ncol(counts) == 0) {
+            stop("The 'counts' object contains no sample.", call. = FALSE)
         }
-        colTable <- dplyr::filter(colTable, .data$column.index %in% samples)
-      }
-    }
 
-    # The conditions are evaluated in the caller environment, so external objects stay visible
-    colTable <- dplyr::filter(colTable, ...)
+        #-------------------------------#
+        # Resolve the columns to keep   #
+        #-------------------------------#
+        colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        colTable <- dplyr::mutate(colTable,
+            sample.name = colnames(counts),
+            column.index = seq_len(ncol(counts))
+        )
 
-    if (nrow(colTable) == 0) {
-      stop("No sample satisfies the selection.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Subset the object             #
-    #-------------------------------#
-    selectedCounts <- counts[, colTable$column.index]
-
-    # The bins carry the same columns as the regions and are used by the background normalisation
-    backgroundBins <- S4Vectors::metadata(selectedCounts)$background
-    if (!is.null(backgroundBins)) {
-      S4Vectors::metadata(selectedCounts)$background <- backgroundBins[, colTable$column.index]
-    }
-
-    # The greenlist counts hold one column per sample as well
-    greenlistCounts <- S4Vectors::metadata(selectedCounts)$greenlist
-    if (!is.null(greenlistCounts)) {
-      S4Vectors::metadata(selectedCounts)$greenlist <- greenlistCounts[, colTable$column.index]
-    }
-
-    # The files, layouts and fragment lengths recorded by the counting follow the samples they belong to
-    for (stepName in intersect(c("countReads", "countBigwig", "countBackground", "countGreenlist"), names(selectedCounts@parameters))) {
-      for (fieldName in intersect(c("bamFiles", "bigwigFiles", "pairedEnd", "fragmentLength", "inputFiles"), names(selectedCounts@parameters[[stepName]]))) {
-        fieldValues <- selectedCounts@parameters[[stepName]][[fieldName]]
-        if (length(fieldValues) == ncol(counts)) {
-          selectedCounts@parameters[[stepName]][[fieldName]] <- fieldValues[colTable$column.index]
+        if (!is.null(samples)) {
+            if (is.character(samples)) {
+                absentSamples <- setdiff(samples, colnames(counts))
+                if (length(absentSamples) > 0) {
+                    stop("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+                }
+                colTable <- dplyr::filter(colTable, .data$sample.name %in% samples)
+            } else {
+                samples <- as.integer(samples)
+                if (any(is.na(samples)) | any(samples < 1) | any(samples > ncol(counts))) {
+                    stop("The 'samples' parameter contains positions outside the range of the columns.", call. = FALSE)
+                }
+                colTable <- dplyr::filter(colTable, .data$column.index %in% samples)
+            }
         }
-      }
-    }
 
-    #-------------------------------#
-    # Drop the stale normalisation  #
-    #-------------------------------#
-    normalizationInfo <- S4Vectors::metadata(selectedCounts)$normalization
+        # The conditions are evaluated in the caller environment, so external objects stay visible
+        colTable <- dplyr::filter(colTable, ...)
 
-    if (isTRUE(dropNormalization) & !is.null(normalizationInfo)) {
-      remainingAssays <- setdiff(SummarizedExperiment::assayNames(selectedCounts),
-                                 c(normalizationInfo$normalized.assay, "offset"))
-      SummarizedExperiment::assays(selectedCounts) <- SummarizedExperiment::assays(selectedCounts)[remainingAssays]
+        if (nrow(colTable) == 0) {
+            stop("No sample satisfies the selection.", call. = FALSE)
+        }
 
-      SummarizedExperiment::colData(selectedCounts)$norm.factor <- NULL
-      SummarizedExperiment::colData(selectedCounts)$scaling.factor <- NULL
-      S4Vectors::metadata(selectedCounts)$normalization <- NULL
+        #-------------------------------#
+        # Subset the object             #
+        #-------------------------------#
+        selectedCounts <- counts[, colTable$column.index]
 
-      if (isTRUE(verbose)) {
-        message("The normalisation computed with '", normalizationInfo$method,
-                "' has been removed, run normalizeCounts on the selected samples.")
-      }
-    } else if (!is.null(normalizationInfo) & isTRUE(verbose)) {
-      warning("The scaling factors have been kept but were estimated on the whole set of samples.", call. = FALSE)
-    }
+        # The bins carry the same columns as the regions and are used by the background normalisation
+        backgroundBins <- S4Vectors::metadata(selectedCounts)$background
+        if (!is.null(backgroundBins)) {
+            S4Vectors::metadata(selectedCounts)$background <- backgroundBins[, colTable$column.index]
+        }
 
-    selectedCounts@parameters <- c(selectedCounts@parameters,
-                                   list(selectSamples = list(samples = colTable$sample.name,
-                                                             dropNormalization = dropNormalization)))
+        # The greenlist counts hold one column per sample as well
+        greenlistCounts <- S4Vectors::metadata(selectedCounts)$greenlist
+        if (!is.null(greenlistCounts)) {
+            S4Vectors::metadata(selectedCounts)$greenlist <- greenlistCounts[, colTable$column.index]
+        }
 
-    if (isTRUE(verbose)) {
-      message("Kept ", nrow(colTable), " samples out of ", ncol(counts), ": ",
-              paste(colTable$sample.name, collapse = ", "), ".")
-    }
+        # The files, layouts and fragment lengths recorded by the counting follow the samples they belong to
+        for (stepName in intersect(c("countReads", "countBigwig", "countBackground", "countGreenlist"), names(parameterLog(selectedCounts)))) {
+            for (fieldName in intersect(c("bamFiles", "bigwigFiles", "pairedEnd", "fragmentLength", "inputFiles"), names(parameterLog(selectedCounts)[[stepName]]))) {
+                fieldValues <- parameterLog(selectedCounts)[[stepName]][[fieldName]]
+                if (length(fieldValues) == ncol(counts)) {
+                    parameterLog(selectedCounts)[[stepName]][[fieldName]] <- fieldValues[colTable$column.index]
+                }
+            }
+        }
 
-    return(selectedCounts)
-  } # END function
+        #-------------------------------#
+        # Drop the stale normalisation  #
+        #-------------------------------#
+        normalizationInfo <- S4Vectors::metadata(selectedCounts)$normalization
 
+        if (isTRUE(dropNormalization) & !is.null(normalizationInfo)) {
+            remainingAssays <- setdiff(
+                SummarizedExperiment::assayNames(selectedCounts),
+                c(normalizationInfo$normalized.assay, "offset")
+            )
+            SummarizedExperiment::assays(selectedCounts) <- SummarizedExperiment::assays(selectedCounts)[remainingAssays]
 
+            SummarizedExperiment::colData(selectedCounts)$norm.factor <- NULL
+            SummarizedExperiment::colData(selectedCounts)$scaling.factor <- NULL
+            S4Vectors::metadata(selectedCounts)$normalization <- NULL
+
+            if (isTRUE(verbose)) {
+                message(
+                    "The normalisation computed with '", normalizationInfo$method,
+                    "' has been removed, run normalizeCounts on the selected samples."
+                )
+            }
+        } else if (!is.null(normalizationInfo) & isTRUE(verbose)) {
+            warning("The scaling factors have been kept but were estimated on the whole set of samples.", call. = FALSE)
+        }
+
+        parameterLog(selectedCounts) <- c(
+            parameterLog(selectedCounts),
+            list(selectSamples = list(
+                samples = colTable$sample.name,
+                dropNormalization = dropNormalization
+            ))
+        )
+
+        if (isTRUE(verbose)) {
+            message(
+                "Kept ", nrow(colTable), " samples out of ", ncol(counts), ": ",
+                paste(colTable$sample.name, collapse = ", "), "."
+            )
+        }
+
+        return(selectedCounts)
+    } # END function
 
 
 #' @title splitSamples
@@ -182,61 +191,67 @@ selectSamples <-
 #' @export splitSamples
 
 splitSamples <-
-  function(counts,
-           by,
-           dropNormalization = TRUE,
-           minSamples = 1,
-           verbose = TRUE) {
+    function(counts,
+             by,
+             dropNormalization = TRUE,
+             minSamples = 1,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        absentColumns <- setdiff(by, colnames(colTable))
+        if (length(absentColumns) > 0) {
+            stop("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
+        }
 
-    colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    absentColumns <- setdiff(by, colnames(colTable))
-    if (length(absentColumns) > 0) {
-      stop("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
-    }
+        #-------------------------------#
+        # Build the groups              #
+        #-------------------------------#
+        colTable <- dplyr::mutate(colTable,
+            column.index = seq_len(ncol(counts)),
+            group.label = apply(colTable[, by, drop = FALSE], MARGIN = 1, FUN = paste, collapse = "_")
+        )
 
-    #-------------------------------#
-    # Build the groups              #
-    #-------------------------------#
-    colTable <- dplyr::mutate(colTable,
-                              column.index = seq_len(ncol(counts)),
-                              group.label = apply(colTable[, by, drop = FALSE], MARGIN = 1, FUN = paste, collapse = "_"))
+        groupLabels <- unique(colTable$group.label)
 
-    groupLabels <- unique(colTable$group.label)
+        countsList <-
+            lapply(
+                groupLabels,
+                function(groupLabel) {
+                    groupTable <- dplyr::filter(colTable, .data$group.label == groupLabel)
 
-    countsList <-
-      lapply(groupLabels,
-             function(groupLabel) {
-               groupTable <- dplyr::filter(colTable, .data$group.label == groupLabel)
+                    if (nrow(groupTable) < minSamples) {
+                        return(NULL)
+                    }
 
-               if (nrow(groupTable) < minSamples) {
-                 return(NULL)
-               }
+                    return(selectSamples(
+                        counts = counts,
+                        samples = groupTable$column.index,
+                        dropNormalization = dropNormalization,
+                        verbose = FALSE
+                    ))
+                }
+            )
 
-               return(selectSamples(counts = counts,
-                                    samples = groupTable$column.index,
-                                    dropNormalization = dropNormalization,
-                                    verbose = FALSE))
-             })
+        names(countsList) <- groupLabels
+        countsList <- countsList[!vapply(countsList, is.null, logical(1))]
 
-    names(countsList) <- groupLabels
-    countsList <- countsList[!vapply(countsList, is.null, logical(1))]
+        if (length(countsList) == 0) {
+            stop("No group reaches 'minSamples'.", call. = FALSE)
+        }
 
-    if (length(countsList) == 0) {
-      stop("No group reaches 'minSamples'.", call. = FALSE)
-    }
+        if (isTRUE(verbose)) {
+            groupSizes <- vapply(countsList, ncol, integer(1))
+            message(
+                "Split into ", length(countsList), " groups: ",
+                paste(paste0(names(groupSizes), " (n=", groupSizes, ")"), collapse = ", "), "."
+            )
+        }
 
-    if (isTRUE(verbose)) {
-      groupSizes <- vapply(countsList, ncol, integer(1))
-      message("Split into ", length(countsList), " groups: ",
-              paste(paste0(names(groupSizes), " (n=", groupSizes, ")"), collapse = ", "), ".")
-    }
-
-    return(countsList)
-  } # END function
+        return(countsList)
+    } # END function

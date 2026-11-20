@@ -24,7 +24,7 @@ updateThresholds(
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-An object of the same class as \code{results}, with the new labels in \code{diff.status} and the new cut-offs in the \code{thresholds} slot and in the parameters recorded for the test. The previous cut-offs are kept in \code{parameters$updateThresholds}.
+An object of the same class as \code{results}, with the new labels in \code{diff.status} and the new cut-offs in the \code{thresholds} slot (read with \code{\link{thresholdInfo}}) and in the parameters recorded for the test. The previous cut-offs are kept in \code{parameters$updateThresholds}.
 }
 \description{
 Labels the regions of a result again with other cut-offs, without running the test a second time. The \code{diff.status} column is filled anew from the \code{FDR} and \code{log2FC} given, and the thresholds stored in the object are replaced, so that the tables, the plots and the export all follow the new ones.

@@ -19,7 +19,7 @@ countBigwig(
   blacklist = NULL,
   countLike = FALSE,
   roundValues = FALSE,
-  nThreads = 1,
+  BPPARAM = NULL,
   verbose = TRUE
 )
 }
@@ -52,7 +52,7 @@ countBigwig(
 
 \item{roundValues}{Logical value indicating whether the summarised values must be rounded to integers. Rounding is a formatting step and does not turn coverage into counts. Default: \code{FALSE}.}
 
-\item{nThreads}{Number of threads used to process the files in parallel. Default: \code{1}.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are processed side by side. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
@@ -80,15 +80,16 @@ The regions and the bigWig files do not need to share the same chromosome naming
 bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
 
 if (file.exists(bigwigFile) & .Platform$OS.type != "windows") {
-  bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-  regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
+    bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+    regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
 
-  signal <- countBigwig(regions,
-                        bigwigFiles = bigwigFile,
-                        sampleNames = "example",
-                        summaryFunction = "mean",
-                        verbose = FALSE)
-  SummarizedExperiment::assay(signal)
+    signal <- countBigwig(regions,
+        bigwigFiles = bigwigFile,
+        sampleNames = "example",
+        summaryFunction = "mean",
+        verbose = FALSE
+    )
+    SummarizedExperiment::assay(signal)
 }
 
 }

@@ -34,21 +34,26 @@
 #' exampleCounts <- loadExampleData("counts", verbose = FALSE)
 #' regionRows <- SummarizedExperiment::rowRanges(exampleCounts)
 #'
-#' countMatrix <- data.frame(chr = as.character(GenomicRanges::seqnames(regionRows)),
-#'                           start = GenomicRanges::start(regionRows),
-#'                           end = GenomicRanges::end(regionRows),
-#'                           SummarizedExperiment::assay(exampleCounts, "counts"),
-#'                           check.names = FALSE)
+#' countMatrix <- data.frame(
+#'     chr = as.character(GenomicRanges::seqnames(regionRows)),
+#'     start = GenomicRanges::start(regionRows),
+#'     end = GenomicRanges::end(regionRows),
+#'     SummarizedExperiment::assay(exampleCounts, "counts"),
+#'     check.names = FALSE
+#' )
 #'
 #' regions <- splitLoadRegions(regionRows, splitBy = "region.set", genomeAssembly = "rn4", verbose = FALSE)
 #'
 #' # The real library sizes, the column sums of the table only cover the regions
 #' counts <- loadCounts(regions,
-#'                      counts = countMatrix,
-#'                      sampleMetadata = data.frame(sample = colnames(exampleCounts),
-#'                                                  condition = exampleCounts$condition),
-#'                      librarySizes = exampleCounts$library.size,
-#'                      verbose = FALSE)
+#'     counts = countMatrix,
+#'     sampleMetadata = data.frame(
+#'         sample = colnames(exampleCounts),
+#'         condition = exampleCounts$condition
+#'     ),
+#'     librarySizes = exampleCounts$library.size,
+#'     verbose = FALSE
+#' )
 #' counts
 #'
 #' # A BED-like table, 0-based, where some regions were never counted
@@ -70,215 +75,244 @@
 #' @export loadCounts
 
 loadCounts <-
-  function(regionSet,
-           counts,
-           sampleNames = NULL,
-           sampleMetadata = NULL,
-           countColumns = NULL,
-           coordinateColumns = NULL,
-           idColumn = NULL,
-           matchBy = "coordinates",
-           startsAt = 1,
-           tileWidth = NULL,
-           keepMetadata = TRUE,
-           regionId = NULL,
-           partialTiles = TRUE,
-           missingRegions = "stop",
-           countLike = TRUE,
-           librarySizes = NULL,
-           header = TRUE,
-           verbose = TRUE) {
+    function(regionSet,
+             counts,
+             sampleNames = NULL,
+             sampleMetadata = NULL,
+             countColumns = NULL,
+             coordinateColumns = NULL,
+             idColumn = NULL,
+             matchBy = "coordinates",
+             startsAt = 1,
+             tileWidth = NULL,
+             keepMetadata = TRUE,
+             regionId = NULL,
+             partialTiles = TRUE,
+             missingRegions = "stop",
+             countLike = TRUE,
+             librarySizes = NULL,
+             header = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
+        regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
-    regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
-
-    matchBy <- tolower(matchBy[1])
-    if (!(matchBy %in% c("coordinates", "id"))) {
-      stop("The 'matchBy' parameter must be either 'coordinates' or 'id'.", call. = FALSE)
-    }
-
-    missingRegions <- tolower(missingRegions[1])
-    if (!(missingRegions %in% c("stop", "zero", "drop"))) {
-      stop("The 'missingRegions' parameter must be one among 'stop', 'zero' or 'drop'.", call. = FALSE)
-    }
-
-    startsAt <- as.integer(startsAt[1])
-    if (!(startsAt %in% c(0L, 1L))) {
-      stop("The 'startsAt' parameter must be either 0 or 1.", call. = FALSE)
-    }
-
-    #------------------------#
-    # Read the count table   #
-    #------------------------#
-    if (is.character(counts) & length(counts) == 1) {
-      if (!file.exists(counts)) {
-        stop("The file '", counts, "' does not exist.", call. = FALSE)
-      }
-      countTable <- utils::read.delim(file = counts, header = header, comment.char = "#", check.names = FALSE, stringsAsFactors = FALSE)
-    } else if (is.matrix(counts)) {
-      countTable <- as.data.frame(counts, stringsAsFactors = FALSE)
-      countTable$region.id <- rownames(counts)
-    } else if (is.data.frame(counts)) {
-      countTable <- as.data.frame(counts, stringsAsFactors = FALSE)
-    } else {
-      stop("The 'counts' parameter must be a matrix, a data.frame or the path to a count table.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Identify the columns to use   #
-    #-------------------------------#
-    # Positions are accepted everywhere, working on names afterwards keeps the rest of the code readable
-    if (is.numeric(countColumns)) {countColumns <- colnames(countTable)[countColumns]}
-    if (is.numeric(coordinateColumns)) {coordinateColumns <- colnames(countTable)[coordinateColumns]}
-    if (is.numeric(idColumn)) {idColumn <- colnames(countTable)[idColumn]}
-
-    annotationColumns <- c("geneid", "chr", "chrom", "chromosome", "seqnames", "start", "end", "stop",
-                           "strand", "length", "width", "name", "score", "id", "region.id", "region.set", "tile.id")
-
-    if (is.null(countColumns)) {
-      isCountColumn <- vapply(countTable, is.numeric, logical(1)) & !(tolower(colnames(countTable)) %in% annotationColumns)
-      countColumns <- colnames(countTable)[isCountColumn]
-    }
-
-    if (length(countColumns) == 0) {
-      stop("No count column could be identified, provide them through the 'countColumns' parameter.", call. = FALSE)
-    }
-
-    absentColumns <- setdiff(countColumns, colnames(countTable))
-    if (length(absentColumns) > 0) {
-      stop("The following columns are missing from the count table: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Build the matching keys       #
-    #-------------------------------#
-    allRegions <- .flattenRegionSets(regionSet = regionSet,
-                                     tileWidth = tileWidth,
-                                     keepMetadata = keepMetadata,
-                                     regionId = regionId,
-                                     partialTiles = partialTiles,
-                                     verbose = verbose)
-
-    if (matchBy == "coordinates") {
-      if (is.null(coordinateColumns)) {
-        chromosomeColumn <- colnames(countTable)[tolower(colnames(countTable)) %in% c("chr", "chrom", "chromosome", "seqnames")][1]
-        startColumn <- colnames(countTable)[tolower(colnames(countTable)) %in% c("start")][1]
-        endColumn <- colnames(countTable)[tolower(colnames(countTable)) %in% c("end", "stop")][1]
-        coordinateColumns <- c(chromosomeColumn, startColumn, endColumn)
-      }
-
-      if (any(is.na(coordinateColumns)) | length(coordinateColumns) != 3) {
-        stop("The coordinate columns could not be identified, provide them through the 'coordinateColumns' parameter.", call. = FALSE)
-      }
-
-      # A table written by a tool fed with Ensembl names would match nothing on UCSC regions, so the
-      # chromosomes of the table are read under the names of the regions wherever the two can be told to agree
-      tableChromosomes <- as.character(countTable[[coordinateColumns[1]]])
-      regionNames <- .translateChromosomeNames(chromosomeNames = unique(tableChromosomes),
-                                               targetSeqlevels = GenomeInfoDb::seqlevels(allRegions))
-      regionNames <- ifelse(is.na(regionNames), unique(tableChromosomes), regionNames)
-      tableChromosomes <- regionNames[match(tableChromosomes, unique(tableChromosomes))]
-
-      # BED tables count from zero, the shift aligns them to the 1-based GRanges coordinates. The positions
-      # are pasted as integers: as numbers, 100000 is written 1e+05 and no longer matches the region it belongs to
-      tableKey <- paste0(tableChromosomes, ":",
-                         as.integer(round(as.numeric(countTable[[coordinateColumns[2]]]) + (1L - startsAt))), "-",
-                         as.integer(round(as.numeric(countTable[[coordinateColumns[3]]]))))
-
-      regionMatchKey <- paste0(as.character(GenomeInfoDb::seqnames(allRegions)), ":",
-                               BiocGenerics::start(allRegions), "-",
-                               BiocGenerics::end(allRegions))
-    } else {
-      if (is.null(idColumn)) {
-        if (is.null(rownames(countTable))) {
-          stop("The count table has no row names, provide the identifiers through the 'idColumn' parameter.", call. = FALSE)
+        matchBy <- tolower(matchBy[1])
+        if (!(matchBy %in% c("coordinates", "id"))) {
+            stop("The 'matchBy' parameter must be either 'coordinates' or 'id'.", call. = FALSE)
         }
-        tableKey <- rownames(countTable)
-      } else {
-        tableKey <- as.character(countTable[[idColumn]])
-      }
 
-      regionMatchKey <- as.character(S4Vectors::mcols(allRegions)$region.id)
-    }
+        missingRegions <- tolower(missingRegions[1])
+        if (!(missingRegions %in% c("stop", "zero", "drop"))) {
+            stop("The 'missingRegions' parameter must be one among 'stop', 'zero' or 'drop'.", call. = FALSE)
+        }
 
-    if (any(duplicated(tableKey))) {
-      stop("The count table contains duplicated regions, they must be unique to be assigned unambiguously.", call. = FALSE)
-    }
+        startsAt <- as.integer(startsAt[1])
+        if (!(startsAt %in% c(0L, 1L))) {
+            stop("The 'startsAt' parameter must be either 0 or 1.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Match the rows to the regions #
-    #-------------------------------#
-    matchIndex <- match(regionMatchKey, tableKey)
-    unmatchedRegions <- sum(is.na(matchIndex))
+        #------------------------#
+        # Read the count table   #
+        #------------------------#
+        if (is.character(counts) & length(counts) == 1) {
+            if (!file.exists(counts)) {
+                stop("The file '", counts, "' does not exist.", call. = FALSE)
+            }
+            countTable <- utils::read.delim(file = counts, header = header, comment.char = "#", check.names = FALSE, stringsAsFactors = FALSE)
+        } else if (is.matrix(counts)) {
+            countTable <- as.data.frame(counts, stringsAsFactors = FALSE)
+            countTable$region.id <- rownames(counts)
+        } else if (is.data.frame(counts)) {
+            countTable <- as.data.frame(counts, stringsAsFactors = FALSE)
+        } else {
+            stop("The 'counts' parameter must be a matrix, a data.frame or the path to a count table.", call. = FALSE)
+        }
 
-    if (unmatchedRegions > 0) {
-      if (missingRegions == "stop") {
-        stop(unmatchedRegions, " regions out of ", length(allRegions), " have no matching row in the count table. ",
-             "Check the 'startsAt' parameter, or set 'missingRegions' to 'zero' or 'drop'.", call. = FALSE)
-      }
-      if (isTRUE(verbose)) {
-        message(unmatchedRegions, " regions have no matching row in the count table and have been ",
-                ifelse(missingRegions == "drop", "removed.", "set to zero."))
-      }
-    }
+        #-------------------------------#
+        # Identify the columns to use   #
+        #-------------------------------#
+        # Positions are accepted everywhere, working on names afterwards keeps the rest of the code readable
+        if (is.numeric(countColumns)) {
+            countColumns <- colnames(countTable)[countColumns]
+        }
+        if (is.numeric(coordinateColumns)) {
+            coordinateColumns <- colnames(countTable)[coordinateColumns]
+        }
+        if (is.numeric(idColumn)) {
+            idColumn <- colnames(countTable)[idColumn]
+        }
 
-    countMatrix <- as.matrix(dplyr::select(countTable, dplyr::all_of(countColumns)))
-    fullColumnSums <- colSums(countMatrix, na.rm = TRUE)
+        annotationColumns <- c(
+            "geneid", "chr", "chrom", "chromosome", "seqnames", "start", "end", "stop",
+            "strand", "length", "width", "name", "score", "id", "region.id", "region.set", "tile.id"
+        )
 
-    countMatrix <- countMatrix[matchIndex, , drop = FALSE]
+        if (is.null(countColumns)) {
+            isCountColumn <- vapply(countTable, is.numeric, logical(1)) & !(tolower(colnames(countTable)) %in% annotationColumns)
+            countColumns <- colnames(countTable)[isCountColumn]
+        }
 
-    if (unmatchedRegions > 0) {
-      if (missingRegions == "zero") {
-        countMatrix[is.na(matchIndex), ] <- 0
-      } else {
-        countMatrix <- countMatrix[!is.na(matchIndex), , drop = FALSE]
-        allRegions <- allRegions[!is.na(matchIndex)]
-      }
-    }
+        if (length(countColumns) == 0) {
+            stop("No count column could be identified, provide them through the 'countColumns' parameter.", call. = FALSE)
+        }
 
-    #---------------------#
-    # Assemble the object #
-    #---------------------#
-    sampleTable <- .buildSampleTable(files = countColumns,
-                                     sampleNames = sampleNames,
-                                     sampleMetadata = sampleMetadata,
-                                     fileColumn = "source.column",
-                                     extensionPattern = "\\.bam$")
+        absentColumns <- setdiff(countColumns, colnames(countTable))
+        if (length(absentColumns) > 0) {
+            stop("The following columns are missing from the count table: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
+        }
 
-    if (!is.null(librarySizes)) {
-      if (length(librarySizes) != length(countColumns)) {
-        stop("The 'librarySizes' parameter must have one value per count column.", call. = FALSE)
-      }
-      sampleTable <- dplyr::mutate(sampleTable, library.size = as.numeric(librarySizes))
-    } else {
-      # The column sums only cover the imported regions, they are a stand-in until real depths are supplied
-      sampleTable <- dplyr::mutate(sampleTable, library.size = as.numeric(fullColumnSums))
-    }
+        #-------------------------------#
+        # Build the matching keys       #
+        #-------------------------------#
+        allRegions <- .flattenRegionSets(
+            regionSet = regionSet,
+            tileWidth = tileWidth,
+            keepMetadata = keepMetadata,
+            regionId = regionId,
+            partialTiles = partialTiles,
+            verbose = verbose
+        )
 
-    newParameters <- list(loadCounts = list(source = ifelse(is.character(counts) & length(counts) == 1, counts, "in-memory table"),
-                                            countColumns = countColumns,
-                                            matchBy = matchBy,
-                                            startsAt = startsAt,
-                                            tileWidth = tileWidth,
-                                            partialTiles = partialTiles,
-                                            missingRegions = missingRegions,
-                                            countLike = countLike,
-                                            librarySizes.supplied = !is.null(librarySizes)))
+        if (matchBy == "coordinates") {
+            if (is.null(coordinateColumns)) {
+                chromosomeColumn <- colnames(countTable)[tolower(colnames(countTable)) %in% c("chr", "chrom", "chromosome", "seqnames")][1]
+                startColumn <- colnames(countTable)[tolower(colnames(countTable)) %in% c("start")][1]
+                endColumn <- colnames(countTable)[tolower(colnames(countTable)) %in% c("end", "stop")][1]
+                coordinateColumns <- c(chromosomeColumn, startColumn, endColumn)
+            }
 
-    countsObject <- .newCountsObject(countMatrix = countMatrix,
-                                     regions = allRegions,
-                                     sampleTable = sampleTable,
-                                     provenance = .provenanceSlots(regionSet),
-                                     countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
-                                     newParameters = newParameters,
-                                     metadataList = list(signal.type = "external", count.like = countLike))
+            if (any(is.na(coordinateColumns)) | length(coordinateColumns) != 3) {
+                stop("The coordinate columns could not be identified, provide them through the 'coordinateColumns' parameter.", call. = FALSE)
+            }
 
-    if (isTRUE(verbose)) {
-      message("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples.")
-    }
+            # A table written by a tool fed with Ensembl names would match nothing on UCSC regions, so the
+            # chromosomes of the table are read under the names of the regions wherever the two can be told to agree
+            tableChromosomes <- as.character(countTable[[coordinateColumns[1]]])
+            regionNames <- .translateChromosomeNames(
+                chromosomeNames = unique(tableChromosomes),
+                targetSeqlevels = GenomeInfoDb::seqlevels(allRegions)
+            )
+            regionNames <- ifelse(is.na(regionNames), unique(tableChromosomes), regionNames)
+            tableChromosomes <- regionNames[match(tableChromosomes, unique(tableChromosomes))]
 
-    return(countsObject)
-  } # END function
+            # BED tables count from zero, the shift aligns them to the 1-based GRanges coordinates. The positions
+            # are pasted as integers: as numbers, 100000 is written 1e+05 and no longer matches the region it belongs to
+            tableKey <- paste0(
+                tableChromosomes, ":",
+                as.integer(round(as.numeric(countTable[[coordinateColumns[2]]]) + (1L - startsAt))), "-",
+                as.integer(round(as.numeric(countTable[[coordinateColumns[3]]])))
+            )
+
+            regionMatchKey <- paste0(
+                as.character(GenomeInfoDb::seqnames(allRegions)), ":",
+                BiocGenerics::start(allRegions), "-",
+                BiocGenerics::end(allRegions)
+            )
+        } else {
+            if (is.null(idColumn)) {
+                if (is.null(rownames(countTable))) {
+                    stop("The count table has no row names, provide the identifiers through the 'idColumn' parameter.", call. = FALSE)
+                }
+                tableKey <- rownames(countTable)
+            } else {
+                tableKey <- as.character(countTable[[idColumn]])
+            }
+
+            regionMatchKey <- as.character(S4Vectors::mcols(allRegions)$region.id)
+        }
+
+        if (any(duplicated(tableKey))) {
+            stop("The count table contains duplicated regions, they must be unique to be assigned unambiguously.", call. = FALSE)
+        }
+
+        #-------------------------------#
+        # Match the rows to the regions #
+        #-------------------------------#
+        matchIndex <- match(regionMatchKey, tableKey)
+        unmatchedRegions <- sum(is.na(matchIndex))
+
+        if (unmatchedRegions > 0) {
+            if (missingRegions == "stop") {
+                stop(unmatchedRegions, " regions out of ", length(allRegions), " have no matching row in the count table. ",
+                    "Check the 'startsAt' parameter, or set 'missingRegions' to 'zero' or 'drop'.",
+                    call. = FALSE
+                )
+            }
+            if (isTRUE(verbose)) {
+                message(
+                    unmatchedRegions, " regions have no matching row in the count table and have been ",
+                    ifelse(missingRegions == "drop", "removed.", "set to zero.")
+                )
+            }
+        }
+
+        countMatrix <- as.matrix(dplyr::select(countTable, dplyr::all_of(countColumns)))
+        fullColumnSums <- colSums(countMatrix, na.rm = TRUE)
+
+        countMatrix <- countMatrix[matchIndex, , drop = FALSE]
+
+        if (unmatchedRegions > 0) {
+            if (missingRegions == "zero") {
+                countMatrix[is.na(matchIndex), ] <- 0
+            } else {
+                countMatrix <- countMatrix[!is.na(matchIndex), , drop = FALSE]
+                allRegions <- allRegions[!is.na(matchIndex)]
+            }
+        }
+
+        #---------------------#
+        # Assemble the object #
+        #---------------------#
+        sampleTable <- .buildSampleTable(
+            files = countColumns,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            fileColumn = "source.column",
+            extensionPattern = "\\.bam$"
+        )
+
+        if (!is.null(librarySizes)) {
+            if (length(librarySizes) != length(countColumns)) {
+                stop("The 'librarySizes' parameter must have one value per count column.", call. = FALSE)
+            }
+            sampleTable <- dplyr::mutate(sampleTable, library.size = as.numeric(librarySizes))
+        } else {
+            # The column sums only cover the imported regions, they are a stand-in until real depths are supplied
+            sampleTable <- dplyr::mutate(sampleTable, library.size = as.numeric(fullColumnSums))
+        }
+
+        newParameters <- list(loadCounts = list(
+            source = ifelse(is.character(counts) & length(counts) == 1, counts, "in-memory table"),
+            countColumns = countColumns,
+            matchBy = matchBy,
+            startsAt = startsAt,
+            tileWidth = tileWidth,
+            partialTiles = partialTiles,
+            missingRegions = missingRegions,
+            countLike = countLike,
+            librarySizes.supplied = !is.null(librarySizes)
+        ))
+
+        countsObject <- .newCountsObject(
+            countMatrix = countMatrix,
+            regions = allRegions,
+            sampleTable = sampleTable,
+            provenance = .provenanceSlots(regionSet),
+            countingLevel = if (is.null(tileWidth)) {
+                "region"
+            } else {
+                "tile"
+            },
+            newParameters = newParameters,
+            metadataList = list(signal.type = "external", count.like = countLike)
+        )
+
+        if (isTRUE(verbose)) {
+            message("Imported ", nrow(countMatrix), " regions and ", ncol(countMatrix), " samples.")
+        }
+
+        return(countsObject)
+    } # END function

@@ -15,8 +15,8 @@
 #' @param maxFragmentLength Numeric value with the maximum insert size accepted for a pair. Default: \code{NULL}, the value used at the counting step.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{NULL}, the value used at the counting step.
 #' @param removeDuplicates Logical value indicating whether the duplicated reads must be discarded. Default: \code{NULL}, the value used at the counting step.
-#' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads. Default: \code{1}.
-#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are cut into pieces of at most 50 Mb, shared among the workers. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the workers hand them back, and it is drawn only when \code{verbose = TRUE}. A \code{BPPARAM} given as a \code{BiocParallelParam} object keeps its own \code{progressbar} setting. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return The input \code{RegionSetDE.counts} object with the bin counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$background}. Its \code{totals} column holds the library sizes of the bins.
@@ -24,6 +24,9 @@
 #' @details Bins of ten kilobases or more are wide enough that most of them carry background reads only, and their counts therefore track the amount of sequencing spent outside the regions of interest. Reusing the read parameters of \code{\link{countReads}} matters here: bins counted with a different mapping quality or duplicate policy would return factors that do not apply to the region counts. The parameters are taken from the object unless they are given explicitly. The same goes for the reads \code{\link{countReads}} discarded, those of the blacklist, of the greylist and of \code{discardRegions}: they stay out of the bins and of their library sizes as well.
 #'
 #' The bins cover every chromosome the BAM files have in common except those in \code{excludeChromosomes}, starting at the first base and with the last bin of each chromosome stopping at its end. Each fragment is counted once, in the bin holding its centre, or the 5' end of the read for single-end data, so a fragment lying across two bins is not counted twice. The whole genome is read whatever the value of \code{fullLibrarySize} used for the regions.
+#'
+#' @references
+#' Lun A.T.L., Smyth G.K. (2016). csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows. \emph{Nucleic Acids Research} 44(5):e45.
 #'
 #' @examples
 #' # The example counts already carry their background bins
@@ -57,181 +60,238 @@
 #' @export countBackground
 
 countBackground <-
-  function(counts,
-           bamFiles = NULL,
-           binSize = 10000,
-           excludeRegions = TRUE,
-           minCount = 1,
-           excludeChromosomes = NULL,
-           pairedEnd = NULL,
-           fragmentLength = NULL,
-           maxFragmentLength = NULL,
-           minMapq = NULL,
-           removeDuplicates = NULL,
-           nThreads = 1,
-           progressBar = interactive(),
-           verbose = TRUE) {
+    function(counts,
+             bamFiles = NULL,
+             binSize = 10000,
+             excludeRegions = TRUE,
+             minCount = 1,
+             excludeChromosomes = NULL,
+             pairedEnd = NULL,
+             fragmentLength = NULL,
+             maxFragmentLength = NULL,
+             minMapq = NULL,
+             removeDuplicates = NULL,
+             BPPARAM = NULL,
+             progressBar = interactive(),
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        binSize <- as.integer(binSize[1])
+        if (is.na(binSize) | binSize < 1) {
+            stop("The 'binSize' parameter must be a positive integer.", call. = FALSE)
+        }
 
-    binSize <- as.integer(binSize[1])
-    if (is.na(binSize) | binSize < 1) {
-      stop("The 'binSize' parameter must be a positive integer.", call. = FALSE)
-    }
+        #-----------------------------------#
+        # Recover the counting parameters   #
+        #-----------------------------------#
+        # Bins counted under a different read filter would give factors that do not apply to the regions
+        countingParameters <- parameterLog(counts)$countReads
 
-    #-----------------------------------#
-    # Recover the counting parameters   #
-    #-----------------------------------#
-    # Bins counted under a different read filter would give factors that do not apply to the regions
-    countingParameters <- counts@parameters$countReads
+        if (is.null(countingParameters) & is.null(bamFiles)) {
+            stop("No BAM file is recorded in the object, provide them through the 'bamFiles' parameter.", call. = FALSE)
+        }
 
-    if (is.null(countingParameters) & is.null(bamFiles)) {
-      stop("No BAM file is recorded in the object, provide them through the 'bamFiles' parameter.", call. = FALSE)
-    }
+        # ifelse would keep the first element only, and the layout is one value per file
+        if (is.null(bamFiles)) {
+            bamFiles <- countingParameters$bamFiles
+        }
+        if (is.null(pairedEnd)) {
+            pairedEnd <- if (is.null(countingParameters$pairedEnd)) {
+                FALSE
+            } else {
+                countingParameters$pairedEnd
+            }
+        }
+        if (is.null(fragmentLength)) {
+            fragmentLength <- if (is.null(countingParameters$fragmentLength)) {
+                150
+            } else {
+                countingParameters$fragmentLength
+            }
+        }
+        if (is.null(maxFragmentLength)) {
+            maxFragmentLength <- if (is.null(countingParameters$maxFragmentLength)) {
+                1000
+            } else {
+                countingParameters$maxFragmentLength
+            }
+        }
+        if (is.null(minMapq)) {
+            minMapq <- if (is.null(countingParameters$minMapq)) {
+                20
+            } else {
+                countingParameters$minMapq
+            }
+        }
+        if (is.null(removeDuplicates)) {
+            removeDuplicates <- if (is.null(countingParameters$removeDuplicates)) {
+                TRUE
+            } else {
+                countingParameters$removeDuplicates
+            }
+        }
+        if (is.null(excludeChromosomes)) {
+            excludeChromosomes <- countingParameters$excludeChromosomes
+        }
 
-    # ifelse would keep the first element only, and the layout is one value per file
-    if (is.null(bamFiles)) {bamFiles <- countingParameters$bamFiles}
-    if (is.null(pairedEnd)) {pairedEnd <- if (is.null(countingParameters$pairedEnd)) {FALSE} else {countingParameters$pairedEnd}}
-    if (is.null(fragmentLength)) {fragmentLength <- if (is.null(countingParameters$fragmentLength)) {150} else {countingParameters$fragmentLength}}
-    if (is.null(maxFragmentLength)) {maxFragmentLength <- if (is.null(countingParameters$maxFragmentLength)) {1000} else {countingParameters$maxFragmentLength}}
-    if (is.null(minMapq)) {minMapq <- if (is.null(countingParameters$minMapq)) {20} else {countingParameters$minMapq}}
-    if (is.null(removeDuplicates)) {removeDuplicates <- if (is.null(countingParameters$removeDuplicates)) {TRUE} else {countingParameters$removeDuplicates}}
-    if (is.null(excludeChromosomes)) {excludeChromosomes <- countingParameters$excludeChromosomes}
+        if (length(bamFiles) != ncol(counts)) {
+            stop("The number of BAM files does not match the number of samples of the counts object.", call. = FALSE)
+        }
 
-    if (length(bamFiles) != ncol(counts)) {
-      stop("The number of BAM files does not match the number of samples of the counts object.", call. = FALSE)
-    }
+        if (length(pairedEnd) == 1) {
+            pairedEnd <- rep(pairedEnd, length(bamFiles))
+        }
 
-    if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(bamFiles))}
+        if (!is.logical(pairedEnd) | length(pairedEnd) != length(bamFiles) | any(is.na(pairedEnd))) {
+            stop("The 'pairedEnd' parameter must be a single logical value, or one logical value per BAM file.", call. = FALSE)
+        }
 
-    if (!is.logical(pairedEnd) | length(pairedEnd) != length(bamFiles) | any(is.na(pairedEnd))) {
-      stop("The 'pairedEnd' parameter must be a single logical value, or one logical value per BAM file.", call. = FALSE)
-    }
+        missingFiles <- bamFiles[!file.exists(bamFiles)]
+        if (length(missingFiles) > 0) {
+            stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+        }
 
-    missingFiles <- bamFiles[!file.exists(bamFiles)]
-    if (length(missingFiles) > 0) {
-      stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
-    }
+        #--------------------#
+        # Tile the genome    #
+        #--------------------#
+        # The bins come from the BAM headers, from the first base of every chromosome that is not excluded.
+        # The files may name the chromosomes in different styles, those of the first file stand for all of them
+        bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles)
+        chromosomeLengths <- bamChromosomes$lengths
 
-    #--------------------#
-    # Tile the genome    #
-    #--------------------#
-    # The bins come from the BAM headers, from the first base of every chromosome that is not excluded.
-    # The files may name the chromosomes in different styles, those of the first file stand for all of them
-    bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles)
-    chromosomeLengths <- bamChromosomes$lengths
+        # Objects counted before 'excludeChromosomes' existed recorded the chromosomes kept, not the ones left out
+        if (is.null(excludeChromosomes) & !is.null(countingParameters$restrictChromosomes)) {
+            excludeChromosomes <- setdiff(names(chromosomeLengths), countingParameters$restrictChromosomes)
+        }
 
-    # Objects counted before 'excludeChromosomes' existed recorded the chromosomes kept, not the ones left out
-    if (is.null(excludeChromosomes) & !is.null(countingParameters$restrictChromosomes)) {
-      excludeChromosomes <- setdiff(names(chromosomeLengths), countingParameters$restrictChromosomes)
-    }
+        # A name written in the other style would exclude nothing and the bins would cover it anyway
+        excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
 
-    # A name written in the other style would exclude nothing and the bins would cover it anyway
-    excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
+        # A bin on a contig that some files lack would read as a difference between the samples, which it is not
+        chromosomeLengths <- chromosomeLengths[bamChromosomes$shared]
+        chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
 
-    # A bin on a contig that some files lack would read as a difference between the samples, which it is not
-    chromosomeLengths <- chromosomeLengths[bamChromosomes$shared]
-    chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
+        if (length(chromosomeLengths) == 0) {
+            stop("Every chromosome of the BAM files is listed in 'excludeChromosomes', no bin is left to count.", call. = FALSE)
+        }
 
-    if (length(chromosomeLengths) == 0) {
-      stop("Every chromosome of the BAM files is listed in 'excludeChromosomes', no bin is left to count.", call. = FALSE)
-    }
+        binsPerChromosome <- as.integer(ceiling(chromosomeLengths / binSize))
+        binStarts <- as.integer(unlist(lapply(binsPerChromosome, function(n) {
+            (seq_len(n) - 1L) * binSize + 1L
+        }), use.names = FALSE))
+        binEnds <- pmin(binStarts + binSize - 1L, rep(as.integer(chromosomeLengths), times = binsPerChromosome))
 
-    binsPerChromosome <- as.integer(ceiling(chromosomeLengths / binSize))
-    binStarts <- as.integer(unlist(lapply(binsPerChromosome, function(n) {(seq_len(n) - 1L) * binSize + 1L}), use.names = FALSE))
-    binEnds <- pmin(binStarts + binSize - 1L, rep(as.integer(chromosomeLengths), times = binsPerChromosome))
+        backgroundBins <- GenomicRanges::GRanges(
+            seqnames = rep(names(chromosomeLengths), times = binsPerChromosome),
+            ranges = IRanges::IRanges(start = binStarts, end = binEnds),
+            seqlengths = chromosomeLengths
+        )
 
-    backgroundBins <- GenomicRanges::GRanges(seqnames = rep(names(chromosomeLengths), times = binsPerChromosome),
-                                             ranges = IRanges::IRanges(start = binStarts, end = binEnds),
-                                             seqlengths = chromosomeLengths)
+        #-------------------#
+        # Count in the bins #
+        #-------------------#
+        if (isTRUE(verbose)) {
+            message("Counting reads in ", format(binSize, big.mark = ","), " bp bins across ", length(bamFiles), " samples...")
+        }
 
-    #-------------------#
-    # Count in the bins #
-    #-------------------#
-    if (isTRUE(verbose)) {
-      message("Counting reads in ", format(binSize, big.mark = ","), " bp bins across ", length(bamFiles), " samples...")
-    }
+        # Counted at a single point per fragment, a fragment lying across two bins would otherwise be counted in both
+        binCounts <- .countBamFragments(
+            bamFiles = bamFiles,
+            ranges = backgroundBins,
+            pairedEnd = pairedEnd,
+            fragmentLength = fragmentLength,
+            maxFragmentLength = maxFragmentLength[1],
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            discardRegions = .storedDiscardRegions(counts = counts, targetSeqlevels = names(bamChromosomes$lengths)),
+            fullLibrarySize = TRUE,
+            countMode = "bin",
+            progressBar = isTRUE(verbose) & isTRUE(progressBar),
+            BPPARAM = BPPARAM
+        )
 
-    # Counted at a single point per fragment, a fragment lying across two bins would otherwise be counted in both
-    binCounts <- .countBamFragments(bamFiles = bamFiles,
-                                    ranges = backgroundBins,
-                                    pairedEnd = pairedEnd,
-                                    fragmentLength = fragmentLength,
-                                    maxFragmentLength = maxFragmentLength[1],
-                                    minMapq = minMapq,
-                                    removeDuplicates = removeDuplicates,
-                                    excludeChromosomes = excludeChromosomes,
-                                    discardRegions = .storedDiscardRegions(counts = counts, targetSeqlevels = names(bamChromosomes$lengths)),
-                                    fullLibrarySize = TRUE,
-                                    countMode = "bin",
-                                    progressBar = isTRUE(verbose) & isTRUE(progressBar),
-                                    nThreads = nThreads)
+        # csaw::normFactors takes the library sizes from the 'totals' column
+        backgroundCounts <-
+            SummarizedExperiment::SummarizedExperiment(
+                assays = list(counts = binCounts$counts),
+                rowRanges = backgroundBins,
+                colData = S4Vectors::DataFrame(
+                    bam.files = bamFiles,
+                    totals = binCounts$library.size,
+                    row.names = colnames(counts)
+                ),
+                metadata = list(spacing = binSize, width = binSize, shift = 0L, bin = TRUE)
+            )
 
-    # csaw::normFactors takes the library sizes from the 'totals' column
-    backgroundCounts <-
-      SummarizedExperiment::SummarizedExperiment(assays = list(counts = binCounts$counts),
-                                                 rowRanges = backgroundBins,
-                                                 colData = S4Vectors::DataFrame(bam.files = bamFiles,
-                                                                                totals = binCounts$library.size,
-                                                                                row.names = colnames(counts)),
-                                                 metadata = list(spacing = binSize, width = binSize, shift = 0L, bin = TRUE))
+        colnames(backgroundCounts) <- colnames(counts)
 
-    colnames(backgroundCounts) <- colnames(counts)
+        # The bins inherit the names of the BAM headers, without this the overlap with the regions would find nothing
+        backgroundCounts <- .matchSeqlevels(
+            x = backgroundCounts,
+            targetSeqlevels = GenomeInfoDb::seqlevels(counts),
+            fileName = bamFiles[1],
+            verbose = verbose
+        )
 
-    # The bins inherit the names of the BAM headers, without this the overlap with the regions would find nothing
-    backgroundCounts <- .matchSeqlevels(x = backgroundCounts,
-                                        targetSeqlevels = GenomeInfoDb::seqlevels(counts),
-                                        fileName = bamFiles[1],
-                                        verbose = verbose)
+        #-------------------#
+        # Filter the bins   #
+        #-------------------#
+        binTable <- data.frame(
+            bin.index = seq_len(nrow(backgroundCounts)),
+            total.count = as.numeric(rowSums(SummarizedExperiment::assay(backgroundCounts, "counts"))),
+            overlaps.regions = IRanges::overlapsAny(
+                SummarizedExperiment::rowRanges(backgroundCounts),
+                SummarizedExperiment::rowRanges(counts)
+            ),
+            stringsAsFactors = FALSE
+        )
 
-    #-------------------#
-    # Filter the bins   #
-    #-------------------#
-    binTable <- data.frame(bin.index = seq_len(nrow(backgroundCounts)),
-                           total.count = as.numeric(rowSums(SummarizedExperiment::assay(backgroundCounts, "counts"))),
-                           overlaps.regions = IRanges::overlapsAny(SummarizedExperiment::rowRanges(backgroundCounts),
-                                                                   SummarizedExperiment::rowRanges(counts)),
-                           stringsAsFactors = FALSE)
+        keptBins <- dplyr::filter(binTable, .data$total.count >= minCount)
 
-    keptBins <- dplyr::filter(binTable, .data$total.count >= minCount)
+        # A bin holding one of the regions carries its signal, which is exactly what the background must not contain
+        if (isTRUE(excludeRegions)) {
+            keptBins <- dplyr::filter(keptBins, !.data$overlaps.regions)
+        }
 
-    # A bin holding one of the regions carries its signal, which is exactly what the background must not contain
-    if (isTRUE(excludeRegions)) {
-      keptBins <- dplyr::filter(keptBins, !.data$overlaps.regions)
-    }
+        if (nrow(keptBins) == 0) {
+            stop("No background bin survived the filters, lower 'minCount' or reduce 'binSize'.", call. = FALSE)
+        }
 
-    if (nrow(keptBins) == 0) {
-      stop("No background bin survived the filters, lower 'minCount' or reduce 'binSize'.", call. = FALSE)
-    }
+        backgroundCounts <- backgroundCounts[keptBins$bin.index, ]
 
-    backgroundCounts <- backgroundCounts[keptBins$bin.index, ]
+        #---------------------------#
+        # Store it in the object    #
+        #---------------------------#
+        S4Vectors::metadata(counts)$background <- backgroundCounts
 
-    #---------------------------#
-    # Store it in the object    #
-    #---------------------------#
-    S4Vectors::metadata(counts)$background <- backgroundCounts
+        parameterLog(counts) <- c(
+            parameterLog(counts),
+            list(countBackground = list(
+                bamFiles = bamFiles,
+                binSize = binSize,
+                excludeRegions = excludeRegions,
+                minCount = minCount,
+                pairedEnd = pairedEnd,
+                fragmentLength = fragmentLength,
+                maxFragmentLength = maxFragmentLength,
+                minMapq = minMapq,
+                removeDuplicates = removeDuplicates,
+                excludeChromosomes = excludeChromosomes
+            ))
+        )
 
-    counts@parameters <- c(counts@parameters,
-                           list(countBackground = list(bamFiles = bamFiles,
-                                                       binSize = binSize,
-                                                       excludeRegions = excludeRegions,
-                                                       minCount = minCount,
-                                                       pairedEnd = pairedEnd,
-                                                       fragmentLength = fragmentLength,
-                                                       maxFragmentLength = maxFragmentLength,
-                                                       minMapq = minMapq,
-                                                       removeDuplicates = removeDuplicates,
-                                                       excludeChromosomes = excludeChromosomes)))
+        if (isTRUE(verbose)) {
+            message(
+                "Done. ", format(nrow(backgroundCounts), big.mark = ","), " background bins retained out of ",
+                format(nrow(binTable), big.mark = ","), "."
+            )
+        }
 
-    if (isTRUE(verbose)) {
-      message("Done. ", format(nrow(backgroundCounts), big.mark = ","), " background bins retained out of ",
-              format(nrow(binTable), big.mark = ","), ".")
-    }
-
-    return(counts)
-  } # END function
+        return(counts)
+    } # END function

@@ -84,7 +84,7 @@ The brackets drawn by \code{"t.test"} and \code{"wilcox.test"} answer a smaller 
 
 Few replicates limit these tests more than they limit the model. With three samples per group the exact Wilcoxon test cannot go below p = 0.1, and with three pairs the signed-rank test cannot go below 0.25; a message says so when the groups are that small. With \code{pairBy} the samples are matched on the value of that column, whatever their order in the object. A test paired by replicate asks what \code{design = ~ replicate + condition} asks in \code{\link{fitRegions}}, and the model is the place for that pairing when the numbers are meant to be reported.
 
-\code{"model"} writes on each bracket the log2 fold change and the FDR that \code{\link{testRegions}} gave to the region, one bracket per contrast comparing two levels of \code{groupBy}. A contrast qualifies when it was written as \code{c("column", "groupA", "groupB")}, or when it reduces to that difference, which the result records in its \code{contrast.groups} slot. The caption says which test, or which fit, the brackets come from.
+\code{"model"} writes on each bracket the log2 fold change and the FDR that \code{\link{testRegions}} gave to the region, one bracket per contrast comparing two levels of \code{groupBy}. A contrast qualifies when it was written as \code{c("column", "groupA", "groupB")}, or when it reduces to that difference, which the result records in its \code{contrast.groups} slot (read with \code{\link{contrastGroups}}). The caption says which test, or which fit, the brackets come from.
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)
@@ -107,8 +107,10 @@ plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t
 pairedCounts <- resultCounts(results)
 pairedCounts$pair <- c("p1", "p2", "p1", "p2")
 
-plotRegion(pairedCounts, region = topRegion, groupBy = "condition",
-           pairwiseTest = "t.test", pairBy = "pair")
+plotRegion(pairedCounts,
+    region = topRegion, groupBy = "condition",
+    pairwiseTest = "t.test", pairBy = "pair"
+)
 
 }
 \seealso{

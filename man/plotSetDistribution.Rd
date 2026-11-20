@@ -46,8 +46,10 @@ Draws the whole distribution of the per-region log2 fold changes of every set, r
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-                             verbose = FALSE)
+setResults <- testRegionSets(fit,
+    contrast = c("condition", "SHR", "BN"),
+    verbose = FALSE
+)
 
 # The whole fold change distribution behind each set-level statistic
 plotSetDistribution(setResults)

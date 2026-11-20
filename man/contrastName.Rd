@@ -4,6 +4,7 @@
 \alias{contrastName}
 \alias{contrastName,RegionSetDE.results-method}
 \alias{contrastName,RegionSetDE.setResults-method}
+\alias{contrastName,RegionSetDE.geneResults-method}
 \alias{contrastName,RegionSetDE.resultsList-method}
 \alias{contrastName,RegionSetDE.setResultsList-method}
 \title{contrastName}
@@ -14,18 +15,20 @@ contrastName(results)
 
 \S4method{contrastName}{RegionSetDE.setResults}(results)
 
+\S4method{contrastName}{RegionSetDE.geneResults}(results)
+
 \S4method{contrastName}{RegionSetDE.resultsList}(results)
 
 \S4method{contrastName}{RegionSetDE.setResultsList}(results)
 }
 \arguments{
-\item{results}{\code{RegionSetDE.results} object.}
+\item{results}{\code{RegionSetDE.results}, \code{RegionSetDE.setResults} or \code{RegionSetDE.geneResults} object, or one of the two list classes holding several contrasts.}
 }
 \value{
-A string.
+A string, or one string per contrast for a list of results.
 }
 \description{
-Returns the contrast that produced a \code{RegionSetDE.results} object.
+Returns the contrast that produced a result.
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)

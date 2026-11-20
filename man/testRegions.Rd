@@ -67,13 +67,13 @@ Tests a contrast on a \code{RegionSetDE.fit} object and returns one row per regi
 \details{
 The multiple testing correction is applied over all the rows of the object, across the region sets, and \code{regionSets} subsets the output afterwards. Correcting inside each set separately would make the FDR of a set depend on how many other sets were loaded, which is not a property anyone wants in a result.
 
-Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, the one between \code{rep.tile.start} and \code{rep.tile.end}, not an average, which is the quantity that matches the p-value and the one \code{diff.status} is read from. It describes that tile, and a sentence such as "the domain gained 3-fold" needs \code{mean.tile.log2FC} instead, which is the closer thing to a fold change of the whole region. When the two are far apart, only part of the region moved. The tile level table stays available in the \code{tiles} slot, and \code{\link{plotRegion}} draws it.
+Two things follow from the combination step. With the default \code{combineMethod} the p-value of a tiled region is a Simes combination, so it answers "does any part of this region change" rather than "does the whole region change", and a long domain that moves over one tile out of forty will come out with a small p-value and a small overall fold change. The \code{log2FC} reported for a combined region is the fold change of the most significant tile, the one between \code{rep.tile.start} and \code{rep.tile.end}, not an average, which is the quantity that matches the p-value and the one \code{diff.status} is read from. It describes that tile, and a sentence such as "the domain gained 3-fold" needs \code{mean.tile.log2FC} instead, which is the closer thing to a fold change of the whole region. When the two are far apart, only part of the region moved. The tile level table stays available in the \code{tiles} slot (read with \code{\link{tileTable}}), and \code{\link{plotRegion}} draws it.
 
 A design written as \code{~ condition} spends one coefficient per level except the first, so a level can be a coefficient in the design or the reference the others are measured against, depending on how the factor was ordered. Naming a coefficient that turns out to be the reference is the usual source of confusion, and it is what \code{c("column", "groupA", "groupB")} avoids: that form averages the design rows of each group and takes the difference, which gives the same contrast whatever the reference is and whether the design was written as \code{~ condition} or \code{~ 0 + condition}. With other covariates in the design the averaging picks up their imbalance between the two groups, so it describes what it says only when the design is reasonably balanced.
 
 Whatever the regions were loaded with travels through to the result. A gene name, a peak score or any other column attached to the \code{rowData} comes out at the end of the table, which is what makes \code{topRegions()} readable and lets \code{plotVolcano(labelColumn = )} label the points with something other than an identifier. On a tiled object the value is read off the tile the combination reported, the same one the fold change comes from, so a row describes one place rather than an average over several.
 
-The statistic, the distribution it follows and its degrees of freedom are in the table so that the test can be taken further, into a power or sample size analysis for instance. \code{\link{contrastInfo}} gathers the rest of what such an analysis needs, the engine and the number of samples in each group of the contrast, which is also stored in the \code{n.samples} element of the \code{contrast.groups} slot.
+The statistic, the distribution it follows and its degrees of freedom are in the table so that the test can be taken further, into a power or sample size analysis for instance. \code{\link{contrastInfo}} gathers the rest of what such an analysis needs, the engine and the number of samples in each group of the contrast, which is also stored in the \code{n.samples} element of the \code{contrast.groups} slot (read with \code{\link{contrastGroups}}).
 
 The \code{diff.status} column is a labelling convenience, not a claim. It is filled from \code{FDR} and \code{log2FC} and used by the plotting functions; the thresholds are stored in the object so that a figure can state them.
 }
@@ -91,15 +91,24 @@ res
 resReverse <- testRegions(fit, contrast = c("condition", "BN", "SHR"), verbose = FALSE)
 
 # Several contrasts on the same fit
-resList <- testRegions(fit, contrast = list(shr = c("condition", "SHR", "BN"),
-                                            bn = c("condition", "BN", "SHR")),
-                       verbose = FALSE)
+resList <- testRegions(fit,
+    contrast = list(
+        shr = c("condition", "SHR", "BN"),
+        bn = c("condition", "BN", "SHR")
+    ),
+    verbose = FALSE
+)
 resList
 topRegions(resList, contrast = "shr", FDR = 1, n = 3)
 
 # Threshold inside the test rather than on the output
 resStrict <- testRegions(fit, contrast = c("condition", "SHR", "BN"), lfcThreshold = 1, verbose = FALSE)
 
+}
+\references{
+Lun A.T.L., Smyth G.K. (2014). De novo detection of differentially bound regions for ChIP-seq data using peaks and windows: controlling error rates correctly. \emph{Nucleic Acids Research} 42(11):e95.
+
+Simes R.J. (1986). An improved Bonferroni procedure for multiple tests of significance. \emph{Biometrika} 73(3):751-754.
 }
 \seealso{
 \code{\link{fitRegions}}, \code{\link{topRegions}}, \code{\link{plotVolcano}}

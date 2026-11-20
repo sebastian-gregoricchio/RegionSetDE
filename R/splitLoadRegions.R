@@ -27,21 +27,27 @@
 #' regionTable <- loadExampleData("regions", verbose = FALSE)
 #'
 #' regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
-#'                                                         keep.extra.columns = TRUE)
+#'     keep.extra.columns = TRUE
+#' )
 #'
 #' regions <- splitLoadRegions(regionRanges,
-#'                             splitBy = "setName",
-#'                             genomeAssembly = "rn4",
-#'                             verbose = FALSE)
+#'     splitBy = "setName",
+#'     genomeAssembly = "rn4",
+#'     verbose = FALSE
+#' )
 #' regionSetNames(regions)
 #'
 #' # A BED file, 0-based, whose name column carries the set of every region
 #' bedFile <- tempfile(fileext = ".bed")
-#' utils::write.table(data.frame(chrom = regionTable$seqnames,
-#'                               start = regionTable$start - 1,
-#'                               end = regionTable$end,
-#'                               name = regionTable$setName),
-#'                    file = bedFile, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+#' utils::write.table(
+#'     data.frame(
+#'         chrom = regionTable$seqnames,
+#'         start = regionTable$start - 1,
+#'         end = regionTable$end,
+#'         name = regionTable$setName
+#'     ),
+#'     file = bedFile, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE
+#' )
 #'
 #' regions <- splitLoadRegions(bedFile, splitBy = "name", genomeAssembly = "rn4", verbose = FALSE)
 #' regionSetNames(regions)
@@ -58,174 +64,186 @@
 #' @export splitLoadRegions
 
 splitLoadRegions <-
-  function(regions,
-           splitBy = "name",
-           header = FALSE,
-           selectedSets = NULL,
-           minRegionsPerSet = 1,
-           maxSets = 100,
-           keepSplitColumn = FALSE,
-           keepMetadata = TRUE,
-           sortRegions = TRUE,
-           reduceRegions = FALSE,
-           removeDuplicatedRegions = TRUE,
-           duplicatedSets = "stop",
-           seqlevelsStyle = "UCSC",
-           genomeAssembly = NULL,
-           outputFormat = "RegionSetDE",
-           verbose = TRUE) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (length(splitBy) != 1) {
-      stop("The 'splitBy' parameter must be a single column name or a single column position.", call. = FALSE)
-    }
-
-    if (minRegionsPerSet < 1) {
-      stop("The 'minRegionsPerSet' parameter must be at least 1.", call. = FALSE)
-    }
-
-    #-------------------------------------------#
-    # Collect the regions and their set labels  #
-    #-------------------------------------------#
-    # The labels are read before any coercion, so that the splitting column can also be a coordinate column
-    if (is.character(regions) & length(regions) == 1) {
-      ### File input, kept as a table so that the column positions match the ones of the file
-      regionTable <- .readRegionFile(filePath = regions, header = header, asGRanges = FALSE)
-
-      if (is.numeric(splitBy)) {
-        if (splitBy > ncol(regionTable)) {
-          stop("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the file (", ncol(regionTable), ").", call. = FALSE)
+    function(regions,
+             splitBy = "name",
+             header = FALSE,
+             selectedSets = NULL,
+             minRegionsPerSet = 1,
+             maxSets = 100,
+             keepSplitColumn = FALSE,
+             keepMetadata = TRUE,
+             sortRegions = TRUE,
+             reduceRegions = FALSE,
+             removeDuplicatedRegions = TRUE,
+             duplicatedSets = "stop",
+             seqlevelsStyle = "UCSC",
+             genomeAssembly = NULL,
+             outputFormat = "RegionSetDE",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (length(splitBy) != 1) {
+            stop("The 'splitBy' parameter must be a single column name or a single column position.", call. = FALSE)
         }
-        splitBy <- colnames(regionTable)[splitBy]
-      }
 
-      if (!(splitBy %in% colnames(regionTable))) {
-        stop("The column '", splitBy, "' is not available in the file. The columns found are: ",
-             paste(colnames(regionTable), collapse = ", "), ".", call. = FALSE)
-      }
-
-      setLabels <- as.character(regionTable[[splitBy]])
-      allRegions <- GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE)
-
-    } else if (is.data.frame(regions)) {
-      ### Data.frame input
-      if (is.numeric(splitBy)) {
-        if (splitBy > ncol(regions)) {
-          stop("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the data.frame (", ncol(regions), ").", call. = FALSE)
+        if (minRegionsPerSet < 1) {
+            stop("The 'minRegionsPerSet' parameter must be at least 1.", call. = FALSE)
         }
-        splitBy <- colnames(regions)[splitBy]
-      }
 
-      if (!(splitBy %in% colnames(regions))) {
-        stop("The column '", splitBy, "' is not available in the data.frame. The columns found are: ",
-             paste(colnames(regions), collapse = ", "), ".", call. = FALSE)
-      }
+        #-------------------------------------------#
+        # Collect the regions and their set labels  #
+        #-------------------------------------------#
+        # The labels are read before any coercion, so that the splitting column can also be a coordinate column
+        if (is.character(regions) & length(regions) == 1) {
+            ### File input, kept as a table so that the column positions match the ones of the file
+            regionTable <- .readRegionFile(filePath = regions, header = header, asGRanges = FALSE)
 
-      setLabels <- as.character(regions[[splitBy]])
-      allRegions <- GenomicRanges::makeGRangesFromDataFrame(regions, keep.extra.columns = TRUE)
+            if (is.numeric(splitBy)) {
+                if (splitBy > ncol(regionTable)) {
+                    stop("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the file (", ncol(regionTable), ").", call. = FALSE)
+                }
+                splitBy <- colnames(regionTable)[splitBy]
+            }
 
-    } else if (methods::is(regions, "GRanges")) {
-      ### GRanges input, the labels are searched among the metadata columns
-      metadataColumns <- colnames(S4Vectors::mcols(regions))
+            if (!(splitBy %in% colnames(regionTable))) {
+                stop("The column '", splitBy, "' is not available in the file. The columns found are: ",
+                    paste(colnames(regionTable), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      if (is.numeric(splitBy)) {
-        if (splitBy > length(metadataColumns)) {
-          stop("The 'splitBy' position (", splitBy, ") exceeds the number of metadata columns of the GRanges (", length(metadataColumns), ").", call. = FALSE)
+            setLabels <- as.character(regionTable[[splitBy]])
+            allRegions <- GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE)
+        } else if (is.data.frame(regions)) {
+            ### Data.frame input
+            if (is.numeric(splitBy)) {
+                if (splitBy > ncol(regions)) {
+                    stop("The 'splitBy' position (", splitBy, ") exceeds the number of columns of the data.frame (", ncol(regions), ").", call. = FALSE)
+                }
+                splitBy <- colnames(regions)[splitBy]
+            }
+
+            if (!(splitBy %in% colnames(regions))) {
+                stop("The column '", splitBy, "' is not available in the data.frame. The columns found are: ",
+                    paste(colnames(regions), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+
+            setLabels <- as.character(regions[[splitBy]])
+            allRegions <- GenomicRanges::makeGRangesFromDataFrame(regions, keep.extra.columns = TRUE)
+        } else if (methods::is(regions, "GRanges")) {
+            ### GRanges input, the labels are searched among the metadata columns
+            metadataColumns <- colnames(S4Vectors::mcols(regions))
+
+            if (is.numeric(splitBy)) {
+                if (splitBy > length(metadataColumns)) {
+                    stop("The 'splitBy' position (", splitBy, ") exceeds the number of metadata columns of the GRanges (", length(metadataColumns), ").", call. = FALSE)
+                }
+                splitBy <- metadataColumns[splitBy]
+            }
+
+            if (splitBy %in% metadataColumns) {
+                setLabels <- as.character(S4Vectors::mcols(regions)[[splitBy]])
+            } else if (splitBy == "seqnames") {
+                setLabels <- as.character(GenomeInfoDb::seqnames(regions))
+            } else {
+                stop("The column '", splitBy, "' is not available in the GRanges. The metadata columns found are: ",
+                    ifelse(length(metadataColumns) == 0, "none", paste(metadataColumns, collapse = ", ")), ".",
+                    call. = FALSE
+                )
+            }
+
+            allRegions <- regions
+        } else {
+            stop("The 'regions' parameter must be a single GRanges, a data.frame or the path to a single file. Use 'loadRegions' to import a collection of separate sets.", call. = FALSE)
         }
-        splitBy <- metadataColumns[splitBy]
-      }
 
-      if (splitBy %in% metadataColumns) {
-        setLabels <- as.character(S4Vectors::mcols(regions)[[splitBy]])
-      } else if (splitBy == "seqnames") {
-        setLabels <- as.character(GenomeInfoDb::seqnames(regions))
-      } else {
-        stop("The column '", splitBy, "' is not available in the GRanges. The metadata columns found are: ",
-             ifelse(length(metadataColumns) == 0, "none", paste(metadataColumns, collapse = ", ")), ".", call. = FALSE)
-      }
+        #-----------------------------#
+        # Discard the unlabelled rows #
+        #-----------------------------#
+        # Regions without a label belong to no set, dropping them silently would hide a truncated import
+        unlabelled <- which(is.na(setLabels) | setLabels == "")
+        if (length(unlabelled) > 0) {
+            warning(length(unlabelled), " regions carry no value in the column '", splitBy, "' and have been discarded.", call. = FALSE)
+            allRegions <- allRegions[-unlabelled]
+            setLabels <- setLabels[-unlabelled]
+        }
 
-      allRegions <- regions
+        if (length(allRegions) == 0) {
+            stop("No region left after discarding the entries without a value in the column '", splitBy, "'.", call. = FALSE)
+        }
 
-    } else {
-      stop("The 'regions' parameter must be a single GRanges, a data.frame or the path to a single file. Use 'loadRegions' to import a collection of separate sets.", call. = FALSE)
-    }
+        # Splitting on a continuous column would generate one set per region
+        if (length(unique(setLabels)) > maxSets) {
+            stop("The column '", splitBy, "' contains ", length(unique(setLabels)), " distinct values, above the 'maxSets' threshold (", maxSets,
+                "). Please check that the splitting column holds the region set names.",
+                call. = FALSE
+            )
+        }
 
-    #-----------------------------#
-    # Discard the unlabelled rows #
-    #-----------------------------#
-    # Regions without a label belong to no set, dropping them silently would hide a truncated import
-    unlabelled <- which(is.na(setLabels) | setLabels == "")
-    if (length(unlabelled) > 0) {
-      warning(length(unlabelled), " regions carry no value in the column '", splitBy, "' and have been discarded.", call. = FALSE)
-      allRegions <- allRegions[-unlabelled]
-      setLabels <- setLabels[-unlabelled]
-    }
+        #-------------------#
+        # Split the regions #
+        #-------------------#
+        # The splitting column is constant within each set, therefore redundant with the set name
+        if (keepSplitColumn == FALSE & splitBy %in% colnames(S4Vectors::mcols(allRegions))) {
+            S4Vectors::mcols(allRegions)[[splitBy]] <- NULL
+        }
 
-    if (length(allRegions) == 0) {
-      stop("No region left after discarding the entries without a value in the column '", splitBy, "'.", call. = FALSE)
-    }
+        # Index subsetting keeps the metadata untouched and follows the order of appearance of the labels
+        setLevels <- unique(setLabels)
+        regionSets <- lapply(X = setLevels, FUN = function(x) {
+            return(allRegions[setLabels == x])
+        })
+        names(regionSets) <- setLevels
 
-    # Splitting on a continuous column would generate one set per region
-    if (length(unique(setLabels)) > maxSets) {
-      stop("The column '", splitBy, "' contains ", length(unique(setLabels)), " distinct values, above the 'maxSets' threshold (", maxSets,
-           "). Please check that the splitting column holds the region set names.", call. = FALSE)
-    }
+        ### Selection of the sets requested by the user
+        if (!is.null(selectedSets)) {
+            missingSets <- setdiff(selectedSets, names(regionSets))
+            if (length(missingSets) > 0) {
+                stop("The following sets are not present in the column '", splitBy, "': ", paste(missingSets, collapse = ", "),
+                    ". The sets available are: ", paste(names(regionSets), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+            regionSets <- regionSets[selectedSets]
+        }
 
-    #-------------------#
-    # Split the regions #
-    #-------------------#
-    # The splitting column is constant within each set, therefore redundant with the set name
-    if (keepSplitColumn == FALSE & splitBy %in% colnames(S4Vectors::mcols(allRegions))) {
-      S4Vectors::mcols(allRegions)[[splitBy]] <- NULL
-    }
+        ### Removal of the underpowered sets
+        setSizes <- vapply(regionSets, length, numeric(1))
+        if (any(setSizes < minRegionsPerSet)) {
+            smallSets <- names(regionSets)[setSizes < minRegionsPerSet]
+            warning("Region sets discarded because containing less than ", minRegionsPerSet, " regions: ",
+                paste0(smallSets, " (", setSizes[smallSets], ")", collapse = ", "), ".",
+                call. = FALSE
+            )
+            regionSets <- regionSets[setSizes >= minRegionsPerSet]
+        }
 
-    # Index subsetting keeps the metadata untouched and follows the order of appearance of the labels
-    setLevels <- unique(setLabels)
-    regionSets <- lapply(X = setLevels, FUN = function(x) {return(allRegions[setLabels == x])})
-    names(regionSets) <- setLevels
+        if (length(regionSets) == 0) {
+            stop("No region set left after the filtering, please lower the 'minRegionsPerSet' threshold.", call. = FALSE)
+        }
 
-    ### Selection of the sets requested by the user
-    if (!is.null(selectedSets)) {
-      missingSets <- setdiff(selectedSets, names(regionSets))
-      if (length(missingSets) > 0) {
-        stop("The following sets are not present in the column '", splitBy, "': ", paste(missingSets, collapse = ", "),
-             ". The sets available are: ", paste(names(regionSets), collapse = ", "), ".", call. = FALSE)
-      }
-      regionSets <- regionSets[selectedSets]
-    }
+        if (verbose == TRUE) {
+            message("Regions split by '", splitBy, "' into ", length(regionSets), " sets.")
+        }
 
-    ### Removal of the underpowered sets
-    setSizes <- vapply(regionSets, length, numeric(1))
-    if (any(setSizes < minRegionsPerSet)) {
-      smallSets <- names(regionSets)[setSizes < minRegionsPerSet]
-      warning("Region sets discarded because containing less than ", minRegionsPerSet, " regions: ",
-              paste0(smallSets, " (", setSizes[smallSets], ")", collapse = ", "), ".", call. = FALSE)
-      regionSets <- regionSets[setSizes >= minRegionsPerSet]
-    }
-
-    if (length(regionSets) == 0) {
-      stop("No region set left after the filtering, please lower the 'minRegionsPerSet' threshold.", call. = FALSE)
-    }
-
-    if (verbose == TRUE) {
-      message("Regions split by '", splitBy, "' into ", length(regionSets), " sets.")
-    }
-
-    #-----------------------#
-    # Import the split sets #
-    #-----------------------#
-    # The import is delegated to loadRegions, which handles the chromosome names, the duplicates and the output class
-    return(loadRegions(regions = regionSets,
-                       keepMetadata = keepMetadata,
-                       sortRegions = sortRegions,
-                       reduceRegions = reduceRegions,
-                       removeDuplicatedRegions = removeDuplicatedRegions,
-                       duplicatedSets = duplicatedSets,
-                       seqlevelsStyle = seqlevelsStyle,
-                       genomeAssembly = genomeAssembly,
-                       skipInvalid = FALSE,
-                       outputFormat = outputFormat,
-                       verbose = verbose))
-  } # END function
+        #-----------------------#
+        # Import the split sets #
+        #-----------------------#
+        # The import is delegated to loadRegions, which handles the chromosome names, the duplicates and the output class
+        return(loadRegions(
+            regions = regionSets,
+            keepMetadata = keepMetadata,
+            sortRegions = sortRegions,
+            reduceRegions = reduceRegions,
+            removeDuplicatedRegions = removeDuplicatedRegions,
+            duplicatedSets = duplicatedSets,
+            seqlevelsStyle = seqlevelsStyle,
+            genomeAssembly = genomeAssembly,
+            skipInvalid = FALSE,
+            outputFormat = outputFormat,
+            verbose = verbose
+        ))
+    } # END function

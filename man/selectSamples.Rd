@@ -41,7 +41,8 @@ brownNorway <- selectSamples(counts, condition == "BN", verbose = FALSE)
 SummarizedExperiment::colData(brownNorway)
 
 firstReplicates <- selectSamples(counts, biologicalReplicate == "bio2",
-                                 verbose = FALSE)
+    verbose = FALSE
+)
 SummarizedExperiment::colData(firstReplicates)
 
 }

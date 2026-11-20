@@ -45,6 +45,11 @@ cutrunBlacklist <- loadBlacklist("hg38", assay = "cutrun")
 t2tBlacklist <- loadBlacklist("T2T")
 
 }
+\references{
+Amemiya H.M., Kundaje A., Boyle A.P. (2019). The ENCODE blacklist: identification of problematic regions of the genome. \emph{Scientific Reports} 9:9354.
+
+Ogata J.D., Mu W., Davis E.S., Xue B., Harrell J.C., Sheffield N.C., Phanstiel D.H., Love M.I., Dozmorov M.G. (2023). excluderanges: exclusion sets for T2T-CHM13, GRCm39, and other genome assemblies. \emph{Bioinformatics} 39(4):btad198.
+}
 \seealso{
 \code{\link{loadGreenlist}}, \code{\link{availableRegionLists}}, \code{\link{applyBlacklist}}
 }

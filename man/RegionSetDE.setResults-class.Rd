@@ -10,9 +10,9 @@ S4 class holding the outcome of a set level test. The table in the \code{results
 \section{Slots}{
 
 \describe{
-\item{\code{results}}{Data.frame with one row per region set, or per pair of sets for a set contrast.}
+\item{\code{results}}{\code{DataFrame} with one row per region set, or per pair of sets for a set contrast. Read it with \code{\link{resultsTable}}.}
 
-\item{\code{regionStats}}{Data.frame with the per-region statistics the set level test was computed on.}
+\item{\code{regionStats}}{\code{DataFrame} with the per-region statistics the set level test was computed on.}
 
 \item{\code{contrast}}{String describing the contrast that was tested.}
 

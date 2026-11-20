@@ -16,8 +16,8 @@
 #' @param maxFragmentLength Numeric value with the maximum length accepted for a paired-end fragment. Default: \code{1000}.
 #' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
-#' @param nThreads Number of threads. Default: \code{1}.
-#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are cut into pieces of at most 50 Mb, shared among the workers. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the workers hand them back, and it is drawn only when \code{verbose = TRUE}. A \code{BPPARAM} given as a \code{BiocParallelParam} object keeps its own \code{progressbar} setting. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{GRanges} with one element per greylisted region, carrying \code{n.inputs}, the number of inputs flagging it, and \code{inputs}, their names. Its \code{metadata} holds \code{thresholds}, a data.frame with, for every input, the fragments counted, the mean and size of the fitted negative binomial, the threshold and how much of the genome was flagged, and \code{parameters}, the arguments of the call.
@@ -64,218 +64,291 @@
 #' @export makeGreylist
 
 makeGreylist <-
-  function(inputFiles,
-           inputNames = NULL,
-           binSize = 1024,
-           quantile = 0.99,
-           maxGap = 16384,
-           minInputs = 1,
-           excludeChromosomes = NULL,
-           pairedEnd = "auto",
-           fragmentLength = 150,
-           maxFragmentLength = 1000,
-           minMapq = 20,
-           removeDuplicates = TRUE,
-           nThreads = 1,
-           progressBar = interactive(),
-           verbose = TRUE) {
+    function(inputFiles,
+             inputNames = NULL,
+             binSize = 1024,
+             quantile = 0.99,
+             maxGap = 16384,
+             minInputs = 1,
+             excludeChromosomes = NULL,
+             pairedEnd = "auto",
+             fragmentLength = 150,
+             maxFragmentLength = 1000,
+             minMapq = 20,
+             removeDuplicates = TRUE,
+             BPPARAM = NULL,
+             progressBar = interactive(),
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkMakeGreylistArguments(
+            inputFiles = inputFiles,
+            inputNames = inputNames,
+            binSize = binSize,
+            quantile = quantile,
+            maxGap = maxGap,
+            minInputs = minInputs,
+            excludeChromosomes = excludeChromosomes,
+            pairedEnd = pairedEnd
+        )
+        binSize <- checkedArguments$binSize
+        inputFiles <- checkedArguments$inputFiles
+        inputNames <- checkedArguments$inputNames
+        maxGap <- checkedArguments$maxGap
+        minInputs <- checkedArguments$minInputs
+        pairedEnd <- checkedArguments$pairedEnd
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # A sample sheet brings its inputs, each distinct file once whatever the number of samples pointing to it
-    if (is.data.frame(inputFiles)) {
-      if (!("input" %in% colnames(inputFiles))) {
-        stop("The sample sheet has no 'input' column.", call. = FALSE)
-      }
+        #-------------------------------#
+        # Windows over the genome       #
+        #-------------------------------#
+        # The inputs may name the chromosomes in different styles, those of the first file stand for all of them
+        inputChromosomes <- .bamChromosomeMap(bamFiles = inputFiles)
+        chromosomeLengths <- inputChromosomes$lengths
 
-      inputTable <- dplyr::distinct(dplyr::filter(inputFiles, !is.na(.data$input)), .data$input, .keep_all = TRUE)
+        # A name in the other naming style would leave the chromosome in and go unnoticed
+        excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
 
-      if (nrow(inputTable) == 0) {
-        stop("No sample of the sheet has an input.", call. = FALSE)
-      }
+        # A contig that some inputs lack would fill their windows with zeros and pull their threshold down
+        chromosomeLengths <- chromosomeLengths[inputChromosomes$shared]
+        chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
 
-      if (is.null(inputNames) & "input.id" %in% colnames(inputTable)) {inputNames <- inputTable$input.id}
-      inputFiles <- inputTable$input
-    }
+        if (length(chromosomeLengths) == 0) {
+            stop("Every chromosome of the BAM files is listed in 'excludeChromosomes', no window is left to count.", call. = FALSE)
+        }
 
-    if (!is.character(inputFiles) | length(inputFiles) == 0) {
-      stop("The 'inputFiles' parameter must be a character vector with at least one BAM file, or a sample sheet.", call. = FALSE)
-    }
+        windowRanges <- .greylistWindows(chromosomeLengths = chromosomeLengths, binSize = binSize)
 
-    if (anyDuplicated(inputFiles) > 0) {
-      stop("The following input files are listed more than once: ",
-           paste(unique(basename(inputFiles[duplicated(inputFiles)])), collapse = ", "), ".", call. = FALSE)
-    }
+        if (isTRUE(verbose)) {
+            message(
+                "Counting ", length(inputFiles), " input libraries over ", format(length(windowRanges), big.mark = ",", trim = TRUE),
+                " windows of ", binSize, " bp..."
+            )
+        }
 
-    if (is.null(inputNames)) {
-      inputNames <- make.unique(sub("\\.bam$", "", basename(inputFiles), ignore.case = TRUE), sep = "_")
-    }
+        # Each fragment counts once in every window holding its centre, two windows since they overlap by half
+        countList <- .countBamFragments(
+            bamFiles = inputFiles,
+            ranges = windowRanges,
+            pairedEnd = pairedEnd,
+            fragmentLength = fragmentLength,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            fullLibrarySize = FALSE,
+            countMode = "bin",
+            progressBar = isTRUE(verbose) & isTRUE(progressBar),
+            BPPARAM = BPPARAM
+        )
 
-    if (length(inputNames) != length(inputFiles) | anyDuplicated(inputNames) > 0 | anyNA(inputNames)) {
-      stop("The 'inputNames' parameter must hold one distinct name per input file.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Threshold of every input      #
+        #-------------------------------#
+        thresholdList <- list()
+        flaggedList <- list()
 
-    binSize <- as.integer(binSize[1])
-    if (is.na(binSize) | binSize < 2) {
-      stop("The 'binSize' parameter must be an integer of at least 2.", call. = FALSE)
-    }
+        for (i in seq_along(inputFiles)) {
+            windowCounts <- countList$counts[, i]
 
-    if (!is.numeric(quantile) | length(quantile) != 1 | anyNA(quantile) | isTRUE(quantile <= 0) | isTRUE(quantile >= 1)) {
-      stop("The 'quantile' parameter must be a single value between 0 and 1.", call. = FALSE)
-    }
+            if (sum(windowCounts) == 0) {
+                stop("The input '", inputNames[i], "' has no fragment in the windows, check 'excludeChromosomes' and the read filters.", call. = FALSE)
+            }
 
-    maxGap <- as.integer(maxGap[1])
-    if (is.na(maxGap) | maxGap < 0) {
-      stop("The 'maxGap' parameter must be a non-negative integer.", call. = FALSE)
-    }
+            fittedDistribution <- .fitNegativeBinomial(windowCounts = windowCounts)
 
-    minInputs <- as.integer(minInputs[1])
-    if (is.na(minInputs) | minInputs < 1 | minInputs > length(inputFiles)) {
-      stop("The 'minInputs' parameter must lie between 1 and the number of inputs (", length(inputFiles), ").", call. = FALSE)
-    }
+            # Without overdispersion the negative binomial collapses on the Poisson
+            countThreshold <- if (is.finite(fittedDistribution$size)) {
+                stats::qnbinom(quantile, size = fittedDistribution$size, mu = fittedDistribution$mu)
+            } else {
+                stats::qpois(quantile, lambda = fittedDistribution$mu)
+            }
 
-    if (!is.null(excludeChromosomes) & !is.character(excludeChromosomes)) {
-      stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
-    }
+            flaggedWindows <- windowRanges[windowCounts > countThreshold]
+            flaggedRegions <- IRanges::reduce(flaggedWindows, min.gapwidth = max(maxGap, 1L))
 
-    missingFiles <- inputFiles[!file.exists(inputFiles)]
-    if (length(missingFiles) > 0) {
-      stop("The following input files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
-    }
+            flaggedList[[inputNames[i]]] <- flaggedRegions
+            thresholdList[[i]] <- data.frame(
+                input = inputNames[i],
+                file = inputFiles[i],
+                fragments = countList$library.size[i],
+                mean = fittedDistribution$mu,
+                size = fittedDistribution$size,
+                threshold = countThreshold,
+                windows = length(windowRanges),
+                flagged.windows = length(flaggedWindows),
+                regions = length(flaggedRegions),
+                greylisted.bp = sum(as.numeric(BiocGenerics::width(flaggedRegions))),
+                stringsAsFactors = FALSE
+            )
 
-    if (any(!.hasBamIndex(inputFiles))) {
-      stop("The following input files are not indexed: ", paste(basename(inputFiles[!.hasBamIndex(inputFiles)]), collapse = ", "), ".", call. = FALSE)
-    }
+            if (isTRUE(verbose)) {
+                message(
+                    "  ", inputNames[i], ": more than ", countThreshold, " fragments per window (mean ", round(fittedDistribution$mu, 1), "), ",
+                    format(length(flaggedWindows), big.mark = ",", trim = TRUE), " windows flagged, ",
+                    format(length(flaggedRegions), big.mark = ",", trim = TRUE), " regions, ",
+                    round(thresholdList[[i]]$greylisted.bp / 1e6, 2), " Mb."
+                )
+            }
+        }
 
-    if (identical(pairedEnd, "auto")) {
-      pairedEnd <- .bamIsPairedEnd(bamFiles = inputFiles)
-    }
+        thresholdTable <- do.call(what = rbind, args = thresholdList)
 
-    if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(inputFiles))}
+        #-------------------------------#
+        # Pool the inputs               #
+        #-------------------------------#
+        greylist <- .poolGreylists(flaggedList = flaggedList, minInputs = minInputs, genomeInfo = GenomeInfoDb::seqinfo(windowRanges))
 
-    if (!is.logical(pairedEnd) | length(pairedEnd) != length(inputFiles) | anyNA(pairedEnd)) {
-      stop("The 'pairedEnd' parameter must be 'auto', a single logical value, or one logical value per input file.", call. = FALSE)
-    }
+        S4Vectors::metadata(greylist) <- list(
+            thresholds = thresholdTable,
+            parameters = list(
+                inputFiles = inputFiles,
+                inputNames = inputNames,
+                binSize = binSize,
+                quantile = quantile,
+                maxGap = maxGap,
+                minInputs = minInputs,
+                excludeChromosomes = excludeChromosomes,
+                pairedEnd = pairedEnd,
+                fragmentLength = fragmentLength,
+                maxFragmentLength = maxFragmentLength,
+                minMapq = minMapq,
+                removeDuplicates = removeDuplicates
+            )
+        )
 
-    #-------------------------------#
-    # Windows over the genome       #
-    #-------------------------------#
-    # The inputs may name the chromosomes in different styles, those of the first file stand for all of them
-    inputChromosomes <- .bamChromosomeMap(bamFiles = inputFiles)
-    chromosomeLengths <- inputChromosomes$lengths
+        if (isTRUE(verbose)) {
+            genomeLength <- sum(as.numeric(chromosomeLengths))
+            greylistLength <- sum(as.numeric(BiocGenerics::width(greylist)))
 
-    # A name in the other naming style would leave the chromosome in and go unnoticed
-    excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = names(chromosomeLengths))
+            message(
+                "Greylist: ", format(length(greylist), big.mark = ",", trim = TRUE), " regions, ", round(greylistLength / 1e6, 2), " Mb (",
+                signif(100 * greylistLength / genomeLength, 2), "% of the genome), flagged by at least ", minInputs, " of ", length(inputFiles), " inputs."
+            )
+        }
 
-    # A contig that some inputs lack would fill their windows with zeros and pull their threshold down
-    chromosomeLengths <- chromosomeLengths[inputChromosomes$shared]
-    chromosomeLengths <- chromosomeLengths[!(names(chromosomeLengths) %in% excludeChromosomes)]
-
-    if (length(chromosomeLengths) == 0) {
-      stop("Every chromosome of the BAM files is listed in 'excludeChromosomes', no window is left to count.", call. = FALSE)
-    }
-
-    windowRanges <- .greylistWindows(chromosomeLengths = chromosomeLengths, binSize = binSize)
-
-    if (isTRUE(verbose)) {
-      message("Counting ", length(inputFiles), " input libraries over ", format(length(windowRanges), big.mark = ",", trim = TRUE),
-              " windows of ", binSize, " bp...")
-    }
-
-    # Each fragment counts once in every window holding its centre, two windows since they overlap by half
-    countList <- .countBamFragments(bamFiles = inputFiles,
-                                    ranges = windowRanges,
-                                    pairedEnd = pairedEnd,
-                                    fragmentLength = fragmentLength,
-                                    maxFragmentLength = maxFragmentLength,
-                                    minMapq = minMapq,
-                                    removeDuplicates = removeDuplicates,
-                                    excludeChromosomes = excludeChromosomes,
-                                    fullLibrarySize = FALSE,
-                                    countMode = "bin",
-                                    progressBar = isTRUE(verbose) & isTRUE(progressBar),
-                                    nThreads = nThreads)
-
-    #-------------------------------#
-    # Threshold of every input      #
-    #-------------------------------#
-    thresholdList <- list()
-    flaggedList <- list()
-
-    for (i in seq_along(inputFiles)) {
-      windowCounts <- countList$counts[, i]
-
-      if (sum(windowCounts) == 0) {
-        stop("The input '", inputNames[i], "' has no fragment in the windows, check 'excludeChromosomes' and the read filters.", call. = FALSE)
-      }
-
-      fittedDistribution <- .fitNegativeBinomial(windowCounts = windowCounts)
-
-      # Without overdispersion the negative binomial collapses on the Poisson
-      countThreshold <- if (is.finite(fittedDistribution$size)) {
-        stats::qnbinom(quantile, size = fittedDistribution$size, mu = fittedDistribution$mu)
-      } else {
-        stats::qpois(quantile, lambda = fittedDistribution$mu)
-      }
-
-      flaggedWindows <- windowRanges[windowCounts > countThreshold]
-      flaggedRegions <- IRanges::reduce(flaggedWindows, min.gapwidth = max(maxGap, 1L))
-
-      flaggedList[[inputNames[i]]] <- flaggedRegions
-      thresholdList[[i]] <- data.frame(input = inputNames[i],
-                                       file = inputFiles[i],
-                                       fragments = countList$library.size[i],
-                                       mean = fittedDistribution$mu,
-                                       size = fittedDistribution$size,
-                                       threshold = countThreshold,
-                                       windows = length(windowRanges),
-                                       flagged.windows = length(flaggedWindows),
-                                       regions = length(flaggedRegions),
-                                       greylisted.bp = sum(as.numeric(BiocGenerics::width(flaggedRegions))),
-                                       stringsAsFactors = FALSE)
-
-      if (isTRUE(verbose)) {
-        message("  ", inputNames[i], ": more than ", countThreshold, " fragments per window (mean ", round(fittedDistribution$mu, 1), "), ",
-                format(length(flaggedWindows), big.mark = ",", trim = TRUE), " windows flagged, ",
-                format(length(flaggedRegions), big.mark = ",", trim = TRUE), " regions, ",
-                round(thresholdList[[i]]$greylisted.bp / 1e6, 2), " Mb.")
-      }
-    }
-
-    thresholdTable <- do.call(what = rbind, args = thresholdList)
-
-    #-------------------------------#
-    # Pool the inputs               #
-    #-------------------------------#
-    greylist <- .poolGreylists(flaggedList = flaggedList, minInputs = minInputs, genomeInfo = GenomeInfoDb::seqinfo(windowRanges))
-
-    S4Vectors::metadata(greylist) <- list(thresholds = thresholdTable,
-                                          parameters = list(inputFiles = inputFiles,
-                                                            inputNames = inputNames,
-                                                            binSize = binSize,
-                                                            quantile = quantile,
-                                                            maxGap = maxGap,
-                                                            minInputs = minInputs,
-                                                            excludeChromosomes = excludeChromosomes,
-                                                            pairedEnd = pairedEnd,
-                                                            fragmentLength = fragmentLength,
-                                                            maxFragmentLength = maxFragmentLength,
-                                                            minMapq = minMapq,
-                                                            removeDuplicates = removeDuplicates))
-
-    if (isTRUE(verbose)) {
-      genomeLength <- sum(as.numeric(chromosomeLengths))
-      greylistLength <- sum(as.numeric(BiocGenerics::width(greylist)))
-
-      message("Greylist: ", format(length(greylist), big.mark = ",", trim = TRUE), " regions, ", round(greylistLength / 1e6, 2), " Mb (",
-              signif(100 * greylistLength / genomeLength, 2), "% of the genome), flagged by at least ", minInputs, " of ", length(inputFiles), " inputs.")
-    }
-
-    return(greylist)
-  } # END function
+        return(greylist)
+    } # END function
 
 
+#' @title .checkMakeGreylistArguments
+#'
+#' @description Checks the arguments of \code{\link{makeGreylist}} and brings them to the form the rest of the function works with.
+#'
+#' @param inputFiles See \code{\link{makeGreylist}}.
+#' @param inputNames See \code{\link{makeGreylist}}.
+#' @param binSize See \code{\link{makeGreylist}}.
+#' @param quantile See \code{\link{makeGreylist}}.
+#' @param maxGap See \code{\link{makeGreylist}}.
+#' @param minInputs See \code{\link{makeGreylist}}.
+#' @param excludeChromosomes See \code{\link{makeGreylist}}.
+#' @param pairedEnd See \code{\link{makeGreylist}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{binSize}, \code{inputFiles}, \code{inputNames}, \code{maxGap}, \code{minInputs}, \code{pairedEnd}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkMakeGreylistArguments <-
+    function(inputFiles,
+             inputNames,
+             binSize,
+             quantile,
+             maxGap,
+             minInputs,
+             excludeChromosomes,
+             pairedEnd) {
+        # A sample sheet brings its inputs, each distinct file once whatever the number of samples pointing to it
+        if (is.data.frame(inputFiles)) {
+            if (!("input" %in% colnames(inputFiles))) {
+                stop("The sample sheet has no 'input' column.", call. = FALSE)
+            }
+
+            inputTable <- dplyr::distinct(dplyr::filter(inputFiles, !is.na(.data$input)), .data$input, .keep_all = TRUE)
+
+            if (nrow(inputTable) == 0) {
+                stop("No sample of the sheet has an input.", call. = FALSE)
+            }
+
+            if (is.null(inputNames) & "input.id" %in% colnames(inputTable)) {
+                inputNames <- inputTable$input.id
+            }
+            inputFiles <- inputTable$input
+        }
+
+        if (!is.character(inputFiles) | length(inputFiles) == 0) {
+            stop("The 'inputFiles' parameter must be a character vector with at least one BAM file, or a sample sheet.", call. = FALSE)
+        }
+
+        if (anyDuplicated(inputFiles) > 0) {
+            stop("The following input files are listed more than once: ",
+                paste(unique(basename(inputFiles[duplicated(inputFiles)])), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
+
+        if (is.null(inputNames)) {
+            inputNames <- make.unique(sub("\\.bam$", "", basename(inputFiles), ignore.case = TRUE), sep = "_")
+        }
+
+        if (length(inputNames) != length(inputFiles) | anyDuplicated(inputNames) > 0 | anyNA(inputNames)) {
+            stop("The 'inputNames' parameter must hold one distinct name per input file.", call. = FALSE)
+        }
+
+        binSize <- as.integer(binSize[1])
+        if (is.na(binSize) | binSize < 2) {
+            stop("The 'binSize' parameter must be an integer of at least 2.", call. = FALSE)
+        }
+
+        if (!is.numeric(quantile) | length(quantile) != 1 | anyNA(quantile) | isTRUE(quantile <= 0) | isTRUE(quantile >= 1)) {
+            stop("The 'quantile' parameter must be a single value between 0 and 1.", call. = FALSE)
+        }
+
+        maxGap <- as.integer(maxGap[1])
+        if (is.na(maxGap) | maxGap < 0) {
+            stop("The 'maxGap' parameter must be a non-negative integer.", call. = FALSE)
+        }
+
+        minInputs <- as.integer(minInputs[1])
+        if (is.na(minInputs) | minInputs < 1 | minInputs > length(inputFiles)) {
+            stop("The 'minInputs' parameter must lie between 1 and the number of inputs (", length(inputFiles), ").", call. = FALSE)
+        }
+
+        if (!is.null(excludeChromosomes) & !is.character(excludeChromosomes)) {
+            stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
+        }
+
+        missingFiles <- inputFiles[!file.exists(inputFiles)]
+        if (length(missingFiles) > 0) {
+            stop("The following input files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+        }
+
+        if (any(!.hasBamIndex(inputFiles))) {
+            stop("The following input files are not indexed: ", paste(basename(inputFiles[!.hasBamIndex(inputFiles)]), collapse = ", "), ".", call. = FALSE)
+        }
+
+        if (identical(pairedEnd, "auto")) {
+            pairedEnd <- .bamIsPairedEnd(bamFiles = inputFiles)
+        }
+
+        if (length(pairedEnd) == 1) {
+            pairedEnd <- rep(pairedEnd, length(inputFiles))
+        }
+
+        if (!is.logical(pairedEnd) | length(pairedEnd) != length(inputFiles) | anyNA(pairedEnd)) {
+            stop("The 'pairedEnd' parameter must be 'auto', a single logical value, or one logical value per input file.", call. = FALSE)
+        }
+
+        return(list(
+            binSize = binSize,
+            inputFiles = inputFiles,
+            inputNames = inputNames,
+            maxGap = maxGap,
+            minInputs = minInputs,
+            pairedEnd = pairedEnd
+        ))
+    } # END function
 
 
 #' @title .greylistWindows
@@ -295,21 +368,22 @@ makeGreylist <-
 #' @keywords internal
 
 .greylistWindows <-
-  function(chromosomeLengths,
-           binSize) {
+    function(chromosomeLengths,
+             binSize) {
+        stepSize <- binSize %/% 2L
 
-    stepSize <- binSize %/% 2L
+        windowsPerChromosome <- as.integer(ceiling(chromosomeLengths / stepSize))
+        windowStarts <- as.integer(unlist(lapply(windowsPerChromosome, function(n) {
+            (seq_len(n) - 1L) * stepSize + 1L
+        }), use.names = FALSE))
+        windowEnds <- pmin(windowStarts + binSize - 1L, rep(as.integer(chromosomeLengths), times = windowsPerChromosome))
 
-    windowsPerChromosome <- as.integer(ceiling(chromosomeLengths / stepSize))
-    windowStarts <- as.integer(unlist(lapply(windowsPerChromosome, function(n) {(seq_len(n) - 1L) * stepSize + 1L}), use.names = FALSE))
-    windowEnds <- pmin(windowStarts + binSize - 1L, rep(as.integer(chromosomeLengths), times = windowsPerChromosome))
-
-    return(GenomicRanges::GRanges(seqnames = rep(names(chromosomeLengths), times = windowsPerChromosome),
-                                  ranges = IRanges::IRanges(start = windowStarts, end = windowEnds),
-                                  seqlengths = chromosomeLengths))
-  } # END function
-
-
+        return(GenomicRanges::GRanges(
+            seqnames = rep(names(chromosomeLengths), times = windowsPerChromosome),
+            ranges = IRanges::IRanges(start = windowStarts, end = windowEnds),
+            seqlengths = chromosomeLengths
+        ))
+    } # END function
 
 
 #' @title .fitNegativeBinomial
@@ -327,32 +401,29 @@ makeGreylist <-
 #' @keywords internal
 
 .fitNegativeBinomial <-
-  function(windowCounts) {
+    function(windowCounts) {
+        meanCount <- mean(windowCounts)
+        varianceCount <- stats::var(windowCounts)
 
-    meanCount <- mean(windowCounts)
-    varianceCount <- stats::var(windowCounts)
+        if (!is.finite(varianceCount) | varianceCount <= meanCount) {
+            return(list(mu = meanCount, size = Inf))
+        }
 
-    if (!is.finite(varianceCount) | varianceCount <= meanCount) {
-      return(list(mu = meanCount, size = Inf))
-    }
+        # Millions of windows share a few thousand distinct values, so the likelihood is summed over those
+        countFrequencies <- tabulate(as.integer(windowCounts) + 1L)
+        observedValues <- which(countFrequencies > 0) - 1L
+        countFrequencies <- countFrequencies[countFrequencies > 0]
 
-    # Millions of windows share a few thousand distinct values, so the likelihood is summed over those
-    countFrequencies <- tabulate(as.integer(windowCounts) + 1L)
-    observedValues <- which(countFrequencies > 0) - 1L
-    countFrequencies <- countFrequencies[countFrequencies > 0]
+        logLikelihood <- function(logSize) {
+            sum(countFrequencies * stats::dnbinom(observedValues, size = exp(logSize), mu = meanCount, log = TRUE))
+        }
 
-    logLikelihood <- function(logSize) {
-      sum(countFrequencies * stats::dnbinom(observedValues, size = exp(logSize), mu = meanCount, log = TRUE))
-    }
+        # The moments give the scale of the size, the likelihood is searched well beyond it on both sides
+        momentSize <- meanCount^2 / (varianceCount - meanCount)
+        fittedSize <- stats::optimize(f = logLikelihood, interval = log(momentSize) + c(-10, 10), maximum = TRUE)
 
-    # The moments give the scale of the size, the likelihood is searched well beyond it on both sides
-    momentSize <- meanCount^2 / (varianceCount - meanCount)
-    fittedSize <- stats::optimize(f = logLikelihood, interval = log(momentSize) + c(-10, 10), maximum = TRUE)
-
-    return(list(mu = meanCount, size = exp(fittedSize$maximum)))
-  } # END function
-
-
+        return(list(mu = meanCount, size = exp(fittedSize$maximum)))
+    } # END function
 
 
 #' @title .poolGreylists
@@ -376,41 +447,45 @@ makeGreylist <-
 #' @keywords internal
 
 .poolGreylists <-
-  function(flaggedList,
-           minInputs,
-           genomeInfo) {
+    function(flaggedList,
+             minInputs,
+             genomeInfo) {
+        stackedRanges <- unlist(GenomicRanges::GRangesList(flaggedList), use.names = FALSE)
+        stackedRanges$input <- rep(names(flaggedList), times = lengths(flaggedList))
 
-    stackedRanges <- unlist(GenomicRanges::GRangesList(flaggedList), use.names = FALSE)
-    stackedRanges$input <- rep(names(flaggedList), times = lengths(flaggedList))
+        # Each input is free of overlaps within itself, so the coverage counts how many inputs flag a position
+        inputCoverage <- IRanges::coverage(stackedRanges)
+        pooledList <- IRanges::slice(inputCoverage, lower = minInputs, rangesOnly = TRUE)
 
-    # Each input is free of overlaps within itself, so the coverage counts how many inputs flag a position
-    inputCoverage <- IRanges::coverage(stackedRanges)
-    pooledList <- IRanges::slice(inputCoverage, lower = minInputs, rangesOnly = TRUE)
+        greylist <- GenomicRanges::GRanges(
+            seqnames = rep(names(pooledList), times = lengths(pooledList)),
+            ranges = unlist(pooledList, use.names = FALSE),
+            seqinfo = genomeInfo
+        )
 
-    greylist <- GenomicRanges::GRanges(seqnames = rep(names(pooledList), times = lengths(pooledList)),
-                                       ranges = unlist(pooledList, use.names = FALSE),
-                                       seqinfo = genomeInfo)
+        if (length(greylist) == 0) {
+            S4Vectors::mcols(greylist) <- S4Vectors::DataFrame(n.inputs = integer(0), inputs = character(0))
+            return(greylist)
+        }
 
-    if (length(greylist) == 0) {
-      S4Vectors::mcols(greylist) <- S4Vectors::DataFrame(n.inputs = integer(0), inputs = character(0))
-      return(greylist)
-    }
+        #-------------------------------#
+        # Inputs behind every region    #
+        #-------------------------------#
+        overlapHits <- GenomicRanges::findOverlaps(greylist, stackedRanges)
+        hitTable <- data.frame(
+            region = S4Vectors::queryHits(overlapHits),
+            input = stackedRanges$input[S4Vectors::subjectHits(overlapHits)],
+            stringsAsFactors = FALSE
+        )
 
-    #-------------------------------#
-    # Inputs behind every region    #
-    #-------------------------------#
-    overlapHits <- GenomicRanges::findOverlaps(greylist, stackedRanges)
-    hitTable <- data.frame(region = S4Vectors::queryHits(overlapHits),
-                           input = stackedRanges$input[S4Vectors::subjectHits(overlapHits)],
-                           stringsAsFactors = FALSE)
+        inputTable <- dplyr::summarise(dplyr::group_by(hitTable, .data$region),
+            n.inputs = dplyr::n_distinct(.data$input),
+            inputs = paste(sort(unique(.data$input)), collapse = ","),
+            .groups = "drop"
+        )
 
-    inputTable <- dplyr::summarise(dplyr::group_by(hitTable, .data$region),
-                                   n.inputs = dplyr::n_distinct(.data$input),
-                                   inputs = paste(sort(unique(.data$input)), collapse = ","),
-                                   .groups = "drop")
+        greylist$n.inputs <- inputTable$n.inputs[match(seq_along(greylist), inputTable$region)]
+        greylist$inputs <- inputTable$inputs[match(seq_along(greylist), inputTable$region)]
 
-    greylist$n.inputs <- inputTable$n.inputs[match(seq_along(greylist), inputTable$region)]
-    greylist$inputs <- inputTable$inputs[match(seq_along(greylist), inputTable$region)]
-
-    return(greylist)
-  } # END function
+        return(greylist)
+    } # END function

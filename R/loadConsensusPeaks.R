@@ -6,19 +6,37 @@
 #'
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, with at least the \code{sample} and \code{peaks} columns.
 #' @param groupBy String with the column of the sample sheet defining the groups, for instance \code{"condition"}. Default: \code{NULL}, all the samples form a single group.
-#' @param blacklist Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.
+#' @param blacklist Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot (read with \code{\link{blacklistRanges}}) of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.
 #' @param greylist Regions of this experiment whose peaks must be dropped before any consensus is built, typically the list built from the inputs by \code{\link{makeGreylist}}. Accepts the same forms as \code{blacklist}. Default: \code{NULL}.
 #' @param regionSets Regions of interest of the user, in any form accepted by \code{\link{loadRegions}}: a named list of paths, \code{GRanges} or data.frames. Default: \code{NULL}, the total consensus is the only set.
 #' @param regionMode String indicating what \code{regionSets} do, either \code{"split"}, where every region of the total consensus goes to the first set it overlaps, or \code{"replace"}, where the sets of the user are the regions and the peaks only annotate them. Ignored without \code{regionSets}. Default: \code{"split"}.
 #' @param unassignedSet String with the name of the set collecting the consensus regions that overlap none of \code{regionSets} in \code{"split"} mode. \code{NULL} drops them. Default: \code{"other"}.
 #' @param seqlevelsStyle String indicating the chromosome naming style, one among \code{"UCSC"}, \code{"Ensembl"} or \code{"NCBI"}, or \code{NULL} to keep the names as they are. Default: \code{"UCSC"}.
 #' @param genomeAssembly String indicating the genome assembly to store with the regions, e.g. \code{"hg38"}. Default: \code{NULL}.
-#' @param nThreads Number of threads. The groups with more than one sample are built side by side, one worker per group, and the threads left over go to the calibration of the threshold inside each group when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Default: \code{1}.
-#' @param seed Number seeding the random numbers of the calibration, when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. It goes to \code{runConsensus} for every group, which hands it to the \code{BiocParallel} back end of the permutations as its \code{RNGseed}, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of threads. Needs consensusRegions 0.99.2 or later. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. A number of cores is shared out: the groups with more than one sample are built side by side, one worker per group, and with \code{calibrate = TRUE} the cores left over go to the calibration inside each group. A \code{BiocParallelParam} object goes to the calibration of every group when \code{calibrate = TRUE}, the groups being built one after the other, and runs the groups side by side otherwise, so that two levels of workers are never stacked. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
+#' @param seed Number seeding the random numbers of the calibration, when \code{calibrate = TRUE}. It goes to \code{runConsensus} for every group, which hands it to the \code{BiocParallel} back end of the permutations as its \code{RNGseed}, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of cores. Needs consensusRegions 0.99.2 or later. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
-#' @param ... Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.
+#' @param weightMethod String with the weights of the replicates within a group, passed to \code{consensusRegions::computeReplicateWeights}: \code{"equal"}, \code{"frip"}, \code{"librarySize"} or \code{"intrinsic"}. \code{"equal"} counts every replicate the same and is the reproducible choice. With \code{"frip"} or \code{"librarySize"} the BAM files of the sample sheet are used. Default: \code{"equal"}.
+#' @param calibrate Logical value to indicate whether the threshold on the combined p-value must be estimated within each group by \code{consensusRegions::calibrateThreshold}, against shuffled peaks, instead of being fixed by \code{combinedThreshold}. Default: \code{FALSE}.
+#' @param nPermutations Number of shuffles of the calibration. Ignored when \code{calibrate = FALSE}. Default: \code{50}.
+#' @param targetFDR Numeric value with the empirical false discovery rate the calibration aims for. Ignored when \code{calibrate = FALSE}. Default: \code{0.05}.
+#' @param recentre Logical value to indicate whether the consensus of each group must be reduced to windows of fixed width around the summits, as \code{consensusRegions::recentrePeaks} does. It suits transcription factors and ATAC-seq, not broad domains, and with several groups the union merges overlapping windows back into wider regions. Default: \code{FALSE}.
+#' @param width Width in base pairs of the recentred windows. Ignored when \code{recentre = FALSE}. Default: \code{400}.
+#' @param combinationMethod String with the way the p-values of overlapping peaks are combined, one among \code{"stouffer"}, \code{"fisher"}, \code{"lancaster"} and \code{"rankProduct"}. Default: \code{"stouffer"}.
+#' @param replicateType String with the kind of replicates in a group: \code{"biological"} asks for \code{minSupport} supporting replicates, \code{"technical"} for all of them. Default: \code{"biological"}.
+#' @param stringencyThreshold Numeric value with the p-value below which a peak is stringent. Default: \code{1e-8}.
+#' @param weakThreshold Numeric value with the p-value above which a peak is taken as background and plays no further part. Default: \code{1e-4}.
+#' @param combinedThreshold Numeric value with the threshold on the combined p-value. Its scale depends on \code{combinationMethod}, so a value chosen for one scheme does not mean the same under another. Default: \code{NULL}, \code{stringencyThreshold} is used.
+#' @param alpha Numeric value with the level of the Benjamini-Hochberg step within each replicate. Default: \code{0.05}.
+#' @param minSupport Number of other replicates of the group that must hold an overlapping peak. Give this or \code{minReplicates}, not both. Default: \code{NULL}, one supporting replicate is enough.
+#' @param minReplicates Number of replicates of the group that must hold the peak, counting the one it came from, as a count (\code{2}), a proportion (\code{0.66}) or a percentage (\code{"66\%"}), the last two rounded up. \code{minReplicates = 2} is the same requirement as \code{minSupport = 1}. Default: \code{NULL}.
+#' @param minOverlap Minimum overlap in base pairs between two peaks for one to support the other. Default: \code{1}.
+#' @param minOverlapFraction Minimum overlap as a fraction of the shorter of the two peaks, required on top of \code{minOverlap}. Default: \code{NULL}, no such requirement.
+#' @param mergeMethod String with the way the confirmed peaks are merged: \code{"reduce"} merges anything that touches, \code{"iterative"} keeps the most significant peak, removes what overlaps it and repeats. Default: \code{"reduce"}.
+#' @param maxConsensusWidth Maximum width in base pairs of a merged region. Wider regions are rebuilt with the iterative rule. Default: \code{NULL}, no limit.
+#' @param ... Any other argument of \code{consensusRegions::runConsensus} or \code{consensusRegions::buildConsensus}, for instance \code{adjustmentFamily} or \code{minSupportWeight}. \code{peaks} and \code{sampleNames} come from the sample sheet and cannot be given.
 #'
-#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot, the greylist to the \code{greylist} slot with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
+#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot (read with \code{\link{consensusData}}), read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot (read with \code{\link{blacklistRanges}}), the greylist to the \code{greylist} slot (read with \code{\link{greylistRanges}}) with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
 #'
 #' @details The consensus is built group by group and then pooled, rather than once over all the samples. A single requirement over all the libraries, such as a peak in at least two of them, favours the larger group, while the same requirement applied within each group treats them alike, and the union keeps the regions found in one group only. A group with a single sample has no replicate to agree with, and its peaks stand for the group as they are.
 #'
@@ -30,34 +48,39 @@
 #'
 #' The occupancy columns describe where the peaks were called, and they are a poor basis for a set of regions to test. A set of the regions found in one group only was selected on the signal of that group, so a test of its change between the groups answers a question already settled by the selection.
 #'
-#' The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident.
+#' The consensus of a group does not depend on the other groups, so with more than one core the groups run in parallel. \code{consensusRegions} builds a consensus on a single core and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more cores save time: three groups on three cores take about as long as the largest of them. With \code{calibrate = TRUE} a number of cores is shared, divided by the number of groups for the permutations of each group. A \code{BiocParallelParam} object is never split: with \code{calibrate = TRUE} it is handed to every group as it is and the groups run one after the other, without calibration it runs the groups.
 #'
-#' The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} is passed on to \code{consensusRegions::runConsensus} in every group, which gives it to the back end of the permutations as its \code{RNGseed}: the same seed returns the same consensus whatever the number of threads, and the random numbers of the session are left as they were. Neither package calls \code{set.seed()}. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BPPARAM} passed in \code{...} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BPPARAM} passed in \code{...} is used as it is, so \code{seed} is ignored with it, with a warning.
+#' The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} is passed on to \code{consensusRegions::runConsensus} in every group, which gives it to the back end of the permutations as its \code{RNGseed}: the same seed returns the same consensus whatever the number of cores, and the random numbers of the session are left as they were. Neither package calls \code{set.seed()}. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BiocParallelParam} object given as \code{BPPARAM} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BiocParallelParam} object is used as it is, so \code{seed} is ignored with it, with a warning.
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
-#'                           pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE)
+#'     peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
+#'         pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE
+#'     )
 #'
-#'   # Three replicates of one condition and two of another, peaks only
-#'   sampleSheet <- data.frame(sample = c("A_1", "A_2", "A_3", "B_1", "B_2"),
-#'                             bam = c("A_1.bam", "A_2.bam", "A_3.bam", "B_1.bam", "B_2.bam"),
-#'                             peaks = peakFiles[c(1, 2, 3, 1, 2)],
-#'                             condition = c("A", "A", "A", "B", "B"))
+#'     # Three replicates of one condition and two of another, peaks only
+#'     sampleSheet <- data.frame(
+#'         sample = c("A_1", "A_2", "A_3", "B_1", "B_2"),
+#'         bam = c("A_1.bam", "A_2.bam", "A_3.bam", "B_1.bam", "B_2.bam"),
+#'         peaks = peakFiles[c(1, 2, 3, 1, 2)],
+#'         condition = c("A", "A", "A", "B", "B")
+#'     )
 #'
-#'   sampleSheet <- loadSampleSheet(sampleSheet, checkFiles = FALSE, verbose = FALSE)
+#'     sampleSheet <- loadSampleSheet(sampleSheet, checkFiles = FALSE, verbose = FALSE)
 #'
-#'   regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition")
-#'   regions
+#'     regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition")
+#'     regions
 #'
-#'   head(regionRanges(regions)$consensus, 3)
+#'     head(regionRanges(regions)$consensus, 3)
 #'
-#'   # The same peaks split by regions of interest of the user
-#'   firstHalf <- GenomicRanges::GRanges("chr1", IRanges::IRanges(1, 5e5))
-#'   splitRegions <- loadConsensusPeaks(sampleSheet, groupBy = "condition",
-#'                                      regionSets = list(firstHalf = firstHalf),
-#'                                      verbose = FALSE)
-#'   lengths(regionRanges(splitRegions))
+#'     # The same peaks split by regions of interest of the user
+#'     firstHalf <- GenomicRanges::GRanges("chr1", IRanges::IRanges(1, 5e5))
+#'     splitRegions <- loadConsensusPeaks(sampleSheet,
+#'         groupBy = "condition",
+#'         regionSets = list(firstHalf = firstHalf),
+#'         verbose = FALSE
+#'     )
+#'     lengths(regionRanges(splitRegions))
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -78,452 +101,704 @@
 #' @export loadConsensusPeaks
 
 loadConsensusPeaks <-
-  function(sampleSheet,
-           groupBy = NULL,
-           blacklist = NULL,
-           greylist = NULL,
-           regionSets = NULL,
-           regionMode = "split",
-           unassignedSet = "other",
-           seqlevelsStyle = "UCSC",
-           genomeAssembly = NULL,
-           nThreads = 1,
-           seed = NULL,
-           verbose = TRUE,
-           ...) {
+    function(sampleSheet,
+             groupBy = NULL,
+             blacklist = NULL,
+             greylist = NULL,
+             regionSets = NULL,
+             regionMode = "split",
+             unassignedSet = "other",
+             seqlevelsStyle = "UCSC",
+             genomeAssembly = NULL,
+             BPPARAM = NULL,
+             seed = NULL,
+             weightMethod = "equal",
+             calibrate = FALSE,
+             nPermutations = 50L,
+             targetFDR = 0.05,
+             recentre = FALSE,
+             width = 400L,
+             combinationMethod = "stouffer",
+             replicateType = "biological",
+             stringencyThreshold = 1e-8,
+             weakThreshold = 1e-4,
+             combinedThreshold = NULL,
+             alpha = 0.05,
+             minSupport = NULL,
+             minReplicates = NULL,
+             minOverlap = 1L,
+             minOverlapFraction = NULL,
+             mergeMethod = "reduce",
+             maxConsensusWidth = NULL,
+             verbose = TRUE,
+             ...) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkLoadConsensusPeaksArguments(
+            sampleSheet = sampleSheet,
+            groupBy = groupBy,
+            regionMode = regionMode,
+            unassignedSet = unassignedSet,
+            seed = seed,
+            weightMethod = weightMethod,
+            calibrate = calibrate,
+            nPermutations = nPermutations,
+            targetFDR = targetFDR,
+            recentre = recentre,
+            width = width,
+            combinationMethod = combinationMethod,
+            replicateType = replicateType,
+            stringencyThreshold = stringencyThreshold,
+            weakThreshold = weakThreshold,
+            combinedThreshold = combinedThreshold,
+            alpha = alpha,
+            minSupport = minSupport,
+            minReplicates = minReplicates,
+            minOverlap = minOverlap,
+            minOverlapFraction = minOverlapFraction,
+            mergeMethod = mergeMethod,
+            maxConsensusWidth = maxConsensusWidth,
+            verbose = verbose,
+            ...
+        )
+        consensusArguments <- checkedArguments$consensusArguments
+        regionMode <- checkedArguments$regionMode
+        sampleSheet <- checkedArguments$sampleSheet
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!requireNamespace("consensusRegions", quietly = TRUE)) {
-      stop("The 'consensusRegions' package is needed to build the consensus peaks.", call. = FALSE)
-    }
-
-    if (is.character(sampleSheet) & length(sampleSheet) == 1) {
-      sampleSheet <- loadSampleSheet(sampleSheet, verbose = verbose)
-    }
-
-    if (!is.data.frame(sampleSheet) || !all(c("sample", "peaks") %in% colnames(sampleSheet))) {
-      stop("The 'sampleSheet' parameter must be a table with the 'sample' and 'peaks' columns, as returned by loadSampleSheet().", call. = FALSE)
-    }
-
-    if (!is.null(groupBy)) {
-      if (!is.character(groupBy) | length(groupBy) != 1 || !(groupBy %in% colnames(sampleSheet))) {
-        stop("The 'groupBy' parameter must name a column of the sample sheet.", call. = FALSE)
-      }
-    }
-
-    regionMode <- tolower(as.character(regionMode[1]))
-    if (!(regionMode %in% c("split", "replace"))) {
-      stop("The 'regionMode' parameter must be either 'split' or 'replace'.", call. = FALSE)
-    }
-
-    if (!is.null(unassignedSet) && (!is.character(unassignedSet) | length(unassignedSet) != 1)) {
-      stop("The 'unassignedSet' parameter must be a single string, or NULL.", call. = FALSE)
-    }
-
-    consensusArguments <- list(...)
-
-    if ("excludeRegions" %in% names(consensusArguments)) {
-      stop("The 'excludeRegions' parameter has been replaced by 'blacklist' and 'greylist', which take the two lists separately.", call. = FALSE)
-    }
-
-    if (!is.null(seed) && (!is.numeric(seed) | length(seed) != 1 || !is.finite(seed))) {
-      stop("The 'seed' parameter must be a single number, or NULL.", call. = FALSE)
-    }
-
-    reservedArguments <- intersect(names(consensusArguments), c("peaks", "sampleNames"))
-    if (length(reservedArguments) > 0) {
-      stop("The following arguments of runConsensus are set from the sample sheet and cannot be given: ",
-           paste(reservedArguments, collapse = ", "), ".", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Samples and groups            #
-    #-------------------------------#
-    groupValues <- if (is.null(groupBy)) {rep("all", nrow(sampleSheet))} else {as.character(sampleSheet[[groupBy]])}
-
-    sampleTable <- data.frame(sample = as.character(sampleSheet$sample),
-                              group = groupValues,
-                              peak.file = as.character(sampleSheet$peaks),
-                              bam = if ("bam" %in% colnames(sampleSheet)) {as.character(sampleSheet$bam)} else {NA_character_},
-                              stringsAsFactors = FALSE)
-
-    if (anyNA(sampleTable$group)) {
-      stop("The following samples have no value in the '", groupBy, "' column: ",
-           paste(sampleTable$sample[is.na(sampleTable$group)], collapse = ", "), ".", call. = FALSE)
-    }
-
-    withoutPeaks <- dplyr::filter(sampleTable, is.na(.data$peak.file))
-    if (isTRUE(verbose) & nrow(withoutPeaks) > 0) {
-      message("The following samples have no peak file and stay out of the consensus: ", paste(withoutPeaks$sample, collapse = ", "), ".")
-    }
-
-    sampleTable <- dplyr::filter(sampleTable, !is.na(.data$peak.file))
-
-    if (nrow(sampleTable) < 2) {
-      stop("At least two samples with a peak file are needed to build a consensus.", call. = FALSE)
-    }
-
-    # The levels of a factor are the order the user chose, otherwise the groups follow the sheet
-    groupLevels <- if (!is.null(groupBy) && is.factor(sampleSheet[[groupBy]])) {
-      intersect(levels(sampleSheet[[groupBy]]), sampleTable$group)
-    } else {
-      unique(sampleTable$group)
-    }
-
-    # Recentring works within a group, and the union merges the overlapping windows of different groups back
-    if (isTRUE(consensusArguments$recentre) & length(groupLevels) > 1) {
-      warning("Recentred regions of different groups overlap and are merged back by the union, so the total consensus will not have a fixed width.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Read and clean the peaks      #
-    #-------------------------------#
-    peakList <- consensusRegions::readPeakSets(peaks = sampleTable$peak.file,
-                                               sampleNames = sampleTable$sample,
-                                               seqlevelsStyle = seqlevelsStyle,
-                                               verbose = FALSE)
-
-    sampleTable$n.peaks <- as.integer(lengths(peakList))
-
-    #-------------------------------#
-    # Blacklist, then greylist      #
-    #-------------------------------#
-    # An artefact next to a genuine peak would merge with it, so both lists act before the consensus.
-    # The greylist sees only the peaks the blacklist left, so a peak on both is counted once, as blacklisted.
-    listRanges <- list(blacklist = NULL, greylist = NULL)
-    removedList <- list()
-    filteringSteps <- list()
-
-    for (listLabel in c("blacklist", "greylist")) {
-      listInput <- if (listLabel == "blacklist") {blacklist} else {greylist}
-      sampleTable[[paste0("n.", listLabel)]] <- 0L
-
-      if (is.null(listInput)) {next}
-
-      .checkListAssembly(listInput = listInput, genomeAssembly = genomeAssembly, listLabel = listLabel)
-      listRanges[[listLabel]] <- .loadExclusionRegions(excludeRegions = listInput, seqlevelsStyle = seqlevelsStyle, listLabel = listLabel)
-
-      # With seqlevelsStyle = NULL the peaks keep the names of their files, and the list has to follow them
-      listRanges[[listLabel]] <- tryCatch(expr = .matchSeqlevels(x = listRanges[[listLabel]],
-                                                                 targetSeqlevels = GenomeInfoDb::seqlevels(peakList),
-                                                                 verbose = FALSE),
-                                          error = function(e) {return(listRanges[[listLabel]])})
-
-      peaksBefore <- as.integer(lengths(peakList))
-      overlapList <- lapply(as.list(peakList), function(peakRanges) {IRanges::overlapsAny(peakRanges, listRanges[[listLabel]], ignore.strand = TRUE)})
-
-      # The peaks taken out are kept, with the sample they came from and the list that removed them
-      removedList[[listLabel]] <- lapply(names(peakList), function(sampleName) {
-        removedPeaks <- peakList[[sampleName]][overlapList[[sampleName]]]
-        S4Vectors::mcols(removedPeaks)$sample <- rep(sampleName, length(removedPeaks))
-        S4Vectors::mcols(removedPeaks)$removed.by <- rep(listLabel, length(removedPeaks))
-        return(removedPeaks)
-      })
-
-      peakList <- GenomicRanges::GRangesList(lapply(names(peakList), function(sampleName) {peakList[[sampleName]][!overlapList[[sampleName]]]}))
-      names(peakList) <- sampleTable$sample
-      peaksAfter <- as.integer(lengths(peakList))
-
-      sampleTable[[paste0("n.", listLabel)]] <- peaksBefore - peaksAfter
-
-      filteringSteps[[listLabel]] <- data.frame(step = listLabel,
-                                                region.set = paste(sampleTable$sample, "peaks"),
-                                                n.before = peaksBefore,
-                                                n.after = peaksAfter,
-                                                n.removed = peaksBefore - peaksAfter,
-                                                stringsAsFactors = FALSE)
-
-      if (isTRUE(verbose)) {
-        message("Peaks overlapping the ", listLabel, " (", length(listRanges[[listLabel]]), " regions) removed: ",
-                paste(sampleTable$sample, paste(peaksBefore - peaksAfter, peaksBefore, sep = "/"), collapse = ", "), ".")
-      }
-    }
-
-    sampleTable$n.excluded <- sampleTable$n.blacklist + sampleTable$n.greylist
-
-    removedPeaks <- if (length(removedList) == 0) {
-      GenomicRanges::GRanges()
-    } else {
-      unlist(GenomicRanges::GRangesList(unlist(removedList, recursive = FALSE, use.names = FALSE)), use.names = FALSE)
-    }
-
-    #-------------------------------#
-    # Consensus of every group      #
-    #-------------------------------#
-    groupConsensus <- list()
-    consensusObjects <- list()
-
-    groupSizes <- vapply(groupLevels, function(groupName) {sum(sampleTable$group == groupName)}, integer(1))
-    multiGroups <- groupLevels[groupSizes > 1]
-
-    # Only the calibration draws random numbers, and the record says where they came from.
-    # A back end of the user is handed over untouched, so its own seed, or the lack of one, decides
-    userBPPARAM <- consensusArguments$BPPARAM
-    userRNGseed <- if (methods::is(userBPPARAM, "BiocParallelParam")) {BiocParallel::bpRNGseed(userBPPARAM)} else {NULL}
-
-    calibrated <- isTRUE(consensusArguments$calibrate) & length(multiGroups) > 0
-
-    if (calibrated & !is.null(seed) & !is.null(userBPPARAM)) {
-      warning("The 'seed' parameter is ignored when a BPPARAM is passed on to runConsensus: give the seed to the back end as its RNGseed.", call. = FALSE)
-    }
-
-    seedSource <- if (!calibrated) {
-      "none"
-    } else if (!is.null(userRNGseed)) {
-      "BPPARAM"
-    } else if (!is.null(seed) & is.null(userBPPARAM)) {
-      "seed"
-    } else {
-      "unseeded"
-    }
-
-    recordedSeed <- switch(seedSource, "seed" = seed, "BPPARAM" = userRNGseed, NULL)
-
-    # Earlier versions of consensusRegions would take the seed for an argument of buildConsensus, and stop there
-    if (seedSource == "seed" && utils::packageVersion("consensusRegions") < "0.99.2") {
-      stop("The 'seed' parameter needs consensusRegions 0.99.2 or later, which passes it on to the calibration. ",
-           "Update consensusRegions, or leave 'seed' out.", call. = FALSE)
-    }
-
-    if (isTRUE(verbose) & seedSource == "unseeded") {
-      message("The calibration draws random positions and no seed was given: the consensus may change from one call to the next. ",
-              "Set 'seed' to build it again identically.")
-    }
-
-    # A single sample has no replicate to agree with, its peaks stand for the group
-    for (groupName in groupLevels[groupSizes == 1]) {
-      groupSamples <- sampleTable$sample[sampleTable$group == groupName]
-      groupConsensus[[groupName]] <- IRanges::reduce(peakList[[groupSamples]], ignore.strand = TRUE)
-      consensusObjects[groupName] <- list(NULL)
-    }
-
-    # How the threads are shared between the groups and the calibration inside each of them
-    workerPlan <- .consensusWorkers(nThreads = nThreads,
-                                    nGroups = length(multiGroups),
-                                    calibrate = isTRUE(consensusArguments$calibrate),
-                                    userBPPARAM = consensusArguments$BPPARAM)
-
-    groupArgumentList <-
-      lapply(multiGroups,
-             function(groupName) {
-               groupSamples <- sampleTable$sample[sampleTable$group == groupName]
-
-               groupArguments <- consensusArguments
-               if (is.null(groupArguments$BPPARAM)) {groupArguments$BPPARAM <- workerPlan$inner}
-               if (is.null(groupArguments$verbose)) {groupArguments$verbose <- FALSE}
-
-               # Every group calibrates with the same seed, so that its consensus depends neither on the number of
-               # threads nor on the other groups. consensusRegions hands it to its back end as the RNGseed
-               if (seedSource == "seed") {groupArguments$seed <- seed}
-
-               # runConsensus renames the chromosomes to UCSC on its own, which would leave the consensus in
-               # one style and the peaks it came from in another, and every overlap between the two empty
-               if (!("seqlevelsStyle" %in% names(groupArguments))) {
-                 groupArguments["seqlevelsStyle"] <- list(seqlevelsStyle)
-               }
-
-               # Weights from the libraries need the BAM files, which the sheet already lists
-               weightMethod <- groupArguments$weightMethod
-               if (!is.null(weightMethod) && weightMethod[1] %in% c("frip", "librarySize") &
-                   is.null(groupArguments$bamFiles) & is.null(groupArguments$frip) & is.null(groupArguments$librarySize)) {
-                 groupArguments$bamFiles <- sampleTable$bam[match(groupSamples, sampleTable$sample)]
-               }
-
-               return(c(list(peaks = peakList[groupSamples], sampleNames = groupSamples), groupArguments))
-             })
-    names(groupArgumentList) <- multiGroups
-
-    if (isTRUE(verbose) & length(multiGroups) > 1 & workerPlan$outer > 1) {
-      message("Building the consensus of ", length(multiGroups), " groups on ", workerPlan$outer, " workers",
-              if (workerPlan$inner > 1) {paste(",", workerPlan$inner, "threads each for the calibration")} else {""}, ".")
-    }
-
-    # The groups do not depend on each other, so they run side by side
-    groupObjects <- BiocParallel::bplapply(X = groupArgumentList,
-                                           FUN = .runGroupConsensus,
-                                           BPPARAM = .makeParallelParam(nThreads = workerPlan$outer,
-                                                                        tasks = length(multiGroups)))
-
-    for (groupName in multiGroups) {
-      consensusRanges <- consensusRegions::consensusRanges(groupObjects[[groupName]])
-
-      # The statistics of one group mean nothing for the others, only the coordinates are pooled
-      S4Vectors::mcols(consensusRanges) <- NULL
-      groupConsensus[[groupName]] <- consensusRanges
-      consensusObjects[[groupName]] <- groupObjects[[groupName]]
-    }
-
-    # Back in the order of the groups, whatever order they were computed in
-    groupConsensus <- groupConsensus[groupLevels]
-    consensusObjects <- consensusObjects[groupLevels]
-
-    if (isTRUE(verbose)) {
-      for (groupName in groupLevels) {
-        if (groupSizes[[groupName]] == 1) {
-          message("Group ", groupName, ": a single sample, its ", length(groupConsensus[[groupName]]), " peaks are taken as they are.")
+        #-------------------------------#
+        # Samples and groups            #
+        #-------------------------------#
+        groupValues <- if (is.null(groupBy)) {
+            rep("all", nrow(sampleSheet))
         } else {
-          message("Group ", groupName, ": ", groupSizes[[groupName]], " samples, ", length(groupConsensus[[groupName]]), " consensus regions.")
+            as.character(sampleSheet[[groupBy]])
         }
-      }
-    }
 
-    #-------------------------------#
-    # Total consensus               #
-    #-------------------------------#
-    totalConsensus <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(groupConsensus)), use.names = FALSE), ignore.strand = TRUE)
+        sampleTable <- data.frame(
+            sample = as.character(sampleSheet$sample),
+            group = groupValues,
+            peak.file = as.character(sampleSheet$peaks),
+            bam = if ("bam" %in% colnames(sampleSheet)) {
+                as.character(sampleSheet$bam)
+            } else {
+                NA_character_
+            },
+            stringsAsFactors = FALSE
+        )
 
-    if (length(totalConsensus) == 0) {
-      stop("No consensus region was found in any group.", call. = FALSE)
-    }
+        if (anyNA(sampleTable$group)) {
+            stop("The following samples have no value in the '", groupBy, "' column: ",
+                paste(sampleTable$sample[is.na(sampleTable$group)], collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (isTRUE(verbose)) {
-      message("Total consensus: ", length(totalConsensus), " regions from ", length(groupLevels), " groups.")
-    }
+        withoutPeaks <- dplyr::filter(sampleTable, is.na(.data$peak.file))
+        if (isTRUE(verbose) & nrow(withoutPeaks) > 0) {
+            message("The following samples have no peak file and stay out of the consensus: ", paste(withoutPeaks$sample, collapse = ", "), ".")
+        }
 
-    #-------------------------------#
-    # Regions of the user           #
-    #-------------------------------#
-    analysisMode <- "consensus"
-    regionList <- list(consensus = totalConsensus)
+        sampleTable <- dplyr::filter(sampleTable, !is.na(.data$peak.file))
 
-    if (!is.null(regionSets)) {
-      userList <- loadRegions(regions = regionSets,
-                              keepMetadata = TRUE,
-                              seqlevelsStyle = seqlevelsStyle,
-                              genomeAssembly = genomeAssembly,
-                              outputFormat = "list",
-                              verbose = FALSE)
+        if (nrow(sampleTable) < 2) {
+            stop("At least two samples with a peak file are needed to build a consensus.", call. = FALSE)
+        }
 
-      # With seqlevelsStyle = NULL the regions of the user may be written in another style than the peaks.
-      # Regions that cannot be reconciled are left as they are, and the occupancy step says so
-      userList <- lapply(userList,
-                         function(userRanges) {
-                           tryCatch(expr = .matchSeqlevels(x = userRanges,
-                                                           targetSeqlevels = GenomeInfoDb::seqlevels(totalConsensus),
-                                                           verbose = FALSE),
-                                    error = function(e) {return(userRanges)})
-                         })
+        # The levels of a factor are the order the user chose, otherwise the groups follow the sheet
+        groupLevels <- if (!is.null(groupBy) && is.factor(sampleSheet[[groupBy]])) {
+            intersect(levels(sampleSheet[[groupBy]]), sampleTable$group)
+        } else {
+            unique(sampleTable$group)
+        }
 
-      analysisMode <- regionMode
+        # Recentring works within a group, and the union merges the overlapping windows of different groups back
+        if (isTRUE(consensusArguments$recentre) & length(groupLevels) > 1) {
+            warning("Recentred regions of different groups overlap and are merged back by the union, so the total consensus will not have a fixed width.", call. = FALSE)
+        }
 
-      regionList <- if (regionMode == "split") {
-        .splitConsensus(totalConsensus = totalConsensus, userList = userList, unassignedSet = unassignedSet, verbose = verbose)
-      } else {
-        userList
-      }
-    }
+        #-------------------------------#
+        # Read and clean the peaks      #
+        #-------------------------------#
+        peakList <- consensusRegions::readPeakSets(
+            peaks = sampleTable$peak.file,
+            sampleNames = sampleTable$sample,
+            seqlevelsStyle = seqlevelsStyle,
+            verbose = FALSE
+        )
 
-    #-------------------------------#
-    # Occupancy of every region     #
-    #-------------------------------#
-    regionList <- lapply(regionList,
-                         function(regionRanges) {
-                           occupancyTable <- .peakOccupancy(regionRanges = regionRanges,
-                                                            groupConsensus = groupConsensus,
-                                                            peakList = peakList)
-                           S4Vectors::mcols(regionRanges) <- cbind(S4Vectors::mcols(regionRanges), occupancyTable)
-                           return(regionRanges)
-                         })
+        sampleTable$n.peaks <- as.integer(lengths(peakList))
 
-    regionSet <- loadRegions(regions = regionList,
-                             keepMetadata = TRUE,
-                             seqlevelsStyle = seqlevelsStyle,
-                             genomeAssembly = genomeAssembly,
-                             verbose = FALSE)
+        #-------------------------------#
+        # Blacklist, then greylist      #
+        #-------------------------------#
+        # An artefact next to a genuine peak would merge with it, so both lists act before the consensus.
+        # The greylist sees only the peaks the blacklist left, so a peak on both is counted once, as blacklisted.
+        listRanges <- list(blacklist = NULL, greylist = NULL)
+        removedList <- list()
+        filteringSteps <- list()
 
-    #-------------------------------#
-    # Keep the consensus data       #
-    #-------------------------------#
-    regionSet@consensus <- list(groups = groupConsensus,
-                                objects = consensusObjects,
-                                total = totalConsensus,
-                                peaks = peakList,
-                                removed = removedPeaks,
-                                samples = sampleTable,
-                                sheet = sampleSheet,
-                                groupBy = groupBy,
-                                mode = analysisMode,
-                                blacklist = listRanges$blacklist,
-                                greylist = listRanges$greylist)
+        for (listLabel in c("blacklist", "greylist")) {
+            listInput <- if (listLabel == "blacklist") {
+                blacklist
+            } else {
+                greylist
+            }
+            sampleTable[[paste0("n.", listLabel)]] <- 0L
 
-    # Recorded as applyBlacklist and applyGreylist record them, so the lists follow the object downstream
-    if (!is.null(listRanges$blacklist)) {
-      regionSet@blacklist <- listRanges$blacklist
-    }
+            if (is.null(listInput)) {
+                next
+            }
 
-    if (!is.null(listRanges$greylist)) {
-      regionSet@greylist <- listRanges$greylist
-      regionSet@parameters$greylist <- list(n.regions = length(listRanges$greylist),
-                                            covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))),
-                                            applied.to = "peaks")
-    }
+            .checkListAssembly(listInput = listInput, genomeAssembly = genomeAssembly, listLabel = listLabel)
+            listRanges[[listLabel]] <- .loadExclusionRegions(excludeRegions = listInput, seqlevelsStyle = seqlevelsStyle, listLabel = listLabel)
 
-    if (length(filteringSteps) > 0) {
-      regionSet@filtering.log <- rbind(regionSet@filtering.log, do.call(what = rbind, args = unname(filteringSteps)))
-    }
+            # With seqlevelsStyle = NULL the peaks keep the names of their files, and the list has to follow them
+            listRanges[[listLabel]] <- tryCatch(
+                expr = .matchSeqlevels(
+                    x = listRanges[[listLabel]],
+                    targetSeqlevels = GenomeInfoDb::seqlevels(peakList),
+                    verbose = FALSE
+                ),
+                error = function(e) {
+                    return(listRanges[[listLabel]])
+                }
+            )
 
-    # Only plain values go to the parameters, a BiocParallel object has no place in an exported record
-    regionSet@parameters$loadConsensusPeaks <- list(groupBy = groupBy,
-                                                    regionMode = analysisMode,
-                                                    unassignedSet = unassignedSet,
-                                                    seqlevelsStyle = seqlevelsStyle,
-                                                    n.samples = nrow(sampleTable),
-                                                    n.groups = length(groupLevels),
-                                                    n.blacklist.regions = if (is.null(listRanges$blacklist)) {0L} else {length(listRanges$blacklist)},
-                                                    n.greylist.regions = if (is.null(listRanges$greylist)) {0L} else {length(listRanges$greylist)},
-                                                    seed = recordedSeed,
-                                                    seed.source = seedSource,
-                                                    consensusArguments = Filter(is.atomic, consensusArguments))
+            peaksBefore <- as.integer(lengths(peakList))
+            overlapList <- lapply(as.list(peakList), function(peakRanges) {
+                IRanges::overlapsAny(peakRanges, listRanges[[listLabel]], ignore.strand = TRUE)
+            })
 
-    methods::validObject(regionSet)
-    return(regionSet)
-  } # END function
+            # The peaks taken out are kept, with the sample they came from and the list that removed them
+            removedList[[listLabel]] <- lapply(names(peakList), function(sampleName) {
+                removedPeaks <- peakList[[sampleName]][overlapList[[sampleName]]]
+                S4Vectors::mcols(removedPeaks)$sample <- rep(sampleName, length(removedPeaks))
+                S4Vectors::mcols(removedPeaks)$removed.by <- rep(listLabel, length(removedPeaks))
+                return(removedPeaks)
+            })
+
+            peakList <- GenomicRanges::GRangesList(lapply(names(peakList), function(sampleName) {
+                peakList[[sampleName]][!overlapList[[sampleName]]]
+            }))
+            names(peakList) <- sampleTable$sample
+            peaksAfter <- as.integer(lengths(peakList))
+
+            sampleTable[[paste0("n.", listLabel)]] <- peaksBefore - peaksAfter
+
+            filteringSteps[[listLabel]] <- data.frame(
+                step = listLabel,
+                region.set = paste(sampleTable$sample, "peaks"),
+                n.before = peaksBefore,
+                n.after = peaksAfter,
+                n.removed = peaksBefore - peaksAfter,
+                stringsAsFactors = FALSE
+            )
+
+            if (isTRUE(verbose)) {
+                message(
+                    "Peaks overlapping the ", listLabel, " (", length(listRanges[[listLabel]]), " regions) removed: ",
+                    paste(sampleTable$sample, paste(peaksBefore - peaksAfter, peaksBefore, sep = "/"), collapse = ", "), "."
+                )
+            }
+        }
+
+        sampleTable$n.excluded <- sampleTable$n.blacklist + sampleTable$n.greylist
+
+        removedPeaks <- if (length(removedList) == 0) {
+            GenomicRanges::GRanges()
+        } else {
+            unlist(GenomicRanges::GRangesList(unlist(removedList, recursive = FALSE, use.names = FALSE)), use.names = FALSE)
+        }
+
+        #-------------------------------#
+        # Consensus of every group      #
+        #-------------------------------#
+        groupConsensus <- list()
+        consensusObjects <- list()
+
+        groupSizes <- vapply(groupLevels, function(groupName) {
+            sum(sampleTable$group == groupName)
+        }, integer(1))
+        multiGroups <- groupLevels[groupSizes > 1]
+
+        # Only the calibration draws random numbers, and the record says where they came from.
+        # A back end of the user is handed over untouched, so its own seed, or the lack of one, decides
+        userBPPARAM <- if (methods::is(BPPARAM, "BiocParallelParam")) {
+            BPPARAM
+        } else {
+            NULL
+        }
+        calibrated <- isTRUE(consensusArguments$calibrate) & length(multiGroups) > 0
+        userRNGseed <- if (calibrated & !is.null(userBPPARAM)) {
+            BiocParallel::bpRNGseed(userBPPARAM)
+        } else {
+            NULL
+        }
+
+        if (calibrated & !is.null(seed) & !is.null(userBPPARAM)) {
+            warning("The 'seed' parameter is ignored when 'BPPARAM' is a BiocParallelParam object: give the seed to the back end as its RNGseed.", call. = FALSE)
+        }
+
+        seedSource <- if (!calibrated) {
+            "none"
+        } else if (!is.null(userRNGseed)) {
+            "BPPARAM"
+        } else if (!is.null(seed) & is.null(userBPPARAM)) {
+            "seed"
+        } else {
+            "unseeded"
+        }
+
+        recordedSeed <- switch(seedSource,
+            "seed" = seed,
+            "BPPARAM" = userRNGseed,
+            NULL
+        )
+
+        # Earlier versions of consensusRegions would take the seed for an argument of buildConsensus, and stop there
+        if (seedSource == "seed" && utils::packageVersion("consensusRegions") < "0.99.2") {
+            stop("The 'seed' parameter needs consensusRegions 0.99.2 or later, which passes it on to the calibration. ",
+                "Update consensusRegions, or leave 'seed' out.",
+                call. = FALSE
+            )
+        }
+
+        if (isTRUE(verbose) & seedSource == "unseeded") {
+            message(
+                "The calibration draws random positions and no seed was given: the consensus may change from one call to the next. ",
+                "Set 'seed' to build it again identically."
+            )
+        }
+
+        # A single sample has no replicate to agree with, its peaks stand for the group
+        for (groupName in groupLevels[groupSizes == 1]) {
+            groupSamples <- sampleTable$sample[sampleTable$group == groupName]
+            groupConsensus[[groupName]] <- IRanges::reduce(peakList[[groupSamples]], ignore.strand = TRUE)
+            consensusObjects[groupName] <- list(NULL)
+        }
+
+        # How the cores are shared between the groups and the calibration inside each of them
+        workerPlan <- .consensusWorkers(
+            BPPARAM = BPPARAM,
+            nGroups = length(multiGroups),
+            calibrate = isTRUE(consensusArguments$calibrate)
+        )
+
+        groupArgumentList <-
+            lapply(
+                multiGroups,
+                function(groupName) {
+                    groupSamples <- sampleTable$sample[sampleTable$group == groupName]
+
+                    groupArguments <- consensusArguments
+                    groupArguments$BPPARAM <- workerPlan$inner
+                    if (is.null(groupArguments$verbose)) {
+                        groupArguments$verbose <- FALSE
+                    }
+
+                    # Every group calibrates with the same seed, so that its consensus depends neither on the number of
+                    # cores nor on the other groups. consensusRegions hands it to its back end as the RNGseed
+                    if (seedSource == "seed") {
+                        groupArguments$seed <- seed
+                    }
+
+                    # runConsensus renames the chromosomes to UCSC on its own, which would leave the consensus in
+                    # one style and the peaks it came from in another, and every overlap between the two empty
+                    if (!("seqlevelsStyle" %in% names(groupArguments))) {
+                        groupArguments["seqlevelsStyle"] <- list(seqlevelsStyle)
+                    }
+
+                    # Weights from the libraries need the BAM files, which the sheet already lists
+                    weightMethod <- groupArguments$weightMethod
+                    if (!is.null(weightMethod) && weightMethod[1] %in% c("frip", "librarySize") &
+                        is.null(groupArguments$bamFiles) & is.null(groupArguments$frip) & is.null(groupArguments$librarySize)) {
+                        groupArguments$bamFiles <- sampleTable$bam[match(groupSamples, sampleTable$sample)]
+                    }
+
+                    return(c(list(peaks = peakList[groupSamples], sampleNames = groupSamples), groupArguments))
+                }
+            )
+        names(groupArgumentList) <- multiGroups
+
+        if (isTRUE(verbose) & length(multiGroups) > 1 & workerPlan$nOuter > 1) {
+            message(
+                "Building the consensus of ", length(multiGroups), " groups on ", workerPlan$nOuter, " workers",
+                if (workerPlan$nInner > 1) {
+                    paste(",", workerPlan$nInner, "workers each for the calibration")
+                } else {
+                    ""
+                }, "."
+            )
+        }
+
+        # The groups do not depend on each other, so they run side by side
+        groupObjects <- BiocParallel::bplapply(
+            X = groupArgumentList,
+            FUN = .runGroupConsensus,
+            BPPARAM = .resolveBPPARAM(
+                BPPARAM = workerPlan$outer,
+                tasks = length(multiGroups)
+            )
+        )
+
+        for (groupName in multiGroups) {
+            consensusRanges <- consensusRegions::consensusRanges(groupObjects[[groupName]])
+
+            # The statistics of one group mean nothing for the others, only the coordinates are pooled
+            S4Vectors::mcols(consensusRanges) <- NULL
+            groupConsensus[[groupName]] <- consensusRanges
+            consensusObjects[[groupName]] <- groupObjects[[groupName]]
+        }
+
+        # Back in the order of the groups, whatever order they were computed in
+        groupConsensus <- groupConsensus[groupLevels]
+        consensusObjects <- consensusObjects[groupLevels]
+
+        if (isTRUE(verbose)) {
+            for (groupName in groupLevels) {
+                if (groupSizes[[groupName]] == 1) {
+                    message("Group ", groupName, ": a single sample, its ", length(groupConsensus[[groupName]]), " peaks are taken as they are.")
+                } else {
+                    message("Group ", groupName, ": ", groupSizes[[groupName]], " samples, ", length(groupConsensus[[groupName]]), " consensus regions.")
+                }
+            }
+        }
+
+        #-------------------------------#
+        # Total consensus               #
+        #-------------------------------#
+        totalConsensus <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(groupConsensus)), use.names = FALSE), ignore.strand = TRUE)
+
+        if (length(totalConsensus) == 0) {
+            stop("No consensus region was found in any group.", call. = FALSE)
+        }
+
+        if (isTRUE(verbose)) {
+            message("Total consensus: ", length(totalConsensus), " regions from ", length(groupLevels), " groups.")
+        }
+
+        #-------------------------------#
+        # Regions of the user           #
+        #-------------------------------#
+        analysisMode <- "consensus"
+        regionList <- list(consensus = totalConsensus)
+
+        if (!is.null(regionSets)) {
+            userList <- loadRegions(
+                regions = regionSets,
+                keepMetadata = TRUE,
+                seqlevelsStyle = seqlevelsStyle,
+                genomeAssembly = genomeAssembly,
+                outputFormat = "list",
+                verbose = FALSE
+            )
+
+            # With seqlevelsStyle = NULL the regions of the user may be written in another style than the peaks.
+            # Regions that cannot be reconciled are left as they are, and the occupancy step says so
+            userList <- lapply(
+                userList,
+                function(userRanges) {
+                    tryCatch(
+                        expr = .matchSeqlevels(
+                            x = userRanges,
+                            targetSeqlevels = GenomeInfoDb::seqlevels(totalConsensus),
+                            verbose = FALSE
+                        ),
+                        error = function(e) {
+                            return(userRanges)
+                        }
+                    )
+                }
+            )
+
+            analysisMode <- regionMode
+
+            regionList <- if (regionMode == "split") {
+                .splitConsensus(totalConsensus = totalConsensus, userList = userList, unassignedSet = unassignedSet, verbose = verbose)
+            } else {
+                userList
+            }
+        }
+
+        #-------------------------------#
+        # Occupancy of every region     #
+        #-------------------------------#
+        regionList <- lapply(
+            regionList,
+            function(regionRanges) {
+                occupancyTable <- .peakOccupancy(
+                    regionRanges = regionRanges,
+                    groupConsensus = groupConsensus,
+                    peakList = peakList
+                )
+                S4Vectors::mcols(regionRanges) <- cbind(S4Vectors::mcols(regionRanges), occupancyTable)
+                return(regionRanges)
+            }
+        )
+
+        regionSet <- loadRegions(
+            regions = regionList,
+            keepMetadata = TRUE,
+            seqlevelsStyle = seqlevelsStyle,
+            genomeAssembly = genomeAssembly,
+            verbose = FALSE
+        )
+
+        #-------------------------------#
+        # Keep the consensus data       #
+        #-------------------------------#
+        consensusData(regionSet) <- list(
+            groups = groupConsensus,
+            objects = consensusObjects,
+            total = totalConsensus,
+            peaks = peakList,
+            removed = removedPeaks,
+            samples = sampleTable,
+            sheet = sampleSheet,
+            groupBy = groupBy,
+            mode = analysisMode,
+            blacklist = listRanges$blacklist,
+            greylist = listRanges$greylist
+        )
+
+        # Recorded as applyBlacklist and applyGreylist record them, so the lists follow the object downstream
+        if (!is.null(listRanges$blacklist)) {
+            blacklistRanges(regionSet) <- listRanges$blacklist
+        }
+
+        if (!is.null(listRanges$greylist)) {
+            greylistRanges(regionSet) <- listRanges$greylist
+            parameterLog(regionSet)$greylist <- list(
+                n.regions = length(listRanges$greylist),
+                covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))),
+                applied.to = "peaks"
+            )
+        }
+
+        if (length(filteringSteps) > 0) {
+            filteringLog(regionSet) <- rbind(filteringLog(regionSet), do.call(what = rbind, args = unname(filteringSteps)))
+        }
+
+        # Only plain values go to the parameters, a BiocParallel object has no place in an exported record
+        parameterLog(regionSet)$loadConsensusPeaks <- list(
+            groupBy = groupBy,
+            regionMode = analysisMode,
+            unassignedSet = unassignedSet,
+            seqlevelsStyle = seqlevelsStyle,
+            n.samples = nrow(sampleTable),
+            n.groups = length(groupLevels),
+            n.blacklist.regions = if (is.null(listRanges$blacklist)) {
+                0L
+            } else {
+                length(listRanges$blacklist)
+            },
+            n.greylist.regions = if (is.null(listRanges$greylist)) {
+                0L
+            } else {
+                length(listRanges$greylist)
+            },
+            seed = recordedSeed,
+            seed.source = seedSource,
+            consensusArguments = Filter(function(x) {
+                !is.null(x) && is.atomic(x)
+            }, consensusArguments)
+        )
+
+        methods::validObject(regionSet)
+        return(regionSet)
+    } # END function
 
 
-
-
-#' @title .consensusWorkers
+#' @title .checkLoadConsensusPeaksArguments
 #'
-#' @description Shares the threads between the groups built in parallel and the calibration run inside each group.
+#' @description Checks the arguments of \code{\link{loadConsensusPeaks}} and brings them to the form the rest of the function works with.
 #'
-#' @param nThreads Number of threads asked for.
-#' @param nGroups Number of groups needing a consensus, the groups of a single sample left out.
-#' @param calibrate Logical value to indicate whether the threshold is calibrated inside each group.
-#' @param userBPPARAM The \code{BPPARAM} passed by the user to \code{consensusRegions::runConsensus}, or \code{NULL}.
+#' @param sampleSheet See \code{\link{loadConsensusPeaks}}.
+#' @param groupBy See \code{\link{loadConsensusPeaks}}.
+#' @param regionMode See \code{\link{loadConsensusPeaks}}.
+#' @param unassignedSet See \code{\link{loadConsensusPeaks}}.
+#' @param seed See \code{\link{loadConsensusPeaks}}.
+#' @param weightMethod See \code{\link{loadConsensusPeaks}}.
+#' @param calibrate See \code{\link{loadConsensusPeaks}}.
+#' @param nPermutations See \code{\link{loadConsensusPeaks}}.
+#' @param targetFDR See \code{\link{loadConsensusPeaks}}.
+#' @param recentre See \code{\link{loadConsensusPeaks}}.
+#' @param width See \code{\link{loadConsensusPeaks}}.
+#' @param combinationMethod See \code{\link{loadConsensusPeaks}}.
+#' @param replicateType See \code{\link{loadConsensusPeaks}}.
+#' @param stringencyThreshold See \code{\link{loadConsensusPeaks}}.
+#' @param weakThreshold See \code{\link{loadConsensusPeaks}}.
+#' @param combinedThreshold See \code{\link{loadConsensusPeaks}}.
+#' @param alpha See \code{\link{loadConsensusPeaks}}.
+#' @param minSupport See \code{\link{loadConsensusPeaks}}.
+#' @param minReplicates See \code{\link{loadConsensusPeaks}}.
+#' @param minOverlap See \code{\link{loadConsensusPeaks}}.
+#' @param minOverlapFraction See \code{\link{loadConsensusPeaks}}.
+#' @param mergeMethod See \code{\link{loadConsensusPeaks}}.
+#' @param maxConsensusWidth See \code{\link{loadConsensusPeaks}}.
+#' @param verbose See \code{\link{loadConsensusPeaks}}.
+#' @param ... See \code{\link{loadConsensusPeaks}}.
 #'
-#' @return A list with \code{outer}, the number of groups run at once, and \code{inner}, the number of threads each group gets for its permutations.
+#' @return A list with the arguments as checked and completed: \code{consensusArguments}, \code{regionMode}, \code{sampleSheet}.
 #'
 #' @author Sebastian Gregoricchio
 #'
 #' @keywords internal
 
+.checkLoadConsensusPeaksArguments <-
+    function(sampleSheet,
+             groupBy,
+             regionMode,
+             unassignedSet,
+             seed,
+             weightMethod,
+             calibrate,
+             nPermutations,
+             targetFDR,
+             recentre,
+             width,
+             combinationMethod,
+             replicateType,
+             stringencyThreshold,
+             weakThreshold,
+             combinedThreshold,
+             alpha,
+             minSupport,
+             minReplicates,
+             minOverlap,
+             minOverlapFraction,
+             mergeMethod,
+             maxConsensusWidth,
+             verbose,
+             ...) {
+        if (!requireNamespace("consensusRegions", quietly = TRUE)) {
+            stop("The 'consensusRegions' package is needed to build the consensus peaks.", call. = FALSE)
+        }
+
+        if (is.character(sampleSheet) & length(sampleSheet) == 1) {
+            sampleSheet <- loadSampleSheet(sampleSheet, verbose = verbose)
+        }
+
+        if (!is.data.frame(sampleSheet) || !all(c("sample", "peaks") %in% colnames(sampleSheet))) {
+            stop("The 'sampleSheet' parameter must be a table with the 'sample' and 'peaks' columns, as returned by loadSampleSheet().", call. = FALSE)
+        }
+
+        if (!is.null(groupBy)) {
+            if (!is.character(groupBy) | length(groupBy) != 1 || !(groupBy %in% colnames(sampleSheet))) {
+                stop("The 'groupBy' parameter must name a column of the sample sheet.", call. = FALSE)
+            }
+        }
+
+        regionMode <- tolower(as.character(regionMode[1]))
+        if (!(regionMode %in% c("split", "replace"))) {
+            stop("The 'regionMode' parameter must be either 'split' or 'replace'.", call. = FALSE)
+        }
+
+        if (!is.null(unassignedSet) && (!is.character(unassignedSet) | length(unassignedSet) != 1)) {
+            stop("The 'unassignedSet' parameter must be a single string, or NULL.", call. = FALSE)
+        }
+
+        # The arguments of consensusRegions named here go to every group, next to any other one given through '...'
+        consensusArguments <- c(
+            list(
+                weightMethod = weightMethod,
+                calibrate = calibrate,
+                nPermutations = nPermutations,
+                targetFDR = targetFDR,
+                recentre = recentre,
+                width = width,
+                combinationMethod = combinationMethod,
+                replicateType = replicateType,
+                stringencyThreshold = stringencyThreshold,
+                weakThreshold = weakThreshold,
+                combinedThreshold = combinedThreshold,
+                alpha = alpha,
+                minSupport = minSupport,
+                minReplicates = minReplicates,
+                minOverlap = minOverlap,
+                minOverlapFraction = minOverlapFraction,
+                mergeMethod = mergeMethod,
+                maxConsensusWidth = maxConsensusWidth
+            ),
+            list(...)
+        )
+
+        if ("excludeRegions" %in% names(consensusArguments)) {
+            stop("The 'excludeRegions' parameter has been replaced by 'blacklist' and 'greylist', which take the two lists separately.", call. = FALSE)
+        }
+
+        if (!is.null(seed) && (!is.numeric(seed) | length(seed) != 1 || !is.finite(seed))) {
+            stop("The 'seed' parameter must be a single number, or NULL.", call. = FALSE)
+        }
+
+        reservedArguments <- intersect(names(consensusArguments), c("peaks", "sampleNames"))
+        if (length(reservedArguments) > 0) {
+            stop("The following arguments of runConsensus are set from the sample sheet and cannot be given: ",
+                paste(reservedArguments, collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
+
+        return(list(
+            consensusArguments = consensusArguments,
+            regionMode = regionMode,
+            sampleSheet = sampleSheet
+        ))
+    } # END function
+
+
+#' @title .consensusWorkers
+#'
+#' @description Shares the cores between the groups built in parallel and the calibration run inside each group.
+#'
+#' @param BPPARAM A \code{BiocParallelParam} object, a number of cores, or \code{NULL} for one core.
+#' @param nGroups Number of groups needing a consensus, the groups of a single sample left out.
+#' @param calibrate Logical value to indicate whether the threshold is calibrated inside each group.
+#'
+#' @return A list with \code{outer}, the back end or the number of cores running the groups, \code{inner}, the back end or the number of cores each group gets for its permutations, and \code{nOuter} and \code{nInner}, the number of workers of each.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom methods is
+#' @importFrom BiocParallel bpnworkers
+#'
+#' @keywords internal
+
 .consensusWorkers <-
-  function(nThreads,
-           nGroups,
-           calibrate = FALSE,
-           userBPPARAM = NULL) {
+    function(BPPARAM,
+             nGroups,
+             calibrate = FALSE) {
+        # A back end of the user is never split: it goes to the calibration when there is one, to the groups otherwise
+        if (methods::is(BPPARAM, "BiocParallelParam")) {
+            nWorkers <- BiocParallel::bpnworkers(BPPARAM)
+            if (isTRUE(calibrate)) {
+                return(list(outer = 1L, inner = BPPARAM, nOuter = 1L, nInner = nWorkers))
+            }
+            return(list(outer = BPPARAM, inner = 1L, nOuter = nWorkers, nInner = 1L))
+        }
 
-    nThreads <- as.integer(nThreads[1])
-    if (is.na(nThreads) | nThreads < 1) {
-      stop("The 'nThreads' parameter must be a positive integer.", call. = FALSE)
-    }
+        nCores <- if (is.null(BPPARAM)) {
+            1L
+        } else {
+            BPPARAM
+        }
+        if (!is.numeric(nCores) || length(nCores) != 1 || !is.finite(nCores) || nCores < 1) {
+            stop("The 'BPPARAM' parameter must be a BiocParallelParam object, a number of cores, or NULL.", call. = FALSE)
+        }
+        nCores <- as.integer(nCores)
 
-    # A back end chosen by the user goes to every group untouched, and the groups wait for each other
-    if (!is.null(userBPPARAM)) {
-      return(list(outer = 1L, inner = userBPPARAM))
-    }
+        outerWorkers <- as.integer(max(1L, min(nCores, nGroups)))
 
-    outerWorkers <- as.integer(max(1L, min(nThreads, nGroups)))
+        # Without calibration a consensus runs on one core, so the spare cores would only sit idle
+        innerWorkers <- if (isTRUE(calibrate)) {
+            as.integer(max(1L, nCores %/% outerWorkers))
+        } else {
+            1L
+        }
 
-    # Without calibration a consensus runs on one thread, so the spare threads would only sit idle
-    innerWorkers <- if (isTRUE(calibrate)) {as.integer(max(1L, nThreads %/% outerWorkers))} else {1L}
-
-    return(list(outer = outerWorkers, inner = innerWorkers))
-  } # END function
-
-
+        return(list(outer = outerWorkers, inner = innerWorkers, nOuter = outerWorkers, nInner = innerWorkers))
+    } # END function
 
 
 #' @title .runGroupConsensus
@@ -539,12 +814,9 @@ loadConsensusPeaks <-
 #' @keywords internal
 
 .runGroupConsensus <-
-  function(groupArguments) {
-
-    return(do.call(what = consensusRegions::runConsensus, args = groupArguments))
-  } # END function
-
-
+    function(groupArguments) {
+        return(do.call(what = consensusRegions::runConsensus, args = groupArguments))
+    } # END function
 
 
 #' @title .loadExclusionRegions
@@ -566,32 +838,31 @@ loadConsensusPeaks <-
 #' @keywords internal
 
 .loadExclusionRegions <-
-  function(excludeRegions,
-           seqlevelsStyle = "UCSC",
-           listLabel = "blacklist") {
+    function(excludeRegions,
+             seqlevelsStyle = "UCSC",
+             listLabel = "blacklist") {
+        # A single list of regions is wrapped, a list of lists is taken as it is
+        if (methods::is(excludeRegions, "GRanges") | is.data.frame(excludeRegions) | is.character(excludeRegions)) {
+            excludeRegions <- list(excludeRegions)
+        }
 
-    # A single list of regions is wrapped, a list of lists is taken as it is
-    if (methods::is(excludeRegions, "GRanges") | is.data.frame(excludeRegions) | is.character(excludeRegions)) {
-      excludeRegions <- list(excludeRegions)
-    }
+        if (!is.list(excludeRegions)) {
+            stop("The '", listLabel, "' parameter must be a GRanges, a path, a data.frame, or a list of them.", call. = FALSE)
+        }
 
-    if (!is.list(excludeRegions)) {
-      stop("The '", listLabel, "' parameter must be a GRanges, a path, a data.frame, or a list of them.", call. = FALSE)
-    }
+        names(excludeRegions) <- paste0(listLabel, "_", seq_along(excludeRegions))
 
-    names(excludeRegions) <- paste0(listLabel, "_", seq_along(excludeRegions))
+        exclusionList <- loadRegions(
+            regions = excludeRegions,
+            keepMetadata = FALSE,
+            duplicatedSets = "remove",
+            seqlevelsStyle = seqlevelsStyle,
+            outputFormat = "list",
+            verbose = FALSE
+        )
 
-    exclusionList <- loadRegions(regions = excludeRegions,
-                                 keepMetadata = FALSE,
-                                 duplicatedSets = "remove",
-                                 seqlevelsStyle = seqlevelsStyle,
-                                 outputFormat = "list",
-                                 verbose = FALSE)
-
-    return(IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(exclusionList)), use.names = FALSE), ignore.strand = TRUE))
-  } # END function
-
-
+        return(IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(exclusionList)), use.names = FALSE), ignore.strand = TRUE))
+    } # END function
 
 
 #' @title .checkListAssembly
@@ -613,35 +884,42 @@ loadConsensusPeaks <-
 #' @keywords internal
 
 .checkListAssembly <-
-  function(listInput,
-           genomeAssembly,
-           listLabel,
-           regionLabel = "peaks") {
+    function(listInput,
+             genomeAssembly,
+             listLabel,
+             regionLabel = "peaks") {
+        if (is.null(genomeAssembly) || is.na(genomeAssembly[1]) || genomeAssembly[1] == "") {
+            return(invisible(TRUE))
+        }
 
-    if (is.null(genomeAssembly) || is.na(genomeAssembly[1]) || genomeAssembly[1] == "") {
-      return(invisible(TRUE))
-    }
+        # Only a GRanges carries its assembly, a file or a table cannot be checked
+        listElements <- if (methods::is(listInput, "GRanges")) {
+            list(listInput)
+        } else if (is.list(listInput) & !is.data.frame(listInput)) {
+            listInput
+        } else {
+            list()
+        }
 
-    # Only a GRanges carries its assembly, a file or a table cannot be checked
-    listElements <- if (methods::is(listInput, "GRanges")) {list(listInput)} else if (is.list(listInput) & !is.data.frame(listInput)) {listInput} else {list()}
+        for (listElement in listElements) {
+            if (!methods::is(listElement, "GRanges")) {
+                next
+            }
 
-    for (listElement in listElements) {
-      if (!methods::is(listElement, "GRanges")) {next}
+            listAssembly <- unique(as.character(GenomeInfoDb::genome(listElement)))
+            listAssembly <- listAssembly[!is.na(listAssembly) & listAssembly != ""]
 
-      listAssembly <- unique(as.character(GenomeInfoDb::genome(listElement)))
-      listAssembly <- listAssembly[!is.na(listAssembly) & listAssembly != ""]
+            # GRCh38 and hg38 name the same assembly, the aliases are resolved before the comparison
+            if (length(listAssembly) == 1 && .resolveGenomeName(listAssembly) != .resolveGenomeName(as.character(genomeAssembly[1]))) {
+                stop("The ", listLabel, " was built for ", listAssembly, " and the ", regionLabel, " are declared as ", genomeAssembly[1],
+                    ". Overlapping them would match the chromosome names and nothing else. Clear the assembly with genome() on the list to force it.",
+                    call. = FALSE
+                )
+            }
+        }
 
-      # GRCh38 and hg38 name the same assembly, the aliases are resolved before the comparison
-      if (length(listAssembly) == 1 && .resolveGenomeName(listAssembly) != .resolveGenomeName(as.character(genomeAssembly[1]))) {
-        stop("The ", listLabel, " was built for ", listAssembly, " and the ", regionLabel, " are declared as ", genomeAssembly[1],
-             ". Overlapping them would match the chromosome names and nothing else. Clear the assembly with genome() on the list to force it.", call. = FALSE)
-      }
-    }
-
-    return(invisible(TRUE))
-  } # END function
-
-
+        return(invisible(TRUE))
+    } # END function
 
 
 #' @title .splitConsensus
@@ -662,50 +940,49 @@ loadConsensusPeaks <-
 #' @keywords internal
 
 .splitConsensus <-
-  function(totalConsensus,
-           userList,
-           unassignedSet = "other",
-           verbose = TRUE) {
+    function(totalConsensus,
+             userList,
+             unassignedSet = "other",
+             verbose = TRUE) {
+        if (!is.null(unassignedSet) && unassignedSet %in% names(userList)) {
+            stop("The 'unassignedSet' name '", unassignedSet, "' is already used by one of the region sets.", call. = FALSE)
+        }
 
-    if (!is.null(unassignedSet) && unassignedSet %in% names(userList)) {
-      stop("The 'unassignedSet' name '", unassignedSet, "' is already used by one of the region sets.", call. = FALSE)
-    }
+        # The sets are visited in the order given, so a region overlapping two of them goes to the first
+        setAssignment <- rep(NA_character_, length(totalConsensus))
 
-    # The sets are visited in the order given, so a region overlapping two of them goes to the first
-    setAssignment <- rep(NA_character_, length(totalConsensus))
+        for (setName in names(userList)) {
+            overlapping <- is.na(setAssignment) & IRanges::overlapsAny(totalConsensus, userList[[setName]], ignore.strand = TRUE)
+            setAssignment[overlapping] <- setName
+        }
 
-    for (setName in names(userList)) {
-      overlapping <- is.na(setAssignment) & IRanges::overlapsAny(totalConsensus, userList[[setName]], ignore.strand = TRUE)
-      setAssignment[overlapping] <- setName
-    }
+        if (!is.null(unassignedSet)) {
+            setAssignment[is.na(setAssignment)] <- unassignedSet
+        }
 
-    if (!is.null(unassignedSet)) {
-      setAssignment[is.na(setAssignment)] <- unassignedSet
-    }
+        setLevels <- c(names(userList), unassignedSet)
+        splitList <- lapply(setLevels, function(setName) {
+            totalConsensus[which(setAssignment == setName)]
+        })
+        names(splitList) <- setLevels
 
-    setLevels <- c(names(userList), unassignedSet)
-    splitList <- lapply(setLevels, function(setName) {totalConsensus[which(setAssignment == setName)]})
-    names(splitList) <- setLevels
+        emptySets <- setLevels[lengths(splitList) == 0]
+        if (isTRUE(verbose) & length(emptySets) > 0) {
+            message("No consensus region falls in the following sets, which are left out: ", paste(emptySets, collapse = ", "), ".")
+        }
 
-    emptySets <- setLevels[lengths(splitList) == 0]
-    if (isTRUE(verbose) & length(emptySets) > 0) {
-      message("No consensus region falls in the following sets, which are left out: ", paste(emptySets, collapse = ", "), ".")
-    }
+        splitList <- splitList[lengths(splitList) > 0]
 
-    splitList <- splitList[lengths(splitList) > 0]
+        if (length(splitList) == 0) {
+            stop("No consensus region overlaps the region sets, and 'unassignedSet' is NULL.", call. = FALSE)
+        }
 
-    if (length(splitList) == 0) {
-      stop("No consensus region overlaps the region sets, and 'unassignedSet' is NULL.", call. = FALSE)
-    }
+        if (isTRUE(verbose)) {
+            message("Consensus regions per set: ", paste(names(splitList), lengths(splitList), sep = " ", collapse = ", "), ".")
+        }
 
-    if (isTRUE(verbose)) {
-      message("Consensus regions per set: ", paste(names(splitList), lengths(splitList), sep = " ", collapse = ", "), ".")
-    }
-
-    return(splitList)
-  } # END function
-
-
+        return(splitList)
+    } # END function
 
 
 #' @title .peakOccupancy
@@ -728,43 +1005,56 @@ loadConsensusPeaks <-
 #' @keywords internal
 
 .peakOccupancy <-
-  function(regionRanges,
-           groupConsensus,
-           peakList) {
+    function(regionRanges,
+             groupConsensus,
+             peakList) {
+        regionNumber <- length(regionRanges)
 
-    regionNumber <- length(regionRanges)
+        # Two naming styles meeting here would give an empty overlap for every sample rather than an error
+        sharedSeqlevels <- intersect(
+            GenomeInfoDb::seqlevels(regionRanges),
+            unique(unlist(lapply(as.list(peakList), GenomeInfoDb::seqlevels), use.names = FALSE))
+        )
 
-    # Two naming styles meeting here would give an empty overlap for every sample rather than an error
-    sharedSeqlevels <- intersect(GenomeInfoDb::seqlevels(regionRanges),
-                                 unique(unlist(lapply(as.list(peakList), GenomeInfoDb::seqlevels), use.names = FALSE)))
+        if (length(sharedSeqlevels) == 0) {
+            stop("The regions and the peaks of the samples share no chromosome, their naming styles differ: ",
+                paste(utils::head(GenomeInfoDb::seqlevels(regionRanges), 3), collapse = ", "), " against ",
+                paste(utils::head(GenomeInfoDb::seqlevels(peakList[[1]]), 3), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (length(sharedSeqlevels) == 0) {
-      stop("The regions and the peaks of the samples share no chromosome, their naming styles differ: ",
-           paste(utils::head(GenomeInfoDb::seqlevels(regionRanges), 3), collapse = ", "), " against ",
-           paste(utils::head(GenomeInfoDb::seqlevels(peakList[[1]]), 3), collapse = ", "), ".", call. = FALSE)
-    }
+        # matrix() keeps the shape when there is a single region, which vapply would flatten
+        groupMatrix <- matrix(
+            vapply(
+                groupConsensus,
+                function(groupRanges) {
+                    IRanges::overlapsAny(regionRanges, groupRanges, ignore.strand = TRUE)
+                },
+                logical(regionNumber)
+            ),
+            nrow = regionNumber
+        )
 
-    # matrix() keeps the shape when there is a single region, which vapply would flatten
-    groupMatrix <- matrix(vapply(groupConsensus,
-                                 function(groupRanges) {IRanges::overlapsAny(regionRanges, groupRanges, ignore.strand = TRUE)},
-                                 logical(regionNumber)),
-                          nrow = regionNumber)
+        sampleMatrix <- matrix(
+            vapply(
+                as.list(peakList),
+                function(peakRanges) {
+                    IRanges::overlapsAny(regionRanges, peakRanges, ignore.strand = TRUE)
+                },
+                logical(regionNumber)
+            ),
+            nrow = regionNumber
+        )
 
-    sampleMatrix <- matrix(vapply(as.list(peakList),
-                                  function(peakRanges) {IRanges::overlapsAny(regionRanges, peakRanges, ignore.strand = TRUE)},
-                                  logical(regionNumber)),
-                           nrow = regionNumber)
+        colnames(groupMatrix) <- paste0("peak.", make.names(names(groupConsensus)))
 
-    colnames(groupMatrix) <- paste0("peak.", make.names(names(groupConsensus)))
+        occupancyTable <- S4Vectors::DataFrame(groupMatrix, check.names = FALSE)
+        occupancyTable$peak.groups <- as.integer(rowSums(groupMatrix))
+        occupancyTable$peak.samples <- as.integer(rowSums(sampleMatrix))
 
-    occupancyTable <- S4Vectors::DataFrame(groupMatrix, check.names = FALSE)
-    occupancyTable$peak.groups <- as.integer(rowSums(groupMatrix))
-    occupancyTable$peak.samples <- as.integer(rowSums(sampleMatrix))
-
-    return(occupancyTable)
-  } # END function
-
-
+        return(occupancyTable)
+    } # END function
 
 
 #' @title consensusData
@@ -777,19 +1067,24 @@ loadConsensusPeaks <-
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
-#'                           pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE)
+#'     peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
+#'         pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE
+#'     )
 #'
-#'   sampleSheet <- loadSampleSheet(data.frame(sample = c("A_1", "A_2", "B_1", "B_2"),
-#'                                             bam = c("A_1.bam", "A_2.bam", "B_1.bam", "B_2.bam"),
-#'                                             peaks = peakFiles[c(1, 2, 2, 3)],
-#'                                             condition = c("A", "A", "B", "B")),
-#'                                  checkFiles = FALSE, verbose = FALSE)
+#'     sampleSheet <- loadSampleSheet(
+#'         data.frame(
+#'             sample = c("A_1", "A_2", "B_1", "B_2"),
+#'             bam = c("A_1.bam", "A_2.bam", "B_1.bam", "B_2.bam"),
+#'             peaks = peakFiles[c(1, 2, 2, 3)],
+#'             condition = c("A", "A", "B", "B")
+#'         ),
+#'         checkFiles = FALSE, verbose = FALSE
+#'     )
 #'
-#'   regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+#'     regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 #'
-#'   consensusData(regions)$samples
-#'   lengths(consensusData(regions)$groups)
+#'     consensusData(regions)$samples
+#'     lengths(consensusData(regions)$groups)
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -800,22 +1095,24 @@ loadConsensusPeaks <-
 #'
 #' @export
 
-setGeneric(name = "consensusData", def = function(object) {standardGeneric("consensusData")})
+setGeneric(name = "consensusData", def = function(object) {
+    standardGeneric("consensusData")
+})
 
 
 #' @rdname consensusData
 #' @export
 
-setMethod(f = "consensusData",
-          signature = "RegionSetDE",
-          definition = function(object) {
-            if (length(object@consensus) == 0) {
-              stop("The regions were not built from peaks, there is no consensus to return.", call. = FALSE)
-            }
-            return(object@consensus)
-          })
-
-
+setMethod(
+    f = "consensusData",
+    signature = "RegionSetDE",
+    definition = function(object) {
+        if (length(object@consensus) == 0) {
+            stop("The regions were not built from peaks, there is no consensus to return.", call. = FALSE)
+        }
+        return(object@consensus)
+    }
+)
 
 
 #' @title consensusGroupList
@@ -835,15 +1132,15 @@ setMethod(f = "consensusData",
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+#'     sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'     consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 #'
-#'   groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
-#'   lengths(groupList)
-#'   groupList$R1881_24h
+#'     groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
+#'     lengths(groupList)
+#'     groupList$R1881_24h
 #'
-#'   # Two groups only, in the order given
-#'   names(consensusGroupList(consensus, groups = c("R1881_24h", "DMSO")))
+#'     # Two groups only, in the order given
+#'     names(consensusGroupList(consensus, groups = c("R1881_24h", "DMSO")))
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -856,44 +1153,45 @@ setMethod(f = "consensusData",
 #' @export consensusGroupList
 
 consensusGroupList <-
-  function(object,
-           groups = NULL,
-           seqlevelsStyle = NULL,
-           asGRangesList = FALSE) {
+    function(object,
+             groups = NULL,
+             seqlevelsStyle = NULL,
+             asGRangesList = FALSE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (length(.storedConsensus(object)) == 0) {
+            stop("The 'object' parameter must be the RegionSetDE object returned by loadConsensusPeaks().", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(object, "RegionSetDE") || length(object@consensus) == 0) {
-      stop("The 'object' parameter must be the RegionSetDE object returned by loadConsensusPeaks().", call. = FALSE)
-    }
+        if (!is.logical(asGRangesList) | length(asGRangesList) != 1 | anyNA(asGRangesList)) {
+            stop("The 'asGRangesList' parameter must be TRUE or FALSE.", call. = FALSE)
+        }
 
-    if (!is.logical(asGRangesList) | length(asGRangesList) != 1 | anyNA(asGRangesList)) {
-      stop("The 'asGRangesList' parameter must be TRUE or FALSE.", call. = FALSE)
-    }
+        groupList <- consensusData(object)$groups
 
-    groupList <- object@consensus$groups
+        if (!is.null(groups)) {
+            absentGroups <- setdiff(groups, names(groupList))
+            if (length(absentGroups) > 0) {
+                stop("The following groups are absent from the consensus: ", paste(absentGroups, collapse = ", "),
+                    ". The groups are: ", paste(names(groupList), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+            groupList <- groupList[groups]
+        }
 
-    if (!is.null(groups)) {
-      absentGroups <- setdiff(groups, names(groupList))
-      if (length(absentGroups) > 0) {
-        stop("The following groups are absent from the consensus: ", paste(absentGroups, collapse = ", "),
-             ". The groups are: ", paste(names(groupList), collapse = ", "), ".", call. = FALSE)
-      }
-      groupList <- groupList[groups]
-    }
+        #------------------------#
+        # Naming style           #
+        #------------------------#
+        # An annotation of another style would find no gene next to any region, so the names are converted on request
+        if (!is.null(seqlevelsStyle)) {
+            groupList <- lapply(groupList, .styleSeqlevels, seqlevelsStyle = seqlevelsStyle)
+        }
 
-    #------------------------#
-    # Naming style           #
-    #------------------------#
-    # An annotation of another style would find no gene next to any region, so the names are converted on request
-    if (!is.null(seqlevelsStyle)) {
-      groupList <- lapply(groupList, .styleSeqlevels, seqlevelsStyle = seqlevelsStyle)
-    }
+        if (isTRUE(asGRangesList)) {
+            return(GenomicRanges::GRangesList(groupList))
+        }
 
-    if (isTRUE(asGRangesList)) {
-      return(GenomicRanges::GRangesList(groupList))
-    }
-
-    return(groupList)
-  } # END function
+        return(groupList)
+    } # END function

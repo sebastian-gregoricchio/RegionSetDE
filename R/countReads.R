@@ -28,11 +28,11 @@
 #' @param countInput Logical value to indicate whether the input files must be counted. Default: \code{TRUE}.
 #' @param summits Numeric value with the half width of the regions recentred on their summit, which then span \code{2 * summits + 1} bp, as with the \code{summits} argument of \code{DiffBind::dba.count}. \code{0} locates the summits and stores them without moving the regions. Default: \code{NULL}, the regions are counted as they are.
 #' @param summitSource String with where the summits are taken from: \code{"reads"}, the highest point of the fragment pileup of the samples, or \code{"peaks"}, the summits written by the peak caller in the narrowPeak files of a consensus built by \code{\link{loadConsensusPeaks}}. Default: \code{"reads"}.
-#' @param nThreads Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.
-#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are cut into pieces of at most 50 Mb, shared among the workers, so even a single file benefits from several of them. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
+#' @param progressBar Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the workers hand them back, and it is drawn only when \code{verbose = TRUE}. A \code{BPPARAM} given as a \code{BiocParallelParam} object keeps its own \code{progressbar} setting. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist} as \code{\link{makeGreylist}} returned it. The lists applied, here or before, are in the \code{blacklist} and \code{greylist} slots.
+#' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist} as \code{\link{makeGreylist}} returned it. The lists applied, here or before, are in the \code{blacklist} and \code{greylist} slots (read with \code{\link{greylistRanges}}).
 #'
 #' @details Regions shared by several sets are counted only once and the values are then copied to every set they belong to, which keeps the running time proportional to the number of distinct regions.
 #'
@@ -68,10 +68,11 @@
 #'
 #' # The same files given one by one, with the annotation as a table and no input
 #' counts <- countReads(peakRegions,
-#'                      bamFiles = sampleSheet$bam,
-#'                      sampleNames = sampleSheet$sample,
-#'                      sampleMetadata = sampleSheet[, c("sample", "condition")],
-#'                      verbose = FALSE)
+#'     bamFiles = sampleSheet$bam,
+#'     sampleNames = sampleSheet$sample,
+#'     sampleMetadata = sampleSheet[, c("sample", "condition")],
+#'     verbose = FALSE
+#' )
 #'
 #' # The ENCODE blacklist on the way: its regions are removed and its reads ignored
 #' blacklist <- loadBlacklist("hg38", verbose = FALSE)
@@ -102,487 +103,656 @@
 #' @export countReads
 
 countReads <-
-  function(regionSet,
-           bamFiles = NULL,
-           sampleSheet = NULL,
-           sampleNames = NULL,
-           sampleMetadata = NULL,
-           tileWidth = NULL,
-           keepMetadata = TRUE,
-           regionId = NULL,
-           partialTiles = TRUE,
-           pairedEnd = "auto",
-           fragmentLength = 150,
-           maxFragmentLength = 1000,
-           minMapq = 20,
-           removeDuplicates = TRUE,
-           excludeChromosomes = NULL,
-           blacklist = NULL,
-           greylist = FALSE,
-           discardListedReads = TRUE,
-           discardRegions = NULL,
-           fullLibrarySize = TRUE,
-           inputFiles = NULL,
-           countInput = TRUE,
-           summits = NULL,
-           summitSource = "reads",
-           nThreads = 1,
-           progressBar = interactive(),
-           verbose = TRUE) {
+    function(regionSet,
+             bamFiles = NULL,
+             sampleSheet = NULL,
+             sampleNames = NULL,
+             sampleMetadata = NULL,
+             tileWidth = NULL,
+             keepMetadata = TRUE,
+             regionId = NULL,
+             partialTiles = TRUE,
+             pairedEnd = "auto",
+             fragmentLength = 150,
+             maxFragmentLength = 1000,
+             minMapq = 20,
+             removeDuplicates = TRUE,
+             excludeChromosomes = NULL,
+             blacklist = NULL,
+             greylist = FALSE,
+             discardListedReads = TRUE,
+             discardRegions = NULL,
+             fullLibrarySize = TRUE,
+             inputFiles = NULL,
+             countInput = TRUE,
+             summits = NULL,
+             summitSource = "reads",
+             BPPARAM = NULL,
+             progressBar = interactive(),
+             verbose = TRUE) {
+        startTime <- Sys.time()
 
-    startTime <- Sys.time()
+        # The bar belongs to the messages: a call asked to be silent draws nothing
+        showProgress <- isTRUE(verbose) & isTRUE(progressBar)
 
-    # The bar belongs to the messages: a call asked to be silent draws nothing
-    showProgress <- isTRUE(verbose) & isTRUE(progressBar)
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkCountReadsArguments(
+            regionSet = regionSet,
+            bamFiles = bamFiles,
+            sampleSheet = sampleSheet,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            tileWidth = tileWidth,
+            pairedEnd = pairedEnd,
+            fragmentLength = fragmentLength,
+            maxFragmentLength = maxFragmentLength,
+            excludeChromosomes = excludeChromosomes,
+            greylist = greylist,
+            discardListedReads = discardListedReads,
+            discardRegions = discardRegions,
+            fullLibrarySize = fullLibrarySize,
+            countInput = countInput,
+            summits = summits,
+            summitSource = summitSource,
+            verbose = verbose
+        )
+        bamFiles <- checkedArguments$bamFiles
+        bamSeqlevels <- checkedArguments$bamSeqlevels
+        bamTargets <- checkedArguments$bamTargets
+        excludeChromosomes <- checkedArguments$excludeChromosomes
+        pairedEnd <- checkedArguments$pairedEnd
+        regionSet <- checkedArguments$regionSet
+        sampleMetadata <- checkedArguments$sampleMetadata
+        sampleNames <- checkedArguments$sampleNames
+        summitSource <- checkedArguments$summitSource
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
-    regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
+        #------------------------#
+        # Samples and regions    #
+        #------------------------#
+        sampleTable <- .buildSampleTable(
+            files = bamFiles,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            fileColumn = "bam.file",
+            extensionPattern = "\\.bam$"
+        )
 
-    # A sample sheet brings the files, the names and the annotation in one go
-    sheetInput <- .sheetCountingInput(regionSet = regionSet,
-                                      sampleSheet = sampleSheet,
-                                      files = bamFiles,
-                                      sampleNames = sampleNames,
-                                      sampleMetadata = sampleMetadata,
-                                      fileField = "bam",
-                                      verbose = verbose)
+        #------------------------#
+        # Blacklist and greylist #
+        #------------------------#
+        # A greylist applied beforehand, or the one a consensus was cleaned against, is already in the object
+        storedGreylist <- if (methods::is(regionSet, "RegionSetDE")) {
+            greylistRanges(regionSet)
+        } else {
+            NULL
+        }
+        greylistSource <- if (is.null(storedGreylist)) {
+            "none"
+        } else {
+            "stored"
+        }
+        builtGreylist <- NULL
 
-    bamFiles <- sheetInput$files
-    sampleNames <- sheetInput$sampleNames
-    sampleMetadata <- sheetInput$sampleMetadata
+        if (isTRUE(greylist)) {
+            greylist <- NULL
 
-    if (!is.character(bamFiles) | length(bamFiles) == 0) {
-      stop("The 'bamFiles' parameter must be a character vector with at least one BAM file.", call. = FALSE)
-    }
+            if (!is.null(storedGreylist)) {
+                if (isTRUE(verbose)) {
+                    message("The greylist stored in the regions is used, no other one is built.")
+                }
+            } else {
+                greylistInputs <- .resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)
 
-    missingFiles <- bamFiles[!file.exists(bamFiles)]
-    if (length(missingFiles) > 0) {
-      stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
-    }
+                if (is.null(greylistInputs)) {
+                    stop("greylist = TRUE builds the greylist from the inputs of the samples, and no sample has one: ",
+                        "give them through 'inputFiles' or the 'input' column of the sample sheet, or pass a greylist already built.",
+                        call. = FALSE
+                    )
+                }
 
-    # Every chromosome is reached through the index, a file without one cannot be read by pieces
-    hasIndex <- .hasBamIndex(bamFiles)
+                # makeGreylist takes each distinct input once, and names it after the sample sheet when the inputs come from it
+                greylistSheet <- data.frame(input = greylistInputs, stringsAsFactors = FALSE)
+                if (is.null(inputFiles) & "input.id" %in% colnames(sampleTable)) {
+                    greylistSheet$input.id <- as.character(sampleTable$input.id)
+                }
 
-    if (any(!hasIndex)) {
-      stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
-    }
+                # In the windows of a greylist a single-end read counts at its 5' end, so the length it is extended to plays no role
+                builtGreylist <- makeGreylist(
+                    inputFiles = greylistSheet,
+                    excludeChromosomes = excludeChromosomes,
+                    maxFragmentLength = maxFragmentLength[1],
+                    minMapq = minMapq,
+                    removeDuplicates = removeDuplicates,
+                    BPPARAM = BPPARAM,
+                    progressBar = progressBar,
+                    verbose = verbose
+                )
+                greylist <- builtGreylist
+                greylistSource <- "inputs"
+            }
+        } else if (isFALSE(greylist)) {
+            greylist <- NULL
+        } else if (!is.null(greylist)) {
+            greylistSource <- "given"
+        }
 
-    if (!(is.numeric(fragmentLength) | (is.character(fragmentLength) & length(fragmentLength) == 1))) {
-      stop("The 'fragmentLength' parameter must be a number, one number per BAM file, the name of a column of the sample annotation, or 'auto'.", call. = FALSE)
-    }
+        # The regions lying on the lists leave before anything is counted: taking them out afterwards would leave
+        # library sizes, summits and inputs computed on regions that are no longer there
+        listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = greylist, verbose = verbose)
+        regionSet <- listedRegions$regionSet
 
-    if (!is.numeric(maxFragmentLength) | maxFragmentLength[1] < 1) {
-      stop("The 'maxFragmentLength' parameter must be a positive number.", call. = FALSE)
-    }
+        allRegions <- .flattenRegionSets(
+            regionSet = regionSet,
+            tileWidth = tileWidth,
+            keepMetadata = keepMetadata,
+            regionId = regionId,
+            partialTiles = partialTiles,
+            verbose = verbose
+        )
 
-    if (!is.logical(fullLibrarySize) | length(fullLibrarySize) != 1 | any(is.na(fullLibrarySize))) {
-      stop("The 'fullLibrarySize' parameter must be TRUE or FALSE.", call. = FALSE)
-    }
+        # Overlapping sets share regions, counting them once and copying the values back is much cheaper.
+        # The strand is left out of the key because the counting ignores it.
+        regionKey <- paste0(
+            as.character(GenomeInfoDb::seqnames(allRegions)), ":",
+            BiocGenerics::start(allRegions), "-",
+            BiocGenerics::end(allRegions)
+        )
 
-    if (!is.logical(countInput) | length(countInput) != 1 | any(is.na(countInput))) {
-      stop("The 'countInput' parameter must be TRUE or FALSE.", call. = FALSE)
-    }
+        uniqueRegions <- allRegions[!duplicated(regionKey)]
+        expansionIndex <- match(regionKey, regionKey[!duplicated(regionKey)])
 
-    if (!is.null(summits)) {
-      if (!is.numeric(summits) | length(summits) != 1 || is.na(summits) || summits < 0) {
-        stop("The 'summits' parameter must be NULL, 0, or a positive number of base pairs.", call. = FALSE)
-      }
+        #---------------------------------#
+        # Chromosome names of the samples #
+        #---------------------------------#
+        # Only the copies used for the counting are renamed, the returned object keeps the style of the region sets
+        countingRegions <- .matchSeqlevels(x = uniqueRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = verbose)
 
-      if (!is.null(tileWidth)) {
-        stop("The 'summits' and 'tileWidth' parameters cannot be used together: recentre the regions or tile them.", call. = FALSE)
-      }
+        if (!is.null(discardRegions)) {
+            discardRegions <- .matchSeqlevels(x = discardRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
+        }
 
-      summitSource <- tolower(as.character(summitSource[1]))
-      if (!(summitSource %in% c("reads", "peaks"))) {
-        stop("The 'summitSource' parameter must be either 'reads' or 'peaks'.", call. = FALSE)
-      }
+        # The reads lying on the lists the regions were cleaned against stay out of the counts and of the
+        # library sizes, with those of 'discardRegions'. The stored lists already include the ones given here
+        listedDiscard <- if (isTRUE(discardListedReads)) {
+            list(listedRegions$provenance$blacklist, listedRegions$provenance$greylist)
+        } else {
+            list()
+        }
 
-      if (summitSource == "peaks" && !(methods::is(regionSet, "RegionSetDE") && length(regionSet@consensus) > 0)) {
-        stop("summitSource = 'peaks' needs the regions returned by loadConsensusPeaks(), whose peak calls carry the summits. Use summitSource = 'reads' for any other region set.", call. = FALSE)
-      }
-    }
+        discardRegions <- .poolDiscardRegions(regionLists = c(listedDiscard, list(discardRegions)), targetSeqlevels = bamSeqlevels)
 
-    # The flags of the first records are enough to tell a paired library from a single-end one
-    if (identical(pairedEnd, "auto")) {
-      pairedEnd <- .bamIsPairedEnd(bamFiles = bamFiles)
-    }
+        if (isTRUE(verbose) & !is.null(discardRegions)) {
+            message(
+                "The reads starting in ", format(length(discardRegions), big.mark = ",", trim = TRUE), " discarded regions (",
+                round(sum(as.numeric(BiocGenerics::width(discardRegions))) / 1e6, 2), " Mb) stay out of the counts and of the library sizes."
+            )
+        }
 
-    if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(bamFiles))}
+        # A region on a chromosome missing from the files keeps a count of zero, better to say it than to let it pass for an empty region
+        regionChromosomes <- as.character(GenomeInfoDb::seqnames(countingRegions))
+        absentRegions <- sum(!(regionChromosomes %in% bamSeqlevels))
+        excludedRegions <- sum(regionChromosomes %in% excludeChromosomes)
 
-    if (!is.logical(pairedEnd) | length(pairedEnd) != length(bamFiles) | any(is.na(pairedEnd))) {
-      stop("The 'pairedEnd' parameter must be 'auto', a single logical value, or one logical value per BAM file.", call. = FALSE)
-    }
+        if (isTRUE(verbose) & absentRegions > 0) {
+            message(absentRegions, " regions lie on chromosomes absent from the BAM files and get zero counts.")
+        }
 
-    if (!is.null(discardRegions) & !methods::is(discardRegions, "GRanges")) {
-      stop("The 'discardRegions' parameter must be a GRanges object.", call. = FALSE)
-    }
+        if (isTRUE(verbose) & excludedRegions > 0) {
+            message(excludedRegions, " regions lie on chromosomes listed in 'excludeChromosomes': they are counted, but their chromosomes stay out of the library sizes.")
+        }
 
-    if (!is.logical(discardListedReads) | length(discardListedReads) != 1 | any(is.na(discardListedReads))) {
-      stop("The 'discardListedReads' parameter must be TRUE or FALSE.", call. = FALSE)
-    }
+        #------------------------#
+        # Fragment lengths       #
+        #------------------------#
+        # One length per sample, NA for the paired-end ones whose fragments come from the pairs
+        fragmentInfo <- .resolveFragmentLength(
+            fragmentLength = fragmentLength,
+            sampleTable = sampleTable,
+            pairedEnd = pairedEnd,
+            bamFiles = bamFiles,
+            regions = countingRegions,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            discardRegions = discardRegions,
+            BPPARAM = BPPARAM,
+            verbose = verbose
+        )
 
-    if (is.logical(greylist) && (length(greylist) != 1 || is.na(greylist))) {
-      stop("The 'greylist' parameter must be TRUE, FALSE, or the regions of a greylist.", call. = FALSE)
-    }
+        sampleFragmentLength <- fragmentInfo$values
 
-    if (!is.null(excludeChromosomes) & !is.character(excludeChromosomes)) {
-      stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
-    }
+        #------------------------#
+        # Summits                #
+        #------------------------#
+        # The regions are moved before any read is counted, so that samples and inputs see the same windows
+        if (!is.null(summits)) {
+            if (isTRUE(verbose) & summitSource == "reads") {
+                message("Locating the summits of ", length(uniqueRegions), " regions on the pileup of ", length(bamFiles), " samples...")
+            }
 
-    # The files may name the chromosomes in different styles: those of the first file stand for all of them
-    bamTargets <- .bamChromosomeMap(bamFiles = bamFiles, verbose = verbose)$lengths
-    bamSeqlevels <- names(bamTargets)
+            summitPosition <- if (summitSource == "reads") {
+                .readSummits(
+                    bamFiles = bamFiles,
+                    regions = countingRegions,
+                    pairedEnd = pairedEnd,
+                    fragmentLength = sampleFragmentLength,
+                    maxFragmentLength = maxFragmentLength[1],
+                    minMapq = minMapq,
+                    removeDuplicates = removeDuplicates,
+                    discardRegions = discardRegions,
+                    progressBar = showProgress,
+                    BPPARAM = BPPARAM
+                )
+            } else {
+                .peakSummits(regions = uniqueRegions, peakList = consensusData(regionSet)$peaks)
+            }
 
-    # 'chrM' against a BAM naming it 'MT' would exclude nothing, and the library sizes would carry
-    # the mitochondrial reads into the normalisation without a word
-    excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = bamSeqlevels)
+            withoutSummit <- is.na(summitPosition)
+            summitPosition[withoutSummit] <- as.integer((BiocGenerics::start(uniqueRegions)[withoutSummit] + BiocGenerics::end(uniqueRegions)[withoutSummit]) %/% 2L)
 
-    #------------------------#
-    # Samples and regions    #
-    #------------------------#
-    sampleTable <- .buildSampleTable(files = bamFiles,
-                                     sampleNames = sampleNames,
-                                     sampleMetadata = sampleMetadata,
-                                     fileColumn = "bam.file",
-                                     extensionPattern = "\\.bam$")
+            if (summits > 0) {
+                recentredRanges <- .recentreRanges(
+                    summitPosition = summitPosition,
+                    halfWidth = summits,
+                    chromosomeLength = bamTargets[regionChromosomes]
+                )
 
-    #------------------------#
-    # Blacklist and greylist #
-    #------------------------#
-    # A greylist applied beforehand, or the one a consensus was cleaned against, is already in the object
-    storedGreylist <- if (methods::is(regionSet, "RegionSetDE")) {regionSet@greylist} else {NULL}
-    greylistSource <- if (is.null(storedGreylist)) {"none"} else {"stored"}
-    builtGreylist <- NULL
+                # The names live in the ranges, they are put back so that the rows keep their identifiers
+                recentredRows <- recentredRanges[expansionIndex]
+                names(recentredRows) <- names(allRegions)
+                names(recentredRanges) <- names(uniqueRegions)
 
-    if (isTRUE(greylist)) {
-      greylist <- NULL
+                IRanges::ranges(countingRegions) <- recentredRanges
+                IRanges::ranges(uniqueRegions) <- recentredRanges
+                IRanges::ranges(allRegions) <- recentredRows
+            }
 
-      if (!is.null(storedGreylist)) {
+            S4Vectors::mcols(allRegions)$summit <- summitPosition[expansionIndex]
+
+            if (isTRUE(verbose) & summits > 0) {
+                message("Regions recentred on the summit of the ", if (summitSource == "reads") {
+                    "reads"
+                } else {
+                    "peak calls"
+                }, ", ", 2 * summits + 1, " bp wide.")
+            }
+
+            if (isTRUE(verbose) & summits == 0) {
+                message("Summits located, the regions keep their coordinates.")
+            }
+
+            if (isTRUE(verbose) & any(withoutSummit)) {
+                message(sum(withoutSummit), " regions without ", summitSource, " were centred on their midpoint.")
+            }
+        }
+
+        #----------------#
+        # Read the files #
+        #----------------#
         if (isTRUE(verbose)) {
-          message("The greylist stored in the regions is used, no other one is built.")
-        }
-      } else {
-        greylistInputs <- .resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)
-
-        if (is.null(greylistInputs)) {
-          stop("greylist = TRUE builds the greylist from the inputs of the samples, and no sample has one: ",
-               "give them through 'inputFiles' or the 'input' column of the sample sheet, or pass a greylist already built.", call. = FALSE)
+            message(
+                "Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
+                length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."
+            )
         }
 
-        # makeGreylist takes each distinct input once, and names it after the sample sheet when the inputs come from it
-        greylistSheet <- data.frame(input = greylistInputs, stringsAsFactors = FALSE)
-        if (is.null(inputFiles) & "input.id" %in% colnames(sampleTable)) {
-          greylistSheet$input.id <- as.character(sampleTable$input.id)
+        if (isTRUE(verbose) & length(unique(pairedEnd)) > 1) {
+            message("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd), " single-end samples.")
         }
 
-        # In the windows of a greylist a single-end read counts at its 5' end, so the length it is extended to plays no role
-        builtGreylist <- makeGreylist(inputFiles = greylistSheet,
-                                      excludeChromosomes = excludeChromosomes,
-                                      maxFragmentLength = maxFragmentLength[1],
-                                      minMapq = minMapq,
-                                      removeDuplicates = removeDuplicates,
-                                      nThreads = nThreads,
-                                      progressBar = progressBar,
-                                      verbose = verbose)
-        greylist <- builtGreylist
-        greylistSource <- "inputs"
-      }
-    } else if (isFALSE(greylist)) {
-      greylist <- NULL
-    } else if (!is.null(greylist)) {
-      greylistSource <- "given"
-    }
+        fragmentCounts <- .countBamFragments(
+            bamFiles = bamFiles,
+            ranges = countingRegions,
+            pairedEnd = pairedEnd,
+            fragmentLength = sampleFragmentLength,
+            maxFragmentLength = maxFragmentLength[1],
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            discardRegions = discardRegions,
+            fullLibrarySize = fullLibrarySize,
+            countMode = "overlap",
+            progressBar = showProgress,
+            BPPARAM = BPPARAM
+        )
 
-    # The regions lying on the lists leave before anything is counted: taking them out afterwards would leave
-    # library sizes, summits and inputs computed on regions that are no longer there
-    listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = greylist, verbose = verbose)
-    regionSet <- listedRegions$regionSet
+        countMatrix <- fragmentCounts$counts
+        storage.mode(countMatrix) <- "double"
 
-    allRegions <- .flattenRegionSets(regionSet = regionSet,
-                                     tileWidth = tileWidth,
-                                     keepMetadata = keepMetadata,
-                                     regionId = regionId,
-                                     partialTiles = partialTiles,
-                                     verbose = verbose)
+        # Without the MQ tag the quality of the second mate is unknown, the pair then rests on the first mate alone
+        missingMateMapq <- which(pairedEnd & !fragmentCounts$mate.mapq.found)
 
-    # Overlapping sets share regions, counting them once and copying the values back is much cheaper.
-    # The strand is left out of the key because the counting ignores it.
-    regionKey <- paste0(as.character(GenomeInfoDb::seqnames(allRegions)), ":",
-                        BiocGenerics::start(allRegions), "-",
-                        BiocGenerics::end(allRegions))
+        if (isTRUE(verbose) & length(missingMateMapq) > 0 & isTRUE(minMapq > 0)) {
+            message(
+                "No MQ tag in: ", paste(sampleTable$sample[missingMateMapq], collapse = ", "),
+                ". For these samples 'minMapq' is applied to the first mate of each pair only."
+            )
+        }
 
-    uniqueRegions <- allRegions[!duplicated(regionKey)]
-    expansionIndex <- match(regionKey, regionKey[!duplicated(regionKey)])
+        # An empty library breaks every normalisation downstream, and usually points to a wrong layout or to excluding too much
+        emptyLibraries <- which(fragmentCounts$library.size == 0)
+        if (length(emptyLibraries) > 0) {
+            warning("No fragment entered the library size of: ", paste(sampleTable$sample[emptyLibraries], collapse = ", "),
+                ". Check 'pairedEnd', 'excludeChromosomes' and the read filters.",
+                call. = FALSE
+            )
+        }
 
-    #---------------------------------#
-    # Chromosome names of the samples #
-    #---------------------------------#
-    # Only the copies used for the counting are renamed, the returned object keeps the style of the region sets
-    countingRegions <- .matchSeqlevels(x = uniqueRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = verbose)
+        #------------------------#
+        # Inputs                 #
+        #------------------------#
+        inputPaths <- if (isTRUE(countInput)) {
+            .resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)
+        } else {
+            NULL
+        }
+        inputCounts <- NULL
 
-    if (!is.null(discardRegions)) {
-      discardRegions <- .matchSeqlevels(x = discardRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
-    }
+        # The names of the sheet belong to its own inputs, files given here are named after themselves
+        if (!is.null(inputPaths)) {
+            inputCounts <- .countInputFiles(
+                inputPaths = inputPaths,
+                inputIds = if (is.null(inputFiles) & "input.id" %in% colnames(sampleTable)) {
+                    as.character(sampleTable$input.id)
+                } else {
+                    NULL
+                },
+                sampleFragmentLength = sampleFragmentLength,
+                fragmentLength = fragmentLength,
+                bamTargets = bamTargets,
+                regions = countingRegions,
+                maxFragmentLength = maxFragmentLength[1],
+                minMapq = minMapq,
+                removeDuplicates = removeDuplicates,
+                excludeChromosomes = excludeChromosomes,
+                discardRegions = discardRegions,
+                fullLibrarySize = fullLibrarySize,
+                BPPARAM = BPPARAM,
+                progressBar = showProgress,
+                verbose = verbose
+            )
+        }
 
-    # The reads lying on the lists the regions were cleaned against stay out of the counts and of the
-    # library sizes, with those of 'discardRegions'. The stored lists already include the ones given here
-    listedDiscard <- if (isTRUE(discardListedReads)) {
-      list(listedRegions$provenance$blacklist, listedRegions$provenance$greylist)
-    } else {
-      list()
-    }
+        #-------------------------#
+        # Assemble the object     #
+        #-------------------------#
+        # The library sizes are the fragments surviving the filters, which is the denominator the normalisation expects
+        sampleTable <- dplyr::mutate(sampleTable,
+            paired.end = pairedEnd,
+            fragment.length = sampleFragmentLength,
+            library.size = fragmentCounts$library.size
+        )
 
-    discardRegions <- .poolDiscardRegions(regionLists = c(listedDiscard, list(discardRegions)), targetSeqlevels = bamSeqlevels)
+        # What the discarded regions took out of each library, on the chromosomes entering the library sizes
+        if (!is.null(discardRegions)) {
+            sampleTable <- dplyr::mutate(sampleTable, discarded.reads = fragmentCounts$discarded)
+        }
 
-    if (isTRUE(verbose) & !is.null(discardRegions)) {
-      message("The reads starting in ", format(length(discardRegions), big.mark = ",", trim = TRUE), " discarded regions (",
-              round(sum(as.numeric(BiocGenerics::width(discardRegions))) / 1e6, 2), " Mb) stay out of the counts and of the library sizes.")
-    }
+        if (!is.null(inputCounts)) {
+            sampleTable <- dplyr::mutate(sampleTable,
+                input = inputPaths,
+                input.id = inputCounts$input.id,
+                input.library.size = inputCounts$library.size
+            )
+        }
 
-    # A region on a chromosome missing from the files keeps a count of zero, better to say it than to let it pass for an empty region
-    regionChromosomes <- as.character(GenomeInfoDb::seqnames(countingRegions))
-    absentRegions <- sum(!(regionChromosomes %in% bamSeqlevels))
-    excludedRegions <- sum(regionChromosomes %in% excludeChromosomes)
+        countMatrix <- countMatrix[expansionIndex, , drop = FALSE]
 
-    if (isTRUE(verbose) & absentRegions > 0) {
-      message(absentRegions, " regions lie on chromosomes absent from the BAM files and get zero counts.")
-    }
+        newParameters <- list(countReads = list(
+            bamFiles = bamFiles,
+            tileWidth = tileWidth,
+            partialTiles = partialTiles,
+            pairedEnd = pairedEnd,
+            fragmentLength = sampleFragmentLength,
+            fragmentLengthSource = fragmentInfo$source,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            discardListedReads = discardListedReads,
+            greylistSource = greylistSource,
+            n.discard.regions = if (is.null(discardRegions)) {
+                0L
+            } else {
+                length(discardRegions)
+            },
+            discard.covered.bp = if (is.null(discardRegions)) {
+                0
+            } else {
+                sum(as.numeric(BiocGenerics::width(discardRegions)))
+            },
+            fullLibrarySize = fullLibrarySize,
+            inputFiles = inputPaths,
+            summits = summits,
+            summitSource = if (is.null(summits)) {
+                NULL
+            } else {
+                summitSource
+            }
+        ))
 
-    if (isTRUE(verbose) & excludedRegions > 0) {
-      message(excludedRegions, " regions lie on chromosomes listed in 'excludeChromosomes': they are counted, but their chromosomes stay out of the library sizes.")
-    }
+        # The discarded regions follow the object under the chromosome names of its regions, for the functions
+        # reading the same BAM files later on. A greylist built here is kept as makeGreylist returned it
+        countsMetadata <- list(signal.type = "reads", count.like = TRUE)
 
-    #------------------------#
-    # Fragment lengths       #
-    #------------------------#
-    # One length per sample, NA for the paired-end ones whose fragments come from the pairs
-    fragmentInfo <- .resolveFragmentLength(fragmentLength = fragmentLength,
-                                           sampleTable = sampleTable,
-                                           pairedEnd = pairedEnd,
-                                           bamFiles = bamFiles,
-                                           regions = countingRegions,
-                                           minMapq = minMapq,
-                                           removeDuplicates = removeDuplicates,
-                                           discardRegions = discardRegions,
-                                           nThreads = nThreads,
-                                           verbose = verbose)
+        if (!is.null(discardRegions)) {
+            countsMetadata$discard.regions <- tryCatch(
+                expr = .matchSeqlevels(x = discardRegions, targetSeqlevels = GenomeInfoDb::seqlevels(allRegions), verbose = FALSE),
+                error = function(e) {
+                    return(discardRegions)
+                }
+            )
+        }
 
-    sampleFragmentLength <- fragmentInfo$values
+        if (!is.null(builtGreylist)) {
+            countsMetadata$greylist <- builtGreylist
+        }
 
-    #------------------------#
-    # Summits                #
-    #------------------------#
-    # The regions are moved before any read is counted, so that samples and inputs see the same windows
-    if (!is.null(summits)) {
-      if (isTRUE(verbose) & summitSource == "reads") {
-        message("Locating the summits of ", length(uniqueRegions), " regions on the pileup of ", length(bamFiles), " samples...")
-      }
+        # A tiled object has to say so it is tiled, otherwise testRegions treats every tile as a region
+        # and the combination step that puts the tiles back together never runs
+        counts <- .newCountsObject(
+            countMatrix = countMatrix,
+            regions = allRegions,
+            sampleTable = sampleTable,
+            provenance = listedRegions$provenance,
+            countingLevel = if (is.null(tileWidth)) {
+                "region"
+            } else {
+                "tile"
+            },
+            newParameters = newParameters,
+            metadataList = countsMetadata
+        )
 
-      summitPosition <- if (summitSource == "reads") {
-        .readSummits(bamFiles = bamFiles,
-                     regions = countingRegions,
-                     pairedEnd = pairedEnd,
-                     fragmentLength = sampleFragmentLength,
-                     maxFragmentLength = maxFragmentLength[1],
-                     minMapq = minMapq,
-                     removeDuplicates = removeDuplicates,
-                     discardRegions = discardRegions,
-                     progressBar = showProgress,
-                     nThreads = nThreads)
-      } else {
-        .peakSummits(regions = uniqueRegions, peakList = regionSet@consensus$peaks)
-      }
+        # The input of every sample over the same rows, a sample without input keeps a column of NA
+        if (!is.null(inputCounts)) {
+            inputMatrix <- inputCounts$counts[expansionIndex, , drop = FALSE]
+            dimnames(inputMatrix) <- dimnames(countMatrix)
+            SummarizedExperiment::assay(counts, "input", withDimnames = FALSE) <- inputMatrix
+        }
 
-      withoutSummit <- is.na(summitPosition)
-      summitPosition[withoutSummit] <- as.integer((BiocGenerics::start(uniqueRegions)[withoutSummit] + BiocGenerics::end(uniqueRegions)[withoutSummit]) %/% 2L)
+        if (isTRUE(verbose)) {
+            message(
+                "Done in ", .elapsedTime(startTime), ". Library sizes: ",
+                paste(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million fragments."
+            )
 
-      if (summits > 0) {
-        recentredRanges <- .recentreRanges(summitPosition = summitPosition,
-                                           halfWidth = summits,
-                                           chromosomeLength = bamTargets[regionChromosomes])
+            if (isFALSE(fullLibrarySize)) {
+                message("The library sizes cover only the chromosomes carrying regions: count again with 'fullLibrarySize = TRUE' before a normalisation that relies on them.")
+            }
+        }
 
-        # The names live in the ranges, they are put back so that the rows keep their identifiers
-        recentredRows <- recentredRanges[expansionIndex]
-        names(recentredRows) <- names(allRegions)
-        names(recentredRanges) <- names(uniqueRegions)
-
-        IRanges::ranges(countingRegions) <- recentredRanges
-        IRanges::ranges(uniqueRegions) <- recentredRanges
-        IRanges::ranges(allRegions) <- recentredRows
-      }
-
-      S4Vectors::mcols(allRegions)$summit <- summitPosition[expansionIndex]
-
-      if (isTRUE(verbose) & summits > 0) {
-        message("Regions recentred on the summit of the ", if (summitSource == "reads") {"reads"} else {"peak calls"}, ", ", 2 * summits + 1, " bp wide.")
-      }
-
-      if (isTRUE(verbose) & summits == 0) {
-        message("Summits located, the regions keep their coordinates.")
-      }
-
-      if (isTRUE(verbose) & any(withoutSummit)) {
-        message(sum(withoutSummit), " regions without ", summitSource, " were centred on their midpoint.")
-      }
-    }
-
-    #----------------#
-    # Read the files #
-    #----------------#
-    if (isTRUE(verbose)) {
-      message("Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
-              length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)...")
-    }
-
-    if (isTRUE(verbose) & length(unique(pairedEnd)) > 1) {
-      message("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd), " single-end samples.")
-    }
-
-    fragmentCounts <- .countBamFragments(bamFiles = bamFiles,
-                                         ranges = countingRegions,
-                                         pairedEnd = pairedEnd,
-                                         fragmentLength = sampleFragmentLength,
-                                         maxFragmentLength = maxFragmentLength[1],
-                                         minMapq = minMapq,
-                                         removeDuplicates = removeDuplicates,
-                                         excludeChromosomes = excludeChromosomes,
-                                         discardRegions = discardRegions,
-                                         fullLibrarySize = fullLibrarySize,
-                                         countMode = "overlap",
-                                         progressBar = showProgress,
-                                         nThreads = nThreads)
-
-    countMatrix <- fragmentCounts$counts
-    storage.mode(countMatrix) <- "double"
-
-    # Without the MQ tag the quality of the second mate is unknown, the pair then rests on the first mate alone
-    missingMateMapq <- which(pairedEnd & !fragmentCounts$mate.mapq.found)
-
-    if (isTRUE(verbose) & length(missingMateMapq) > 0 & isTRUE(minMapq > 0)) {
-      message("No MQ tag in: ", paste(sampleTable$sample[missingMateMapq], collapse = ", "),
-              ". For these samples 'minMapq' is applied to the first mate of each pair only.")
-    }
-
-    # An empty library breaks every normalisation downstream, and usually points to a wrong layout or to excluding too much
-    emptyLibraries <- which(fragmentCounts$library.size == 0)
-    if (length(emptyLibraries) > 0) {
-      warning("No fragment entered the library size of: ", paste(sampleTable$sample[emptyLibraries], collapse = ", "),
-              ". Check 'pairedEnd', 'excludeChromosomes' and the read filters.", call. = FALSE)
-    }
-
-    #------------------------#
-    # Inputs                 #
-    #------------------------#
-    inputPaths <- if (isTRUE(countInput)) {.resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)} else {NULL}
-    inputCounts <- NULL
-
-    # The names of the sheet belong to its own inputs, files given here are named after themselves
-    if (!is.null(inputPaths)) {
-      inputCounts <- .countInputFiles(inputPaths = inputPaths,
-                                      inputIds = if (is.null(inputFiles) & "input.id" %in% colnames(sampleTable)) {as.character(sampleTable$input.id)} else {NULL},
-                                      sampleFragmentLength = sampleFragmentLength,
-                                      fragmentLength = fragmentLength,
-                                      bamTargets = bamTargets,
-                                      regions = countingRegions,
-                                      maxFragmentLength = maxFragmentLength[1],
-                                      minMapq = minMapq,
-                                      removeDuplicates = removeDuplicates,
-                                      excludeChromosomes = excludeChromosomes,
-                                      discardRegions = discardRegions,
-                                      fullLibrarySize = fullLibrarySize,
-                                      nThreads = nThreads,
-                                      progressBar = showProgress,
-                                      verbose = verbose)
-    }
-
-    #-------------------------#
-    # Assemble the object     #
-    #-------------------------#
-    # The library sizes are the fragments surviving the filters, which is the denominator the normalisation expects
-    sampleTable <- dplyr::mutate(sampleTable,
-                                 paired.end = pairedEnd,
-                                 fragment.length = sampleFragmentLength,
-                                 library.size = fragmentCounts$library.size)
-
-    # What the discarded regions took out of each library, on the chromosomes entering the library sizes
-    if (!is.null(discardRegions)) {
-      sampleTable <- dplyr::mutate(sampleTable, discarded.reads = fragmentCounts$discarded)
-    }
-
-    if (!is.null(inputCounts)) {
-      sampleTable <- dplyr::mutate(sampleTable,
-                                   input = inputPaths,
-                                   input.id = inputCounts$input.id,
-                                   input.library.size = inputCounts$library.size)
-    }
-
-    countMatrix <- countMatrix[expansionIndex, , drop = FALSE]
-
-    newParameters <- list(countReads = list(bamFiles = bamFiles,
-                                            tileWidth = tileWidth,
-                                            partialTiles = partialTiles,
-                                            pairedEnd = pairedEnd,
-                                            fragmentLength = sampleFragmentLength,
-                                            fragmentLengthSource = fragmentInfo$source,
-                                            maxFragmentLength = maxFragmentLength,
-                                            minMapq = minMapq,
-                                            removeDuplicates = removeDuplicates,
-                                            excludeChromosomes = excludeChromosomes,
-                                            discardListedReads = discardListedReads,
-                                            greylistSource = greylistSource,
-                                            n.discard.regions = if (is.null(discardRegions)) {0L} else {length(discardRegions)},
-                                            discard.covered.bp = if (is.null(discardRegions)) {0} else {sum(as.numeric(BiocGenerics::width(discardRegions)))},
-                                            fullLibrarySize = fullLibrarySize,
-                                            inputFiles = inputPaths,
-                                            summits = summits,
-                                            summitSource = if (is.null(summits)) {NULL} else {summitSource}))
-
-    # The discarded regions follow the object under the chromosome names of its regions, for the functions
-    # reading the same BAM files later on. A greylist built here is kept as makeGreylist returned it
-    countsMetadata <- list(signal.type = "reads", count.like = TRUE)
-
-    if (!is.null(discardRegions)) {
-      countsMetadata$discard.regions <- tryCatch(expr = .matchSeqlevels(x = discardRegions, targetSeqlevels = GenomeInfoDb::seqlevels(allRegions), verbose = FALSE),
-                                                error = function(e) {return(discardRegions)})
-    }
-
-    if (!is.null(builtGreylist)) {
-      countsMetadata$greylist <- builtGreylist
-    }
-
-    # A tiled object has to say so it is tiled, otherwise testRegions treats every tile as a region
-    # and the combination step that puts the tiles back together never runs
-    counts <- .newCountsObject(countMatrix = countMatrix,
-                               regions = allRegions,
-                               sampleTable = sampleTable,
-                               provenance = listedRegions$provenance,
-                               countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
-                               newParameters = newParameters,
-                               metadataList = countsMetadata)
-
-    # The input of every sample over the same rows, a sample without input keeps a column of NA
-    if (!is.null(inputCounts)) {
-      inputMatrix <- inputCounts$counts[expansionIndex, , drop = FALSE]
-      dimnames(inputMatrix) <- dimnames(countMatrix)
-      SummarizedExperiment::assay(counts, "input", withDimnames = FALSE) <- inputMatrix
-    }
-
-    if (isTRUE(verbose)) {
-      message("Done in ", .elapsedTime(startTime), ". Library sizes: ",
-              paste(round(range(sampleTable$library.size) / 1e6, 1), collapse = " - "), " million fragments.")
-
-      if (isFALSE(fullLibrarySize)) {
-        message("The library sizes cover only the chromosomes carrying regions: count again with 'fullLibrarySize = TRUE' before a normalisation that relies on them.")
-      }
-    }
-
-    return(counts)
-  } # END function
+        return(counts)
+    } # END function
 
 
+#' @title .checkCountReadsArguments
+#'
+#' @description Checks the arguments of \code{\link{countReads}} and brings them to the form the rest of the function works with.
+#'
+#' @param regionSet See \code{\link{countReads}}.
+#' @param bamFiles See \code{\link{countReads}}.
+#' @param sampleSheet See \code{\link{countReads}}.
+#' @param sampleNames See \code{\link{countReads}}.
+#' @param sampleMetadata See \code{\link{countReads}}.
+#' @param tileWidth See \code{\link{countReads}}.
+#' @param pairedEnd See \code{\link{countReads}}.
+#' @param fragmentLength See \code{\link{countReads}}.
+#' @param maxFragmentLength See \code{\link{countReads}}.
+#' @param excludeChromosomes See \code{\link{countReads}}.
+#' @param greylist See \code{\link{countReads}}.
+#' @param discardListedReads See \code{\link{countReads}}.
+#' @param discardRegions See \code{\link{countReads}}.
+#' @param fullLibrarySize See \code{\link{countReads}}.
+#' @param countInput See \code{\link{countReads}}.
+#' @param summits See \code{\link{countReads}}.
+#' @param summitSource See \code{\link{countReads}}.
+#' @param verbose See \code{\link{countReads}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{bamFiles}, \code{bamSeqlevels}, \code{bamTargets}, \code{excludeChromosomes}, \code{pairedEnd}, \code{regionSet}, \code{sampleMetadata}, \code{sampleNames}, \code{summitSource}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkCountReadsArguments <-
+    function(regionSet,
+             bamFiles,
+             sampleSheet,
+             sampleNames,
+             sampleMetadata,
+             tileWidth,
+             pairedEnd,
+             fragmentLength,
+             maxFragmentLength,
+             excludeChromosomes,
+             greylist,
+             discardListedReads,
+             discardRegions,
+             fullLibrarySize,
+             countInput,
+             summits,
+             summitSource,
+             verbose) {
+        # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
+        regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
+
+        # A sample sheet brings the files, the names and the annotation in one go
+        sheetInput <- .sheetCountingInput(
+            regionSet = regionSet,
+            sampleSheet = sampleSheet,
+            files = bamFiles,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            fileField = "bam",
+            verbose = verbose
+        )
+
+        bamFiles <- sheetInput$files
+        sampleNames <- sheetInput$sampleNames
+        sampleMetadata <- sheetInput$sampleMetadata
+
+        if (!is.character(bamFiles) | length(bamFiles) == 0) {
+            stop("The 'bamFiles' parameter must be a character vector with at least one BAM file.", call. = FALSE)
+        }
+
+        missingFiles <- bamFiles[!file.exists(bamFiles)]
+        if (length(missingFiles) > 0) {
+            stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+        }
+
+        # Every chromosome is reached through the index, a file without one cannot be read by pieces
+        hasIndex <- .hasBamIndex(bamFiles)
+
+        if (any(!hasIndex)) {
+            stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
+        }
+
+        if (!(is.numeric(fragmentLength) | (is.character(fragmentLength) & length(fragmentLength) == 1))) {
+            stop("The 'fragmentLength' parameter must be a number, one number per BAM file, the name of a column of the sample annotation, or 'auto'.", call. = FALSE)
+        }
+
+        if (!is.numeric(maxFragmentLength) | maxFragmentLength[1] < 1) {
+            stop("The 'maxFragmentLength' parameter must be a positive number.", call. = FALSE)
+        }
+
+        if (!is.logical(fullLibrarySize) | length(fullLibrarySize) != 1 | any(is.na(fullLibrarySize))) {
+            stop("The 'fullLibrarySize' parameter must be TRUE or FALSE.", call. = FALSE)
+        }
+
+        if (!is.logical(countInput) | length(countInput) != 1 | any(is.na(countInput))) {
+            stop("The 'countInput' parameter must be TRUE or FALSE.", call. = FALSE)
+        }
+
+        if (!is.null(summits)) {
+            if (!is.numeric(summits) | length(summits) != 1 || is.na(summits) || summits < 0) {
+                stop("The 'summits' parameter must be NULL, 0, or a positive number of base pairs.", call. = FALSE)
+            }
+
+            if (!is.null(tileWidth)) {
+                stop("The 'summits' and 'tileWidth' parameters cannot be used together: recentre the regions or tile them.", call. = FALSE)
+            }
+
+            summitSource <- tolower(as.character(summitSource[1]))
+            if (!(summitSource %in% c("reads", "peaks"))) {
+                stop("The 'summitSource' parameter must be either 'reads' or 'peaks'.", call. = FALSE)
+            }
+
+            if (summitSource == "peaks" && !(methods::is(regionSet, "RegionSetDE") && length(.storedConsensus(regionSet)) > 0)) {
+                stop("summitSource = 'peaks' needs the regions returned by loadConsensusPeaks(), whose peak calls carry the summits. Use summitSource = 'reads' for any other region set.", call. = FALSE)
+            }
+        }
+
+        # The flags of the first records are enough to tell a paired library from a single-end one
+        if (identical(pairedEnd, "auto")) {
+            pairedEnd <- .bamIsPairedEnd(bamFiles = bamFiles)
+        }
+
+        if (length(pairedEnd) == 1) {
+            pairedEnd <- rep(pairedEnd, length(bamFiles))
+        }
+
+        if (!is.logical(pairedEnd) | length(pairedEnd) != length(bamFiles) | any(is.na(pairedEnd))) {
+            stop("The 'pairedEnd' parameter must be 'auto', a single logical value, or one logical value per BAM file.", call. = FALSE)
+        }
+
+        if (!is.null(discardRegions) & !methods::is(discardRegions, "GRanges")) {
+            stop("The 'discardRegions' parameter must be a GRanges object.", call. = FALSE)
+        }
+
+        if (!is.logical(discardListedReads) | length(discardListedReads) != 1 | any(is.na(discardListedReads))) {
+            stop("The 'discardListedReads' parameter must be TRUE or FALSE.", call. = FALSE)
+        }
+
+        if (is.logical(greylist) && (length(greylist) != 1 || is.na(greylist))) {
+            stop("The 'greylist' parameter must be TRUE, FALSE, or the regions of a greylist.", call. = FALSE)
+        }
+
+        if (!is.null(excludeChromosomes) & !is.character(excludeChromosomes)) {
+            stop("The 'excludeChromosomes' parameter must be a character vector with chromosome names.", call. = FALSE)
+        }
+
+        # The files may name the chromosomes in different styles: those of the first file stand for all of them
+        bamTargets <- .bamChromosomeMap(bamFiles = bamFiles, verbose = verbose)$lengths
+        bamSeqlevels <- names(bamTargets)
+
+        # 'chrM' against a BAM naming it 'MT' would exclude nothing, and the library sizes would carry
+        # the mitochondrial reads into the normalisation without a word
+        excludeChromosomes <- .matchChromosomeNames(chromosomeNames = excludeChromosomes, targetSeqlevels = bamSeqlevels)
+
+        return(list(
+            bamFiles = bamFiles,
+            bamSeqlevels = bamSeqlevels,
+            bamTargets = bamTargets,
+            excludeChromosomes = excludeChromosomes,
+            pairedEnd = pairedEnd,
+            regionSet = regionSet,
+            sampleMetadata = sampleMetadata,
+            sampleNames = sampleNames,
+            summitSource = summitSource
+        ))
+    } # END function
 
 
 #' @title .poolDiscardRegions
@@ -603,33 +773,42 @@ countReads <-
 #' @keywords internal
 
 .poolDiscardRegions <-
-  function(regionLists,
-           targetSeqlevels) {
+    function(regionLists,
+             targetSeqlevels) {
+        matchedLists <-
+            lapply(
+                regionLists,
+                function(listRegions) {
+                    if (is.null(listRegions) || length(listRegions) == 0) {
+                        return(NULL)
+                    }
 
-    matchedLists <-
-      lapply(regionLists,
-             function(listRegions) {
-               if (is.null(listRegions) || length(listRegions) == 0) {return(NULL)}
+                    # A list sharing no chromosome with the files has no read to take away, and is left out
+                    return(tryCatch(
+                        expr = .matchSeqlevels(x = listRegions, targetSeqlevels = targetSeqlevels, verbose = FALSE),
+                        error = function(e) {
+                            return(NULL)
+                        }
+                    ))
+                }
+            )
 
-               # A list sharing no chromosome with the files has no read to take away, and is left out
-               return(tryCatch(expr = .matchSeqlevels(x = listRegions, targetSeqlevels = targetSeqlevels, verbose = FALSE),
-                               error = function(e) {return(NULL)}))
-             })
+        matchedLists <- unname(matchedLists[!vapply(matchedLists, is.null, logical(1))])
 
-    matchedLists <- unname(matchedLists[!vapply(matchedLists, is.null, logical(1))])
+        if (length(matchedLists) == 0) {
+            return(NULL)
+        }
 
-    if (length(matchedLists) == 0) {
-      return(NULL)
-    }
+        # Only the positions are pooled, lists loaded apart rarely agree on their sequence information
+        pooledRegions <- GenomicRanges::GRanges(
+            seqnames = unlist(lapply(matchedLists, function(listRegions) {
+                as.character(GenomeInfoDb::seqnames(listRegions))
+            }), use.names = FALSE),
+            ranges = do.call(what = c, args = lapply(matchedLists, IRanges::ranges))
+        )
 
-    # Only the positions are pooled, lists loaded apart rarely agree on their sequence information
-    pooledRegions <- GenomicRanges::GRanges(seqnames = unlist(lapply(matchedLists, function(listRegions) {as.character(GenomeInfoDb::seqnames(listRegions))}), use.names = FALSE),
-                                            ranges = do.call(what = c, args = lapply(matchedLists, IRanges::ranges)))
-
-    return(IRanges::reduce(pooledRegions, ignore.strand = TRUE))
-  } # END function
-
-
+        return(IRanges::reduce(pooledRegions, ignore.strand = TRUE))
+    } # END function
 
 
 #' @title .resolveFragmentLength
@@ -644,7 +823,7 @@ countReads <-
 #' @param minMapq Numeric value with the minimum mapping quality of a read.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
-#' @param nThreads Number of threads.
+#' @param BPPARAM \code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.
 #' @param verbose Logical value to indicate whether the messages must be printed.
 #'
 #' @return A list with \code{values}, a numeric vector with one length per sample, \code{NA} for the paired-end ones, and \code{source}, a string saying where the lengths came from.
@@ -654,84 +833,89 @@ countReads <-
 #' @keywords internal
 
 .resolveFragmentLength <-
-  function(fragmentLength,
-           sampleTable,
-           pairedEnd,
-           bamFiles,
-           regions,
-           minMapq,
-           removeDuplicates,
-           discardRegions,
-           nThreads,
-           verbose) {
+    function(fragmentLength,
+             sampleTable,
+             pairedEnd,
+             bamFiles,
+             regions,
+             minMapq,
+             removeDuplicates,
+             discardRegions,
+             BPPARAM,
+             verbose) {
+        sampleNumber <- nrow(sampleTable)
+        singleEnd <- !pairedEnd
 
-    sampleNumber <- nrow(sampleTable)
-    singleEnd <- !pairedEnd
+        #-------------------------------#
+        # Where the values come from    #
+        #-------------------------------#
+        if (is.numeric(fragmentLength)) {
+            if (length(fragmentLength) == 1) {
+                lengthValues <- rep(as.numeric(fragmentLength), sampleNumber)
+                lengthSource <- "fixed"
+            } else {
+                lengthValues <- as.numeric(.orderSampleValues(values = fragmentLength, sampleNames = sampleTable$sample, parameterName = "fragmentLength"))
+                lengthSource <- "per sample"
+            }
+        } else if (identical(fragmentLength, "auto")) {
+            lengthValues <- rep(NA_real_, sampleNumber)
+            lengthSource <- "cross-correlation"
 
-    #-------------------------------#
-    # Where the values come from    #
-    #-------------------------------#
-    if (is.numeric(fragmentLength)) {
-      if (length(fragmentLength) == 1) {
-        lengthValues <- rep(as.numeric(fragmentLength), sampleNumber)
-        lengthSource <- "fixed"
-      } else {
-        lengthValues <- as.numeric(.orderSampleValues(values = fragmentLength, sampleNames = sampleTable$sample, parameterName = "fragmentLength"))
-        lengthSource <- "per sample"
-      }
-    } else if (identical(fragmentLength, "auto")) {
-      lengthValues <- rep(NA_real_, sampleNumber)
-      lengthSource <- "cross-correlation"
+            if (any(singleEnd)) {
+                if (isTRUE(verbose)) {
+                    message("Estimating the fragment length of ", sum(singleEnd), " single-end samples from the reads over the regions...")
+                }
 
-      if (any(singleEnd)) {
-        if (isTRUE(verbose)) {
-          message("Estimating the fragment length of ", sum(singleEnd), " single-end samples from the reads over the regions...")
+                fragmentEstimate <- estimateFragmentLength(
+                    bamFiles = bamFiles[singleEnd],
+                    regions = regions,
+                    sampleNames = sampleTable$sample[singleEnd],
+                    pairedEnd = FALSE,
+                    minMapq = minMapq,
+                    removeDuplicates = removeDuplicates,
+                    discardRegions = discardRegions,
+                    BPPARAM = BPPARAM,
+                    verbose = FALSE
+                )
+
+                lengthValues[singleEnd] <- fragmentEstimate$table$fragment.length
+            }
+        } else {
+            if (!(fragmentLength %in% colnames(sampleTable))) {
+                stop("The 'fragmentLength' parameter names no column of the sample annotation: '", fragmentLength,
+                    "'. Give a number, a column of the sample sheet, or 'auto'.",
+                    call. = FALSE
+                )
+            }
+
+            lengthValues <- suppressWarnings(as.numeric(as.character(sampleTable[[fragmentLength]])))
+            lengthSource <- paste("column", fragmentLength)
         }
 
-        fragmentEstimate <- estimateFragmentLength(bamFiles = bamFiles[singleEnd],
-                                                   regions = regions,
-                                                   sampleNames = sampleTable$sample[singleEnd],
-                                                   pairedEnd = FALSE,
-                                                   minMapq = minMapq,
-                                                   removeDuplicates = removeDuplicates,
-                                                   discardRegions = discardRegions,
-                                                   nThreads = nThreads,
-                                                   verbose = FALSE)
+        #-------------------------------#
+        # Checks on the single-end ones #
+        #-------------------------------#
+        lengthValues[pairedEnd] <- NA_real_
+        invalidLengths <- singleEnd & (is.na(lengthValues) | lengthValues < 1)
 
-        lengthValues[singleEnd] <- fragmentEstimate$table$fragment.length
-      }
-    } else {
-      if (!(fragmentLength %in% colnames(sampleTable))) {
-        stop("The 'fragmentLength' parameter names no column of the sample annotation: '", fragmentLength,
-             "'. Give a number, a column of the sample sheet, or 'auto'.", call. = FALSE)
-      }
+        if (any(invalidLengths)) {
+            stop("No valid fragment length for the single-end samples: ", paste(sampleTable$sample[invalidLengths], collapse = ", "),
+                ". Give a positive number for each of them.",
+                call. = FALSE
+            )
+        }
 
-      lengthValues <- suppressWarnings(as.numeric(as.character(sampleTable[[fragmentLength]])))
-      lengthSource <- paste("column", fragmentLength)
-    }
+        lengthValues <- round(lengthValues)
 
-    #-------------------------------#
-    # Checks on the single-end ones #
-    #-------------------------------#
-    lengthValues[pairedEnd] <- NA_real_
-    invalidLengths <- singleEnd & (is.na(lengthValues) | lengthValues < 1)
+        if (isTRUE(verbose) & any(singleEnd) & lengthSource != "fixed") {
+            message(
+                "Single-end reads extended to (", lengthSource, "): ",
+                paste(sampleTable$sample[singleEnd], lengthValues[singleEnd], sep = " ", collapse = ", "), " bp."
+            )
+        }
 
-    if (any(invalidLengths)) {
-      stop("No valid fragment length for the single-end samples: ", paste(sampleTable$sample[invalidLengths], collapse = ", "),
-           ". Give a positive number for each of them.", call. = FALSE)
-    }
-
-    lengthValues <- round(lengthValues)
-
-    if (isTRUE(verbose) & any(singleEnd) & lengthSource != "fixed") {
-      message("Single-end reads extended to (", lengthSource, "): ",
-              paste(sampleTable$sample[singleEnd], lengthValues[singleEnd], sep = " ", collapse = ", "), " bp.")
-    }
-
-    return(list(values = lengthValues, source = lengthSource))
-  } # END function
-
-
+        return(list(values = lengthValues, source = lengthSource))
+    } # END function
 
 
 #' @title .resolveInputFiles
@@ -748,33 +932,36 @@ countReads <-
 #' @keywords internal
 
 .resolveInputFiles <-
-  function(inputFiles,
-           sampleTable) {
+    function(inputFiles,
+             sampleTable) {
+        if (is.null(inputFiles)) {
+            if (!("input" %in% colnames(sampleTable))) {
+                return(NULL)
+            }
+            inputFiles <- as.character(sampleTable$input)
+        }
 
-    if (is.null(inputFiles)) {
-      if (!("input" %in% colnames(sampleTable))) {return(NULL)}
-      inputFiles <- as.character(sampleTable$input)
-    }
+        if (!is.character(inputFiles) & !all(is.na(inputFiles))) {
+            stop("The 'inputFiles' parameter must be a character vector with one path per sample, NA for the samples without input.", call. = FALSE)
+        }
 
-    if (!is.character(inputFiles) & !all(is.na(inputFiles))) {
-      stop("The 'inputFiles' parameter must be a character vector with one path per sample, NA for the samples without input.", call. = FALSE)
-    }
+        inputFiles <- as.character(inputFiles)
+        if (length(inputFiles) == 1) {
+            inputFiles <- rep(inputFiles, nrow(sampleTable))
+        }
 
-    inputFiles <- as.character(inputFiles)
-    if (length(inputFiles) == 1) {inputFiles <- rep(inputFiles, nrow(sampleTable))}
+        if (length(inputFiles) != nrow(sampleTable)) {
+            stop("The 'inputFiles' parameter must hold one path per sample, NA for the samples without input.", call. = FALSE)
+        }
 
-    if (length(inputFiles) != nrow(sampleTable)) {
-      stop("The 'inputFiles' parameter must hold one path per sample, NA for the samples without input.", call. = FALSE)
-    }
+        inputFiles[!is.na(inputFiles) & inputFiles == ""] <- NA_character_
 
-    inputFiles[!is.na(inputFiles) & inputFiles == ""] <- NA_character_
+        if (all(is.na(inputFiles))) {
+            return(NULL)
+        }
 
-    if (all(is.na(inputFiles))) {return(NULL)}
-
-    return(inputFiles)
-  } # END function
-
-
+        return(inputFiles)
+    } # END function
 
 
 #' @title .countInputFiles
@@ -793,7 +980,7 @@ countReads <-
 #' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
 #' @param fullLibrarySize Logical value indicating whether the library sizes cover every chromosome.
-#' @param nThreads Number of threads.
+#' @param BPPARAM \code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.
 #' @param progressBar Logical value to indicate whether a progress bar must be drawn while the inputs are read. Default: \code{FALSE}.
 #' @param verbose Logical value to indicate whether the messages must be printed.
 #'
@@ -804,109 +991,118 @@ countReads <-
 #' @keywords internal
 
 .countInputFiles <-
-  function(inputPaths,
-           inputIds,
-           sampleFragmentLength,
-           fragmentLength,
-           bamTargets,
-           regions,
-           maxFragmentLength,
-           minMapq,
-           removeDuplicates,
-           excludeChromosomes,
-           discardRegions,
-           fullLibrarySize,
-           nThreads,
-           progressBar = FALSE,
-           verbose) {
+    function(inputPaths,
+             inputIds,
+             sampleFragmentLength,
+             fragmentLength,
+             bamTargets,
+             regions,
+             maxFragmentLength,
+             minMapq,
+             removeDuplicates,
+             excludeChromosomes,
+             discardRegions,
+             fullLibrarySize,
+             BPPARAM,
+             progressBar = FALSE,
+             verbose) {
+        distinctInputs <- unique(inputPaths[!is.na(inputPaths)])
 
-    distinctInputs <- unique(inputPaths[!is.na(inputPaths)])
+        #-------------------------------#
+        # Files usable at all           #
+        #-------------------------------#
+        missingInputs <- distinctInputs[!file.exists(distinctInputs)]
+        if (length(missingInputs) > 0) {
+            stop("The following input files do not exist: ", paste(missingInputs, collapse = ", "), ". Set countInput = FALSE to skip them.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Files usable at all           #
-    #-------------------------------#
-    missingInputs <- distinctInputs[!file.exists(distinctInputs)]
-    if (length(missingInputs) > 0) {
-      stop("The following input files do not exist: ", paste(missingInputs, collapse = ", "), ". Set countInput = FALSE to skip them.", call. = FALSE)
-    }
+        unindexedInputs <- distinctInputs[!.hasBamIndex(distinctInputs)]
+        if (length(unindexedInputs) > 0) {
+            stop("The following input files are not indexed: ", paste(basename(unindexedInputs), collapse = ", "), ".", call. = FALSE)
+        }
 
-    unindexedInputs <- distinctInputs[!.hasBamIndex(distinctInputs)]
-    if (length(unindexedInputs) > 0) {
-      stop("The following input files are not indexed: ", paste(basename(unindexedInputs), collapse = ", "), ".", call. = FALSE)
-    }
+        # Inputs aligned against another assembly would place the regions somewhere else, and are refused here.
+        # Inputs naming the chromosomes in another style than the samples are fine, the counting reads them under their own names
+        .bamChromosomeMap(bamFiles = distinctInputs, referenceTargets = bamTargets, referenceLabel = "the sample BAM files")
 
-    # Inputs aligned against another assembly would place the regions somewhere else, and are refused here.
-    # Inputs naming the chromosomes in another style than the samples are fine, the counting reads them under their own names
-    .bamChromosomeMap(bamFiles = distinctInputs, referenceTargets = bamTargets, referenceLabel = "the sample BAM files")
+        #-------------------------------#
+        # Layout and fragment length    #
+        #-------------------------------#
+        inputPairedEnd <- .bamIsPairedEnd(bamFiles = distinctInputs)
 
-    #-------------------------------#
-    # Layout and fragment length    #
-    #-------------------------------#
-    inputPairedEnd <- .bamIsPairedEnd(bamFiles = distinctInputs)
+        # A single-end input is extended as the samples it serves, which are the fragments it has to be compared with
+        inputFragmentLength <- vapply(distinctInputs,
+            function(inputFile) {
+                if (is.numeric(fragmentLength) & length(fragmentLength) == 1) {
+                    return(as.numeric(fragmentLength))
+                }
+                servedLengths <- sampleFragmentLength[!is.na(inputPaths) & inputPaths == inputFile]
+                if (all(is.na(servedLengths))) {
+                    return(NA_real_)
+                }
+                return(round(mean(servedLengths, na.rm = TRUE)))
+            },
+            numeric(1),
+            USE.NAMES = FALSE
+        )
 
-    # A single-end input is extended as the samples it serves, which are the fragments it has to be compared with
-    inputFragmentLength <- vapply(distinctInputs,
-                                  function(inputFile) {
-                                    if (is.numeric(fragmentLength) & length(fragmentLength) == 1) {return(as.numeric(fragmentLength))}
-                                    servedLengths <- sampleFragmentLength[!is.na(inputPaths) & inputPaths == inputFile]
-                                    if (all(is.na(servedLengths))) {return(NA_real_)}
-                                    return(round(mean(servedLengths, na.rm = TRUE)))
-                                  },
-                                  numeric(1), USE.NAMES = FALSE)
+        # Only paired-end samples behind a single-end input: the input has to speak for itself
+        needEstimate <- !inputPairedEnd & is.na(inputFragmentLength)
+        if (any(needEstimate)) {
+            inputEstimate <- estimateFragmentLength(
+                bamFiles = distinctInputs[needEstimate],
+                regions = regions,
+                pairedEnd = FALSE,
+                minMapq = minMapq,
+                removeDuplicates = removeDuplicates,
+                discardRegions = discardRegions,
+                verbose = FALSE
+            )
+            inputFragmentLength[needEstimate] <- inputEstimate$table$fragment.length
+            inputFragmentLength[needEstimate & is.na(inputFragmentLength)] <- 150
+        }
 
-    # Only paired-end samples behind a single-end input: the input has to speak for itself
-    needEstimate <- !inputPairedEnd & is.na(inputFragmentLength)
-    if (any(needEstimate)) {
-      inputEstimate <- estimateFragmentLength(bamFiles = distinctInputs[needEstimate],
-                                              regions = regions,
-                                              pairedEnd = FALSE,
-                                              minMapq = minMapq,
-                                              removeDuplicates = removeDuplicates,
-                                              discardRegions = discardRegions,
-                                              verbose = FALSE)
-      inputFragmentLength[needEstimate] <- inputEstimate$table$fragment.length
-      inputFragmentLength[needEstimate & is.na(inputFragmentLength)] <- 150
-    }
+        if (isTRUE(verbose)) {
+            message("Counting ", length(distinctInputs), " input file(s) serving ", sum(!is.na(inputPaths)), " samples...")
+        }
 
-    if (isTRUE(verbose)) {
-      message("Counting ", length(distinctInputs), " input file(s) serving ", sum(!is.na(inputPaths)), " samples...")
-    }
+        #-------------------------------#
+        # Count and spread              #
+        #-------------------------------#
+        inputFragments <- .countBamFragments(
+            bamFiles = distinctInputs,
+            ranges = regions,
+            pairedEnd = inputPairedEnd,
+            fragmentLength = inputFragmentLength,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            discardRegions = discardRegions,
+            fullLibrarySize = fullLibrarySize,
+            countMode = "overlap",
+            referenceTargets = bamTargets,
+            progressBar = progressBar,
+            BPPARAM = BPPARAM
+        )
 
-    #-------------------------------#
-    # Count and spread              #
-    #-------------------------------#
-    inputFragments <- .countBamFragments(bamFiles = distinctInputs,
-                                         ranges = regions,
-                                         pairedEnd = inputPairedEnd,
-                                         fragmentLength = inputFragmentLength,
-                                         maxFragmentLength = maxFragmentLength,
-                                         minMapq = minMapq,
-                                         removeDuplicates = removeDuplicates,
-                                         excludeChromosomes = excludeChromosomes,
-                                         discardRegions = discardRegions,
-                                         fullLibrarySize = fullLibrarySize,
-                                         countMode = "overlap",
-                                         referenceTargets = bamTargets,
-                                         progressBar = progressBar,
-                                         nThreads = nThreads)
+        inputIndex <- match(inputPaths, distinctInputs)
 
-    inputIndex <- match(inputPaths, distinctInputs)
+        inputMatrix <- inputFragments$counts[, inputIndex, drop = FALSE]
+        storage.mode(inputMatrix) <- "double"
+        inputMatrix[, is.na(inputIndex)] <- NA_real_
 
-    inputMatrix <- inputFragments$counts[, inputIndex, drop = FALSE]
-    storage.mode(inputMatrix) <- "double"
-    inputMatrix[, is.na(inputIndex)] <- NA_real_
+        if (is.null(inputIds) || all(is.na(inputIds))) {
+            inputIds <- .inputIdentifiers(inputPaths = inputPaths)
+        }
+        inputIds[is.na(inputPaths)] <- NA_character_
 
-    if (is.null(inputIds) || all(is.na(inputIds))) {
-      inputIds <- .inputIdentifiers(inputPaths = inputPaths)
-    }
-    inputIds[is.na(inputPaths)] <- NA_character_
-
-    return(list(counts = inputMatrix,
-                library.size = inputFragments$library.size[inputIndex],
-                input.id = inputIds))
-  } # END function
-
-
+        return(list(
+            counts = inputMatrix,
+            library.size = inputFragments$library.size[inputIndex],
+            input.id = inputIds
+        ))
+    } # END function
 
 
 #' @title .readSummits
@@ -922,7 +1118,7 @@ countReads <-
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded.
 #' @param discardRegions \code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.
 #' @param progressBar Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: \code{FALSE}.
-#' @param nThreads Number of threads.
+#' @param BPPARAM \code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.
 #'
 #' @return An integer vector with the summit of every region, \code{NA} where no sample has a fragment.
 #'
@@ -931,44 +1127,43 @@ countReads <-
 #' @keywords internal
 
 .readSummits <-
-  function(bamFiles,
-           regions,
-           pairedEnd,
-           fragmentLength,
-           maxFragmentLength,
-           minMapq,
-           removeDuplicates,
-           discardRegions,
-           progressBar = FALSE,
-           nThreads) {
+    function(bamFiles,
+             regions,
+             pairedEnd,
+             fragmentLength,
+             maxFragmentLength,
+             minMapq,
+             removeDuplicates,
+             discardRegions,
+             progressBar = FALSE,
+             BPPARAM) {
+        summitData <- .bamSummits(
+            bamFiles = bamFiles,
+            regions = regions,
+            pairedEnd = pairedEnd,
+            fragmentLength = fragmentLength,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            discardRegions = discardRegions,
+            progressBar = progressBar,
+            BPPARAM = BPPARAM
+        )
 
-    summitData <- .bamSummits(bamFiles = bamFiles,
-                              regions = regions,
-                              pairedEnd = pairedEnd,
-                              fragmentLength = fragmentLength,
-                              maxFragmentLength = maxFragmentLength,
-                              minMapq = minMapq,
-                              removeDuplicates = removeDuplicates,
-                              discardRegions = discardRegions,
-                              progressBar = progressBar,
-                              nThreads = nThreads)
+        # Heights over depth, so that a deeper library does not decide on its own where the summit sits
+        sampleDepth <- pmax(summitData$fragments, 1)
+        summitWeight <- sweep(summitData$height, MARGIN = 2, STATS = sampleDepth, FUN = "/")
+        summitWeight[is.na(summitData$position)] <- 0
 
-    # Heights over depth, so that a deeper library does not decide on its own where the summit sits
-    sampleDepth <- pmax(summitData$fragments, 1)
-    summitWeight <- sweep(summitData$height, MARGIN = 2, STATS = sampleDepth, FUN = "/")
-    summitWeight[is.na(summitData$position)] <- 0
+        weightedPosition <- summitData$position
+        weightedPosition[is.na(weightedPosition)] <- 0
 
-    weightedPosition <- summitData$position
-    weightedPosition[is.na(weightedPosition)] <- 0
+        weightTotal <- rowSums(summitWeight)
+        summitPosition <- as.integer(round(rowSums(summitWeight * weightedPosition) / weightTotal))
+        summitPosition[weightTotal == 0] <- NA_integer_
 
-    weightTotal <- rowSums(summitWeight)
-    summitPosition <- as.integer(round(rowSums(summitWeight * weightedPosition) / weightTotal))
-    summitPosition[weightTotal == 0] <- NA_integer_
-
-    return(summitPosition)
-  } # END function
-
-
+        return(summitPosition)
+    } # END function
 
 
 #' @title .peakSummits
@@ -991,54 +1186,63 @@ countReads <-
 #' @keywords internal
 
 .peakSummits <-
-  function(regions,
-           peakList) {
+    function(regions,
+             peakList) {
+        allPeaks <- unlist(peakList, use.names = FALSE)
+        peakMetadata <- S4Vectors::mcols(allPeaks)
 
-    allPeaks <- unlist(peakList, use.names = FALSE)
-    peakMetadata <- S4Vectors::mcols(allPeaks)
+        if (!("peak" %in% colnames(peakMetadata)) || all(is.na(peakMetadata$peak) | peakMetadata$peak < 0)) {
+            warning("The peak files carry no summit, as a narrowPeak file would in its tenth column: the peak midpoints are used instead.", call. = FALSE)
+        }
 
-    if (!("peak" %in% colnames(peakMetadata)) || all(is.na(peakMetadata$peak) | peakMetadata$peak < 0)) {
-      warning("The peak files carry no summit, as a narrowPeak file would in its tenth column: the peak midpoints are used instead.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Summit of every peak          #
+        #-------------------------------#
+        # The offset of narrowPeak counts from the 0-based start, which is the 1-based start minus one
+        summitOffset <- if ("peak" %in% colnames(peakMetadata)) {
+            as.numeric(peakMetadata$peak)
+        } else {
+            rep(NA_real_, length(allPeaks))
+        }
+        peakSummit <- ifelse(!is.na(summitOffset) & summitOffset >= 0,
+            BiocGenerics::start(allPeaks) + summitOffset,
+            BiocGenerics::start(allPeaks) + BiocGenerics::width(allPeaks) %/% 2
+        )
 
-    #-------------------------------#
-    # Summit of every peak          #
-    #-------------------------------#
-    # The offset of narrowPeak counts from the 0-based start, which is the 1-based start minus one
-    summitOffset <- if ("peak" %in% colnames(peakMetadata)) {as.numeric(peakMetadata$peak)} else {rep(NA_real_, length(allPeaks))}
-    peakSummit <- ifelse(!is.na(summitOffset) & summitOffset >= 0,
-                         BiocGenerics::start(allPeaks) + summitOffset,
-                         BiocGenerics::start(allPeaks) + BiocGenerics::width(allPeaks) %/% 2)
+        # A missing significance must not take a peak out of the average
+        peakWeight <- if ("negLog10P" %in% colnames(peakMetadata)) {
+            as.numeric(peakMetadata$negLog10P)
+        } else {
+            rep(1, length(allPeaks))
+        }
+        peakWeight[is.na(peakWeight) | peakWeight <= 0] <- 1
 
-    # A missing significance must not take a peak out of the average
-    peakWeight <- if ("negLog10P" %in% colnames(peakMetadata)) {as.numeric(peakMetadata$negLog10P)} else {rep(1, length(allPeaks))}
-    peakWeight[is.na(peakWeight) | peakWeight <= 0] <- 1
+        #-------------------------------#
+        # Average over each region      #
+        #-------------------------------#
+        peakHits <- IRanges::findOverlaps(regions, allPeaks, ignore.strand = TRUE)
 
-    #-------------------------------#
-    # Average over each region      #
-    #-------------------------------#
-    peakHits <- IRanges::findOverlaps(regions, allPeaks, ignore.strand = TRUE)
+        memberTable <- data.frame(
+            region = S4Vectors::queryHits(peakHits),
+            region.start = BiocGenerics::start(regions)[S4Vectors::queryHits(peakHits)],
+            region.end = BiocGenerics::end(regions)[S4Vectors::queryHits(peakHits)],
+            summit = peakSummit[S4Vectors::subjectHits(peakHits)],
+            weight = peakWeight[S4Vectors::subjectHits(peakHits)]
+        )
 
-    memberTable <- data.frame(region = S4Vectors::queryHits(peakHits),
-                              region.start = BiocGenerics::start(regions)[S4Vectors::queryHits(peakHits)],
-                              region.end = BiocGenerics::end(regions)[S4Vectors::queryHits(peakHits)],
-                              summit = peakSummit[S4Vectors::subjectHits(peakHits)],
-                              weight = peakWeight[S4Vectors::subjectHits(peakHits)])
+        # A summit outside the region belongs to the part of the peak hanging over its edge
+        memberTable <- dplyr::filter(memberTable, .data$summit >= .data$region.start, .data$summit <= .data$region.end)
 
-    # A summit outside the region belongs to the part of the peak hanging over its edge
-    memberTable <- dplyr::filter(memberTable, .data$summit >= .data$region.start, .data$summit <= .data$region.end)
+        summitTable <- dplyr::summarise(dplyr::group_by(memberTable, .data$region),
+            summit = round(sum(.data$summit * .data$weight) / sum(.data$weight)),
+            .groups = "drop"
+        )
 
-    summitTable <- dplyr::summarise(dplyr::group_by(memberTable, .data$region),
-                                    summit = round(sum(.data$summit * .data$weight) / sum(.data$weight)),
-                                    .groups = "drop")
+        summitPosition <- rep(NA_integer_, length(regions))
+        summitPosition[summitTable$region] <- as.integer(summitTable$summit)
 
-    summitPosition <- rep(NA_integer_, length(regions))
-    summitPosition[summitTable$region] <- as.integer(summitTable$summit)
-
-    return(summitPosition)
-  } # END function
-
-
+        return(summitPosition)
+    } # END function
 
 
 #' @title .recentreRanges
@@ -1058,19 +1262,18 @@ countReads <-
 #' @keywords internal
 
 .recentreRanges <-
-  function(summitPosition,
-           halfWidth,
-           chromosomeLength = NULL) {
+    function(summitPosition,
+             halfWidth,
+             chromosomeLength = NULL) {
+        halfWidth <- as.integer(round(halfWidth))
+        windowStart <- pmax(summitPosition - halfWidth, 1L)
+        windowEnd <- summitPosition + halfWidth
 
-    halfWidth <- as.integer(round(halfWidth))
-    windowStart <- pmax(summitPosition - halfWidth, 1L)
-    windowEnd <- summitPosition + halfWidth
+        if (!is.null(chromosomeLength)) {
+            chromosomeLength <- as.numeric(chromosomeLength)
+            clipEnd <- !is.na(chromosomeLength) & windowEnd > chromosomeLength
+            windowEnd[clipEnd] <- as.integer(chromosomeLength[clipEnd])
+        }
 
-    if (!is.null(chromosomeLength)) {
-      chromosomeLength <- as.numeric(chromosomeLength)
-      clipEnd <- !is.na(chromosomeLength) & windowEnd > chromosomeLength
-      windowEnd[clipEnd] <- as.integer(chromosomeLength[clipEnd])
-    }
-
-    return(IRanges::IRanges(start = as.integer(windowStart), end = as.integer(windowEnd)))
-  } # END function
+        return(IRanges::IRanges(start = as.integer(windowStart), end = as.integer(windowEnd)))
+    } # END function

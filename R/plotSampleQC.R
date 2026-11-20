@@ -55,173 +55,224 @@
 #' @export plotRegionPCA
 
 plotRegionPCA <-
-  function(object,
-           set = NULL,
-           contrast = NULL,
-           samples = NULL,
-           colourBy = NULL,
-           shapeBy = NULL,
-           labelBy = "sample",
-           useOffsets = TRUE,
-           compareOffsets = FALSE,
-           facetBySet = FALSE,
-           dimensions = c(1, 2),
-           topRegions = 2000,
-           pointSize = 3,
-           colours = NULL,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "right",
-           baseSize = 12) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (length(dimensions) != 2 | any(dimensions < 1)) {
-      stop("The 'dimensions' parameter must hold two positive component numbers.", call. = FALSE)
-    }
-
-    # A computation done beforehand is drawn as it is, the panels only make sense on an object with counts
-    precomputed <- is.list(object) && all(c("scores", "variance") %in% names(object))
-
-    #-------------------------------#
-    # One ordination per panel      #
-    #-------------------------------#
-    pcaList <- list()
-
-    # The transformation is named when the two are being compared, or when the values are not the normalised ones
-    nameOffsets <- isTRUE(compareOffsets) | isFALSE(useOffsets)
-
-    if (isTRUE(precomputed)) {
-      pcaList[["computed"]] <- object
-      panelNames <- "all"
-      offsetLabels <- if (isFALSE(object$parameters$useOffsets)) {"library size only"} else {"normalised"}
-      nameOffsets <- isFALSE(object$parameters$useOffsets)
-      colTable <- .sampleTable(sampleAnnotation = object$scores, colourBy = colourBy, shapeBy = shapeBy, labelBy = labelBy)
-    } else {
-      counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
-
-      if (ncol(counts) < 3) {
-        stop("At least three samples are needed for an ordination.", call. = FALSE)
-      }
-
-      colTable <- .sampleTable(sampleAnnotation = .sampleAnnotation(counts = counts), colourBy = colourBy, shapeBy = shapeBy, labelBy = labelBy)
-      panelSets <- .panelSets(counts = counts, set = set, facetBySet = facetBySet)
-      offsetPanels <- if (isTRUE(compareOffsets)) {c(TRUE, FALSE)} else {useOffsets}
-
-      .normalisationNotice(counts = counts, useOffsets = useOffsets | isTRUE(compareOffsets), verbose = TRUE)
-
-      panelNames <- character(0)
-      offsetLabels <- character(0)
-
-      # The rows are chosen on the normalised values in every panel, so the panels differ by transformation and not by selection
-      for (setName in names(panelSets)) {
-        for (offsetFlag in offsetPanels) {
-          pcaList[[length(pcaList) + 1]] <- computeSamplePCA(object = counts,
-                                                             set = if (setName == "all") {set} else {setName},
-                                                             useOffsets = offsetFlag,
-                                                             topRegions = topRegions,
-                                                             verbose = FALSE)
-          panelNames <- c(panelNames, setName)
-          offsetLabels <- c(offsetLabels, if (isTRUE(offsetFlag)) {"normalised"} else {"library size only"})
+    function(object,
+             set = NULL,
+             contrast = NULL,
+             samples = NULL,
+             colourBy = NULL,
+             shapeBy = NULL,
+             labelBy = "sample",
+             useOffsets = TRUE,
+             compareOffsets = FALSE,
+             facetBySet = FALSE,
+             dimensions = c(1, 2),
+             topRegions = 2000,
+             pointSize = 3,
+             colours = NULL,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "right",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (length(dimensions) != 2 | any(dimensions < 1)) {
+            stop("The 'dimensions' parameter must hold two positive component numbers.", call. = FALSE)
         }
-      }
-    }
 
-    coordinateList <- list()
+        # A computation done beforehand is drawn as it is, the panels only make sense on an object with counts
+        precomputed <- is.list(object) && all(c("scores", "variance") %in% names(object))
 
-    for (i in seq_along(pcaList)) {
-      scoreTable <- pcaList[[i]]$scores
-      varianceShare <- round(pcaList[[i]]$variance$variance.percent, 1)
-      componentNames <- paste0("PC", dimensions)
+        #-------------------------------#
+        # One ordination per panel      #
+        #-------------------------------#
+        pcaList <- list()
 
-      if (!all(componentNames %in% colnames(scoreTable))) {
-        stop("Only ", nrow(pcaList[[i]]$variance), " components exist, which is fewer than requested.", call. = FALSE)
-      }
+        # The transformation is named when the two are being compared, or when the values are not the normalised ones
+        nameOffsets <- isTRUE(compareOffsets) | isFALSE(useOffsets)
 
-      panelLabel <- paste(c(if (panelNames[i] == "all") {NULL} else {panelNames[i]},
-                            if (isTRUE(nameOffsets)) {offsetLabels[i]} else {NULL}), collapse = ", ")
+        if (isTRUE(precomputed)) {
+            pcaList[["computed"]] <- object
+            panelNames <- "all"
+            offsetLabels <- if (isFALSE(object$parameters$useOffsets)) {
+                "library size only"
+            } else {
+                "normalised"
+            }
+            nameOffsets <- isFALSE(object$parameters$useOffsets)
+            colTable <- .sampleTable(sampleAnnotation = object$scores, colourBy = colourBy, shapeBy = shapeBy, labelBy = labelBy)
+        } else {
+            counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
 
-      coordinateList[[i]] <-
-        data.frame(sample = scoreTable$sample,
-                   x.value = scoreTable[[componentNames[1]]],
-                   y.value = scoreTable[[componentNames[2]]],
-                   x.variance = varianceShare[dimensions[1]],
-                   y.variance = varianceShare[dimensions[2]],
-                   region.set = panelNames[i],
-                   offset.label = offsetLabels[i],
-                   panel = sprintf("%sPC%d %.1f%%, PC%d %.1f%%",
-                                   if (panelLabel == "") {""} else {paste0(panelLabel, " - ")},
-                                   dimensions[1], varianceShare[dimensions[1]],
-                                   dimensions[2], varianceShare[dimensions[2]]),
-                   n.regions = pcaList[[i]]$parameters$n.regions,
-                   stringsAsFactors = FALSE)
-    }
+            if (ncol(counts) < 3) {
+                stop("At least three samples are needed for an ordination.", call. = FALSE)
+            }
 
-    plotTable <- merge(x = do.call(what = rbind, args = coordinateList), y = colTable, by = "sample", sort = FALSE)
-    plotTable$offset.label <- factor(plotTable$offset.label, levels = c("normalised", "library size only"))
+            colTable <- .sampleTable(sampleAnnotation = .sampleAnnotation(counts = counts), colourBy = colourBy, shapeBy = shapeBy, labelBy = labelBy)
+            panelSets <- .panelSets(counts = counts, set = set, facetBySet = facetBySet)
+            offsetPanels <- if (isTRUE(compareOffsets)) {
+                c(TRUE, FALSE)
+            } else {
+                useOffsets
+            }
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    # Each panel recomputes its own components, so the variance explained can go on
-    # the axes only when there is one of them. With several it stays in the strip.
-    if (length(unique(plotTable$panel)) > 1) {
-      xAxisLabel <- paste0("PC", dimensions[1])
-      yAxisLabel <- paste0("PC", dimensions[2])
-    } else {
-      xAxisLabel <- sprintf("PC%d (%.1f%%)", dimensions[1], plotTable$x.variance[1])
-      yAxisLabel <- sprintf("PC%d (%.1f%%)", dimensions[2], plotTable$y.variance[1])
-    }
+            .normalisationNotice(counts = counts, useOffsets = useOffsets | isTRUE(compareOffsets), verbose = TRUE)
 
-    pcaPlot <-
-      ggplot2::ggplot(data = plotTable,
-                      mapping = ggplot2::aes(x = .data$x.value, y = .data$y.value)) +
-      ggplot2::geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "gray60") +
-      ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "gray60") +
-      ggplot2::geom_point(mapping = ggplot2::aes(colour = .data$colour.group, shape = .data$shape.group),
-                          size = pointSize, stroke = NA) +
-      ggplot2::labs(x = xAxisLabel,
-                    y = yAxisLabel,
-                    colour = if (is.null(colourBy)) {""} else {colourBy},
-                    shape = if (is.null(shapeBy)) {""} else {shapeBy},
-                    title = title,
-                    subtitle = subtitle,
-                    caption = paste0("computed on the ", plotTable$n.regions[1], " most variable regions")) +
-      ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3))))) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize) +
-      ggplot2::theme(axis.line = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.75, colour = "black"),
-                     aspect.ratio = 1)
+            panelNames <- character(0)
+            offsetLabels <- character(0)
 
-    if (is.null(colourBy)) {
-      pcaPlot <- pcaPlot + ggplot2::guides(colour = "none")
-    } else if (!is.null(colours)) {
-      pcaPlot <- pcaPlot + ggplot2::scale_colour_manual(values = colours)
-    }
+            # The rows are chosen on the normalised values in every panel, so the panels differ by transformation and not by selection
+            for (setName in names(panelSets)) {
+                for (offsetFlag in offsetPanels) {
+                    pcaList[[length(pcaList) + 1]] <- computeSamplePCA(
+                        object = counts,
+                        set = if (setName == "all") {
+                            set
+                        } else {
+                            setName
+                        },
+                        useOffsets = offsetFlag,
+                        topRegions = topRegions,
+                        verbose = FALSE
+                    )
+                    panelNames <- c(panelNames, setName)
+                    offsetLabels <- c(offsetLabels, if (isTRUE(offsetFlag)) {
+                        "normalised"
+                    } else {
+                        "library size only"
+                    })
+                }
+            }
+        }
 
-    if (is.null(shapeBy)) {
-      pcaPlot <- pcaPlot + ggplot2::guides(shape = "none")
-    }
+        coordinateList <- list()
 
-    if (length(unique(plotTable$panel)) > 1) {
-      pcaPlot <- pcaPlot + ggplot2::facet_wrap(facets = ~ panel, scales = "free")
-    }
+        for (i in seq_along(pcaList)) {
+            scoreTable <- pcaList[[i]]$scores
+            varianceShare <- round(pcaList[[i]]$variance$variance.percent, 1)
+            componentNames <- paste0("PC", dimensions)
 
-    #-------------------------------#
-    # Labels on the points          #
-    #-------------------------------#
-    if (!is.null(labelBy) && requireNamespace("ggrepel", quietly = TRUE)) {
-      pcaPlot <- pcaPlot +
-        ggrepel::geom_text_repel(mapping = ggplot2::aes(label = .data$point.label),
-                                 size = baseSize / 4.5, colour = "grey20", max.overlaps = Inf, show.legend = FALSE)
-    }
+            if (!all(componentNames %in% colnames(scoreTable))) {
+                stop("Only ", nrow(pcaList[[i]]$variance), " components exist, which is fewer than requested.", call. = FALSE)
+            }
 
-    attr(pcaPlot, "pca") <- plotTable
-    return(pcaPlot)
-  } # END function
+            panelLabel <- paste(c(
+                if (panelNames[i] == "all") {
+                    NULL
+                } else {
+                    panelNames[i]
+                },
+                if (isTRUE(nameOffsets)) {
+                    offsetLabels[i]
+                } else {
+                    NULL
+                }
+            ), collapse = ", ")
 
+            coordinateList[[i]] <-
+                data.frame(
+                    sample = scoreTable$sample,
+                    x.value = scoreTable[[componentNames[1]]],
+                    y.value = scoreTable[[componentNames[2]]],
+                    x.variance = varianceShare[dimensions[1]],
+                    y.variance = varianceShare[dimensions[2]],
+                    region.set = panelNames[i],
+                    offset.label = offsetLabels[i],
+                    panel = sprintf(
+                        "%sPC%d %.1f%%, PC%d %.1f%%",
+                        if (panelLabel == "") {
+                            ""
+                        } else {
+                            paste0(panelLabel, " - ")
+                        },
+                        dimensions[1], varianceShare[dimensions[1]],
+                        dimensions[2], varianceShare[dimensions[2]]
+                    ),
+                    n.regions = pcaList[[i]]$parameters$n.regions,
+                    stringsAsFactors = FALSE
+                )
+        }
 
+        plotTable <- merge(x = do.call(what = rbind, args = coordinateList), y = colTable, by = "sample", sort = FALSE)
+        plotTable$offset.label <- factor(plotTable$offset.label, levels = c("normalised", "library size only"))
+
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        # Each panel recomputes its own components, so the variance explained can go on
+        # the axes only when there is one of them. With several it stays in the strip.
+        if (length(unique(plotTable$panel)) > 1) {
+            xAxisLabel <- paste0("PC", dimensions[1])
+            yAxisLabel <- paste0("PC", dimensions[2])
+        } else {
+            xAxisLabel <- sprintf("PC%d (%.1f%%)", dimensions[1], plotTable$x.variance[1])
+            yAxisLabel <- sprintf("PC%d (%.1f%%)", dimensions[2], plotTable$y.variance[1])
+        }
+
+        pcaPlot <-
+            ggplot2::ggplot(
+                data = plotTable,
+                mapping = ggplot2::aes(x = .data$x.value, y = .data$y.value)
+            ) +
+            ggplot2::geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "gray60") +
+            ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "gray60") +
+            ggplot2::geom_point(
+                mapping = ggplot2::aes(colour = .data$colour.group, shape = .data$shape.group),
+                size = pointSize, stroke = NA
+            ) +
+            ggplot2::labs(
+                x = xAxisLabel,
+                y = yAxisLabel,
+                colour = if (is.null(colourBy)) {
+                    ""
+                } else {
+                    colourBy
+                },
+                shape = if (is.null(shapeBy)) {
+                    ""
+                } else {
+                    shapeBy
+                },
+                title = title,
+                subtitle = subtitle,
+                caption = paste0("computed on the ", plotTable$n.regions[1], " most variable regions")
+            ) +
+            ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3))))) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize) +
+            ggplot2::theme(
+                axis.line = ggplot2::element_blank(),
+                panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.75, colour = "black"),
+                aspect.ratio = 1
+            )
+
+        if (is.null(colourBy)) {
+            pcaPlot <- pcaPlot + ggplot2::guides(colour = "none")
+        } else if (!is.null(colours)) {
+            pcaPlot <- pcaPlot + ggplot2::scale_colour_manual(values = colours)
+        }
+
+        if (is.null(shapeBy)) {
+            pcaPlot <- pcaPlot + ggplot2::guides(shape = "none")
+        }
+
+        if (length(unique(plotTable$panel)) > 1) {
+            pcaPlot <- pcaPlot + ggplot2::facet_wrap(facets = ~panel, scales = "free")
+        }
+
+        #-------------------------------#
+        # Labels on the points          #
+        #-------------------------------#
+        if (!is.null(labelBy) && requireNamespace("ggrepel", quietly = TRUE)) {
+            pcaPlot <- pcaPlot +
+                ggrepel::geom_text_repel(
+                    mapping = ggplot2::aes(label = .data$point.label),
+                    size = baseSize / 4.5, colour = "grey20", max.overlaps = Inf, show.legend = FALSE
+                )
+        }
+
+        attr(pcaPlot, "pca") <- plotTable
+        return(pcaPlot)
+    } # END function
 
 
 #' @title computeSamplePCA
@@ -261,69 +312,76 @@ plotRegionPCA <-
 #' @export computeSamplePCA
 
 computeSamplePCA <-
-  function(object,
-           set = NULL,
-           contrast = NULL,
-           samples = NULL,
-           useOffsets = TRUE,
-           topRegions = 2000,
-           verbose = TRUE) {
+    function(object,
+             set = NULL,
+             contrast = NULL,
+             samples = NULL,
+             useOffsets = TRUE,
+             topRegions = 2000,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
+        if (ncol(counts) < 3) {
+            stop("At least three samples are needed for an ordination.", call. = FALSE)
+        }
 
-    if (ncol(counts) < 3) {
-      stop("At least three samples are needed for an ordination.", call. = FALSE)
-    }
+        .normalisationNotice(counts = counts, useOffsets = useOffsets, verbose = verbose)
 
-    .normalisationNotice(counts = counts, useOffsets = useOffsets, verbose = verbose)
+        #-------------------------------#
+        # Components of the samples     #
+        #-------------------------------#
+        rowIndex <- .topVariableRows(
+            counts = counts,
+            rowIndex = .panelSets(counts = counts, set = set, facetBySet = FALSE)$all,
+            topRegions = topRegions
+        )
 
-    #-------------------------------#
-    # Components of the samples     #
-    #-------------------------------#
-    rowIndex <- .topVariableRows(counts = counts,
-                                 rowIndex = .panelSets(counts = counts, set = set, facetBySet = FALSE)$all,
-                                 topRegions = topRegions)
+        logMatrix <- .countsLogMatrix(counts = counts, useOffsets = useOffsets)[rowIndex, , drop = FALSE]
 
-    logMatrix <- .countsLogMatrix(counts = counts, useOffsets = useOffsets)[rowIndex, , drop = FALSE]
+        # Centring costs one degree of freedom, so the last component of a full rank matrix is numerical noise and is left out
+        pcaObject <- stats::prcomp(
+            x = t(logMatrix), center = TRUE, scale. = FALSE,
+            rank. = min(ncol(counts) - 1, nrow(logMatrix))
+        )
+        varianceShare <- 100 * pcaObject$sdev^2 / sum(pcaObject$sdev^2)
 
-    # Centring costs one degree of freedom, so the last component of a full rank matrix is numerical noise and is left out
-    pcaObject <- stats::prcomp(x = t(logMatrix), center = TRUE, scale. = FALSE,
-                               rank. = min(ncol(counts) - 1, nrow(logMatrix)))
-    varianceShare <- 100 * pcaObject$sdev^2 / sum(pcaObject$sdev^2)
+        #-------------------------------#
+        # Coordinates and annotation    #
+        #-------------------------------#
+        scoreTable <- data.frame(sample = colnames(counts), pcaObject$x, row.names = NULL, check.names = FALSE, stringsAsFactors = FALSE)
+        sampleTable <- .sampleAnnotation(counts = counts)
 
-    #-------------------------------#
-    # Coordinates and annotation    #
-    #-------------------------------#
-    scoreTable <- data.frame(sample = colnames(counts), pcaObject$x, row.names = NULL, check.names = FALSE, stringsAsFactors = FALSE)
-    sampleTable <- .sampleAnnotation(counts = counts)
+        # A colData column named like a component would otherwise be duplicated by the join
+        collidingColumns <- setdiff(intersect(colnames(sampleTable), colnames(scoreTable)), "sample")
+        if (length(collidingColumns) > 0) {
+            colnames(sampleTable)[colnames(sampleTable) %in% collidingColumns] <- paste0(collidingColumns, ".sample")
+        }
 
-    # A colData column named like a component would otherwise be duplicated by the join
-    collidingColumns <- setdiff(intersect(colnames(sampleTable), colnames(scoreTable)), "sample")
-    if (length(collidingColumns) > 0) {
-      colnames(sampleTable)[colnames(sampleTable) %in% collidingColumns] <- paste0(collidingColumns, ".sample")
-    }
+        scoreTable <- dplyr::left_join(scoreTable, sampleTable, by = "sample")
 
-    scoreTable <- dplyr::left_join(scoreTable, sampleTable, by = "sample")
+        varianceTable <- data.frame(
+            component = colnames(pcaObject$x),
+            standard.deviation = pcaObject$sdev[seq_len(ncol(pcaObject$x))],
+            variance.percent = varianceShare[seq_len(ncol(pcaObject$x))],
+            cumulative.percent = cumsum(varianceShare)[seq_len(ncol(pcaObject$x))],
+            stringsAsFactors = FALSE
+        )
 
-    varianceTable <- data.frame(component = colnames(pcaObject$x),
-                                standard.deviation = pcaObject$sdev[seq_len(ncol(pcaObject$x))],
-                                variance.percent = varianceShare[seq_len(ncol(pcaObject$x))],
-                                cumulative.percent = cumsum(varianceShare)[seq_len(ncol(pcaObject$x))],
-                                stringsAsFactors = FALSE)
-
-    return(list(scores = scoreTable,
-                variance = varianceTable,
-                loadings = pcaObject$rotation,
-                parameters = list(set = set,
-                                  useOffsets = useOffsets,
-                                  topRegions = topRegions,
-                                  n.regions = length(rowIndex))))
-  } # END function
-
-
+        return(list(
+            scores = scoreTable,
+            variance = varianceTable,
+            loadings = pcaObject$rotation,
+            parameters = list(
+                set = set,
+                useOffsets = useOffsets,
+                topRegions = topRegions,
+                n.regions = length(rowIndex)
+            )
+        ))
+    } # END function
 
 
 #' @title computeSampleCorrelation
@@ -361,11 +419,11 @@ computeSamplePCA <-
 #'
 #' # Occupancy: the Jaccard index of the peak sets of the AR example
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+#'     sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'     consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 #'
-#'   peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
-#'   round(peakJaccard$correlation, 2)
+#'     peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
+#'     round(peakJaccard$correlation, 2)
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -377,57 +435,60 @@ computeSamplePCA <-
 #' @export computeSampleCorrelation
 
 computeSampleCorrelation <-
-  function(object,
-           set = NULL,
-           contrast = NULL,
-           samples = NULL,
-           method = "spearman",
-           jaccardLevel = "region",
-           useOffsets = TRUE,
-           topRegions = NULL,
-           verbose = TRUE) {
+    function(object,
+             set = NULL,
+             contrast = NULL,
+             samples = NULL,
+             method = "spearman",
+             jaccardLevel = "region",
+             useOffsets = TRUE,
+             topRegions = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!(method[1] %in% c("spearman", "pearson", "kendall", "jaccard"))) {
+            stop("The 'method' parameter must be one of 'spearman', 'pearson', 'kendall', 'jaccard'.", call. = FALSE)
+        }
+        method <- method[1]
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!(method[1] %in% c("spearman", "pearson", "kendall", "jaccard"))) {
-      stop("The 'method' parameter must be one of 'spearman', 'pearson', 'kendall', 'jaccard'.", call. = FALSE)
-    }
-    method <- method[1]
+        # The Jaccard index is computed on the peak calls, the counts play no part in it
+        if (method == "jaccard") {
+            return(.peakJaccard(object = object, set = set, jaccardLevel = jaccardLevel, samples = samples))
+        }
 
-    # The Jaccard index is computed on the peak calls, the counts play no part in it
-    if (method == "jaccard") {
-      return(.peakJaccard(object = object, set = set, jaccardLevel = jaccardLevel, samples = samples))
-    }
+        counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
 
-    counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
+        if (ncol(counts) < 2) {
+            stop("At least two samples are needed for a correlation.", call. = FALSE)
+        }
 
-    if (ncol(counts) < 2) {
-      stop("At least two samples are needed for a correlation.", call. = FALSE)
-    }
+        .normalisationNotice(counts = counts, useOffsets = useOffsets, verbose = verbose)
 
-    .normalisationNotice(counts = counts, useOffsets = useOffsets, verbose = verbose)
+        #-------------------------------#
+        # Correlation of the samples    #
+        #-------------------------------#
+        rowIndex <- .topVariableRows(
+            counts = counts,
+            rowIndex = .panelSets(counts = counts, set = set, facetBySet = FALSE)$all,
+            topRegions = topRegions
+        )
 
-    #-------------------------------#
-    # Correlation of the samples    #
-    #-------------------------------#
-    rowIndex <- .topVariableRows(counts = counts,
-                                 rowIndex = .panelSets(counts = counts, set = set, facetBySet = FALSE)$all,
-                                 topRegions = topRegions)
+        logMatrix <- .countsLogMatrix(counts = counts, useOffsets = useOffsets)[rowIndex, , drop = FALSE]
+        correlationMatrix <- stats::cor(logMatrix, method = method)
 
-    logMatrix <- .countsLogMatrix(counts = counts, useOffsets = useOffsets)[rowIndex, , drop = FALSE]
-    correlationMatrix <- stats::cor(logMatrix, method = method)
-
-    return(list(correlation = correlationMatrix,
-                samples = .sampleAnnotation(counts = counts),
-                parameters = list(method = method,
-                                  useOffsets = useOffsets,
-                                  set = set,
-                                  topRegions = topRegions,
-                                  n.regions = length(rowIndex))))
-  } # END function
-
-
+        return(list(
+            correlation = correlationMatrix,
+            samples = .sampleAnnotation(counts = counts),
+            parameters = list(
+                method = method,
+                useOffsets = useOffsets,
+                set = set,
+                topRegions = topRegions,
+                n.regions = length(rowIndex)
+            )
+        ))
+    } # END function
 
 
 #' @title plotSampleCorrelation
@@ -485,10 +546,10 @@ computeSampleCorrelation <-
 #'
 #' # Occupancy of the peak calls, as the Jaccard index
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+#'     sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'     consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 #'
-#'   plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
+#'     plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -502,227 +563,319 @@ computeSampleCorrelation <-
 #' @export plotSampleCorrelation
 
 plotSampleCorrelation <-
-  function(object,
-           set = NULL,
-           contrast = NULL,
-           samples = NULL,
-           method = "spearman",
-           jaccardLevel = "region",
-           groupBy = NULL,
-           annotationColumns = NULL,
-           annotationColours = NULL,
-           useOffsets = TRUE,
-           compareOffsets = FALSE,
-           facetBySet = FALSE,
-           cluster = TRUE,
-           clusteringMethod = "complete",
-           showDendrogram = TRUE,
-           topRegions = NULL,
-           excludeDiagonal = FALSE,
-           palette = NULL,
-           limits = NULL,
-           showValues = TRUE,
-           valuesColour = NULL,
-           digits = 2,
-           title = NULL,
-           fontSize = 9,
-           verbose = TRUE) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
-      stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the correlation heatmap.", call. = FALSE)
-    }
-
-    if (is.null(palette)) {
-      if (!requireNamespace("viridisLite", quietly = TRUE)) {
-        stop("The 'viridisLite' package is needed for the default palette, or pass one through 'palette'.", call. = FALSE)
-      }
-      palette <- viridisLite::mako(n = 100, direction = -1)
-    }
-
-    if (is.null(annotationColumns) & !is.null(groupBy)) {
-      annotationColumns <- groupBy
-    }
-
-    #-------------------------------#
-    # One matrix per panel          #
-    #-------------------------------#
-    # A matrix computed beforehand is drawn as it is, the panels only make sense on an object with counts
-    precomputed <- is.list(object) && all(c("correlation", "samples") %in% names(object))
-
-    matrixList <- list()
-
-    # The transformation is named when the two are being compared, or when the values are not the normalised ones
-    nameOffsets <- isTRUE(compareOffsets) | isFALSE(useOffsets)
-
-    if (isTRUE(precomputed)) {
-      matrixList[["computed"]] <- object$correlation
-      sampleTable <- object$samples
-      method <- if (is.null(object$parameters$method)) {method} else {object$parameters$method}
-      panelLabels <- if (isFALSE(object$parameters$useOffsets)) {"library size only"} else {""}
-    } else if (identical(method[1], "jaccard")) {
-      # The peak calls give one matrix per set at most, there are no counts to normalise
-      jaccardSets <- if (isTRUE(facetBySet) & methods::is(object, "RegionSetDE")) {
-        if (is.null(set)) {names(object@regions)} else {set}
-      } else {
-        "all"
-      }
-
-      panelLabels <- character(0)
-
-      for (setName in jaccardSets) {
-        panelJaccard <- computeSampleCorrelation(object = object,
-                                                 set = if (setName == "all") {set} else {setName},
-                                                 samples = samples,
-                                                 method = "jaccard",
-                                                 jaccardLevel = jaccardLevel,
-                                                 verbose = FALSE)
-
-        matrixList[[length(matrixList) + 1]] <- panelJaccard$correlation
-        panelLabels <- c(panelLabels, if (setName == "all") {""} else {setName})
-      }
-
-      sampleTable <- panelJaccard$samples
-    } else {
-      counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
-      .normalisationNotice(counts = counts, useOffsets = useOffsets | isTRUE(compareOffsets), verbose = verbose)
-
-      panelSets <- .panelSets(counts = counts, set = set, facetBySet = facetBySet)
-      offsetPanels <- if (isTRUE(compareOffsets)) {c(TRUE, FALSE)} else {useOffsets}
-      panelLabels <- character(0)
-
-      for (setName in names(panelSets)) {
-        for (offsetFlag in offsetPanels) {
-          panelCorrelation <- computeSampleCorrelation(object = counts,
-                                                       set = if (setName == "all") {set} else {setName},
-                                                       method = method,
-                                                       useOffsets = offsetFlag,
-                                                       topRegions = topRegions,
-                                                       verbose = FALSE)
-
-          panelLabel <- paste(c(if (setName == "all") {NULL} else {setName},
-                                if (isTRUE(nameOffsets)) {if (isTRUE(offsetFlag)) {"normalised"} else {"library size only"}} else {NULL}),
-                              collapse = ", ")
-
-          matrixList[[length(matrixList) + 1]] <- panelCorrelation$correlation
-          panelLabels <- c(panelLabels, panelLabel)
+    function(object,
+             set = NULL,
+             contrast = NULL,
+             samples = NULL,
+             method = "spearman",
+             jaccardLevel = "region",
+             groupBy = NULL,
+             annotationColumns = NULL,
+             annotationColours = NULL,
+             useOffsets = TRUE,
+             compareOffsets = FALSE,
+             facetBySet = FALSE,
+             cluster = TRUE,
+             clusteringMethod = "complete",
+             showDendrogram = TRUE,
+             topRegions = NULL,
+             excludeDiagonal = FALSE,
+             palette = NULL,
+             limits = NULL,
+             showValues = TRUE,
+             valuesColour = NULL,
+             digits = 2,
+             title = NULL,
+             fontSize = 9,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
+            stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the correlation heatmap.", call. = FALSE)
         }
-      }
 
-      sampleTable <- .sampleAnnotation(counts = counts)
-    }
-
-    sampleOrder <- colnames(matrixList[[1]])
-    sampleTable <- sampleTable[match(sampleOrder, sampleTable$sample), , drop = FALSE]
-
-    for (columnName in unique(c(groupBy, annotationColumns))) {
-      if (!(columnName %in% colnames(sampleTable))) {
-        stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
-      }
-    }
-
-    groupVector <- if (is.null(groupBy)) {NULL} else {as.character(sampleTable[[groupBy]])}
-
-    #-------------------------------#
-    # Order, scale and annotation   #
-    #-------------------------------#
-    # The first matrix decides the order, the others follow it so that the values move and not the samples
-    sampleClustering <- if (isTRUE(cluster) & length(sampleOrder) > 2) {
-      stats::as.dendrogram(stats::hclust(d = stats::as.dist(1 - matrixList[[1]]), method = clusteringMethod))
-    } else {
-      FALSE
-    }
-
-    offDiagonal <- unlist(lapply(matrixList, function(correlationMatrix) {correlationMatrix[row(correlationMatrix) != col(correlationMatrix)]}))
-    drawnValues <- if (isTRUE(excludeDiagonal)) {offDiagonal} else {unlist(matrixList)}
-
-    scaleLimits <- .resolveScaleLimits(values = offDiagonal, limits = limits, drawnValues = drawnValues,
-                                       label = if (method == "jaccard") {"Jaccard index"} else {"correlation"})
-
-    # Two samples leave a single off-diagonal value, which is not a range to build a scale on
-    if (diff(scaleLimits) == 0) {scaleLimits <- scaleLimits + c(-0.01, 0.01)}
-
-    colourFunction <- circlize::colorRamp2(breaks = seq(scaleLimits[1], scaleLimits[2], length.out = length(palette)), colors = palette)
-
-    annotationColourList <- .annotationColourList(sampleTable = sampleTable,
-                                                  annotationColumns = annotationColumns,
-                                                  annotationColours = annotationColours)
-
-    legendTitle <- paste0(toupper(substring(method, 1, 1)), substring(method, 2), if (method == "jaccard") {"\nindex"} else {"\ncorrelation"})
-
-    #-------------------------------#
-    # One heatmap per panel         #
-    #-------------------------------#
-    heatmapList <- list()
-
-    for (i in seq_along(matrixList)) {
-      panelMatrix <- matrixList[[i]]
-      if (isTRUE(excludeDiagonal)) {diag(panelMatrix) <- NA}
-
-      panelTitle <- paste0(panelLabels[i], .correlationSummary(correlationMatrix = matrixList[[i]], groupVector = groupVector, digits = digits))
-      panelTitle <- sub("^\n", "", panelTitle)
-      if (i == 1 & !is.null(title)) {
-        panelTitle <- if (panelTitle == "") {title} else {paste(title, panelTitle, sep = "\n")}
-      }
-
-      # Legends and side annotations once, on the first heatmap, the others would only repeat them
-      topAnnotation <- NULL
-      leftAnnotation <- NULL
-      if (length(annotationColumns) > 0) {
-        topAnnotation <- ComplexHeatmap::HeatmapAnnotation(df = sampleTable[, annotationColumns, drop = FALSE],
-                                                           col = annotationColourList,
-                                                           show_legend = i == 1,
-                                                           show_annotation_name = i == length(matrixList),
-                                                           annotation_name_gp = grid::gpar(fontsize = fontSize),
-                                                           simple_anno_size = grid::unit(3, "mm"))
-        if (i == 1) {
-          leftAnnotation <- ComplexHeatmap::rowAnnotation(df = sampleTable[, annotationColumns, drop = FALSE],
-                                                          col = annotationColourList,
-                                                          show_legend = FALSE,
-                                                          show_annotation_name = FALSE,
-                                                          simple_anno_size = grid::unit(3, "mm"))
+        if (is.null(palette)) {
+            if (!requireNamespace("viridisLite", quietly = TRUE)) {
+                stop("The 'viridisLite' package is needed for the default palette, or pass one through 'palette'.", call. = FALSE)
+            }
+            palette <- viridisLite::mako(n = 100, direction = -1)
         }
-      }
 
-      heatmapList[[i]] <- ComplexHeatmap::Heatmap(matrix = panelMatrix,
-                                                  name = paste0("correlation_", i),
-                                                  col = colourFunction,
-                                                  na_col = "grey90",
-                                                  cluster_rows = sampleClustering,
-                                                  cluster_columns = sampleClustering,
-                                                  show_row_dend = isTRUE(showDendrogram) & i == 1,
-                                                  show_column_dend = isTRUE(showDendrogram),
-                                                  show_row_names = i == length(matrixList),
-                                                  show_column_names = length(matrixList) == 1,
-                                                  row_names_gp = grid::gpar(fontsize = fontSize),
-                                                  column_names_gp = grid::gpar(fontsize = fontSize),
-                                                  top_annotation = topAnnotation,
-                                                  left_annotation = leftAnnotation,
-                                                  column_title = if (panelTitle == "") {NULL} else {panelTitle},
-                                                  column_title_gp = grid::gpar(fontsize = fontSize + 1),
-                                                  show_heatmap_legend = i == 1,
-                                                  heatmap_legend_param = list(title = legendTitle,
-                                                                              title_gp = grid::gpar(fontsize = fontSize),
-                                                                              labels_gp = grid::gpar(fontsize = fontSize - 1)),
-                                                  rect_gp = grid::gpar(col = "white", lwd = 0.5),
-                                                  cell_fun = if (isTRUE(showValues)) {.correlationCellFunction(panelMatrix = panelMatrix,
-                                                                                                               digits = digits,
-                                                                                                               fontSize = fontSize,
-                                                                                                               valuesColour = valuesColour)} else {NULL},
-                                                  border = TRUE)
-    }
+        if (is.null(annotationColumns) & !is.null(groupBy)) {
+            annotationColumns <- groupBy
+        }
 
-    if (length(heatmapList) == 1) {
-      return(heatmapList[[1]])
-    }
+        #-------------------------------#
+        # One matrix per panel          #
+        #-------------------------------#
+        # A matrix computed beforehand is drawn as it is, the panels only make sense on an object with counts
+        precomputed <- is.list(object) && all(c("correlation", "samples") %in% names(object))
 
-    return(Reduce(f = `+`, x = heatmapList))
-  } # END function
+        matrixList <- list()
 
+        # The transformation is named when the two are being compared, or when the values are not the normalised ones
+        nameOffsets <- isTRUE(compareOffsets) | isFALSE(useOffsets)
 
+        if (isTRUE(precomputed)) {
+            matrixList[["computed"]] <- object$correlation
+            sampleTable <- object$samples
+            method <- if (is.null(object$parameters$method)) {
+                method
+            } else {
+                object$parameters$method
+            }
+            panelLabels <- if (isFALSE(object$parameters$useOffsets)) {
+                "library size only"
+            } else {
+                ""
+            }
+        } else if (identical(method[1], "jaccard")) {
+            # The peak calls give one matrix per set at most, there are no counts to normalise
+            jaccardSets <- if (isTRUE(facetBySet) & methods::is(object, "RegionSetDE")) {
+                if (is.null(set)) {
+                    names(regionRanges(object))
+                } else {
+                    set
+                }
+            } else {
+                "all"
+            }
 
+            panelLabels <- character(0)
+
+            for (setName in jaccardSets) {
+                panelJaccard <- computeSampleCorrelation(
+                    object = object,
+                    set = if (setName == "all") {
+                        set
+                    } else {
+                        setName
+                    },
+                    samples = samples,
+                    method = "jaccard",
+                    jaccardLevel = jaccardLevel,
+                    verbose = FALSE
+                )
+
+                matrixList[[length(matrixList) + 1]] <- panelJaccard$correlation
+                panelLabels <- c(panelLabels, if (setName == "all") {
+                    ""
+                } else {
+                    setName
+                })
+            }
+
+            sampleTable <- panelJaccard$samples
+        } else {
+            counts <- .subsetSamples(counts = .resolveCounts(object = object, counts = NULL, contrast = contrast)$counts, samples = samples)
+            .normalisationNotice(counts = counts, useOffsets = useOffsets | isTRUE(compareOffsets), verbose = verbose)
+
+            panelSets <- .panelSets(counts = counts, set = set, facetBySet = facetBySet)
+            offsetPanels <- if (isTRUE(compareOffsets)) {
+                c(TRUE, FALSE)
+            } else {
+                useOffsets
+            }
+            panelLabels <- character(0)
+
+            for (setName in names(panelSets)) {
+                for (offsetFlag in offsetPanels) {
+                    panelCorrelation <- computeSampleCorrelation(
+                        object = counts,
+                        set = if (setName == "all") {
+                            set
+                        } else {
+                            setName
+                        },
+                        method = method,
+                        useOffsets = offsetFlag,
+                        topRegions = topRegions,
+                        verbose = FALSE
+                    )
+
+                    panelLabel <- paste(
+                        c(
+                            if (setName == "all") {
+                                NULL
+                            } else {
+                                setName
+                            },
+                            if (isTRUE(nameOffsets)) {
+                                if (isTRUE(offsetFlag)) {
+                                    "normalised"
+                                } else {
+                                    "library size only"
+                                }
+                            } else {
+                                NULL
+                            }
+                        ),
+                        collapse = ", "
+                    )
+
+                    matrixList[[length(matrixList) + 1]] <- panelCorrelation$correlation
+                    panelLabels <- c(panelLabels, panelLabel)
+                }
+            }
+
+            sampleTable <- .sampleAnnotation(counts = counts)
+        }
+
+        sampleOrder <- colnames(matrixList[[1]])
+        sampleTable <- sampleTable[match(sampleOrder, sampleTable$sample), , drop = FALSE]
+
+        for (columnName in unique(c(groupBy, annotationColumns))) {
+            if (!(columnName %in% colnames(sampleTable))) {
+                stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
+            }
+        }
+
+        groupVector <- if (is.null(groupBy)) {
+            NULL
+        } else {
+            as.character(sampleTable[[groupBy]])
+        }
+
+        #-------------------------------#
+        # Order, scale and annotation   #
+        #-------------------------------#
+        # The first matrix decides the order, the others follow it so that the values move and not the samples
+        sampleClustering <- if (isTRUE(cluster) & length(sampleOrder) > 2) {
+            stats::as.dendrogram(stats::hclust(d = stats::as.dist(1 - matrixList[[1]]), method = clusteringMethod))
+        } else {
+            FALSE
+        }
+
+        offDiagonal <- unlist(lapply(matrixList, function(correlationMatrix) {
+            correlationMatrix[row(correlationMatrix) != col(correlationMatrix)]
+        }))
+        drawnValues <- if (isTRUE(excludeDiagonal)) {
+            offDiagonal
+        } else {
+            unlist(matrixList)
+        }
+
+        scaleLimits <- .resolveScaleLimits(
+            values = offDiagonal, limits = limits, drawnValues = drawnValues,
+            label = if (method == "jaccard") {
+                "Jaccard index"
+            } else {
+                "correlation"
+            }
+        )
+
+        # Two samples leave a single off-diagonal value, which is not a range to build a scale on
+        if (diff(scaleLimits) == 0) {
+            scaleLimits <- scaleLimits + c(-0.01, 0.01)
+        }
+
+        colourFunction <- circlize::colorRamp2(breaks = seq(scaleLimits[1], scaleLimits[2], length.out = length(palette)), colors = palette)
+
+        annotationColourList <- .annotationColourList(
+            sampleTable = sampleTable,
+            annotationColumns = annotationColumns,
+            annotationColours = annotationColours
+        )
+
+        legendTitle <- paste0(toupper(substring(method, 1, 1)), substring(method, 2), if (method == "jaccard") {
+            "\nindex"
+        } else {
+            "\ncorrelation"
+        })
+
+        #-------------------------------#
+        # One heatmap per panel         #
+        #-------------------------------#
+        heatmapList <- list()
+
+        for (i in seq_along(matrixList)) {
+            panelMatrix <- matrixList[[i]]
+            if (isTRUE(excludeDiagonal)) {
+                diag(panelMatrix) <- NA
+            }
+
+            panelTitle <- paste0(panelLabels[i], .correlationSummary(correlationMatrix = matrixList[[i]], groupVector = groupVector, digits = digits))
+            panelTitle <- sub("^\n", "", panelTitle)
+            if (i == 1 & !is.null(title)) {
+                panelTitle <- if (panelTitle == "") {
+                    title
+                } else {
+                    paste(title, panelTitle, sep = "\n")
+                }
+            }
+
+            # Legends and side annotations once, on the first heatmap, the others would only repeat them
+            topAnnotation <- NULL
+            leftAnnotation <- NULL
+            if (length(annotationColumns) > 0) {
+                topAnnotation <- ComplexHeatmap::HeatmapAnnotation(
+                    df = sampleTable[, annotationColumns, drop = FALSE],
+                    col = annotationColourList,
+                    show_legend = i == 1,
+                    show_annotation_name = i == length(matrixList),
+                    annotation_name_gp = grid::gpar(fontsize = fontSize),
+                    simple_anno_size = grid::unit(3, "mm")
+                )
+                if (i == 1) {
+                    leftAnnotation <- ComplexHeatmap::rowAnnotation(
+                        df = sampleTable[, annotationColumns, drop = FALSE],
+                        col = annotationColourList,
+                        show_legend = FALSE,
+                        show_annotation_name = FALSE,
+                        simple_anno_size = grid::unit(3, "mm")
+                    )
+                }
+            }
+
+            heatmapList[[i]] <- ComplexHeatmap::Heatmap(
+                matrix = panelMatrix,
+                name = paste0("correlation_", i),
+                col = colourFunction,
+                na_col = "grey90",
+                cluster_rows = sampleClustering,
+                cluster_columns = sampleClustering,
+                show_row_dend = isTRUE(showDendrogram) & i == 1,
+                show_column_dend = isTRUE(showDendrogram),
+                show_row_names = i == length(matrixList),
+                show_column_names = length(matrixList) == 1,
+                row_names_gp = grid::gpar(fontsize = fontSize),
+                column_names_gp = grid::gpar(fontsize = fontSize),
+                top_annotation = topAnnotation,
+                left_annotation = leftAnnotation,
+                column_title = if (panelTitle == "") {
+                    NULL
+                } else {
+                    panelTitle
+                },
+                column_title_gp = grid::gpar(fontsize = fontSize + 1),
+                show_heatmap_legend = i == 1,
+                heatmap_legend_param = list(
+                    title = legendTitle,
+                    title_gp = grid::gpar(fontsize = fontSize),
+                    labels_gp = grid::gpar(fontsize = fontSize - 1)
+                ),
+                rect_gp = grid::gpar(col = "white", lwd = 0.5),
+                cell_fun = if (isTRUE(showValues)) {
+                    .correlationCellFunction(
+                        panelMatrix = panelMatrix,
+                        digits = digits,
+                        fontSize = fontSize,
+                        valuesColour = valuesColour
+                    )
+                } else {
+                    NULL
+                },
+                border = TRUE
+            )
+        }
+
+        if (length(heatmapList) == 1) {
+            return(heatmapList[[1]])
+        }
+
+        return(Reduce(f = `+`, x = heatmapList))
+    } # END function
 
 
 #' @title .contrastColour
@@ -740,18 +893,15 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .contrastColour <-
-  function(colour) {
+    function(colour) {
+        # The luminance in HCL is what the eye reads, so it is what decides between black and white text
+        luminance <- farver::get_channel(colour = colour, channel = "l", space = "hcl")
 
-    # The luminance in HCL is what the eye reads, so it is what decides between black and white text
-    luminance <- farver::get_channel(colour = colour, channel = "l", space = "hcl")
+        textColour <- rep("black", length(colour))
+        textColour[!is.na(luminance) & luminance < 50] <- "white"
 
-    textColour <- rep("black", length(colour))
-    textColour[!is.na(luminance) & luminance < 50] <- "white"
-
-    return(textColour)
-  } # END function
-
-
+        return(textColour)
+    } # END function
 
 
 #' @title .resolveScaleLimits
@@ -770,42 +920,47 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .resolveScaleLimits <-
-  function(values,
-           limits = NULL,
-           drawnValues = NULL,
-           label = "value") {
+    function(values,
+             limits = NULL,
+             drawnValues = NULL,
+             label = "value") {
+        dataRange <- range(values, na.rm = TRUE)
 
-    dataRange <- range(values, na.rm = TRUE)
+        if (is.null(limits)) {
+            return(dataRange)
+        }
 
-    if (is.null(limits)) {
-      return(dataRange)
-    }
+        if (length(limits) != 2) {
+            stop("The 'limits' parameter must hold two values, either of which may be NA.", call. = FALSE)
+        }
 
-    if (length(limits) != 2) {
-      stop("The 'limits' parameter must hold two values, either of which may be NA.", call. = FALSE)
-    }
+        # NA on one end means that end follows the data, which is what makes c(NA, 1) useful
+        limits <- as.numeric(limits)
+        limits[is.na(limits)] <- dataRange[is.na(limits)]
 
-    # NA on one end means that end follows the data, which is what makes c(NA, 1) useful
-    limits <- as.numeric(limits)
-    limits[is.na(limits)] <- dataRange[is.na(limits)]
+        if (limits[1] >= limits[2]) {
+            stop("The lower limit must sit below the upper one.", call. = FALSE)
+        }
 
-    if (limits[1] >= limits[2]) {
-      stop("The lower limit must sit below the upper one.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Say what is being squashed    #
+        #-------------------------------#
+        drawnValues <- if (is.null(drawnValues)) {
+            values
+        } else {
+            drawnValues
+        }
+        outsideCount <- sum(drawnValues < limits[1] | drawnValues > limits[2], na.rm = TRUE)
 
-    #-------------------------------#
-    # Say what is being squashed    #
-    #-------------------------------#
-    drawnValues <- if (is.null(drawnValues)) {values} else {drawnValues}
-    outsideCount <- sum(drawnValues < limits[1] | drawnValues > limits[2], na.rm = TRUE)
+        if (outsideCount > 0) {
+            message(
+                outsideCount, " ", label, "s fall outside the scale and are drawn at its ends, ",
+                "so how far past they went is not visible."
+            )
+        }
 
-    if (outsideCount > 0) {
-      message(outsideCount, " ", label, "s fall outside the scale and are drawn at its ends, ",
-              "so how far past they went is not visible.")
-    }
-
-    return(limits)
-  } # END function
+        return(limits)
+    } # END function
 
 
 #' @title .countsLogMatrix
@@ -825,34 +980,37 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .countsLogMatrix <-
-  function(counts,
-           useOffsets = TRUE,
-           priorCount = 2) {
+    function(counts,
+             useOffsets = TRUE,
+             priorCount = 2) {
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, "counts"))
 
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, "counts"))
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(countMatrix)
+        }
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(countMatrix)
-    }
+        offsetMatrix <- if (isTRUE(useOffsets)) {
+            .fitOffsets(counts = counts, useOffsets = TRUE, verbose = FALSE)
+        } else {
+            NULL
+        }
 
-    offsetMatrix <- if (isTRUE(useOffsets)) {.fitOffsets(counts = counts, useOffsets = TRUE, verbose = FALSE)} else {NULL}
+        if (is.null(offsetMatrix)) {
+            offsetMatrix <- matrix(
+                data = rep(log(librarySizes), each = nrow(countMatrix)),
+                nrow = nrow(countMatrix), ncol = ncol(countMatrix)
+            )
+        } else {
+            # The offsets are centred on the library sizes so that the values come out on a CPM scale
+            offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(librarySizes))
+        }
 
-    if (is.null(offsetMatrix)) {
-      offsetMatrix <- matrix(data = rep(log(librarySizes), each = nrow(countMatrix)),
-                             nrow = nrow(countMatrix), ncol = ncol(countMatrix))
-    } else {
-      # The offsets are centred on the library sizes so that the values come out on a CPM scale
-      offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(librarySizes))
-    }
+        logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
+        dimnames(logMatrix) <- dimnames(countMatrix)
 
-    logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
-    dimnames(logMatrix) <- dimnames(countMatrix)
-
-    return(logMatrix)
-  } # END function
-
-
+        return(logMatrix)
+    } # END function
 
 
 #' @title .panelSets
@@ -872,33 +1030,32 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .panelSets <-
-  function(counts,
-           set = NULL,
-           facetBySet = FALSE) {
+    function(counts,
+             set = NULL,
+             facetBySet = FALSE) {
+        rowSets <- as.character(SummarizedExperiment::rowData(counts)$region.set)
 
-    rowSets <- as.character(SummarizedExperiment::rowData(counts)$region.set)
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(rowSets))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            keptRows <- which(rowSets %in% set)
+        } else {
+            keptRows <- seq_along(rowSets)
+        }
 
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(rowSets))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      keptRows <- which(rowSets %in% set)
-    } else {
-      keptRows <- seq_along(rowSets)
-    }
+        if (isFALSE(facetBySet)) {
+            return(list(all = keptRows))
+        }
 
-    if (isFALSE(facetBySet)) {
-      return(list(all = keptRows))
-    }
+        panelList <- lapply(unique(rowSets[keptRows]), function(setName) {
+            keptRows[rowSets[keptRows] == setName]
+        })
+        names(panelList) <- unique(rowSets[keptRows])
 
-    panelList <- lapply(unique(rowSets[keptRows]), function(setName) {keptRows[rowSets[keptRows] == setName]})
-    names(panelList) <- unique(rowSets[keptRows])
-
-    return(panelList)
-  } # END function
-
-
+        return(panelList)
+    } # END function
 
 
 #' @title .topVariableRows
@@ -918,27 +1075,24 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .topVariableRows <-
-  function(counts,
-           rowIndex,
-           topRegions = 2000) {
+    function(counts,
+             rowIndex,
+             topRegions = 2000) {
+        # A NULL here means every row, and testing it against a length would leave the branch with nothing to read
+        if (is.null(topRegions)) {
+            return(rowIndex)
+        }
 
-    # A NULL here means every row, and testing it against a length would leave the branch with nothing to read
-    if (is.null(topRegions)) {
-      return(rowIndex)
-    }
+        if (length(rowIndex) <= topRegions) {
+            return(rowIndex)
+        }
 
-    if (length(rowIndex) <= topRegions) {
-      return(rowIndex)
-    }
+        # The variance is read off the normalised values, so both panels of a comparison work on the same rows
+        logMatrix <- .countsLogMatrix(counts = counts, useOffsets = TRUE)[rowIndex, , drop = FALSE]
+        rowVariance <- apply(logMatrix, MARGIN = 1, FUN = stats::var)
 
-    # The variance is read off the normalised values, so both panels of a comparison work on the same rows
-    logMatrix <- .countsLogMatrix(counts = counts, useOffsets = TRUE)[rowIndex, , drop = FALSE]
-    rowVariance <- apply(logMatrix, MARGIN = 1, FUN = stats::var)
-
-    return(rowIndex[order(rowVariance, decreasing = TRUE)[seq_len(topRegions)]])
-  } # END function
-
-
+        return(rowIndex[order(rowVariance, decreasing = TRUE)[seq_len(topRegions)]])
+    } # END function
 
 
 #' @title .sampleTable
@@ -957,27 +1111,40 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .sampleTable <-
-  function(sampleAnnotation,
-           colourBy = NULL,
-           shapeBy = NULL,
-           labelBy = "sample") {
+    function(sampleAnnotation,
+             colourBy = NULL,
+             shapeBy = NULL,
+             labelBy = "sample") {
+        colTable <- as.data.frame(sampleAnnotation, stringsAsFactors = FALSE)
 
-    colTable <- as.data.frame(sampleAnnotation, stringsAsFactors = FALSE)
+        for (columnName in c(colourBy, shapeBy, labelBy)) {
+            if (!is.null(columnName) && columnName != "sample" && !(columnName %in% colnames(colTable))) {
+                stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
+            }
+        }
 
-    for (columnName in c(colourBy, shapeBy, labelBy)) {
-      if (!is.null(columnName) && columnName != "sample" && !(columnName %in% colnames(colTable))) {
-        stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
-      }
-    }
-
-    return(data.frame(sample = colTable$sample,
-                      colour.group = if (is.null(colourBy)) {"all"} else {as.character(colTable[[colourBy]])},
-                      shape.group = if (is.null(shapeBy)) {"all"} else {as.character(colTable[[shapeBy]])},
-                      point.label = if (is.null(labelBy)) {""} else if (labelBy == "sample") {colTable$sample} else {as.character(colTable[[labelBy]])},
-                      stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(data.frame(
+            sample = colTable$sample,
+            colour.group = if (is.null(colourBy)) {
+                "all"
+            } else {
+                as.character(colTable[[colourBy]])
+            },
+            shape.group = if (is.null(shapeBy)) {
+                "all"
+            } else {
+                as.character(colTable[[shapeBy]])
+            },
+            point.label = if (is.null(labelBy)) {
+                ""
+            } else if (labelBy == "sample") {
+                colTable$sample
+            } else {
+                as.character(colTable[[labelBy]])
+            },
+            stringsAsFactors = FALSE
+        ))
+    } # END function
 
 
 #' @title .correlationSummary
@@ -995,31 +1162,30 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .correlationSummary <-
-  function(correlationMatrix,
-           groupVector = NULL,
-           digits = 3) {
+    function(correlationMatrix,
+             groupVector = NULL,
+             digits = 3) {
+        if (is.null(groupVector)) {
+            return("")
+        }
 
-    if (is.null(groupVector)) {
-      return("")
-    }
+        samePair <- outer(groupVector, groupVector, FUN = "==")
+        offDiagonal <- upper.tri(correlationMatrix)
 
-    samePair <- outer(groupVector, groupVector, FUN = "==")
-    offDiagonal <- upper.tri(correlationMatrix)
+        withinValues <- correlationMatrix[samePair & offDiagonal]
+        betweenValues <- correlationMatrix[!samePair & offDiagonal]
 
-    withinValues <- correlationMatrix[samePair & offDiagonal]
-    betweenValues <- correlationMatrix[!samePair & offDiagonal]
+        # A single sample per group leaves no within-group pair to average
+        if (length(withinValues) == 0 | length(betweenValues) == 0) {
+            return("")
+        }
 
-    # A single sample per group leaves no within-group pair to average
-    if (length(withinValues) == 0 | length(betweenValues) == 0) {
-      return("")
-    }
-
-    return(sprintf("\nwithin %s, between %s",
-                   format(round(mean(withinValues), digits), nsmall = digits),
-                   format(round(mean(betweenValues), digits), nsmall = digits)))
-  } # END function
-
-
+        return(sprintf(
+            "\nwithin %s, between %s",
+            format(round(mean(withinValues), digits), nsmall = digits),
+            format(round(mean(betweenValues), digits), nsmall = digits)
+        ))
+    } # END function
 
 
 #' @title .normalisationNotice
@@ -1037,18 +1203,15 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .normalisationNotice <-
-  function(counts,
-           useOffsets = TRUE,
-           verbose = TRUE) {
+    function(counts,
+             useOffsets = TRUE,
+             verbose = TRUE) {
+        if (isTRUE(useOffsets) & isTRUE(verbose) && is.null(.fitOffsets(counts = counts, useOffsets = TRUE, verbose = FALSE))) {
+            message("No normalisation is stored in the object, the samples are scaled by their library sizes alone. Run normalizeCounts() first.")
+        }
 
-    if (isTRUE(useOffsets) & isTRUE(verbose) && is.null(.fitOffsets(counts = counts, useOffsets = TRUE, verbose = FALSE))) {
-      message("No normalisation is stored in the object, the samples are scaled by their library sizes alone. Run normalizeCounts() first.")
-    }
-
-    return(invisible(TRUE))
-  } # END function
-
-
+        return(invisible(TRUE))
+    } # END function
 
 
 #' @title .sampleAnnotation
@@ -1067,16 +1230,13 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .sampleAnnotation <-
-  function(counts) {
+    function(counts) {
+        sampleTable <- as.data.frame(SummarizedExperiment::colData(counts), optional = TRUE)
+        sampleTable$sample <- colnames(counts)
+        rownames(sampleTable) <- NULL
 
-    sampleTable <- as.data.frame(SummarizedExperiment::colData(counts), optional = TRUE)
-    sampleTable$sample <- colnames(counts)
-    rownames(sampleTable) <- NULL
-
-    return(dplyr::relocate(sampleTable, "sample"))
-  } # END function
-
-
+        return(dplyr::relocate(sampleTable, "sample"))
+    } # END function
 
 
 #' @title .annotationColourList
@@ -1096,53 +1256,58 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .annotationColourList <-
-  function(sampleTable,
-           annotationColumns,
-           annotationColours = NULL) {
+    function(sampleTable,
+             annotationColumns,
+             annotationColours = NULL) {
+        # Blue then red first, as in the other plots, then palettes that do not repeat those hues
+        paletteList <- list(
+            c("#2166AC", "#B2182B", "#1B7837", "#E08214", "#762A83", "#01665E"),
+            grDevices::hcl.colors(8, palette = "Dark 3"),
+            grDevices::hcl.colors(8, palette = "Set 2"),
+            grDevices::hcl.colors(8, palette = "Pastel 1")
+        )
 
-    # Blue then red first, as in the other plots, then palettes that do not repeat those hues
-    paletteList <- list(c("#2166AC", "#B2182B", "#1B7837", "#E08214", "#762A83", "#01665E"),
-                        grDevices::hcl.colors(8, palette = "Dark 3"),
-                        grDevices::hcl.colors(8, palette = "Set 2"),
-                        grDevices::hcl.colors(8, palette = "Pastel 1"))
+        colourList <- list()
 
-    colourList <- list()
+        for (k in seq_along(annotationColumns)) {
+            columnName <- annotationColumns[k]
 
-    for (k in seq_along(annotationColumns)) {
-      columnName <- annotationColumns[k]
+            if (!is.null(annotationColours[[columnName]])) {
+                colourList[[columnName]] <- annotationColours[[columnName]]
+                next
+            }
 
-      if (!is.null(annotationColours[[columnName]])) {
-        colourList[[columnName]] <- annotationColours[[columnName]]
-        next
-      }
+            columnValues <- sampleTable[[columnName]]
 
-      columnValues <- sampleTable[[columnName]]
+            if (is.numeric(columnValues)) {
+                # A constant column still needs two distinct breaks to build a gradient
+                valueRange <- range(columnValues, na.rm = TRUE)
+                if (valueRange[1] == valueRange[2]) {
+                    valueRange <- valueRange + c(-0.5, 0.5)
+                }
+                colourList[[columnName]] <- circlize::colorRamp2(breaks = valueRange, colors = c("grey92", "grey25"))
+                next
+            }
 
-      if (is.numeric(columnValues)) {
-        # A constant column still needs two distinct breaks to build a gradient
-        valueRange <- range(columnValues, na.rm = TRUE)
-        if (valueRange[1] == valueRange[2]) {valueRange <- valueRange + c(-0.5, 0.5)}
-        colourList[[columnName]] <- circlize::colorRamp2(breaks = valueRange, colors = c("grey92", "grey25"))
-        next
-      }
+            columnLevels <- if (is.factor(columnValues)) {
+                levels(droplevels(columnValues))
+            } else {
+                sort(unique(as.character(columnValues[!is.na(columnValues)])))
+            }
+            basePalette <- paletteList[[((k - 1) %% length(paletteList)) + 1]]
 
-      columnLevels <- if (is.factor(columnValues)) {levels(droplevels(columnValues))} else {sort(unique(as.character(columnValues[!is.na(columnValues)])))}
-      basePalette <- paletteList[[((k - 1) %% length(paletteList)) + 1]]
+            levelColours <- if (length(columnLevels) <= length(basePalette)) {
+                basePalette[seq_along(columnLevels)]
+            } else {
+                grDevices::hcl.colors(length(columnLevels), palette = "Dark 3")
+            }
 
-      levelColours <- if (length(columnLevels) <= length(basePalette)) {
-        basePalette[seq_along(columnLevels)]
-      } else {
-        grDevices::hcl.colors(length(columnLevels), palette = "Dark 3")
-      }
+            names(levelColours) <- columnLevels
+            colourList[[columnName]] <- levelColours
+        }
 
-      names(levelColours) <- columnLevels
-      colourList[[columnName]] <- levelColours
-    }
-
-    return(colourList)
-  } # END function
-
-
+        return(colourList)
+    } # END function
 
 
 #' @title .correlationCellFunction
@@ -1163,28 +1328,33 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .correlationCellFunction <-
-  function(panelMatrix,
-           digits = 2,
-           fontSize = 9,
-           valuesColour = NULL) {
+    function(panelMatrix,
+             digits = 2,
+             fontSize = 9,
+             valuesColour = NULL) {
+        # The matrix is captured here, a loop over the panels would otherwise leave every heatmap with the last one
+        force(panelMatrix)
 
-    # The matrix is captured here, a loop over the panels would otherwise leave every heatmap with the last one
-    force(panelMatrix)
+        return(function(j, i, x, y, width, height, fill) {
+            cellValue <- panelMatrix[i, j]
 
-    return(function(j, i, x, y, width, height, fill) {
-      cellValue <- panelMatrix[i, j]
-
-      if (!is.na(cellValue)) {
-        grid::grid.text(label = format(round(cellValue, digits), nsmall = digits),
-                        x = x,
-                        y = y,
-                        gp = grid::gpar(fontsize = fontSize * 0.8,
-                                        col = if (is.null(valuesColour)) {.contrastColour(colour = fill)} else {valuesColour}))
-      }
-    })
-  } # END function
-
-
+            if (!is.na(cellValue)) {
+                grid::grid.text(
+                    label = format(round(cellValue, digits), nsmall = digits),
+                    x = x,
+                    y = y,
+                    gp = grid::gpar(
+                        fontsize = fontSize * 0.8,
+                        col = if (is.null(valuesColour)) {
+                            .contrastColour(colour = fill)
+                        } else {
+                            valuesColour
+                        }
+                    )
+                )
+            }
+        })
+    } # END function
 
 
 #' @title .peakJaccard
@@ -1208,117 +1378,129 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .peakJaccard <-
-  function(object,
-           set = NULL,
-           jaccardLevel = "region",
-           samples = NULL) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    jaccardLevel <- tolower(as.character(jaccardLevel[1]))
-    if (!(jaccardLevel %in% c("region", "basepair"))) {
-      stop("The 'jaccardLevel' parameter must be either 'region' or 'basepair'.", call. = FALSE)
-    }
-
-    #------------------------#
-    # Peaks and annotation   #
-    #------------------------#
-    if (methods::is(object, "RegionSetDE")) {
-      if (length(object@consensus) == 0) {
-        stop("method = 'jaccard' compares peak calls: pass the object returned by loadConsensusPeaks(), or the peaks of every sample as a GRangesList.", call. = FALSE)
-      }
-
-      peakList <- as.list(object@consensus$peaks)
-
-      # The sheet carries the annotation, restricted to the samples with peaks and in their order
-      sheetTable <- as.data.frame(object@consensus$sheet, stringsAsFactors = FALSE)
-      sampleTable <- sheetTable[match(names(peakList), sheetTable$sample), , drop = FALSE]
-      rownames(sampleTable) <- NULL
-
-      if (!is.null(set)) {
-        absentSets <- setdiff(set, names(object@regions))
-        if (length(absentSets) > 0) {
-          stop("The following sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+    function(object,
+             set = NULL,
+             jaccardLevel = "region",
+             samples = NULL) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        jaccardLevel <- tolower(as.character(jaccardLevel[1]))
+        if (!(jaccardLevel %in% c("region", "basepair"))) {
+            stop("The 'jaccardLevel' parameter must be either 'region' or 'basepair'.", call. = FALSE)
         }
-        setRegions <- IRanges::reduce(unlist(object@regions[set], use.names = FALSE), ignore.strand = TRUE)
-      }
-    } else if (methods::is(object, "GRangesList") | (is.list(object) && length(object) > 0 && all(vapply(object, function(x) {methods::is(x, "GRanges")}, logical(1))))) {
-      peakList <- as.list(object)
 
-      if (is.null(names(peakList)) || any(is.na(names(peakList)) | names(peakList) == "") || any(duplicated(names(peakList)))) {
-        stop("The peak sets must be named after their samples, with unique names.", call. = FALSE)
-      }
+        #------------------------#
+        # Peaks and annotation   #
+        #------------------------#
+        if (methods::is(object, "RegionSetDE")) {
+            if (length(.storedConsensus(object)) == 0) {
+                stop("method = 'jaccard' compares peak calls: pass the object returned by loadConsensusPeaks(), or the peaks of every sample as a GRangesList.", call. = FALSE)
+            }
 
-      if (!is.null(set)) {
-        stop("The 'set' parameter needs region sets, which a plain list of peaks does not have.", call. = FALSE)
-      }
+            peakList <- as.list(consensusData(object)$peaks)
 
-      sampleTable <- data.frame(sample = names(peakList), stringsAsFactors = FALSE)
-    } else {
-      stop("method = 'jaccard' compares peak calls: pass the object returned by loadConsensusPeaks(), or the peaks of every sample as a GRangesList.", call. = FALSE)
-    }
+            # The sheet carries the annotation, restricted to the samples with peaks and in their order
+            sheetTable <- as.data.frame(consensusData(object)$sheet, stringsAsFactors = FALSE)
+            sampleTable <- sheetTable[match(names(peakList), sheetTable$sample), , drop = FALSE]
+            rownames(sampleTable) <- NULL
 
-    # The samples asked for, in the order of the object
-    keptSamples <- .sampleIndex(sampleNames = names(peakList), samples = samples)
-    peakList <- peakList[keptSamples]
-    sampleTable <- sampleTable[keptSamples, , drop = FALSE]
-    rownames(sampleTable) <- NULL
+            if (!is.null(set)) {
+                absentSets <- setdiff(set, names(regionRanges(object)))
+                if (length(absentSets) > 0) {
+                    stop("The following sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+                }
+                setRegions <- IRanges::reduce(unlist(regionRanges(object)[set], use.names = FALSE), ignore.strand = TRUE)
+            }
+        } else if (methods::is(object, "GRangesList") | (is.list(object) && length(object) > 0 && all(vapply(object, function(x) {
+            methods::is(x, "GRanges")
+        }, logical(1))))) {
+            peakList <- as.list(object)
 
-    if (length(peakList) < 2) {
-      stop("At least two samples with peaks are needed for a Jaccard index.", call. = FALSE)
-    }
+            if (is.null(names(peakList)) || any(is.na(names(peakList)) | names(peakList) == "") || any(duplicated(names(peakList)))) {
+                stop("The peak sets must be named after their samples, with unique names.", call. = FALSE)
+            }
 
-    # Overlapping peaks of one sample would count the same place twice
-    peakList <- lapply(peakList, function(peakRanges) {IRanges::reduce(peakRanges, ignore.strand = TRUE)})
+            if (!is.null(set)) {
+                stop("The 'set' parameter needs region sets, which a plain list of peaks does not have.", call. = FALSE)
+            }
 
-    if (!is.null(set)) {
-      peakList <- lapply(peakList, function(peakRanges) {peakRanges[IRanges::overlapsAny(peakRanges, setRegions, ignore.strand = TRUE)]})
-    }
-
-    sampleNumber <- length(peakList)
-    jaccardMatrix <- diag(1, nrow = sampleNumber)
-    dimnames(jaccardMatrix) <- list(names(peakList), names(peakList))
-
-    #------------------------#
-    # Pairwise index         #
-    #------------------------#
-    if (jaccardLevel == "region") {
-      # The union of all the peaks is the list of places, and each sample has a peak on a place or not
-      placeRanges <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(peakList)), use.names = FALSE), ignore.strand = TRUE)
-      occupancyMatrix <- vapply(peakList, function(peakRanges) {IRanges::overlapsAny(placeRanges, peakRanges, ignore.strand = TRUE)}, logical(length(placeRanges)))
-      occupancyMatrix <- matrix(occupancyMatrix, nrow = length(placeRanges))
-
-      sharedPlaces <- crossprod(occupancyMatrix * 1)
-      placesPerSample <- colSums(occupancyMatrix)
-      unionPlaces <- outer(placesPerSample, placesPerSample, FUN = "+") - sharedPlaces
-
-      jaccardMatrix[] <- ifelse(unionPlaces > 0, sharedPlaces / unionPlaces, NA_real_)
-      universeSize <- length(placeRanges)
-    } else {
-      for (i in seq_len(sampleNumber - 1)) {
-        for (j in seq(i + 1, sampleNumber)) {
-          sharedBp <- sum(as.numeric(BiocGenerics::width(GenomicRanges::intersect(peakList[[i]], peakList[[j]], ignore.strand = TRUE))))
-          unionBp <- sum(as.numeric(BiocGenerics::width(GenomicRanges::union(peakList[[i]], peakList[[j]], ignore.strand = TRUE))))
-          jaccardMatrix[i, j] <- jaccardMatrix[j, i] <- if (unionBp > 0) {sharedBp / unionBp} else {NA_real_}
+            sampleTable <- data.frame(sample = names(peakList), stringsAsFactors = FALSE)
+        } else {
+            stop("method = 'jaccard' compares peak calls: pass the object returned by loadConsensusPeaks(), or the peaks of every sample as a GRangesList.", call. = FALSE)
         }
-      }
-      universeSize <- sum(as.numeric(BiocGenerics::width(IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(peakList)), use.names = FALSE), ignore.strand = TRUE))))
-    }
 
-    return(list(correlation = jaccardMatrix,
-                samples = sampleTable,
-                parameters = list(method = "jaccard",
-                                  jaccardLevel = jaccardLevel,
-                                  useOffsets = NULL,
-                                  set = set,
-                                  topRegions = NULL,
-                                  n.peaks = vapply(peakList, length, integer(1)),
-                                  n.regions = universeSize)))
-  } # END function
+        # The samples asked for, in the order of the object
+        keptSamples <- .sampleIndex(sampleNames = names(peakList), samples = samples)
+        peakList <- peakList[keptSamples]
+        sampleTable <- sampleTable[keptSamples, , drop = FALSE]
+        rownames(sampleTable) <- NULL
 
+        if (length(peakList) < 2) {
+            stop("At least two samples with peaks are needed for a Jaccard index.", call. = FALSE)
+        }
 
+        # Overlapping peaks of one sample would count the same place twice
+        peakList <- lapply(peakList, function(peakRanges) {
+            IRanges::reduce(peakRanges, ignore.strand = TRUE)
+        })
 
+        if (!is.null(set)) {
+            peakList <- lapply(peakList, function(peakRanges) {
+                peakRanges[IRanges::overlapsAny(peakRanges, setRegions, ignore.strand = TRUE)]
+            })
+        }
+
+        sampleNumber <- length(peakList)
+        jaccardMatrix <- diag(1, nrow = sampleNumber)
+        dimnames(jaccardMatrix) <- list(names(peakList), names(peakList))
+
+        #------------------------#
+        # Pairwise index         #
+        #------------------------#
+        if (jaccardLevel == "region") {
+            # The union of all the peaks is the list of places, and each sample has a peak on a place or not
+            placeRanges <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(peakList)), use.names = FALSE), ignore.strand = TRUE)
+            occupancyMatrix <- vapply(peakList, function(peakRanges) {
+                IRanges::overlapsAny(placeRanges, peakRanges, ignore.strand = TRUE)
+            }, logical(length(placeRanges)))
+            occupancyMatrix <- matrix(occupancyMatrix, nrow = length(placeRanges))
+
+            sharedPlaces <- crossprod(occupancyMatrix * 1)
+            placesPerSample <- colSums(occupancyMatrix)
+            unionPlaces <- outer(placesPerSample, placesPerSample, FUN = "+") - sharedPlaces
+
+            jaccardMatrix[] <- ifelse(unionPlaces > 0, sharedPlaces / unionPlaces, NA_real_)
+            universeSize <- length(placeRanges)
+        } else {
+            for (i in seq_len(sampleNumber - 1)) {
+                for (j in seq(i + 1, sampleNumber)) {
+                    sharedBp <- sum(as.numeric(BiocGenerics::width(GenomicRanges::intersect(peakList[[i]], peakList[[j]], ignore.strand = TRUE))))
+                    unionBp <- sum(as.numeric(BiocGenerics::width(GenomicRanges::union(peakList[[i]], peakList[[j]], ignore.strand = TRUE))))
+                    jaccardMatrix[i, j] <- jaccardMatrix[j, i] <- if (unionBp > 0) {
+                        sharedBp / unionBp
+                    } else {
+                        NA_real_
+                    }
+                }
+            }
+            universeSize <- sum(as.numeric(BiocGenerics::width(IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(peakList)), use.names = FALSE), ignore.strand = TRUE))))
+        }
+
+        return(list(
+            correlation = jaccardMatrix,
+            samples = sampleTable,
+            parameters = list(
+                method = "jaccard",
+                jaccardLevel = jaccardLevel,
+                useOffsets = NULL,
+                set = set,
+                topRegions = NULL,
+                n.peaks = vapply(peakList, length, integer(1)),
+                n.regions = universeSize
+            )
+        ))
+    } # END function
 
 
 #' @title .sampleIndex
@@ -1335,44 +1517,41 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .sampleIndex <-
-  function(sampleNames,
-           samples = NULL) {
+    function(sampleNames,
+             samples = NULL) {
+        if (is.null(samples)) {
+            return(seq_along(sampleNames))
+        }
 
-    if (is.null(samples)) {
-      return(seq_along(sampleNames))
-    }
+        #-------------------------------#
+        # The three ways of naming them #
+        #-------------------------------#
+        if (is.logical(samples)) {
+            if (length(samples) != length(sampleNames) | anyNA(samples)) {
+                stop("A logical 'samples' parameter must hold one TRUE or FALSE per sample, ", length(sampleNames), " here.", call. = FALSE)
+            }
+            sampleIndex <- which(samples)
+        } else if (is.character(samples)) {
+            absentSamples <- setdiff(samples, sampleNames)
+            if (length(absentSamples) > 0) {
+                stop("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+            }
+            sampleIndex <- which(sampleNames %in% samples)
+        } else if (is.numeric(samples)) {
+            if (anyNA(samples) | any(samples < 1) | any(samples > length(sampleNames))) {
+                stop("The 'samples' parameter contains positions outside the range of the samples.", call. = FALSE)
+            }
+            sampleIndex <- sort(unique(as.integer(samples)))
+        } else {
+            stop("The 'samples' parameter must be a character, numeric or logical vector.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # The three ways of naming them #
-    #-------------------------------#
-    if (is.logical(samples)) {
-      if (length(samples) != length(sampleNames) | anyNA(samples)) {
-        stop("A logical 'samples' parameter must hold one TRUE or FALSE per sample, ", length(sampleNames), " here.", call. = FALSE)
-      }
-      sampleIndex <- which(samples)
-    } else if (is.character(samples)) {
-      absentSamples <- setdiff(samples, sampleNames)
-      if (length(absentSamples) > 0) {
-        stop("The following samples are absent from the object: ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
-      }
-      sampleIndex <- which(sampleNames %in% samples)
-    } else if (is.numeric(samples)) {
-      if (anyNA(samples) | any(samples < 1) | any(samples > length(sampleNames))) {
-        stop("The 'samples' parameter contains positions outside the range of the samples.", call. = FALSE)
-      }
-      sampleIndex <- sort(unique(as.integer(samples)))
-    } else {
-      stop("The 'samples' parameter must be a character, numeric or logical vector.", call. = FALSE)
-    }
+        if (length(sampleIndex) == 0) {
+            stop("The 'samples' parameter selects no sample.", call. = FALSE)
+        }
 
-    if (length(sampleIndex) == 0) {
-      stop("The 'samples' parameter selects no sample.", call. = FALSE)
-    }
-
-    return(sampleIndex)
-  } # END function
-
-
+        return(sampleIndex)
+    } # END function
 
 
 #' @title .subsetSamples
@@ -1389,16 +1568,17 @@ plotSampleCorrelation <-
 #' @keywords internal
 
 .subsetSamples <-
-  function(counts,
-           samples = NULL) {
+    function(counts,
+             samples = NULL) {
+        if (is.null(samples)) {
+            return(counts)
+        }
 
-    if (is.null(samples)) {
-      return(counts)
-    }
-
-    # The factors are one per sample and stay valid on a subset, a figure is not the place to estimate them again
-    return(selectSamples(counts = counts,
-                         samples = colnames(counts)[.sampleIndex(sampleNames = colnames(counts), samples = samples)],
-                         dropNormalization = FALSE,
-                         verbose = FALSE))
-  } # END function
+        # The factors are one per sample and stay valid on a subset, a figure is not the place to estimate them again
+        return(selectSamples(
+            counts = counts,
+            samples = colnames(counts)[.sampleIndex(sampleNames = colnames(counts), samples = samples)],
+            dropNormalization = FALSE,
+            verbose = FALSE
+        ))
+    } # END function

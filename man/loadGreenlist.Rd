@@ -40,6 +40,9 @@ length(greenlist)
 sum(BiocGenerics::width(greenlist))
 
 }
+\references{
+de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. \emph{Briefings in Bioinformatics} 25(2):bbad538.
+}
 \seealso{
 \code{\link{countGreenlist}}, \code{\link{normalizeCounts}}, \code{\link{loadBlacklist}}, \code{\link{availableRegionLists}}
 }

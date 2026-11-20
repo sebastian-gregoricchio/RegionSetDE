@@ -59,268 +59,344 @@
 #' @export filterRegions
 
 filterRegions <-
-  function(counts,
-           method = "background",
-           foldChange = 2,
-           minCount = 10,
-           proportion = 0.5,
-           design = NULL,
-           group = NULL,
-           keep = NULL,
-           byWidth = TRUE,
-           referenceWidth = NULL,
-           bySet = TRUE,
-           widthStrata = 5,
-           wholeRegion = FALSE,
-           minTiles = 1,
-           assay = "counts",
-           verbose = TRUE) {
+    function(counts,
+             method = "background",
+             foldChange = 2,
+             minCount = 10,
+             proportion = 0.5,
+             design = NULL,
+             group = NULL,
+             keep = NULL,
+             byWidth = TRUE,
+             referenceWidth = NULL,
+             bySet = TRUE,
+             widthStrata = 5,
+             wholeRegion = FALSE,
+             minTiles = 1,
+             assay = "counts",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkFilterRegionsArguments(
+            counts = counts,
+            method = method,
+            proportion = proportion,
+            referenceWidth = referenceWidth,
+            assay = assay
+        )
+        countMatrix <- checkedArguments$countMatrix
+        librarySizes <- checkedArguments$librarySizes
+        referenceWidth <- checkedArguments$referenceWidth
+        rowTable <- checkedArguments$rowTable
+        rowWidths <- checkedArguments$rowWidths
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Abundance of every row        #
+        #-------------------------------#
+        rowAbundance <- .regionAbundance(
+            countMatrix = countMatrix,
+            librarySizes = librarySizes,
+            rowWidths = if (isTRUE(byWidth)) {
+                rowWidths
+            } else {
+                NULL
+            },
+            referenceWidth = referenceWidth
+        )
 
-    if (!(method %in% c("background", "abundance", "proportion", "byExpr", "manual"))) {
-      stop("The 'method' parameter must be one of 'background', 'abundance', 'proportion', 'byExpr', 'manual'.", call. = FALSE)
-    }
+        filterTable <- dplyr::mutate(rowTable,
+            row.index = seq_len(nrow(counts)),
+            row.width = rowWidths,
+            abundance = rowAbundance
+        )
 
-    if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Apply the criterion           #
+        #-------------------------------#
+        if (method == "background") {
+            backgroundBins <- S4Vectors::metadata(counts)$background
 
-    if (proportion <= 0 | proportion > 1) {
-      stop("The 'proportion' parameter must lie between 0 and 1.", call. = FALSE)
-    }
+            if (is.null(backgroundBins)) {
+                stop("No background bin is stored in the object, run 'countBackground' before filtering with this method.", call. = FALSE)
+            }
 
-    if (nrow(counts) == 0) {
-      stop("The 'counts' object holds no row.", call. = FALSE)
-    }
+            binMatrix <- as.matrix(SummarizedExperiment::assay(backgroundBins, 1))
+            binWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(backgroundBins))
 
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
+            # The bins are brought to the same width as the regions, so the comparison is one of signal density
+            binAbundance <- .regionAbundance(
+                countMatrix = binMatrix,
+                librarySizes = librarySizes,
+                rowWidths = binWidths,
+                referenceWidth = referenceWidth
+            )
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(countMatrix)
-    }
+            backgroundLevel <- stats::median(binAbundance, na.rm = TRUE)
 
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
-    rowWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(counts))
+            # Without byWidth the regions sit on their own width and the background has to follow them there
+            if (isFALSE(byWidth)) {
+                backgroundLevel <- backgroundLevel + log2(rowWidths / referenceWidth)
+            }
 
-    if (is.null(referenceWidth)) {
-      referenceWidth <- stats::median(rowWidths)
-    }
+            filterTable <- dplyr::mutate(filterTable, enrichment = .data$abundance - backgroundLevel)
+            filterTable <- dplyr::mutate(filterTable, keep.row = .data$enrichment >= log2(foldChange))
 
-    #-------------------------------#
-    # Abundance of every row        #
-    #-------------------------------#
-    rowAbundance <- .regionAbundance(countMatrix = countMatrix,
-                                     librarySizes = librarySizes,
-                                     rowWidths = if (isTRUE(byWidth)) {rowWidths} else {NULL},
-                                     referenceWidth = referenceWidth)
+            thresholdMessage <- paste0(
+                "enrichment over background >= ", round(log2(foldChange), 2),
+                " log2 (background at ", round(stats::median(backgroundLevel), 2), " log2 CPM)"
+            )
+        } else if (method == "abundance") {
+            # The threshold is written in reads and turned into the same scale as the abundances
+            abundanceThreshold <- edgeR::aveLogCPM(y = minCount, lib.size = mean(librarySizes))
 
-    filterTable <- dplyr::mutate(rowTable,
-                                 row.index = seq_len(nrow(counts)),
-                                 row.width = rowWidths,
-                                 abundance = rowAbundance)
+            filterTable <- dplyr::mutate(filterTable, keep.row = .data$abundance >= abundanceThreshold)
 
-    #-------------------------------#
-    # Apply the criterion           #
-    #-------------------------------#
-    if (method == "background") {
-      backgroundBins <- S4Vectors::metadata(counts)$background
+            thresholdMessage <- paste0(
+                "abundance >= ", round(abundanceThreshold, 2), " log2 CPM (", minCount, " reads",
+                if (isTRUE(byWidth)) {
+                    paste0(" over ", referenceWidth, " bp")
+                } else {
+                    ""
+                }, ")"
+            )
+        } else if (method == "proportion") {
+            #-------------------------------#
+            # Strata for the relative cut   #
+            #-------------------------------#
+            filterTable <- dplyr::mutate(filterTable,
+                set.stratum = if (isTRUE(bySet)) {
+                    as.character(.data$region.set)
+                } else {
+                    "all"
+                },
+                width.stratum = if (isTRUE(byWidth)) {
+                    .widthStratum(rowWidths, widthStrata)
+                } else {
+                    "all"
+                },
+                stratum = paste(.data$set.stratum, .data$width.stratum, sep = "|")
+            )
 
-      if (is.null(backgroundBins)) {
-        stop("No background bin is stored in the object, run 'countBackground' before filtering with this method.", call. = FALSE)
-      }
+            # slice_max would break the ties arbitrarily, a quantile keeps every row sitting exactly on the cut
+            filterTable <- dplyr::ungroup(dplyr::mutate(dplyr::group_by(filterTable, .data$stratum),
+                stratum.threshold = stats::quantile(.data$abundance, probs = 1 - proportion, na.rm = TRUE)
+            ))
 
-      binMatrix <- as.matrix(SummarizedExperiment::assay(backgroundBins, 1))
-      binWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(backgroundBins))
+            filterTable <- dplyr::mutate(filterTable, keep.row = .data$abundance >= .data$stratum.threshold)
 
-      # The bins are brought to the same width as the regions, so the comparison is one of signal density
-      binAbundance <- .regionAbundance(countMatrix = binMatrix,
-                                       librarySizes = librarySizes,
-                                       rowWidths = binWidths,
-                                       referenceWidth = referenceWidth)
+            thresholdMessage <- paste0(
+                "top ", round(proportion * 100), "% of ",
+                length(unique(filterTable$stratum)), " strata"
+            )
+        } else if (method == "byExpr") {
+            designObject <- design
+            if (inherits(design, "formula")) {
+                designObject <- stats::model.matrix(object = design, data = as.data.frame(SummarizedExperiment::colData(counts)))
+            }
 
-      backgroundLevel <- stats::median(binAbundance, na.rm = TRUE)
+            groupVector <- NULL
 
-      # Without byWidth the regions sit on their own width and the background has to follow them there
-      if (isFALSE(byWidth)) {
-        backgroundLevel <- backgroundLevel + log2(rowWidths / referenceWidth)
-      }
+            if (!is.null(group)) {
+                # A vector of values rather than a column name would reach the check below with
+                # length > 1, where R's own error replaces the one meant for the user
+                if (!is.character(group) || length(group) != 1) {
+                    stop("The 'group' parameter must be a single column name of the colData.", call. = FALSE)
+                } else if (!(group %in% colnames(SummarizedExperiment::colData(counts)))) {
+                    stop("The column '", group, "' is absent from the colData.", call. = FALSE)
+                }
+                groupVector <- SummarizedExperiment::colData(counts)[[group]]
+            }
 
-      filterTable <- dplyr::mutate(filterTable, enrichment = .data$abundance - backgroundLevel)
-      filterTable <- dplyr::mutate(filterTable, keep.row = .data$enrichment >= log2(foldChange))
+            if (is.null(designObject) & is.null(groupVector)) {
+                stop("The 'byExpr' method needs either 'design' or 'group'.", call. = FALSE)
+            }
 
-      thresholdMessage <- paste0("enrichment over background >= ", round(log2(foldChange), 2),
-                                 " log2 (background at ", round(stats::median(backgroundLevel), 2), " log2 CPM)")
+            keptRows <- edgeR::filterByExpr(
+                y = countMatrix,
+                design = designObject,
+                group = groupVector,
+                lib.size = librarySizes
+            )
 
-    } else if (method == "abundance") {
-      # The threshold is written in reads and turned into the same scale as the abundances
-      abundanceThreshold <- edgeR::aveLogCPM(y = minCount, lib.size = mean(librarySizes))
+            filterTable <- dplyr::mutate(filterTable, keep.row = as.logical(keptRows))
+            thresholdMessage <- "edgeR::filterByExpr"
+        } else {
+            if (is.null(keep)) {
+                stop("The 'manual' method needs the 'keep' parameter.", call. = FALSE)
+            }
 
-      filterTable <- dplyr::mutate(filterTable, keep.row = .data$abundance >= abundanceThreshold)
+            if (is.logical(keep)) {
+                if (length(keep) != nrow(counts)) {
+                    stop("The 'keep' parameter must have one value per row.", call. = FALSE)
+                }
+                keptRows <- keep
+            } else {
+                keep <- as.integer(keep)
+                if (any(is.na(keep)) | any(keep < 1) | any(keep > nrow(counts))) {
+                    stop("The 'keep' parameter contains positions outside the range of the rows.", call. = FALSE)
+                }
+                keptRows <- seq_len(nrow(counts)) %in% keep
+            }
 
-      thresholdMessage <- paste0("abundance >= ", round(abundanceThreshold, 2), " log2 CPM (", minCount, " reads",
-                                 if (isTRUE(byWidth)) {paste0(" over ", referenceWidth, " bp")} else {""}, ")")
-
-    } else if (method == "proportion") {
-      #-------------------------------#
-      # Strata for the relative cut   #
-      #-------------------------------#
-      filterTable <- dplyr::mutate(filterTable,
-                                   set.stratum = if (isTRUE(bySet)) {as.character(.data$region.set)} else {"all"},
-                                   width.stratum = if (isTRUE(byWidth)) {.widthStratum(rowWidths, widthStrata)} else {"all"},
-                                   stratum = paste(.data$set.stratum, .data$width.stratum, sep = "|"))
-
-      # slice_max would break the ties arbitrarily, a quantile keeps every row sitting exactly on the cut
-      filterTable <- dplyr::ungroup(dplyr::mutate(dplyr::group_by(filterTable, .data$stratum),
-                                                  stratum.threshold = stats::quantile(.data$abundance, probs = 1 - proportion, na.rm = TRUE)))
-
-      filterTable <- dplyr::mutate(filterTable, keep.row = .data$abundance >= .data$stratum.threshold)
-
-      thresholdMessage <- paste0("top ", round(proportion * 100), "% of ",
-                                 length(unique(filterTable$stratum)), " strata")
-
-    } else if (method == "byExpr") {
-      designObject <- design
-      if (inherits(design, "formula")) {
-        designObject <- stats::model.matrix(object = design, data = as.data.frame(SummarizedExperiment::colData(counts)))
-      }
-
-      groupVector <- NULL
-
-      if (!is.null(group)) {
-        # A vector of values rather than a column name would reach the check below with
-        # length > 1, where R's own error replaces the one meant for the user
-        if (!is.character(group) || length(group) != 1) {
-          stop("The 'group' parameter must be a single column name of the colData.", call. = FALSE)
-        } else if (!(group %in% colnames(SummarizedExperiment::colData(counts)))) {
-          stop("The column '", group, "' is absent from the colData.", call. = FALSE)
+            filterTable <- dplyr::mutate(filterTable, keep.row = keptRows)
+            thresholdMessage <- "manual selection"
         }
-        groupVector <- SummarizedExperiment::colData(counts)[[group]]
-      }
 
-      if (is.null(designObject) & is.null(groupVector)) {
-        stop("The 'byExpr' method needs either 'design' or 'group'.", call. = FALSE)
-      }
+        filterTable$keep.row[is.na(filterTable$keep.row)] <- FALSE
 
-      keptRows <- edgeR::filterByExpr(y = countMatrix,
-                                      design = designObject,
-                                      group = groupVector,
-                                      lib.size = librarySizes)
+        #-------------------------------#
+        # Tiles back to their region    #
+        #-------------------------------#
+        isTiled <- countingLevel(counts) == "tile"
+        lostRegions <- 0
 
-      filterTable <- dplyr::mutate(filterTable, keep.row = as.logical(keptRows))
-      thresholdMessage <- "edgeR::filterByExpr"
+        if (isTRUE(isTiled)) {
+            filterTable <- dplyr::mutate(filterTable, region.key = paste(.data$region.set, .data$region.id, sep = "|"))
 
-    } else {
-      if (is.null(keep)) {
-        stop("The 'manual' method needs the 'keep' parameter.", call. = FALSE)
-      }
+            filterTable <- dplyr::ungroup(dplyr::mutate(dplyr::group_by(filterTable, .data$region.key),
+                tiles.kept = sum(.data$keep.row),
+                tiles.total = dplyr::n()
+            ))
 
-      if (is.logical(keep)) {
-        if (length(keep) != nrow(counts)) {
-          stop("The 'keep' parameter must have one value per row.", call. = FALSE)
+            if (isTRUE(wholeRegion)) {
+                filterTable <- dplyr::mutate(filterTable, keep.row = .data$tiles.kept >= minTiles)
+            } else {
+                filterTable <- dplyr::mutate(filterTable, keep.row = .data$keep.row & .data$tiles.kept >= minTiles)
+            }
+
+            regionSummary <- dplyr::ungroup(dplyr::filter(dplyr::group_by(filterTable, .data$region.key), dplyr::row_number() == 1))
+            lostRegions <- sum(regionSummary$tiles.kept < minTiles)
         }
-        keptRows <- keep
-      } else {
-        keep <- as.integer(keep)
-        if (any(is.na(keep)) | any(keep < 1) | any(keep > nrow(counts))) {
-          stop("The 'keep' parameter contains positions outside the range of the rows.", call. = FALSE)
+
+        keptIndex <- filterTable$row.index[filterTable$keep.row]
+
+        if (length(keptIndex) == 0) {
+            stop("No row passes the filter, loosen the threshold.", call. = FALSE)
         }
-        keptRows <- seq_len(nrow(counts)) %in% keep
-      }
 
-      filterTable <- dplyr::mutate(filterTable, keep.row = keptRows)
-      thresholdMessage <- "manual selection"
-    }
+        #-------------------------------#
+        # Subset and log                #
+        #-------------------------------#
+        filteredCounts <- counts[keptIndex, ]
 
-    filterTable$keep.row[is.na(filterTable$keep.row)] <- FALSE
+        inputCounts <- dplyr::count(rowTable, .data$region.set, name = "n.input")
+        outputCounts <- dplyr::count(as.data.frame(SummarizedExperiment::rowData(filteredCounts)), .data$region.set, name = "n.output")
 
-    #-------------------------------#
-    # Tiles back to their region    #
-    #-------------------------------#
-    isTiled <- counts@counting.level == "tile"
-    lostRegions <- 0
+        stepLog <- dplyr::mutate(dplyr::left_join(inputCounts, outputCounts, by = "region.set"), step = "filterRegions")
+        stepLog$n.output[is.na(stepLog$n.output)] <- 0
 
-    if (isTRUE(isTiled)) {
-      filterTable <- dplyr::mutate(filterTable, region.key = paste(.data$region.set, .data$region.id, sep = "|"))
+        filteringLog(filteredCounts) <- dplyr::bind_rows(filteringLog(counts), stepLog)
 
-      filterTable <- dplyr::ungroup(dplyr::mutate(dplyr::group_by(filterTable, .data$region.key),
-                                                  tiles.kept = sum(.data$keep.row),
-                                                  tiles.total = dplyr::n()))
+        parameterLog(filteredCounts) <- c(
+            parameterLog(filteredCounts),
+            list(filterRegions = list(
+                method = method,
+                foldChange = foldChange,
+                minCount = minCount,
+                proportion = proportion,
+                byWidth = byWidth,
+                referenceWidth = referenceWidth,
+                bySet = bySet,
+                wholeRegion = wholeRegion,
+                minTiles = minTiles,
+                threshold = thresholdMessage
+            ))
+        )
 
-      if (isTRUE(wholeRegion)) {
-        filterTable <- dplyr::mutate(filterTable, keep.row = .data$tiles.kept >= minTiles)
-      } else {
-        filterTable <- dplyr::mutate(filterTable, keep.row = .data$keep.row & .data$tiles.kept >= minTiles)
-      }
+        #-------------------------------#
+        # Report                        #
+        #-------------------------------#
+        if (isTRUE(verbose)) {
+            message("Filter: ", thresholdMessage, ".")
+            message(
+                "Kept ", length(keptIndex), " out of ", nrow(counts), " ", countingLevel(counts), "s (",
+                round(100 * length(keptIndex) / nrow(counts), 1), "%)."
+            )
 
-      regionSummary <- dplyr::ungroup(dplyr::filter(dplyr::group_by(filterTable, .data$region.key), dplyr::row_number() == 1))
-      lostRegions <- sum(regionSummary$tiles.kept < minTiles)
-    }
+            if (lostRegions > 0) {
+                message(lostRegions, " regions lost every tile and have been removed.")
+            }
 
-    keptIndex <- filterTable$row.index[filterTable$keep.row]
+            for (i in seq_len(nrow(stepLog))) {
+                message("  ", stepLog$region.set[i], ": ", stepLog$n.output[i], " / ", stepLog$n.input[i])
+            }
 
-    if (length(keptIndex) == 0) {
-      stop("No row passes the filter, loosen the threshold.", call. = FALSE)
-    }
+            # A set reduced to a handful of rows cannot carry a set level test afterwards
+            emptiedSets <- stepLog$region.set[stepLog$n.output < 10]
+            if (length(emptiedSets) > 0) {
+                warning("The following region sets keep fewer than 10 rows: ", paste(emptiedSets, collapse = ", "), ".", call. = FALSE)
+            }
+        }
 
-    #-------------------------------#
-    # Subset and log                #
-    #-------------------------------#
-    filteredCounts <- counts[keptIndex, ]
-
-    inputCounts <- dplyr::count(rowTable, .data$region.set, name = "n.input")
-    outputCounts <- dplyr::count(as.data.frame(SummarizedExperiment::rowData(filteredCounts)), .data$region.set, name = "n.output")
-
-    stepLog <- dplyr::mutate(dplyr::left_join(inputCounts, outputCounts, by = "region.set"), step = "filterRegions")
-    stepLog$n.output[is.na(stepLog$n.output)] <- 0
-
-    filteredCounts@filtering.log <- dplyr::bind_rows(counts@filtering.log, stepLog)
-
-    filteredCounts@parameters <- c(filteredCounts@parameters,
-                                   list(filterRegions = list(method = method,
-                                                             foldChange = foldChange,
-                                                             minCount = minCount,
-                                                             proportion = proportion,
-                                                             byWidth = byWidth,
-                                                             referenceWidth = referenceWidth,
-                                                             bySet = bySet,
-                                                             wholeRegion = wholeRegion,
-                                                             minTiles = minTiles,
-                                                             threshold = thresholdMessage)))
-
-    #-------------------------------#
-    # Report                        #
-    #-------------------------------#
-    if (isTRUE(verbose)) {
-      message("Filter: ", thresholdMessage, ".")
-      message("Kept ", length(keptIndex), " out of ", nrow(counts), " ", counts@counting.level, "s (",
-              round(100 * length(keptIndex) / nrow(counts), 1), "%).")
-
-      if (lostRegions > 0) {
-        message(lostRegions, " regions lost every tile and have been removed.")
-      }
-
-      for (i in seq_len(nrow(stepLog))) {
-        message("  ", stepLog$region.set[i], ": ", stepLog$n.output[i], " / ", stepLog$n.input[i])
-      }
-
-      # A set reduced to a handful of rows cannot carry a set level test afterwards
-      emptiedSets <- stepLog$region.set[stepLog$n.output < 10]
-      if (length(emptiedSets) > 0) {
-        warning("The following region sets keep fewer than 10 rows: ", paste(emptiedSets, collapse = ", "), ".", call. = FALSE)
-      }
-    }
-
-    return(filteredCounts)
-  } # END function
+        return(filteredCounts)
+    } # END function
 
 
+#' @title .checkFilterRegionsArguments
+#'
+#' @description Checks the arguments of \code{\link{filterRegions}} and brings them to the form the rest of the function works with.
+#'
+#' @param counts See \code{\link{filterRegions}}.
+#' @param method See \code{\link{filterRegions}}.
+#' @param proportion See \code{\link{filterRegions}}.
+#' @param referenceWidth See \code{\link{filterRegions}}.
+#' @param assay See \code{\link{filterRegions}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{countMatrix}, \code{librarySizes}, \code{referenceWidth}, \code{rowTable}, \code{rowWidths}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkFilterRegionsArguments <-
+    function(counts,
+             method,
+             proportion,
+             referenceWidth,
+             assay) {
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
+
+        if (!(method %in% c("background", "abundance", "proportion", "byExpr", "manual"))) {
+            stop("The 'method' parameter must be one of 'background', 'abundance', 'proportion', 'byExpr', 'manual'.", call. = FALSE)
+        }
+
+        if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
+            stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
+        }
+
+        if (proportion <= 0 | proportion > 1) {
+            stop("The 'proportion' parameter must lie between 0 and 1.", call. = FALSE)
+        }
+
+        if (nrow(counts) == 0) {
+            stop("The 'counts' object holds no row.", call. = FALSE)
+        }
+
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
+
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(countMatrix)
+        }
+
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
+        rowWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(counts))
+
+        if (is.null(referenceWidth)) {
+            referenceWidth <- stats::median(rowWidths)
+        }
+
+        return(list(
+            countMatrix = countMatrix,
+            librarySizes = librarySizes,
+            referenceWidth = referenceWidth,
+            rowTable = rowTable,
+            rowWidths = rowWidths
+        ))
+    } # END function
 
 
 #' @title .regionAbundance
@@ -342,27 +418,24 @@ filterRegions <-
 #' @keywords internal
 
 .regionAbundance <-
-  function(countMatrix,
-           librarySizes,
-           rowWidths = NULL,
-           referenceWidth = NULL,
-           priorCount = 2) {
+    function(countMatrix,
+             librarySizes,
+             rowWidths = NULL,
+             referenceWidth = NULL,
+             priorCount = 2) {
+        rowAbundance <- edgeR::aveLogCPM(y = countMatrix, lib.size = librarySizes, prior.count = priorCount)
 
-    rowAbundance <- edgeR::aveLogCPM(y = countMatrix, lib.size = librarySizes, prior.count = priorCount)
+        if (is.null(rowWidths)) {
+            return(rowAbundance)
+        }
 
-    if (is.null(rowWidths)) {
-      return(rowAbundance)
-    }
+        if (any(rowWidths <= 0)) {
+            stop("Some rows have a zero or negative width.", call. = FALSE)
+        }
 
-    if (any(rowWidths <= 0)) {
-      stop("Some rows have a zero or negative width.", call. = FALSE)
-    }
-
-    # Reads accumulate with the length of the interval, dividing by the width turns the abundance into a density
-    return(rowAbundance - log2(rowWidths / referenceWidth))
-  } # END function
-
-
+        # Reads accumulate with the length of the interval, dividing by the width turns the abundance into a density
+        return(rowAbundance - log2(rowWidths / referenceWidth))
+    } # END function
 
 
 #' @title .widthStratum
@@ -381,20 +454,19 @@ filterRegions <-
 #' @keywords internal
 
 .widthStratum <-
-  function(rowWidths,
-           strataNumber = 5) {
+    function(rowWidths,
+             strataNumber = 5) {
+        strataNumber <- as.integer(strataNumber[1])
+        if (is.na(strataNumber) | strataNumber < 1) {
+            stop("The 'widthStrata' parameter must be a positive integer.", call. = FALSE)
+        }
 
-    strataNumber <- as.integer(strataNumber[1])
-    if (is.na(strataNumber) | strataNumber < 1) {
-      stop("The 'widthStrata' parameter must be a positive integer.", call. = FALSE)
-    }
+        # A set of regions all of the same width gives one breakpoint, the strata then collapse to a single level
+        breakPoints <- unique(stats::quantile(rowWidths, probs = seq(0, 1, length.out = strataNumber + 1), na.rm = TRUE))
 
-    # A set of regions all of the same width gives one breakpoint, the strata then collapse to a single level
-    breakPoints <- unique(stats::quantile(rowWidths, probs = seq(0, 1, length.out = strataNumber + 1), na.rm = TRUE))
+        if (length(breakPoints) < 2) {
+            return(rep("all", length(rowWidths)))
+        }
 
-    if (length(breakPoints) < 2) {
-      return(rep("all", length(rowWidths)))
-    }
-
-    return(as.character(cut(x = rowWidths, breaks = breakPoints, include.lowest = TRUE, labels = FALSE)))
-  } # END function
+        return(as.character(cut(x = rowWidths, breaks = breakPoints, include.lowest = TRUE, labels = FALSE)))
+    } # END function

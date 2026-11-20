@@ -27,7 +27,7 @@
 
 \item{colTable}{Data.frame with the sample metadata.}
 
-\item{BPPARAM}{\code{BiocParallelParam} object, or \code{NULL}.}
+\item{BPPARAM}{\code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.}
 }
 \value{
 A list with the \code{fit}, the \code{blocking} and the \code{dispersion} elements.

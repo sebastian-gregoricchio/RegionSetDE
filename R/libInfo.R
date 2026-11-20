@@ -42,113 +42,145 @@
 #' @export libInfo
 
 libInfo <-
-  function(counts,
-           annotationColumns = NULL,
-           bamFiles = NULL) {
+    function(counts,
+             annotationColumns = NULL,
+             bamFiles = NULL) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (methods::is(counts, "RegionSetDE.fit")) {
+            counts <- fitCounts(counts)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (methods::is(counts, "RegionSetDE.fit")) {
-      counts <- fitCounts(counts)
-    }
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts or a RegionSetDE.fit object.", call. = FALSE)
+        }
 
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts or a RegionSetDE.fit object.", call. = FALSE)
-    }
+        # Signal read from bigWig files has no reads to put a fraction on
+        if (!is.null(parameterLog(counts)$countBigwig)) {
+            stop("The object was counted from bigWig files: it holds signal rather than reads, and has no library to summarise.", call. = FALSE)
+        }
 
-    # Signal read from bigWig files has no reads to put a fraction on
-    if (!is.null(counts@parameters$countBigwig)) {
-      stop("The object was counted from bigWig files: it holds signal rather than reads, and has no library to summarise.", call. = FALSE)
-    }
+        sampleTable <- as.data.frame(SummarizedExperiment::colData(counts), optional = TRUE)
 
-    sampleTable <- as.data.frame(SummarizedExperiment::colData(counts), optional = TRUE)
+        missingColumns <- setdiff(annotationColumns, colnames(sampleTable))
+        if (length(missingColumns) > 0) {
+            stop("The following 'annotationColumns' are not in the colData: ", paste(missingColumns, collapse = ", "), ".", call. = FALSE)
+        }
 
-    missingColumns <- setdiff(annotationColumns, colnames(sampleTable))
-    if (length(missingColumns) > 0) {
-      stop("The following 'annotationColumns' are not in the colData: ", paste(missingColumns, collapse = ", "), ".", call. = FALSE)
-    }
+        if (is.null(bamFiles)) {
+            bamFiles <- parameterLog(counts)$countReads$bamFiles
+        }
 
-    if (is.null(bamFiles)) {
-      bamFiles <- counts@parameters$countReads$bamFiles
-    }
+        if (!is.null(bamFiles) && length(bamFiles) != ncol(counts)) {
+            stop("The number of BAM files does not match the number of samples of the counts object.", call. = FALSE)
+        }
 
-    if (!is.null(bamFiles) && length(bamFiles) != ncol(counts)) {
-      stop("The number of BAM files does not match the number of samples of the counts object.", call. = FALSE)
-    }
+        #------------------------#
+        # Reads in the BAM files #
+        #------------------------#
+        # The index already knows how many records every chromosome holds, the file itself is never read
+        if (is.null(bamFiles)) {
+            bamReads <- rep(NA_real_, ncol(counts))
+            bamMapped <- rep(NA_real_, ncol(counts))
+        } else {
+            missingFiles <- bamFiles[!file.exists(bamFiles)]
+            if (length(missingFiles) > 0) {
+                stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+            }
 
-    #------------------------#
-    # Reads in the BAM files #
-    #------------------------#
-    # The index already knows how many records every chromosome holds, the file itself is never read
-    if (is.null(bamFiles)) {
-      bamReads <- rep(NA_real_, ncol(counts))
-      bamMapped <- rep(NA_real_, ncol(counts))
-    } else {
-      missingFiles <- bamFiles[!file.exists(bamFiles)]
-      if (length(missingFiles) > 0) {
-        stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
-      }
+            indexStats <- lapply(bamFiles, function(bamFile) {
+                Rsamtools::idxstatsBam(.bamWithIndex(bamFile))
+            })
+            bamMapped <- vapply(indexStats, function(stats) {
+                sum(as.numeric(stats$mapped))
+            }, numeric(1))
+            bamReads <- bamMapped + vapply(indexStats, function(stats) {
+                sum(as.numeric(stats$unmapped))
+            }, numeric(1))
+        }
 
-      indexStats <- lapply(bamFiles, function(bamFile) {Rsamtools::idxstatsBam(.bamWithIndex(bamFile))})
-      bamMapped <- vapply(indexStats, function(stats) {sum(as.numeric(stats$mapped))}, numeric(1))
-      bamReads <- bamMapped + vapply(indexStats, function(stats) {sum(as.numeric(stats$unmapped))}, numeric(1))
-    }
+        #------------------------#
+        # Reads in the regions   #
+        #------------------------#
+        # A region shared by several sets is one stretch of genome, it enters the sum once
+        regionRanges <- SummarizedExperiment::rowRanges(counts)
+        regionKey <- paste0(
+            as.character(GenomeInfoDb::seqnames(regionRanges)), ":",
+            BiocGenerics::start(regionRanges), "-", BiocGenerics::end(regionRanges)
+        )
 
-    #------------------------#
-    # Reads in the regions   #
-    #------------------------#
-    # A region shared by several sets is one stretch of genome, it enters the sum once
-    regionRanges <- SummarizedExperiment::rowRanges(counts)
-    regionKey <- paste0(as.character(GenomeInfoDb::seqnames(regionRanges)), ":",
-                        BiocGenerics::start(regionRanges), "-", BiocGenerics::end(regionRanges))
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, "counts"))
+        readsInRegions <- colSums(countMatrix[!duplicated(regionKey), , drop = FALSE])
 
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, "counts"))
-    readsInRegions <- colSums(countMatrix[!duplicated(regionKey), , drop = FALSE])
+        librarySize <- if ("library.size" %in% colnames(sampleTable)) {
+            as.numeric(sampleTable$library.size)
+        } else {
+            rep(NA_real_, ncol(counts))
+        }
+        pairedEnd <- if ("paired.end" %in% colnames(sampleTable)) {
+            as.logical(sampleTable$paired.end)
+        } else {
+            rep(NA, ncol(counts))
+        }
+        fragmentLength <- if ("fragment.length" %in% colnames(sampleTable)) {
+            as.numeric(sampleTable$fragment.length)
+        } else {
+            rep(NA_real_, ncol(counts))
+        }
 
-    librarySize <- if ("library.size" %in% colnames(sampleTable)) {as.numeric(sampleTable$library.size)} else {rep(NA_real_, ncol(counts))}
-    pairedEnd <- if ("paired.end" %in% colnames(sampleTable)) {as.logical(sampleTable$paired.end)} else {rep(NA, ncol(counts))}
-    fragmentLength <- if ("fragment.length" %in% colnames(sampleTable)) {as.numeric(sampleTable$fragment.length)} else {rep(NA_real_, ncol(counts))}
+        #------------------------#
+        # Assemble the table     #
+        #------------------------#
+        infoTable <- data.frame(
+            sample = colnames(counts),
+            paired.end = pairedEnd,
+            fragment.length = fragmentLength,
+            bam.reads = bamReads,
+            bam.mapped = bamMapped,
+            library.size = librarySize,
+            reads.in.regions = as.numeric(readsInRegions),
+            stringsAsFactors = FALSE
+        )
 
-    #------------------------#
-    # Assemble the table     #
-    #------------------------#
-    infoTable <- data.frame(sample = colnames(counts),
-                            paired.end = pairedEnd,
-                            fragment.length = fragmentLength,
-                            bam.reads = bamReads,
-                            bam.mapped = bamMapped,
-                            library.size = librarySize,
-                            reads.in.regions = as.numeric(readsInRegions),
-                            stringsAsFactors = FALSE)
+        infoTable <- dplyr::mutate(infoTable, FRiP = round(.data$reads.in.regions / .data$library.size, 4))
 
-    infoTable <- dplyr::mutate(infoTable, FRiP = round(.data$reads.in.regions / .data$library.size, 4))
+        # What the blacklist, the greylist and the other discarded regions took out of each library
+        if ("discarded.reads" %in% colnames(sampleTable)) {
+            infoTable <- dplyr::mutate(infoTable, discarded.reads = as.numeric(sampleTable$discarded.reads), .after = "library.size")
+        }
 
-    # What the blacklist, the greylist and the other discarded regions took out of each library
-    if ("discarded.reads" %in% colnames(sampleTable)) {
-      infoTable <- dplyr::mutate(infoTable, discarded.reads = as.numeric(sampleTable$discarded.reads), .after = "library.size")
-    }
+        #------------------------#
+        # The inputs             #
+        #------------------------#
+        # The same fraction on the input tells how much of the FRiP the regions would collect with no enrichment
+        if ("input" %in% SummarizedExperiment::assayNames(counts)) {
+            inputMatrix <- as.matrix(SummarizedExperiment::assay(counts, "input"))
 
-    #------------------------#
-    # The inputs             #
-    #------------------------#
-    # The same fraction on the input tells how much of the FRiP the regions would collect with no enrichment
-    if ("input" %in% SummarizedExperiment::assayNames(counts)) {
-      inputMatrix <- as.matrix(SummarizedExperiment::assay(counts, "input"))
+            infoTable <- dplyr::mutate(infoTable,
+                input.id = if ("input.id" %in% colnames(sampleTable)) {
+                    as.character(sampleTable$input.id)
+                } else {
+                    NA_character_
+                },
+                input.library.size = if ("input.library.size" %in% colnames(sampleTable)) {
+                    as.numeric(sampleTable$input.library.size)
+                } else {
+                    NA_real_
+                },
+                input.in.regions = as.numeric(colSums(inputMatrix[!duplicated(regionKey), , drop = FALSE])),
+                input.FRiP = round(.data$input.in.regions / .data$input.library.size, 4)
+            )
+        }
 
-      infoTable <- dplyr::mutate(infoTable,
-                                 input.id = if ("input.id" %in% colnames(sampleTable)) {as.character(sampleTable$input.id)} else {NA_character_},
-                                 input.library.size = if ("input.library.size" %in% colnames(sampleTable)) {as.numeric(sampleTable$input.library.size)} else {NA_real_},
-                                 input.in.regions = as.numeric(colSums(inputMatrix[!duplicated(regionKey), , drop = FALSE])),
-                                 input.FRiP = round(.data$input.in.regions / .data$input.library.size, 4))
-    }
+        if (length(annotationColumns) > 0) {
+            infoTable <- dplyr::bind_cols(
+                infoTable[, "sample", drop = FALSE],
+                sampleTable[, annotationColumns, drop = FALSE],
+                infoTable[, setdiff(colnames(infoTable), "sample"), drop = FALSE]
+            )
+        }
 
-    if (length(annotationColumns) > 0) {
-      infoTable <- dplyr::bind_cols(infoTable[, "sample", drop = FALSE],
-                                    sampleTable[, annotationColumns, drop = FALSE],
-                                    infoTable[, setdiff(colnames(infoTable), "sample"), drop = FALSE])
-    }
-
-    rownames(infoTable) <- NULL
-    return(infoTable)
-  } # END function
+        rownames(infoTable) <- NULL
+        return(infoTable)
+    } # END function

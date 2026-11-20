@@ -39,25 +39,26 @@
 #' @export contrastInfo
 
 contrastInfo <-
-  function(results) {
+    function(results) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (methods::is(results, "RegionSetDE.resultsList")) {
+            infoList <- lapply(
+                names(results),
+                function(contrastKey) {
+                    .singleContrastInfo(results = results[[contrastKey]], contrastKey = contrastKey)
+                }
+            )
+            return(dplyr::bind_rows(infoList))
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (methods::is(results, "RegionSetDE.resultsList")) {
-      infoList <- lapply(names(results@results),
-                         function(contrastKey) {.singleContrastInfo(results = results@results[[contrastKey]], contrastKey = contrastKey)})
-      return(dplyr::bind_rows(infoList))
-    }
+        if (!methods::is(results, "RegionSetDE.results")) {
+            stop("The 'results' parameter must be a RegionSetDE.results or a RegionSetDE.resultsList object.", call. = FALSE)
+        }
 
-    if (!methods::is(results, "RegionSetDE.results")) {
-      stop("The 'results' parameter must be a RegionSetDE.results or a RegionSetDE.resultsList object.", call. = FALSE)
-    }
-
-    return(.singleContrastInfo(results = results, contrastKey = results@contrast))
-  } # END function
-
-
+        return(.singleContrastInfo(results = results, contrastKey = contrastName(results)))
+    } # END function
 
 
 #' @title .singleContrastInfo
@@ -76,41 +77,62 @@ contrastInfo <-
 #' @keywords internal
 
 .singleContrastInfo <-
-  function(results,
-           contrastKey) {
+    function(results,
+             contrastKey) {
+        resultTable <- resultsTable(results)
+        contrastGroups <- contrastGroups(results)
 
-    resultTable <- results@results
-    contrastGroups <- results@contrast.groups
+        # A value per region collapses to one, the way a power analysis takes it
+        summariseColumn <- function(columnName) {
+            if (!(columnName %in% colnames(resultTable)) || all(is.na(resultTable[[columnName]]))) {
+                return(NA_real_)
+            }
+            stats::median(resultTable[[columnName]], na.rm = TRUE)
+        }
 
-    # A value per region collapses to one, the way a power analysis takes it
-    summariseColumn <- function(columnName) {
-      if (!(columnName %in% colnames(resultTable)) || all(is.na(resultTable[[columnName]]))) {
-        return(NA_real_)
-      }
-      stats::median(resultTable[[columnName]], na.rm = TRUE)
-    }
+        statDistribution <-
+            if ("stat.distribution" %in% colnames(resultTable)) {
+                unique(stats::na.omit(as.character(resultTable$stat.distribution)))
+            } else {
+                character(0)
+            }
 
-    statDistribution <-
-      if ("stat.distribution" %in% colnames(resultTable)) {
-        unique(stats::na.omit(as.character(resultTable$stat.distribution)))
-      } else {
-        character(0)
-      }
+        hasGroups <- length(contrastGroups$groups) == 2
+        groupSizes <- if (length(contrastGroups$n.samples) == 2) {
+            as.integer(contrastGroups$n.samples)
+        } else {
+            c(NA_integer_, NA_integer_)
+        }
 
-    hasGroups <- length(contrastGroups$groups) == 2
-    groupSizes <- if (length(contrastGroups$n.samples) == 2) {as.integer(contrastGroups$n.samples)} else {c(NA_integer_, NA_integer_)}
-
-    return(data.frame(contrast = contrastKey,
-                      contrast.description = results@contrast,
-                      engine = results@engine,
-                      column = if (hasGroups) {contrastGroups$column} else {NA_character_},
-                      group1 = if (hasGroups) {contrastGroups$groups[1]} else {NA_character_},
-                      group2 = if (hasGroups) {contrastGroups$groups[2]} else {NA_character_},
-                      n.group1 = groupSizes[1],
-                      n.group2 = groupSizes[2],
-                      stat.distribution = if (length(statDistribution) == 1) {statDistribution} else {NA_character_},
-                      df1 = summariseColumn("df1"),
-                      df2 = summariseColumn("df2"),
-                      n.regions = nrow(resultTable),
-                      stringsAsFactors = FALSE))
-  } # END function
+        return(data.frame(
+            contrast = contrastKey,
+            contrast.description = contrastName(results),
+            engine = fitEngine(results),
+            column = if (hasGroups) {
+                contrastGroups$column
+            } else {
+                NA_character_
+            },
+            group1 = if (hasGroups) {
+                contrastGroups$groups[1]
+            } else {
+                NA_character_
+            },
+            group2 = if (hasGroups) {
+                contrastGroups$groups[2]
+            } else {
+                NA_character_
+            },
+            n.group1 = groupSizes[1],
+            n.group2 = groupSizes[2],
+            stat.distribution = if (length(statDistribution) == 1) {
+                statDistribution
+            } else {
+                NA_character_
+            },
+            df1 = summariseColumn("df1"),
+            df2 = summariseColumn("df2"),
+            n.regions = nrow(resultTable),
+            stringsAsFactors = FALSE
+        ))
+    } # END function

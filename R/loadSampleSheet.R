@@ -20,24 +20,31 @@
 #'
 #' The table goes straight into the counting, as the source of the files, of the sample names and of the annotation: \code{countReads(regions, bamFiles = sampleSheet$bam, sampleNames = sampleSheet$sample, sampleMetadata = sampleSheet)}.
 #'
+#' @references
+#' Ross-Innes C.S., Stark R., Teschendorff A.E., et al. (2012). Differential oestrogen receptor binding is associated with clinical outcome in breast cancer. \emph{Nature} 481:389-393.
+#'
 #' @examples
 #' # Two samples sharing an input and a third one without any, paths relative to a project folder
-#' sheetTable <- data.frame(sample = c("treated_1", "control_1", "control_2"),
-#'                          bam = c("reads/treated_1.bam", "reads/control_1.bam", "reads/control_2.bam"),
-#'                          peaks = c("peaks/treated_1.narrowPeak", "peaks/control_1.narrowPeak", NA),
-#'                          input = c("reads/input_A.bam", "reads/input_A.bam", NA),
-#'                          condition = c("treated", "control", "control"))
+#' sheetTable <- data.frame(
+#'     sample = c("treated_1", "control_1", "control_2"),
+#'     bam = c("reads/treated_1.bam", "reads/control_1.bam", "reads/control_2.bam"),
+#'     peaks = c("peaks/treated_1.narrowPeak", "peaks/control_1.narrowPeak", NA),
+#'     input = c("reads/input_A.bam", "reads/input_A.bam", NA),
+#'     condition = c("treated", "control", "control")
+#' )
 #'
 #' sampleSheet <- loadSampleSheet(sheetTable, basePath = "/data/project", checkFiles = FALSE)
 #' sampleSheet
 #'
 #' # A DiffBind sample sheet is read as it is
-#' diffbindTable <- data.frame(SampleID = c("MCF7_1", "MCF7_2"),
-#'                             Condition = c("resistant", "responsive"),
-#'                             Replicate = c(1, 1),
-#'                             bamReads = c("reads/MCF7_1.bam", "reads/MCF7_2.bam"),
-#'                             ControlID = c("MCF7_input", "MCF7_input"),
-#'                             bamControl = c("reads/MCF7_input.bam", "reads/MCF7_input.bam"))
+#' diffbindTable <- data.frame(
+#'     SampleID = c("MCF7_1", "MCF7_2"),
+#'     Condition = c("resistant", "responsive"),
+#'     Replicate = c(1, 1),
+#'     bamReads = c("reads/MCF7_1.bam", "reads/MCF7_2.bam"),
+#'     ControlID = c("MCF7_input", "MCF7_input"),
+#'     bamControl = c("reads/MCF7_input.bam", "reads/MCF7_input.bam")
+#' )
 #'
 #' loadSampleSheet(diffbindTable, basePath = "/data/project", checkFiles = FALSE)
 #'
@@ -50,159 +57,178 @@
 #' @export loadSampleSheet
 
 loadSampleSheet <-
-  function(sampleSheet,
-           columns = NULL,
-           basePath = NULL,
-           checkFiles = TRUE,
-           verbose = TRUE) {
+    function(sampleSheet,
+             columns = NULL,
+             basePath = NULL,
+             checkFiles = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!is.logical(checkFiles) | length(checkFiles) != 1 | anyNA(checkFiles)) {
+            stop("The 'checkFiles' parameter must be a single logical value.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!is.logical(checkFiles) | length(checkFiles) != 1 | anyNA(checkFiles)) {
-      stop("The 'checkFiles' parameter must be a single logical value.", call. = FALSE)
-    }
+        if (!is.null(basePath) & (!is.character(basePath) | length(basePath) != 1)) {
+            stop("The 'basePath' parameter must be a single string.", call. = FALSE)
+        }
 
-    if (!is.null(basePath) & (!is.character(basePath) | length(basePath) != 1)) {
-      stop("The 'basePath' parameter must be a single string.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Read the table                #
+        #-------------------------------#
+        if (is.character(sampleSheet) & length(sampleSheet) == 1) {
+            if (!file.exists(sampleSheet)) {
+                stop("The sample sheet '", sampleSheet, "' does not exist.", call. = FALSE)
+            }
+            sheetTable <- .readSheetFile(path = sampleSheet)
 
-    #-------------------------------#
-    # Read the table                #
-    #-------------------------------#
-    if (is.character(sampleSheet) & length(sampleSheet) == 1) {
-      if (!file.exists(sampleSheet)) {
-        stop("The sample sheet '", sampleSheet, "' does not exist.", call. = FALSE)
-      }
-      sheetTable <- .readSheetFile(path = sampleSheet)
+            # Paths written in the sheet are usually meant from where the sheet sits
+            if (is.null(basePath)) {
+                basePath <- dirname(normalizePath(sampleSheet))
+            }
+        } else if (is.data.frame(sampleSheet)) {
+            sheetTable <- as.data.frame(sampleSheet, stringsAsFactors = FALSE)
+            if (is.null(basePath)) {
+                basePath <- getwd()
+            }
+        } else {
+            stop("The 'sampleSheet' parameter must be the path to a table or a data.frame.", call. = FALSE)
+        }
 
-      # Paths written in the sheet are usually meant from where the sheet sits
-      if (is.null(basePath)) {basePath <- dirname(normalizePath(sampleSheet))}
-    } else if (is.data.frame(sampleSheet)) {
-      sheetTable <- as.data.frame(sampleSheet, stringsAsFactors = FALSE)
-      if (is.null(basePath)) {basePath <- getwd()}
-    } else {
-      stop("The 'sampleSheet' parameter must be the path to a table or a data.frame.", call. = FALSE)
-    }
+        if (nrow(sheetTable) == 0) {
+            stop("The sample sheet has no rows.", call. = FALSE)
+        }
 
-    if (nrow(sheetTable) == 0) {
-      stop("The sample sheet has no rows.", call. = FALSE)
-    }
+        basePath <- normalizePath(path.expand(basePath), mustWork = FALSE)
 
-    basePath <- normalizePath(path.expand(basePath), mustWork = FALSE)
+        #-------------------------------#
+        # Standard fields               #
+        #-------------------------------#
+        fieldTable <- .matchSheetColumns(columnNames = colnames(sheetTable), columns = columns)
 
-    #-------------------------------#
-    # Standard fields               #
-    #-------------------------------#
-    fieldTable <- .matchSheetColumns(columnNames = colnames(sheetTable), columns = columns)
+        for (i in seq_len(nrow(fieldTable))) {
+            colnames(sheetTable)[colnames(sheetTable) == fieldTable$column[i]] <- fieldTable$field[i]
+        }
 
-    for (i in seq_len(nrow(fieldTable))) {
-      colnames(sheetTable)[colnames(sheetTable) == fieldTable$column[i]] <- fieldTable$field[i]
-    }
+        renamedTable <- fieldTable[fieldTable$column != fieldTable$field, , drop = FALSE]
+        if (isTRUE(verbose) & nrow(renamedTable) > 0) {
+            message("Columns read as standard fields: ", paste(renamedTable$column, "as", renamedTable$field, collapse = ", "), ".")
+        }
 
-    renamedTable <- fieldTable[fieldTable$column != fieldTable$field, , drop = FALSE]
-    if (isTRUE(verbose) & nrow(renamedTable) > 0) {
-      message("Columns read as standard fields: ", paste(renamedTable$column, "as", renamedTable$field, collapse = ", "), ".")
-    }
+        if (!("sample" %in% fieldTable$field)) {
+            stop("No sample column was found, call it 'sample' or point to it through 'columns'.", call. = FALSE)
+        }
 
-    if (!("sample" %in% fieldTable$field)) {
-      stop("No sample column was found, call it 'sample' or point to it through 'columns'.", call. = FALSE)
-    }
+        # A sheet of peaks alone builds a consensus, it just has nothing to count afterwards
+        if (!any(c("bam", "bigwig", "peaks") %in% fieldTable$field)) {
+            stop("The sample sheet needs a 'bam', a 'bigwig' or a 'peaks' column, or one pointed to through 'columns'.", call. = FALSE)
+        }
 
-    # A sheet of peaks alone builds a consensus, it just has nothing to count afterwards
-    if (!any(c("bam", "bigwig", "peaks") %in% fieldTable$field)) {
-      stop("The sample sheet needs a 'bam', a 'bigwig' or a 'peaks' column, or one pointed to through 'columns'.", call. = FALSE)
-    }
+        if (isTRUE(verbose) & !any(c("bam", "bigwig") %in% fieldTable$field)) {
+            message("The sheet carries peaks and no signal file, which is enough for a consensus and not for the counting.")
+        }
 
-    if (isTRUE(verbose) & !any(c("bam", "bigwig") %in% fieldTable$field)) {
-      message("The sheet carries peaks and no signal file, which is enough for a consensus and not for the counting.")
-    }
+        # Empty cells and blanks mean the same as a missing value in any of these fields
+        for (field in fieldTable$field) {
+            fieldValues <- trimws(as.character(sheetTable[[field]]))
+            fieldValues[!is.na(fieldValues) & fieldValues == ""] <- NA_character_
+            sheetTable[[field]] <- fieldValues
+        }
 
-    # Empty cells and blanks mean the same as a missing value in any of these fields
-    for (field in fieldTable$field) {
-      fieldValues <- trimws(as.character(sheetTable[[field]]))
-      fieldValues[!is.na(fieldValues) & fieldValues == ""] <- NA_character_
-      sheetTable[[field]] <- fieldValues
-    }
+        #-------------------------------#
+        # Samples                       #
+        #-------------------------------#
+        if (anyNA(sheetTable$sample)) {
+            stop("The following rows have no sample name: ", paste(which(is.na(sheetTable$sample)), collapse = ", "), ".", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Samples                       #
-    #-------------------------------#
-    if (anyNA(sheetTable$sample)) {
-      stop("The following rows have no sample name: ", paste(which(is.na(sheetTable$sample)), collapse = ", "), ".", call. = FALSE)
-    }
+        if (anyDuplicated(sheetTable$sample) > 0) {
+            stop("The sample names must be unique, repeated: ",
+                paste(unique(sheetTable$sample[duplicated(sheetTable$sample)]), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (anyDuplicated(sheetTable$sample) > 0) {
-      stop("The sample names must be unique, repeated: ",
-           paste(unique(sheetTable$sample[duplicated(sheetTable$sample)]), collapse = ", "), ".", call. = FALSE)
-    }
+        signalFields <- intersect(c("bam", "bigwig"), fieldTable$field)
+        noSignal <- Reduce(`&`, lapply(signalFields, function(field) {
+            is.na(sheetTable[[field]])
+        }))
 
-    signalFields <- intersect(c("bam", "bigwig"), fieldTable$field)
-    noSignal <- Reduce(`&`, lapply(signalFields, function(field) {is.na(sheetTable[[field]])}))
+        if (any(noSignal)) {
+            stop("The following samples have no signal file: ", paste(sheetTable$sample[noSignal], collapse = ", "), ".", call. = FALSE)
+        }
 
-    if (any(noSignal)) {
-      stop("The following samples have no signal file: ", paste(sheetTable$sample[noSignal], collapse = ", "), ".", call. = FALSE)
-    }
+        #-------------------------------#
+        # Paths                         #
+        #-------------------------------#
+        pathFields <- intersect(c("bam", "bigwig", "peaks", "input"), fieldTable$field)
 
-    #-------------------------------#
-    # Paths                         #
-    #-------------------------------#
-    pathFields <- intersect(c("bam", "bigwig", "peaks", "input"), fieldTable$field)
+        for (field in pathFields) {
+            sheetTable[[field]] <- .resolveSheetPaths(paths = sheetTable[[field]], basePath = basePath)
+        }
 
-    for (field in pathFields) {
-      sheetTable[[field]] <- .resolveSheetPaths(paths = sheetTable[[field]], basePath = basePath)
-    }
+        # The same library listed twice is almost always a copy-paste slip in the sheet
+        for (field in signalFields) {
+            repeatedFiles <- unique(sheetTable[[field]][!is.na(sheetTable[[field]]) & duplicated(sheetTable[[field]])])
+            if (length(repeatedFiles) > 0) {
+                warning("The following ", field, " files are listed for more than one sample: ",
+                    paste(basename(repeatedFiles), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+        }
 
-    # The same library listed twice is almost always a copy-paste slip in the sheet
-    for (field in signalFields) {
-      repeatedFiles <- unique(sheetTable[[field]][!is.na(sheetTable[[field]]) & duplicated(sheetTable[[field]])])
-      if (length(repeatedFiles) > 0) {
-        warning("The following ", field, " files are listed for more than one sample: ",
-                paste(basename(repeatedFiles), collapse = ", "), ".", call. = FALSE)
-      }
-    }
+        #-------------------------------#
+        # Inputs                        #
+        #-------------------------------#
+        if ("input" %in% colnames(sheetTable)) {
+            sheetTable$input.id <- .inputIdentifiers(
+                inputPaths = sheetTable$input,
+                inputIds = if ("input.id" %in% colnames(sheetTable)) {
+                    sheetTable$input.id
+                } else {
+                    NULL
+                }
+            )
+        } else if ("input.id" %in% colnames(sheetTable)) {
+            warning("The sample sheet names inputs through 'input.id' without any 'input' file, the column is kept as annotation only.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Inputs                        #
-    #-------------------------------#
-    if ("input" %in% colnames(sheetTable)) {
-      sheetTable$input.id <- .inputIdentifiers(inputPaths = sheetTable$input,
-                                               inputIds = if ("input.id" %in% colnames(sheetTable)) {sheetTable$input.id} else {NULL})
-    } else if ("input.id" %in% colnames(sheetTable)) {
-      warning("The sample sheet names inputs through 'input.id' without any 'input' file, the column is kept as annotation only.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Files on disk                 #
+        #-------------------------------#
+        if (isTRUE(checkFiles)) {
+            .checkSheetFiles(sheetTable = sheetTable, pathFields = pathFields)
+        }
 
-    #-------------------------------#
-    # Files on disk                 #
-    #-------------------------------#
-    if (isTRUE(checkFiles)) {
-      .checkSheetFiles(sheetTable = sheetTable, pathFields = pathFields)
-    }
+        #-------------------------------#
+        # Order of the columns          #
+        #-------------------------------#
+        standardColumns <- intersect(c("sample", "bam", "bigwig", "peaks", "input", "input.id"), colnames(sheetTable))
+        sheetTable <- dplyr::relocate(sheetTable, dplyr::all_of(standardColumns))
+        rownames(sheetTable) <- NULL
 
-    #-------------------------------#
-    # Order of the columns          #
-    #-------------------------------#
-    standardColumns <- intersect(c("sample", "bam", "bigwig", "peaks", "input", "input.id"), colnames(sheetTable))
-    sheetTable <- dplyr::relocate(sheetTable, dplyr::all_of(standardColumns))
-    rownames(sheetTable) <- NULL
+        if (isTRUE(verbose)) {
+            sampleNumber <- nrow(sheetTable)
+            peakSummary <- if ("peaks" %in% colnames(sheetTable)) {
+                paste(sum(!is.na(sheetTable$peaks)), "of", sampleNumber)
+            } else {
+                "none"
+            }
+            inputSummary <- if ("input" %in% colnames(sheetTable)) {
+                paste(
+                    length(unique(sheetTable$input[!is.na(sheetTable$input)])), "distinct, none for",
+                    sum(is.na(sheetTable$input)), "of", sampleNumber, "samples"
+                )
+            } else {
+                "none"
+            }
 
-    if (isTRUE(verbose)) {
-      sampleNumber <- nrow(sheetTable)
-      peakSummary <- if ("peaks" %in% colnames(sheetTable)) {paste(sum(!is.na(sheetTable$peaks)), "of", sampleNumber)} else {"none"}
-      inputSummary <- if ("input" %in% colnames(sheetTable)) {
-        paste(length(unique(sheetTable$input[!is.na(sheetTable$input)])), "distinct, none for",
-              sum(is.na(sheetTable$input)), "of", sampleNumber, "samples")
-      } else {
-        "none"
-      }
+            message("Sample sheet with ", sampleNumber, " samples. Peaks: ", peakSummary, ". Inputs: ", inputSummary, ".")
+        }
 
-      message("Sample sheet with ", sampleNumber, " samples. Peaks: ", peakSummary, ". Inputs: ", inputSummary, ".")
-    }
-
-    return(sheetTable)
-  } # END function
-
-
+        return(sheetTable)
+    } # END function
 
 
 #' @title .readSheetFile
@@ -220,41 +246,39 @@ loadSampleSheet <-
 #' @keywords internal
 
 .readSheetFile <-
-  function(path) {
+    function(path) {
+        extension <- tolower(sub("^.*\\.", "", basename(sub("\\.gz$", "", path, ignore.case = TRUE))))
 
-    extension <- tolower(sub("^.*\\.", "", basename(sub("\\.gz$", "", path, ignore.case = TRUE))))
+        if (extension %in% c("xls", "xlsx")) {
+            stop("Spreadsheet files are not read directly: save the sheet as .csv or .tsv, or read it into a data.frame first.", call. = FALSE)
+        }
 
-    if (extension %in% c("xls", "xlsx")) {
-      stop("Spreadsheet files are not read directly: save the sheet as .csv or .tsv, or read it into a data.frame first.", call. = FALSE)
-    }
+        # A csv is split on commas and a tsv on tabs, anything else on whichever the header line uses
+        firstLine <- readLines(path, n = 1, warn = FALSE)
 
-    # A csv is split on commas and a tsv on tabs, anything else on whichever the header line uses
-    firstLine <- readLines(path, n = 1, warn = FALSE)
+        separator <- if (extension == "csv") {
+            ","
+        } else if (extension %in% c("tsv", "tab")) {
+            "\t"
+        } else if (grepl("\t", firstLine)) {
+            "\t"
+        } else {
+            ","
+        }
 
-    separator <- if (extension == "csv") {
-      ","
-    } else if (extension %in% c("tsv", "tab")) {
-      "\t"
-    } else if (grepl("\t", firstLine)) {
-      "\t"
-    } else {
-      ","
-    }
+        sheetTable <- utils::read.table(path,
+            header = TRUE,
+            sep = separator,
+            quote = "\"",
+            comment.char = "",
+            na.strings = c("", "NA"),
+            strip.white = TRUE,
+            check.names = FALSE,
+            stringsAsFactors = FALSE
+        )
 
-    sheetTable <- utils::read.table(path,
-                                    header = TRUE,
-                                    sep = separator,
-                                    quote = "\"",
-                                    comment.char = "",
-                                    na.strings = c("", "NA"),
-                                    strip.white = TRUE,
-                                    check.names = FALSE,
-                                    stringsAsFactors = FALSE)
-
-    return(sheetTable)
-  } # END function
-
-
+        return(sheetTable)
+    } # END function
 
 
 #' @title .matchSheetColumns
@@ -271,73 +295,80 @@ loadSampleSheet <-
 #' @keywords internal
 
 .matchSheetColumns <-
-  function(columnNames,
-           columns = NULL) {
+    function(columnNames,
+             columns = NULL) {
+        aliasList <- list(
+            sample = c("sample", "sampleid"),
+            bam = c("bam", "bamreads"),
+            bigwig = c("bigwig"),
+            peaks = c("peaks"),
+            input = c("input", "bamcontrol"),
+            input.id = c("input.id", "controlid")
+        )
 
-    aliasList <- list(sample = c("sample", "sampleid"),
-                      bam = c("bam", "bamreads"),
-                      bigwig = c("bigwig"),
-                      peaks = c("peaks"),
-                      input = c("input", "bamcontrol"),
-                      input.id = c("input.id", "controlid"))
+        #-------------------------------#
+        # Columns named by the user     #
+        #-------------------------------#
+        if (!is.null(columns)) {
+            if (!is.character(columns) | is.null(names(columns)) | any(names(columns) == "")) {
+                stop("The 'columns' parameter must be a named character vector, e.g. c(sample = \"library\").", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # Columns named by the user     #
-    #-------------------------------#
-    if (!is.null(columns)) {
-      if (!is.character(columns) | is.null(names(columns)) | any(names(columns) == "")) {
-        stop("The 'columns' parameter must be a named character vector, e.g. c(sample = \"library\").", call. = FALSE)
-      }
+            unknownFields <- setdiff(names(columns), names(aliasList))
+            if (length(unknownFields) > 0) {
+                stop("The following names of 'columns' are not standard fields: ", paste(unknownFields, collapse = ", "),
+                    ". The fields are: ", paste(names(aliasList), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      unknownFields <- setdiff(names(columns), names(aliasList))
-      if (length(unknownFields) > 0) {
-        stop("The following names of 'columns' are not standard fields: ", paste(unknownFields, collapse = ", "),
-             ". The fields are: ", paste(names(aliasList), collapse = ", "), ".", call. = FALSE)
-      }
-
-      absentColumns <- setdiff(columns, columnNames)
-      if (length(absentColumns) > 0) {
-        stop("The following columns given in 'columns' are absent from the sample sheet: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
-      }
-    }
-
-    #-------------------------------#
-    # Every other field by alias    #
-    #-------------------------------#
-    fieldTable <- data.frame(field = character(0), column = character(0), stringsAsFactors = FALSE)
-
-    for (field in names(aliasList)) {
-      if (field %in% names(columns)) {
-        matchedColumn <- columns[[field]]
-      } else {
-        matchedColumn <- columnNames[tolower(columnNames) %in% aliasList[[field]]]
-        if (length(matchedColumn) == 0) {next}
-
-        # Two candidate columns, e.g. 'sample' and 'SampleID', would have to be chosen between blindly
-        if (length(matchedColumn) > 1) {
-          stop("Several columns could hold the '", field, "' field: ", paste(matchedColumn, collapse = ", "),
-               ". Point to the right one through 'columns'.", call. = FALSE)
+            absentColumns <- setdiff(columns, columnNames)
+            if (length(absentColumns) > 0) {
+                stop("The following columns given in 'columns' are absent from the sample sheet: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
+            }
         }
-      }
 
-      fieldTable <- rbind(fieldTable, data.frame(field = field, column = matchedColumn, stringsAsFactors = FALSE))
-    }
+        #-------------------------------#
+        # Every other field by alias    #
+        #-------------------------------#
+        fieldTable <- data.frame(field = character(0), column = character(0), stringsAsFactors = FALSE)
 
-    if (anyDuplicated(fieldTable$column) > 0) {
-      stop("The same column cannot hold two fields: ", paste(unique(fieldTable$column[duplicated(fieldTable$column)]), collapse = ", "), ".", call. = FALSE)
-    }
+        for (field in names(aliasList)) {
+            if (field %in% names(columns)) {
+                matchedColumn <- columns[[field]]
+            } else {
+                matchedColumn <- columnNames[tolower(columnNames) %in% aliasList[[field]]]
+                if (length(matchedColumn) == 0) {
+                    next
+                }
 
-    # A renamed column would clash with another column already carrying the standard name
-    clashingFields <- fieldTable$field[fieldTable$field != fieldTable$column & fieldTable$field %in% columnNames]
-    if (length(clashingFields) > 0) {
-      stop("The sample sheet already has columns named ", paste(clashingFields, collapse = ", "),
-           ", which would be duplicated by the renaming. Rename them first.", call. = FALSE)
-    }
+                # Two candidate columns, e.g. 'sample' and 'SampleID', would have to be chosen between blindly
+                if (length(matchedColumn) > 1) {
+                    stop("Several columns could hold the '", field, "' field: ", paste(matchedColumn, collapse = ", "),
+                        ". Point to the right one through 'columns'.",
+                        call. = FALSE
+                    )
+                }
+            }
 
-    return(fieldTable)
-  } # END function
+            fieldTable <- rbind(fieldTable, data.frame(field = field, column = matchedColumn, stringsAsFactors = FALSE))
+        }
 
+        if (anyDuplicated(fieldTable$column) > 0) {
+            stop("The same column cannot hold two fields: ", paste(unique(fieldTable$column[duplicated(fieldTable$column)]), collapse = ", "), ".", call. = FALSE)
+        }
 
+        # A renamed column would clash with another column already carrying the standard name
+        clashingFields <- fieldTable$field[fieldTable$field != fieldTable$column & fieldTable$field %in% columnNames]
+        if (length(clashingFields) > 0) {
+            stop("The sample sheet already has columns named ", paste(clashingFields, collapse = ", "),
+                ", which would be duplicated by the renaming. Rename them first.",
+                call. = FALSE
+            )
+        }
+
+        return(fieldTable)
+    } # END function
 
 
 #' @title .resolveSheetPaths
@@ -354,20 +385,17 @@ loadSampleSheet <-
 #' @keywords internal
 
 .resolveSheetPaths <-
-  function(paths,
-           basePath) {
+    function(paths,
+             basePath) {
+        isRemote <- !is.na(paths) & grepl("^[A-Za-z][A-Za-z0-9+.-]*://", paths)
+        isAbsolute <- !is.na(paths) & grepl("^(/|~|[A-Za-z]:[/\\\\]|\\\\\\\\)", paths)
+        isRelative <- !is.na(paths) & !isRemote & !isAbsolute
 
-    isRemote <- !is.na(paths) & grepl("^[A-Za-z][A-Za-z0-9+.-]*://", paths)
-    isAbsolute <- !is.na(paths) & grepl("^(/|~|[A-Za-z]:[/\\\\]|\\\\\\\\)", paths)
-    isRelative <- !is.na(paths) & !isRemote & !isAbsolute
+        paths[isAbsolute] <- path.expand(paths[isAbsolute])
+        paths[isRelative] <- file.path(basePath, paths[isRelative])
 
-    paths[isAbsolute] <- path.expand(paths[isAbsolute])
-    paths[isRelative] <- file.path(basePath, paths[isRelative])
-
-    return(paths)
-  } # END function
-
-
+        return(paths)
+    } # END function
 
 
 #' @title .inputIdentifiers
@@ -387,47 +415,46 @@ loadSampleSheet <-
 #' @keywords internal
 
 .inputIdentifiers <-
-  function(inputPaths,
-           inputIds = NULL) {
+    function(inputPaths,
+             inputIds = NULL) {
+        hasInput <- !is.na(inputPaths)
 
-    hasInput <- !is.na(inputPaths)
+        #-------------------------------#
+        # Names taken from the files    #
+        #-------------------------------#
+        if (is.null(inputIds)) {
+            distinctPaths <- unique(inputPaths[hasInput])
 
-    #-------------------------------#
-    # Names taken from the files    #
-    #-------------------------------#
-    if (is.null(inputIds)) {
-      distinctPaths <- unique(inputPaths[hasInput])
+            # Two inputs stored under the same file name in different folders still need two names
+            distinctIds <- make.unique(sub("\\.bam$", "", basename(distinctPaths), ignore.case = TRUE), sep = "_")
 
-      # Two inputs stored under the same file name in different folders still need two names
-      distinctIds <- make.unique(sub("\\.bam$", "", basename(distinctPaths), ignore.case = TRUE), sep = "_")
+            return(distinctIds[match(inputPaths, distinctPaths)])
+        }
 
-      return(distinctIds[match(inputPaths, distinctPaths)])
-    }
+        #-------------------------------#
+        # Names given with the table    #
+        #-------------------------------#
+        inputIds[!hasInput] <- NA_character_
 
-    #-------------------------------#
-    # Names given with the table    #
-    #-------------------------------#
-    inputIds[!hasInput] <- NA_character_
+        if (anyNA(inputIds[hasInput])) {
+            stop("Some samples have an input file but no 'input.id': fill the column, or drop it to name the inputs after their files.", call. = FALSE)
+        }
 
-    if (anyNA(inputIds[hasInput])) {
-      stop("Some samples have an input file but no 'input.id': fill the column, or drop it to name the inputs after their files.", call. = FALSE)
-    }
+        pairTable <- dplyr::distinct(data.frame(path = inputPaths[hasInput], id = inputIds[hasInput], stringsAsFactors = FALSE))
 
-    pairTable <- dplyr::distinct(data.frame(path = inputPaths[hasInput], id = inputIds[hasInput], stringsAsFactors = FALSE))
+        # One name for two files, or two names for one file, would make the inputs impossible to tell apart
+        idsPerPath <- dplyr::filter(dplyr::summarise(dplyr::group_by(pairTable, .data$path), n = dplyr::n_distinct(.data$id), .groups = "drop"), .data$n > 1)
+        pathsPerId <- dplyr::filter(dplyr::summarise(dplyr::group_by(pairTable, .data$id), n = dplyr::n_distinct(.data$path), .groups = "drop"), .data$n > 1)
 
-    # One name for two files, or two names for one file, would make the inputs impossible to tell apart
-    idsPerPath <- dplyr::filter(dplyr::summarise(dplyr::group_by(pairTable, .data$path), n = dplyr::n_distinct(.data$id), .groups = "drop"), .data$n > 1)
-    pathsPerId <- dplyr::filter(dplyr::summarise(dplyr::group_by(pairTable, .data$id), n = dplyr::n_distinct(.data$path), .groups = "drop"), .data$n > 1)
+        if (nrow(idsPerPath) > 0 | nrow(pathsPerId) > 0) {
+            stop("Each input must have one name and each name one input file. Check: ",
+                paste(c(basename(idsPerPath$path), pathsPerId$id), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (nrow(idsPerPath) > 0 | nrow(pathsPerId) > 0) {
-      stop("Each input must have one name and each name one input file. Check: ",
-           paste(c(basename(idsPerPath$path), pathsPerId$id), collapse = ", "), ".", call. = FALSE)
-    }
-
-    return(inputIds)
-  } # END function
-
-
+        return(inputIds)
+    } # END function
 
 
 #' @title .checkSheetFiles
@@ -444,40 +471,39 @@ loadSampleSheet <-
 #' @keywords internal
 
 .checkSheetFiles <-
-  function(sheetTable,
-           pathFields) {
+    function(sheetTable,
+             pathFields) {
+        problemList <- character(0)
 
-    problemList <- character(0)
+        for (field in pathFields) {
+            fieldPaths <- unique(sheetTable[[field]][!is.na(sheetTable[[field]])])
 
-    for (field in pathFields) {
-      fieldPaths <- unique(sheetTable[[field]][!is.na(sheetTable[[field]])])
+            # Remote addresses cannot be checked from here and are left to the function reading them
+            fieldPaths <- fieldPaths[!grepl("^[A-Za-z][A-Za-z0-9+.-]*://", fieldPaths)]
 
-      # Remote addresses cannot be checked from here and are left to the function reading them
-      fieldPaths <- fieldPaths[!grepl("^[A-Za-z][A-Za-z0-9+.-]*://", fieldPaths)]
+            missingPaths <- fieldPaths[!file.exists(fieldPaths)]
+            if (length(missingPaths) > 0) {
+                problemList <- c(problemList, paste("missing", field, "files:", paste(missingPaths, collapse = ", ")))
+            }
 
-      missingPaths <- fieldPaths[!file.exists(fieldPaths)]
-      if (length(missingPaths) > 0) {
-        problemList <- c(problemList, paste("missing", field, "files:", paste(missingPaths, collapse = ", ")))
-      }
-
-      if (field %in% c("bam", "input")) {
-        presentPaths <- setdiff(fieldPaths, missingPaths)
-        unindexedPaths <- presentPaths[!.hasBamIndex(presentPaths)]
-        if (length(unindexedPaths) > 0) {
-          problemList <- c(problemList, paste("unindexed", field, "files:", paste(unindexedPaths, collapse = ", ")))
+            if (field %in% c("bam", "input")) {
+                presentPaths <- setdiff(fieldPaths, missingPaths)
+                unindexedPaths <- presentPaths[!.hasBamIndex(presentPaths)]
+                if (length(unindexedPaths) > 0) {
+                    problemList <- c(problemList, paste("unindexed", field, "files:", paste(unindexedPaths, collapse = ", ")))
+                }
+            }
         }
-      }
-    }
 
-    if (length(problemList) > 0) {
-      stop("The sample sheet points to files that cannot be used, set checkFiles = FALSE to skip this check.\n  ",
-           paste(problemList, collapse = "\n  "), call. = FALSE)
-    }
+        if (length(problemList) > 0) {
+            stop("The sample sheet points to files that cannot be used, set checkFiles = FALSE to skip this check.\n  ",
+                paste(problemList, collapse = "\n  "),
+                call. = FALSE
+            )
+        }
 
-    return(invisible(TRUE))
-  } # END function
-
-
+        return(invisible(TRUE))
+    } # END function
 
 
 #' @title .hasBamIndex
@@ -493,12 +519,9 @@ loadSampleSheet <-
 #' @keywords internal
 
 .hasBamIndex <-
-  function(bamFiles) {
-
-    return(!is.na(vapply(bamFiles, .bamIndexPath, character(1), USE.NAMES = FALSE)))
-  } # END function
-
-
+    function(bamFiles) {
+        return(!is.na(vapply(bamFiles, .bamIndexPath, character(1), USE.NAMES = FALSE)))
+    } # END function
 
 
 #' @title .sheetCountingInput
@@ -522,61 +545,62 @@ loadSampleSheet <-
 #' @keywords internal
 
 .sheetCountingInput <-
-  function(regionSet,
-           sampleSheet,
-           files,
-           sampleNames,
-           sampleMetadata,
-           fileField,
-           verbose = TRUE) {
-
-    # Files given directly keep working as they always did
-    if (is.null(sampleSheet) & !is.null(files)) {
-      return(list(files = files, sampleNames = sampleNames, sampleMetadata = sampleMetadata))
-    }
-
-    if (!is.null(sampleSheet) & !is.null(files)) {
-      stop("Give the ", fileField, " files either directly or through 'sampleSheet', not both.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Which sheet                   #
-    #-------------------------------#
-    # Regions built from peaks remember the sheet they came from
-    if (is.null(sampleSheet)) {
-      if (methods::is(regionSet, "RegionSetDE") && length(regionSet@consensus) > 0 && !is.null(regionSet@consensus$sheet)) {
-        sampleSheet <- regionSet@consensus$sheet
-
-        if (isTRUE(verbose)) {
-          message("The files and the annotation are taken from the sample sheet the consensus was built from.")
+    function(regionSet,
+             sampleSheet,
+             files,
+             sampleNames,
+             sampleMetadata,
+             fileField,
+             verbose = TRUE) {
+        # Files given directly keep working as they always did
+        if (is.null(sampleSheet) & !is.null(files)) {
+            return(list(files = files, sampleNames = sampleNames, sampleMetadata = sampleMetadata))
         }
-      } else {
-        stop("No ", fileField, " file was given: pass them directly, or through 'sampleSheet'.", call. = FALSE)
-      }
-    }
 
-    if (is.character(sampleSheet) & length(sampleSheet) == 1) {
-      sampleSheet <- loadSampleSheet(sampleSheet, verbose = verbose)
-    }
+        if (!is.null(sampleSheet) & !is.null(files)) {
+            stop("Give the ", fileField, " files either directly or through 'sampleSheet', not both.", call. = FALSE)
+        }
 
-    if (!is.data.frame(sampleSheet) || !all(c("sample", fileField) %in% colnames(sampleSheet))) {
-      stop("The sample sheet needs the 'sample' and '", fileField, "' columns.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Which sheet                   #
+        #-------------------------------#
+        # Regions built from peaks remember the sheet they came from
+        if (is.null(sampleSheet)) {
+            if (!is.null(.storedConsensus(regionSet)$sheet)) {
+                sampleSheet <- consensusData(regionSet)$sheet
 
-    if (!is.null(sampleNames) | !is.null(sampleMetadata)) {
-      stop("With a sample sheet the names and the annotation come from the sheet, leave 'sampleNames' and 'sampleMetadata' empty.", call. = FALSE)
-    }
+                if (isTRUE(verbose)) {
+                    message("The files and the annotation are taken from the sample sheet the consensus was built from.")
+                }
+            } else {
+                stop("No ", fileField, " file was given: pass them directly, or through 'sampleSheet'.", call. = FALSE)
+            }
+        }
 
-    withoutFile <- sampleSheet$sample[is.na(sampleSheet[[fileField]])]
-    if (length(withoutFile) > 0) {
-      stop("The following samples of the sheet have no ", fileField, " file: ", paste(withoutFile, collapse = ", "), ".", call. = FALSE)
-    }
+        if (is.character(sampleSheet) & length(sampleSheet) == 1) {
+            sampleSheet <- loadSampleSheet(sampleSheet, verbose = verbose)
+        }
 
-    # The counting writes the path under its own column, a second copy would only duplicate it
-    sheetMetadata <- as.data.frame(sampleSheet, stringsAsFactors = FALSE)
-    sheetMetadata <- sheetMetadata[, setdiff(colnames(sheetMetadata), fileField), drop = FALSE]
+        if (!is.data.frame(sampleSheet) || !all(c("sample", fileField) %in% colnames(sampleSheet))) {
+            stop("The sample sheet needs the 'sample' and '", fileField, "' columns.", call. = FALSE)
+        }
 
-    return(list(files = as.character(sampleSheet[[fileField]]),
-                sampleNames = as.character(sampleSheet$sample),
-                sampleMetadata = sheetMetadata))
-  } # END function
+        if (!is.null(sampleNames) | !is.null(sampleMetadata)) {
+            stop("With a sample sheet the names and the annotation come from the sheet, leave 'sampleNames' and 'sampleMetadata' empty.", call. = FALSE)
+        }
+
+        withoutFile <- sampleSheet$sample[is.na(sampleSheet[[fileField]])]
+        if (length(withoutFile) > 0) {
+            stop("The following samples of the sheet have no ", fileField, " file: ", paste(withoutFile, collapse = ", "), ".", call. = FALSE)
+        }
+
+        # The counting writes the path under its own column, a second copy would only duplicate it
+        sheetMetadata <- as.data.frame(sampleSheet, stringsAsFactors = FALSE)
+        sheetMetadata <- sheetMetadata[, setdiff(colnames(sheetMetadata), fileField), drop = FALSE]
+
+        return(list(
+            files = as.character(sampleSheet[[fileField]]),
+            sampleNames = as.character(sampleSheet$sample),
+            sampleMetadata = sheetMetadata
+        ))
+    } # END function

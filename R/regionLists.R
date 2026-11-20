@@ -16,6 +16,11 @@
 #'
 #' The files are the published ones, converted to gzipped BED and nothing else. \code{inst/extdata/regionLists/SOURCES.md} records where each of them comes from, the version, the date it was taken and the licence.
 #'
+#' @references
+#' Amemiya H.M., Kundaje A., Boyle A.P. (2019). The ENCODE blacklist: identification of problematic regions of the genome. \emph{Scientific Reports} 9:9354.
+#'
+#' Ogata J.D., Mu W., Davis E.S., Xue B., Harrell J.C., Sheffield N.C., Phanstiel D.H., Love M.I., Dozmorov M.G. (2023). excluderanges: exclusion sets for T2T-CHM13, GRCm39, and other genome assemblies. \emph{Bioinformatics} 39(4):btad198.
+#'
 #' @examples
 #' blacklist <- loadBlacklist("hg38")
 #' head(blacklist, 3)
@@ -33,21 +38,20 @@
 #' @export loadBlacklist
 
 loadBlacklist <-
-  function(genome,
-           assay = NULL,
-           source = NULL,
-           seqlevelsStyle = "UCSC",
-           verbose = TRUE) {
-
-    return(.loadRegionList(type = "blacklist",
-                           genome = genome,
-                           assay = assay,
-                           source = source,
-                           seqlevelsStyle = seqlevelsStyle,
-                           verbose = verbose))
-  } # END function
-
-
+    function(genome,
+             assay = NULL,
+             source = NULL,
+             seqlevelsStyle = "UCSC",
+             verbose = TRUE) {
+        return(.loadRegionList(
+            type = "blacklist",
+            genome = genome,
+            assay = assay,
+            source = source,
+            seqlevelsStyle = seqlevelsStyle,
+            verbose = verbose
+        ))
+    } # END function
 
 
 #' @title loadGreenlist
@@ -66,6 +70,9 @@ loadBlacklist <-
 #'
 #' The list is specific to the protocol. CUT&RUN and CUT&Tag have their own, and using one for the other means normalising on regions whose background was never shown to be consistent in that assay. There is no greenlist for mm10, only for mm39, so an mm10 analysis needs the mm39 list lifted over, and the lifted file should be kept beside the chain it came from rather than passed off as the published one.
 #'
+#' @references
+#' de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. \emph{Briefings in Bioinformatics} 25(2):bbad538.
+#'
 #' @examples
 #' greenlist <- loadGreenlist("hg38", assay = "cutrun")
 #' length(greenlist)
@@ -78,25 +85,24 @@ loadBlacklist <-
 #' @export loadGreenlist
 
 loadGreenlist <-
-  function(genome,
-           assay,
-           source = NULL,
-           seqlevelsStyle = "UCSC",
-           verbose = TRUE) {
+    function(genome,
+             assay,
+             source = NULL,
+             seqlevelsStyle = "UCSC",
+             verbose = TRUE) {
+        if (missing(assay) || is.null(assay)) {
+            stop("Name the assay the greenlist was built for, 'cutrun' or 'cuttag'. They are not interchangeable.", call. = FALSE)
+        }
 
-    if (missing(assay) || is.null(assay)) {
-      stop("Name the assay the greenlist was built for, 'cutrun' or 'cuttag'. They are not interchangeable.", call. = FALSE)
-    }
-
-    return(.loadRegionList(type = "greenlist",
-                           genome = genome,
-                           assay = assay,
-                           source = source,
-                           seqlevelsStyle = seqlevelsStyle,
-                           verbose = verbose))
-  } # END function
-
-
+        return(.loadRegionList(
+            type = "greenlist",
+            genome = genome,
+            assay = assay,
+            source = source,
+            seqlevelsStyle = seqlevelsStyle,
+            verbose = verbose
+        ))
+    } # END function
 
 
 #' @title availableRegionLists
@@ -123,30 +129,27 @@ loadGreenlist <-
 #' @export availableRegionLists
 
 availableRegionLists <-
-  function(type = NULL,
-           genome = NULL) {
+    function(type = NULL,
+             genome = NULL) {
+        listIndex <- .regionListIndex()
 
-    listIndex <- .regionListIndex()
+        if (!is.null(type)) {
+            listType <- tolower(type[1])
+            if (!(listType %in% c("blacklist", "greenlist"))) {
+                stop("The 'type' parameter must be either 'blacklist' or 'greenlist'.", call. = FALSE)
+            }
+            listIndex <- dplyr::filter(listIndex, .data$type == listType)
+        }
 
-    if (!is.null(type)) {
-      listType <- tolower(type[1])
-      if (!(listType %in% c("blacklist", "greenlist"))) {
-        stop("The 'type' parameter must be either 'blacklist' or 'greenlist'.", call. = FALSE)
-      }
-      listIndex <- dplyr::filter(listIndex, .data$type == listType)
-    }
+        if (!is.null(genome)) {
+            genomeName <- .resolveGenomeName(genome = genome)
+            listIndex <- dplyr::filter(listIndex, .data$genome == genomeName)
+        }
 
-    if (!is.null(genome)) {
-      genomeName <- .resolveGenomeName(genome = genome)
-      listIndex <- dplyr::filter(listIndex, .data$genome == genomeName)
-    }
+        listIndex <- dplyr::arrange(listIndex, .data$type, .data$genome, .data$assay)
 
-    listIndex <- dplyr::arrange(listIndex, .data$type, .data$genome, .data$assay)
-
-    return(listIndex[, setdiff(colnames(listIndex), "file")])
-  } # END function
-
-
+        return(listIndex[, setdiff(colnames(listIndex), "file")])
+    } # END function
 
 
 #' @title .regionListIndex
@@ -162,18 +165,15 @@ availableRegionLists <-
 #' @keywords internal
 
 .regionListIndex <-
-  function() {
+    function() {
+        indexPath <- system.file("extdata", "regionLists", "regionLists.tsv", package = "RegionSetDE")
 
-    indexPath <- system.file("extdata", "regionLists", "regionLists.tsv", package = "RegionSetDE")
+        if (indexPath == "" | !file.exists(indexPath)) {
+            stop("The table of the region lists is missing from the installation of the package.", call. = FALSE)
+        }
 
-    if (indexPath == "" | !file.exists(indexPath)) {
-      stop("The table of the region lists is missing from the installation of the package.", call. = FALSE)
-    }
-
-    return(utils::read.delim(indexPath, stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(utils::read.delim(indexPath, stringsAsFactors = FALSE))
+    } # END function
 
 
 #' @title .resolveGenomeName
@@ -189,31 +189,30 @@ availableRegionLists <-
 #' @keywords internal
 
 .resolveGenomeName <-
-  function(genome) {
+    function(genome) {
+        if (!is.character(genome) | length(genome) != 1) {
+            stop("The 'genome' parameter must be a single assembly name, such as 'hg38'.", call. = FALSE)
+        }
 
-    if (!is.character(genome) | length(genome) != 1) {
-      stop("The 'genome' parameter must be a single assembly name, such as 'hg38'.", call. = FALSE)
-    }
+        # The assembly names of Ensembl and of the consortia, mapped onto the UCSC ones the files use
+        genomeAliases <- c(
+            "grch37" = "hg19", "hg19" = "hg19",
+            "grch38" = "hg38", "hg38" = "hg38",
+            "t2t" = "hs1", "chm13" = "hs1", "chm13v2" = "hs1", "chm13v20" = "hs1",
+            "t2tchm13" = "hs1", "t2tchm13v20" = "hs1", "hs1" = "hs1",
+            "grcm38" = "mm10", "mm10" = "mm10",
+            "grcm39" = "mm39", "mm39" = "mm39",
+            "bdgp5" = "dm3", "dm3" = "dm3",
+            "bdgp6" = "dm6", "dm6" = "dm6",
+            "ws220" = "ce10", "ce10" = "ce10",
+            "wbcel235" = "ce11", "ce11" = "ce11"
+        )
 
-    # The assembly names of Ensembl and of the consortia, mapped onto the UCSC ones the files use
-    genomeAliases <- c("grch37" = "hg19", "hg19" = "hg19",
-                       "grch38" = "hg38", "hg38" = "hg38",
-                       "t2t" = "hs1", "chm13" = "hs1", "chm13v2" = "hs1", "chm13v20" = "hs1",
-                       "t2tchm13" = "hs1", "t2tchm13v20" = "hs1", "hs1" = "hs1",
-                       "grcm38" = "mm10", "mm10" = "mm10",
-                       "grcm39" = "mm39", "mm39" = "mm39",
-                       "bdgp5" = "dm3", "dm3" = "dm3",
-                       "bdgp6" = "dm6", "dm6" = "dm6",
-                       "ws220" = "ce10", "ce10" = "ce10",
-                       "wbcel235" = "ce11", "ce11" = "ce11")
+        # 'T2T-CHM13v2.0' and 'chm13v2' name the same assembly, the punctuation is dropped before the lookup
+        matchedGenome <- genomeAliases[gsub("[^a-z0-9]", "", tolower(genome))]
 
-    # 'T2T-CHM13v2.0' and 'chm13v2' name the same assembly, the punctuation is dropped before the lookup
-    matchedGenome <- genomeAliases[gsub("[^a-z0-9]", "", tolower(genome))]
-
-    return(unname(ifelse(is.na(matchedGenome), genome, matchedGenome)))
-  } # END function
-
-
+        return(unname(ifelse(is.na(matchedGenome), genome, matchedGenome)))
+    } # END function
 
 
 #' @title .loadRegionList
@@ -240,93 +239,108 @@ availableRegionLists <-
 #' @keywords internal
 
 .loadRegionList <-
-  function(type,
-           genome,
-           assay = NULL,
-           source = NULL,
-           seqlevelsStyle = "UCSC",
-           verbose = TRUE) {
+    function(type,
+             genome,
+             assay = NULL,
+             source = NULL,
+             seqlevelsStyle = "UCSC",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        listIndex <- .regionListIndex()
+        listType <- type[1]
+        genomeName <- .resolveGenomeName(genome = genome)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    listIndex <- .regionListIndex()
-    listType <- type[1]
-    genomeName <- .resolveGenomeName(genome = genome)
+        # 'CUT&RUN', 'CUTnRUN' and 'cut_run' all mean the same list
+        assayName <- if (is.null(assay)) {
+            "any"
+        } else {
+            gsub("[^a-z0-9]", "", tolower(assay[1]))
+        }
 
-    # 'CUT&RUN', 'CUTnRUN' and 'cut_run' all mean the same list
-    assayName <- if (is.null(assay)) {"any"} else {gsub("[^a-z0-9]", "", tolower(assay[1]))}
+        typeIndex <- dplyr::filter(listIndex, .data$type == listType)
+        genomeIndex <- dplyr::filter(typeIndex, .data$genome == genomeName)
 
-    typeIndex <- dplyr::filter(listIndex, .data$type == listType)
-    genomeIndex <- dplyr::filter(typeIndex, .data$genome == genomeName)
+        if (nrow(genomeIndex) == 0) {
+            stop("No ", type, " is shipped for the genome '", genomeName, "'. Available: ",
+                paste(sort(unique(typeIndex$genome)), collapse = ", "),
+                ". See availableRegionLists().",
+                call. = FALSE
+            )
+        }
 
-    if (nrow(genomeIndex) == 0) {
-      stop("No ", type, " is shipped for the genome '", genomeName, "'. Available: ",
-           paste(sort(unique(typeIndex$genome)), collapse = ", "),
-           ". See availableRegionLists().", call. = FALSE)
-    }
+        pickedList <- dplyr::filter(genomeIndex, .data$assay == assayName)
 
-    pickedList <- dplyr::filter(genomeIndex, .data$assay == assayName)
+        if (nrow(pickedList) == 0) {
+            stop("No ", type, " is shipped for the genome '", genomeName, "' and the assay '", assayName,
+                "'. Available for this genome: ", paste(sort(unique(genomeIndex$assay)), collapse = ", "),
+                ". See availableRegionLists().",
+                call. = FALSE
+            )
+        }
 
-    if (nrow(pickedList) == 0) {
-      stop("No ", type, " is shipped for the genome '", genomeName, "' and the assay '", assayName,
-           "'. Available for this genome: ", paste(sort(unique(genomeIndex$assay)), collapse = ", "),
-           ". See availableRegionLists().", call. = FALSE)
-    }
+        # A genome can carry several lists of one kind, in which case the source tells them apart
+        if (!is.null(source)) {
+            sourceName <- tolower(source[1])
+            pickedList <- dplyr::filter(pickedList, tolower(.data$source) == sourceName)
 
-    # A genome can carry several lists of one kind, in which case the source tells them apart
-    if (!is.null(source)) {
-      sourceName <- tolower(source[1])
-      pickedList <- dplyr::filter(pickedList, tolower(.data$source) == sourceName)
+            if (nrow(pickedList) == 0) {
+                stop("No ", type, " of '", source[1], "' is shipped for the genome '", genomeName, "'. Available: ",
+                    paste(sort(unique(genomeIndex$source)), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+        }
 
-      if (nrow(pickedList) == 0) {
-        stop("No ", type, " of '", source[1], "' is shipped for the genome '", genomeName, "'. Available: ",
-             paste(sort(unique(genomeIndex$source)), collapse = ", "), ".", call. = FALSE)
-      }
-    }
+        if (nrow(pickedList) > 1) {
+            stop("Several ", type, "s match the genome '", genomeName, "' and the assay '", assayName,
+                "'. Name one through 'source': ", paste(sort(unique(pickedList$source)), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (nrow(pickedList) > 1) {
-      stop("Several ", type, "s match the genome '", genomeName, "' and the assay '", assayName,
-           "'. Name one through 'source': ", paste(sort(unique(pickedList$source)), collapse = ", "), ".", call. = FALSE)
-    }
+        #-------------------------------#
+        # Read the file                 #
+        #-------------------------------#
+        listRanges <- .readRegionFile(
+            filePath = system.file("extdata", "regionLists", pickedList$file, package = "RegionSetDE"),
+            header = FALSE,
+            asGRanges = TRUE
+        )
 
-    #-------------------------------#
-    # Read the file                 #
-    #-------------------------------#
-    listRanges <- .readRegionFile(filePath = system.file("extdata", "regionLists", pickedList$file, package = "RegionSetDE"),
-                                  header = FALSE,
-                                  asGRanges = TRUE)
+        # The fourth column of these files holds the kind of region, which is worth keeping under a readable name
+        columnNames <- colnames(S4Vectors::mcols(listRanges))
+        columnNames[columnNames == "V4"] <- "name"
+        colnames(S4Vectors::mcols(listRanges)) <- columnNames
 
-    # The fourth column of these files holds the kind of region, which is worth keeping under a readable name
-    columnNames <- colnames(S4Vectors::mcols(listRanges))
-    columnNames[columnNames == "V4"] <- "name"
-    colnames(S4Vectors::mcols(listRanges)) <- columnNames
+        S4Vectors::mcols(listRanges) <- S4Vectors::mcols(listRanges)[, intersect("name", columnNames), drop = FALSE]
 
-    S4Vectors::mcols(listRanges) <- S4Vectors::mcols(listRanges)[, intersect("name", columnNames), drop = FALSE]
+        if (!is.null(seqlevelsStyle)) {
+            listRanges <- .styleSeqlevels(x = listRanges, seqlevelsStyle = seqlevelsStyle)
+        }
 
-    if (!is.null(seqlevelsStyle)) {
-      listRanges <- .styleSeqlevels(x = listRanges, seqlevelsStyle = seqlevelsStyle)
-    }
+        GenomeInfoDb::genome(listRanges) <- genomeName
 
-    GenomeInfoDb::genome(listRanges) <- genomeName
+        S4Vectors::metadata(listRanges) <- list(
+            type = type,
+            genome = genomeName,
+            assay = assayName,
+            source = pickedList$source,
+            version = pickedList$version,
+            reference = pickedList$reference
+        )
 
-    S4Vectors::metadata(listRanges) <- list(type = type,
-                                            genome = genomeName,
-                                            assay = assayName,
-                                            source = pickedList$source,
-                                            version = pickedList$version,
-                                            reference = pickedList$reference)
+        if (isTRUE(verbose)) {
+            message(
+                "The ", pickedList$source, " ", type, " ", pickedList$version, " for ", genomeName,
+                ": ", length(listRanges), " regions covering ",
+                format(round(sum(as.numeric(BiocGenerics::width(listRanges))) / 1e6, 1), nsmall = 1), " Mb."
+            )
+        }
 
-    if (isTRUE(verbose)) {
-      message("The ", pickedList$source, " ", type, " ", pickedList$version, " for ", genomeName,
-              ": ", length(listRanges), " regions covering ",
-              format(round(sum(as.numeric(BiocGenerics::width(listRanges))) / 1e6, 1), nsmall = 1), " Mb.")
-    }
-
-    return(listRanges)
-  } # END function
-
-
+        return(listRanges)
+    } # END function
 
 
 #' @title .styleSeqlevels
@@ -345,37 +359,45 @@ availableRegionLists <-
 #' @keywords internal
 
 .styleSeqlevels <-
-  function(x,
-           seqlevelsStyle = "UCSC") {
+    function(x,
+             seqlevelsStyle = "UCSC") {
+        seqlevelsStyle <- unname(c("ucsc" = "UCSC", "ensembl" = "Ensembl", "ncbi" = "NCBI")[tolower(seqlevelsStyle[1])])
 
-    seqlevelsStyle <- unname(c("ucsc" = "UCSC", "ensembl" = "Ensembl", "ncbi" = "NCBI")[tolower(seqlevelsStyle[1])])
-
-    if (is.na(seqlevelsStyle)) {
-      stop("The 'seqlevelsStyle' parameter must be one among 'UCSC', 'Ensembl' or 'NCBI'.", call. = FALSE)
-    }
-
-    # Scaffolds and custom contigs make the conversion of GenomeInfoDb fail, there only the prefix is edited
-    manualConversion <-
-      function(gr) {
-        newLevels <- GenomeInfoDb::seqlevels(gr)
-
-        if (seqlevelsStyle == "UCSC") {
-          newLevels <- ifelse(grepl("^chr", newLevels), newLevels, paste0("chr", newLevels))
-          newLevels <- gsub("^chrMT$", "chrM", newLevels)
-        } else {
-          newLevels <- gsub("^chr", "", newLevels)
-          newLevels <- gsub("^M$", "MT", newLevels)
+        if (is.na(seqlevelsStyle)) {
+            stop("The 'seqlevelsStyle' parameter must be one among 'UCSC', 'Ensembl' or 'NCBI'.", call. = FALSE)
         }
 
-        if (any(duplicated(newLevels))) {
-          stop("The chromosome names could not be converted to the requested style without collisions.", call. = FALSE)
-        }
+        # Scaffolds and custom contigs make the conversion of GenomeInfoDb fail, there only the prefix is edited
+        manualConversion <-
+            function(gr) {
+                newLevels <- GenomeInfoDb::seqlevels(gr)
 
-        GenomeInfoDb::seqlevels(gr) <- newLevels
-        return(gr)
-      }
+                if (seqlevelsStyle == "UCSC") {
+                    newLevels <- ifelse(grepl("^chr", newLevels), newLevels, paste0("chr", newLevels))
+                    newLevels <- gsub("^chrMT$", "chrM", newLevels)
+                } else {
+                    newLevels <- gsub("^chr", "", newLevels)
+                    newLevels <- gsub("^M$", "MT", newLevels)
+                }
 
-    return(tryCatch(expr = {GenomeInfoDb::seqlevelsStyle(x) <- seqlevelsStyle; x},
-                    error = function(e) {manualConversion(x)},
-                    warning = function(w) {manualConversion(x)}))
-  } # END function
+                if (any(duplicated(newLevels))) {
+                    stop("The chromosome names could not be converted to the requested style without collisions.", call. = FALSE)
+                }
+
+                GenomeInfoDb::seqlevels(gr) <- newLevels
+                return(gr)
+            }
+
+        return(tryCatch(
+            expr = {
+                GenomeInfoDb::seqlevelsStyle(x) <- seqlevelsStyle
+                x
+            },
+            error = function(e) {
+                manualConversion(x)
+            },
+            warning = function(w) {
+                manualConversion(x)
+            }
+        ))
+    } # END function

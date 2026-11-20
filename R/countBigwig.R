@@ -18,7 +18,7 @@
 #' @param blacklist Regions of the assembly that must be dropped before the signal is read, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}. Default: \code{NULL}.
 #' @param countLike Logical value with which you assert that the bigWig holds count-like values, meaning raw, unnormalised coverage that a count model may legitimately be applied to. Default: \code{FALSE}.
 #' @param roundValues Logical value indicating whether the summarised values must be rounded to integers. Rounding is a formatting step and does not turn coverage into counts. Default: \code{FALSE}.
-#' @param nThreads Number of threads used to process the files in parallel. Default: \code{1}.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are processed side by side. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The \code{signal.type} entry of the metadata is set to \code{"bigwig"} and \code{count.like} to whatever was declared through \code{countLike}, which is what \code{\link{fitRegions}} reads to decide which engines it will run.
@@ -40,15 +40,16 @@
 #' bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
 #'
 #' if (file.exists(bigwigFile) & .Platform$OS.type != "windows") {
-#'   bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-#'   regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
+#'     bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+#'     regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
 #'
-#'   signal <- countBigwig(regions,
-#'                         bigwigFiles = bigwigFile,
-#'                         sampleNames = "example",
-#'                         summaryFunction = "mean",
-#'                         verbose = FALSE)
-#'   SummarizedExperiment::assay(signal)
+#'     signal <- countBigwig(regions,
+#'         bigwigFiles = bigwigFile,
+#'         sampleNames = "example",
+#'         summaryFunction = "mean",
+#'         verbose = FALSE
+#'     )
+#'     SummarizedExperiment::assay(signal)
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -65,182 +66,279 @@
 #' @export countBigwig
 
 countBigwig <-
-  function(regionSet,
-           bigwigFiles = NULL,
-           sampleSheet = NULL,
-           sampleNames = NULL,
-           sampleMetadata = NULL,
-           tileWidth = NULL,
-           keepMetadata = TRUE,
-           regionId = NULL,
-           partialTiles = TRUE,
-           summaryFunction = "sum",
-           missingAsZero = TRUE,
-           blacklist = NULL,
-           countLike = FALSE,
-           roundValues = FALSE,
-           nThreads = 1,
-           verbose = TRUE) {
+    function(regionSet,
+             bigwigFiles = NULL,
+             sampleSheet = NULL,
+             sampleNames = NULL,
+             sampleMetadata = NULL,
+             tileWidth = NULL,
+             keepMetadata = TRUE,
+             regionId = NULL,
+             partialTiles = TRUE,
+             summaryFunction = "sum",
+             missingAsZero = TRUE,
+             blacklist = NULL,
+             countLike = FALSE,
+             roundValues = FALSE,
+             BPPARAM = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkCountBigwigArguments(
+            regionSet = regionSet,
+            bigwigFiles = bigwigFiles,
+            sampleSheet = sampleSheet,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            summaryFunction = summaryFunction,
+            countLike = countLike,
+            roundValues = roundValues,
+            BPPARAM = BPPARAM,
+            verbose = verbose
+        )
+        bigwigFiles <- checkedArguments$bigwigFiles
+        parallelParam <- checkedArguments$parallelParam
+        regionSet <- checkedArguments$regionSet
+        sampleMetadata <- checkedArguments$sampleMetadata
+        sampleNames <- checkedArguments$sampleNames
+        summaryFunction <- checkedArguments$summaryFunction
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
-    regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
+        #---------------------#
+        # Samples and regions #
+        #---------------------#
+        sampleTable <- .buildSampleTable(
+            files = bigwigFiles,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            fileColumn = "bigwig.file",
+            extensionPattern = "\\.(bw|bigwig|bigWig)$"
+        )
 
-    # A sample sheet brings the files, the names and the annotation in one go
-    sheetInput <- .sheetCountingInput(regionSet = regionSet,
-                                      sampleSheet = sampleSheet,
-                                      files = bigwigFiles,
-                                      sampleNames = sampleNames,
-                                      sampleMetadata = sampleMetadata,
-                                      fileField = "bigwig",
-                                      verbose = verbose)
+        # The regions lying on the blacklist leave before the signal is read
+        listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = NULL, verbose = verbose)
+        regionSet <- listedRegions$regionSet
 
-    bigwigFiles <- sheetInput$files
-    sampleNames <- sheetInput$sampleNames
-    sampleMetadata <- sheetInput$sampleMetadata
+        allRegions <- .flattenRegionSets(
+            regionSet = regionSet,
+            tileWidth = tileWidth,
+            keepMetadata = keepMetadata,
+            regionId = regionId,
+            partialTiles = partialTiles,
+            verbose = verbose
+        )
 
-    if (!is.character(bigwigFiles) | length(bigwigFiles) == 0) {
-      stop("The 'bigwigFiles' parameter must be a character vector with at least one bigWig file.", call. = FALSE)
-    }
+        # Reading the same interval once per set would multiply the query time by the number of sets
+        regionKey <- paste0(
+            as.character(GenomeInfoDb::seqnames(allRegions)), ":",
+            BiocGenerics::start(allRegions), "-",
+            BiocGenerics::end(allRegions), ":",
+            as.character(BiocGenerics::strand(allRegions))
+        )
 
-    missingFiles <- bigwigFiles[!file.exists(bigwigFiles)]
-    if (length(missingFiles) > 0) {
-      stop("The following bigWig files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
-    }
+        uniqueRegions <- allRegions[!duplicated(regionKey)]
+        expansionIndex <- match(regionKey, regionKey[!duplicated(regionKey)])
+        uniqueWidths <- BiocGenerics::width(uniqueRegions)
 
-    summaryFunction <- tolower(summaryFunction[1])
-    if (!(summaryFunction %in% c("sum", "mean", "max", "min"))) {
-      stop("The 'summaryFunction' parameter must be one among 'sum', 'mean', 'max' or 'min'.", call. = FALSE)
-    }
+        # The query must speak the language of the file, and the files do not always agree with each other,
+        # so the regions are renamed for one file at a time. The returned object keeps the style of the region sets
+        fileRegionList <- lapply(
+            seq_along(bigwigFiles),
+            function(fileIndex) {
+                .matchSeqlevels(
+                    x = uniqueRegions,
+                    targetSeqlevels = GenomeInfoDb::seqlevels(rtracklayer::BigWigFile(bigwigFiles[fileIndex])),
+                    fileName = bigwigFiles[fileIndex],
+                    verbose = isTRUE(verbose) & fileIndex == 1
+                )
+            }
+        )
 
-    if (!is.logical(countLike) | length(countLike) != 1 | is.na(countLike)) {
-      stop("The 'countLike' parameter must be a single logical value.", call. = FALSE)
-    }
+        fileStyles <- vapply(fileRegionList, function(fileRegions) {
+            paste(GenomeInfoDb::seqlevels(fileRegions), collapse = " ")
+        }, character(1))
 
-    # Rounding is what usually gets coverage into a count model unnoticed, so it is said out loud here
-    if (isTRUE(roundValues) & !isTRUE(countLike)) {
-      warning("The values are being rounded to integers, which does not make them counts. ",
-              "Fit them with engine = 'limma', or declare 'countLike = TRUE' if the files hold raw coverage.", call. = FALSE)
-    }
+        if (isTRUE(verbose) & length(unique(fileStyles)) > 1) {
+            message("The bigWig files do not name their chromosomes alike, each of them is read under its own names.")
+        }
 
-    parallelParam <- .makeParallelParam(nThreads = nThreads)
+        #----------------#
+        # Read the files #
+        #----------------#
+        if (isTRUE(verbose)) {
+            message(
+                "Extracting the signal of ", length(bigwigFiles), " bigWig files over ", length(uniqueRegions), " unique regions (",
+                length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."
+            )
+        }
 
-    #---------------------#
-    # Samples and regions #
-    #---------------------#
-    sampleTable <- .buildSampleTable(files = bigwigFiles,
-                                     sampleNames = sampleNames,
-                                     sampleMetadata = sampleMetadata,
-                                     fileColumn = "bigwig.file",
-                                     extensionPattern = "\\.(bw|bigwig|bigWig)$")
+        signalList <-
+            BiocParallel::bplapply(
+                X = seq_along(bigwigFiles),
+                BPPARAM = parallelParam,
+                FUN = function(fileIndex) {
+                    baseValues <- rtracklayer::import(
+                        con = rtracklayer::BigWigFile(bigwigFiles[fileIndex]),
+                        which = fileRegionList[[fileIndex]],
+                        as = "NumericList"
+                    )
 
-    # The regions lying on the blacklist leave before the signal is read
-    listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = NULL, verbose = verbose)
-    regionSet <- listedRegions$regionSet
+                    # Uncovered bases are missing in the file, either they count as zeros or they leave the region shorter
+                    regionSignal <-
+                        switch(summaryFunction,
+                            "sum" = sum(baseValues, na.rm = TRUE),
+                            "mean" = if (isTRUE(missingAsZero)) {
+                                sum(baseValues, na.rm = TRUE) / uniqueWidths
+                            } else {
+                                mean(baseValues, na.rm = TRUE)
+                            },
+                            "max" = max(baseValues, na.rm = TRUE),
+                            "min" = min(baseValues, na.rm = TRUE)
+                        )
 
-    allRegions <- .flattenRegionSets(regionSet = regionSet,
-                                     tileWidth = tileWidth,
-                                     keepMetadata = keepMetadata,
-                                     regionId = regionId,
-                                     partialTiles = partialTiles,
-                                     verbose = verbose)
+                    regionSignal <- as.numeric(regionSignal)
+                    regionSignal[!is.finite(regionSignal)] <- 0
+                    return(regionSignal)
+                }
+            )
 
-    # Reading the same interval once per set would multiply the query time by the number of sets
-    regionKey <- paste0(as.character(GenomeInfoDb::seqnames(allRegions)), ":",
-                        BiocGenerics::start(allRegions), "-",
-                        BiocGenerics::end(allRegions), ":",
-                        as.character(BiocGenerics::strand(allRegions)))
+        signalMatrix <- do.call(what = cbind, args = signalList)
 
-    uniqueRegions <- allRegions[!duplicated(regionKey)]
-    expansionIndex <- match(regionKey, regionKey[!duplicated(regionKey)])
-    uniqueWidths <- BiocGenerics::width(uniqueRegions)
+        #---------------------#
+        # Assemble the object #
+        #---------------------#
+        # Only a formatting step: it is here for the engines that insist on integers, and it changes nothing
+        # about what the values are
+        if (isTRUE(roundValues)) {
+            signalMatrix <- round(signalMatrix)
+        }
 
-    # The query must speak the language of the file, and the files do not always agree with each other,
-    # so the regions are renamed for one file at a time. The returned object keeps the style of the region sets
-    fileRegionList <- lapply(seq_along(bigwigFiles),
-                             function(fileIndex) {
-                               .matchSeqlevels(x = uniqueRegions,
-                                               targetSeqlevels = GenomeInfoDb::seqlevels(rtracklayer::BigWigFile(bigwigFiles[fileIndex])),
-                                               fileName = bigwigFiles[fileIndex],
-                                               verbose = isTRUE(verbose) & fileIndex == 1)
-                             })
+        sampleTable <- dplyr::mutate(sampleTable,
+            library.size = NA_real_,
+            total.signal = as.numeric(colSums(signalMatrix))
+        )
 
-    fileStyles <- vapply(fileRegionList, function(fileRegions) {paste(GenomeInfoDb::seqlevels(fileRegions), collapse = " ")}, character(1))
+        signalMatrix <- signalMatrix[expansionIndex, , drop = FALSE]
 
-    if (isTRUE(verbose) & length(unique(fileStyles)) > 1) {
-      message("The bigWig files do not name their chromosomes alike, each of them is read under its own names.")
-    }
+        newParameters <- list(countBigwig = list(
+            bigwigFiles = bigwigFiles,
+            tileWidth = tileWidth,
+            partialTiles = partialTiles,
+            summaryFunction = summaryFunction,
+            missingAsZero = missingAsZero,
+            countLike = countLike,
+            roundValues = roundValues
+        ))
 
-    #----------------#
-    # Read the files #
-    #----------------#
-    if (isTRUE(verbose)) {
-      message("Extracting the signal of ", length(bigwigFiles), " bigWig files over ", length(uniqueRegions), " unique regions (",
-              length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)...")
-    }
+        counts <- .newCountsObject(
+            countMatrix = signalMatrix,
+            regions = allRegions,
+            sampleTable = sampleTable,
+            provenance = listedRegions$provenance,
+            countingLevel = if (is.null(tileWidth)) {
+                "region"
+            } else {
+                "tile"
+            },
+            newParameters = newParameters,
+            metadataList = list(signal.type = "bigwig", count.like = countLike)
+        )
 
-    signalList <-
-      BiocParallel::bplapply(X = seq_along(bigwigFiles),
-                             BPPARAM = parallelParam,
-                             FUN = function(fileIndex) {
-                               baseValues <- rtracklayer::import(con = rtracklayer::BigWigFile(bigwigFiles[fileIndex]),
-                                                                 which = fileRegionList[[fileIndex]],
-                                                                 as = "NumericList")
+        if (isTRUE(verbose)) {
+            message("Done. The library sizes are unknown for bigWig input, supply the normalisation factors at the normalisation step.")
+            if (!isTRUE(countLike)) {
+                message("These values are coverage rather than counts: fit them with engine = 'limma'.")
+            }
+        }
 
-                               # Uncovered bases are missing in the file, either they count as zeros or they leave the region shorter
-                               regionSignal <-
-                                 switch(summaryFunction,
-                                        "sum" = sum(baseValues, na.rm = TRUE),
-                                        "mean" = if (isTRUE(missingAsZero)) {sum(baseValues, na.rm = TRUE) / uniqueWidths} else {mean(baseValues, na.rm = TRUE)},
-                                        "max" = max(baseValues, na.rm = TRUE),
-                                        "min" = min(baseValues, na.rm = TRUE))
+        return(counts)
+    } # END function
 
-                               regionSignal <- as.numeric(regionSignal)
-                               regionSignal[!is.finite(regionSignal)] <- 0
-                               return(regionSignal)
-                             })
 
-    signalMatrix <- do.call(what = cbind, args = signalList)
+#' @title .checkCountBigwigArguments
+#'
+#' @description Checks the arguments of \code{\link{countBigwig}} and brings them to the form the rest of the function works with.
+#'
+#' @param regionSet See \code{\link{countBigwig}}.
+#' @param bigwigFiles See \code{\link{countBigwig}}.
+#' @param sampleSheet See \code{\link{countBigwig}}.
+#' @param sampleNames See \code{\link{countBigwig}}.
+#' @param sampleMetadata See \code{\link{countBigwig}}.
+#' @param summaryFunction See \code{\link{countBigwig}}.
+#' @param countLike See \code{\link{countBigwig}}.
+#' @param roundValues See \code{\link{countBigwig}}.
+#' @param BPPARAM See \code{\link{countBigwig}}.
+#' @param verbose See \code{\link{countBigwig}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{bigwigFiles}, \code{parallelParam}, \code{regionSet}, \code{sampleMetadata}, \code{sampleNames}, \code{summaryFunction}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
 
-    #---------------------#
-    # Assemble the object #
-    #---------------------#
-    # Only a formatting step: it is here for the engines that insist on integers, and it changes nothing
-    # about what the values are
-    if (isTRUE(roundValues)) {
-      signalMatrix <- round(signalMatrix)
-    }
+.checkCountBigwigArguments <-
+    function(regionSet,
+             bigwigFiles,
+             sampleSheet,
+             sampleNames,
+             sampleMetadata,
+             summaryFunction,
+             countLike,
+             roundValues,
+             BPPARAM,
+             verbose) {
+        # A single GRanges becomes a RegionSetDE with one set, the object everything below is written for
+        regionSet <- .asRegionSet(regionSet = regionSet, verbose = verbose)
 
-    sampleTable <- dplyr::mutate(sampleTable,
-                                 library.size = NA_real_,
-                                 total.signal = as.numeric(colSums(signalMatrix)))
+        # A sample sheet brings the files, the names and the annotation in one go
+        sheetInput <- .sheetCountingInput(
+            regionSet = regionSet,
+            sampleSheet = sampleSheet,
+            files = bigwigFiles,
+            sampleNames = sampleNames,
+            sampleMetadata = sampleMetadata,
+            fileField = "bigwig",
+            verbose = verbose
+        )
 
-    signalMatrix <- signalMatrix[expansionIndex, , drop = FALSE]
+        bigwigFiles <- sheetInput$files
+        sampleNames <- sheetInput$sampleNames
+        sampleMetadata <- sheetInput$sampleMetadata
 
-    newParameters <- list(countBigwig = list(bigwigFiles = bigwigFiles,
-                                             tileWidth = tileWidth,
-                                             partialTiles = partialTiles,
-                                             summaryFunction = summaryFunction,
-                                             missingAsZero = missingAsZero,
-                                             countLike = countLike,
-                                             roundValues = roundValues))
+        if (!is.character(bigwigFiles) | length(bigwigFiles) == 0) {
+            stop("The 'bigwigFiles' parameter must be a character vector with at least one bigWig file.", call. = FALSE)
+        }
 
-    counts <- .newCountsObject(countMatrix = signalMatrix,
-                               regions = allRegions,
-                               sampleTable = sampleTable,
-                               provenance = listedRegions$provenance,
-                               countingLevel = if (is.null(tileWidth)) {"region"} else {"tile"},
-                               newParameters = newParameters,
-                               metadataList = list(signal.type = "bigwig", count.like = countLike))
+        missingFiles <- bigwigFiles[!file.exists(bigwigFiles)]
+        if (length(missingFiles) > 0) {
+            stop("The following bigWig files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+        }
 
-    if (isTRUE(verbose)) {
-      message("Done. The library sizes are unknown for bigWig input, supply the normalisation factors at the normalisation step.")
-      if (!isTRUE(countLike)) {
-        message("These values are coverage rather than counts: fit them with engine = 'limma'.")
-      }
-    }
+        summaryFunction <- tolower(summaryFunction[1])
+        if (!(summaryFunction %in% c("sum", "mean", "max", "min"))) {
+            stop("The 'summaryFunction' parameter must be one among 'sum', 'mean', 'max' or 'min'.", call. = FALSE)
+        }
 
-    return(counts)
-  } # END function
+        if (!is.logical(countLike) | length(countLike) != 1 | is.na(countLike)) {
+            stop("The 'countLike' parameter must be a single logical value.", call. = FALSE)
+        }
+
+        # Rounding is what usually gets coverage into a count model unnoticed, so it is said out loud here
+        if (isTRUE(roundValues) & !isTRUE(countLike)) {
+            warning("The values are being rounded to integers, which does not make them counts. ",
+                "Fit them with engine = 'limma', or declare 'countLike = TRUE' if the files hold raw coverage.",
+                call. = FALSE
+            )
+        }
+
+        parallelParam <- .resolveBPPARAM(BPPARAM = BPPARAM)
+
+        return(list(
+            bigwigFiles = bigwigFiles,
+            parallelParam = parallelParam,
+            regionSet = regionSet,
+            sampleMetadata = sampleMetadata,
+            sampleNames = sampleNames,
+            summaryFunction = summaryFunction
+        ))
+    } # END function

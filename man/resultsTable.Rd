@@ -42,7 +42,6 @@ head(resultTable)
 
 table(resultTable$region.set, resultTable$diff.status)
 
-
 }
 \author{
 Sebastian Gregoricchio

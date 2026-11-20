@@ -30,15 +30,18 @@
 #' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
 #' # The background bins cover the genome and carry no strain effect
-#' nullDispersion <- estimateNullDispersion(counts, source = "background",
-#'                                          verbose = FALSE)
+#' nullDispersion <- estimateNullDispersion(counts,
+#'     source = "background",
+#'     verbose = FALSE
+#' )
 #' nullDispersion
 #'
 #' # Any set believed to be invariant works the same way, as long as it has signal
 #' fromRegions <- estimateNullDispersion(counts,
-#'                                       source = "regionSet",
-#'                                       regionSets = "geneBody",
-#'                                       verbose = FALSE)
+#'     source = "regionSet",
+#'     regionSets = "geneBody",
+#'     verbose = FALSE
+#' )
 #' fromRegions
 #'
 #' @author Sebastian Gregoricchio
@@ -53,118 +56,138 @@
 #' @export estimateNullDispersion
 
 estimateNullDispersion <-
-  function(counts,
-           source = "background",
-           regionSets = NULL,
-           index = NULL,
-           samples = NULL,
-           minCount = 10,
-           maxRows = 50000,
-           holdout = 0.5,
-           subset = NULL,
-           verbose = TRUE) {
+    function(counts,
+             source = "background",
+             regionSets = NULL,
+             index = NULL,
+             samples = NULL,
+             minCount = 10,
+             maxRows = 50000,
+             holdout = 0.5,
+             subset = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        if (!(source %in% c("background", "regionSet", "supplied"))) {
+            stop("The 'source' parameter must be one of 'background', 'regionSet', 'supplied'.", call. = FALSE)
+        }
 
-    if (!(source %in% c("background", "regionSet", "supplied"))) {
-      stop("The 'source' parameter must be one of 'background', 'regionSet', 'supplied'.", call. = FALSE)
-    }
+        if (!is.null(samples)) {
+            counts <- selectSamples(counts = counts, samples = samples, dropNormalization = FALSE, verbose = FALSE)
+        }
 
-    if (!is.null(samples)) {
-      counts <- selectSamples(counts = counts, samples = samples, dropNormalization = FALSE, verbose = FALSE)
-    }
+        if (ncol(counts) < 2) {
+            stop("At least two samples are needed to measure the variation between them.", call. = FALSE)
+        }
 
-    if (ncol(counts) < 2) {
-      stop("At least two samples are needed to measure the variation between them.", call. = FALSE)
-    }
+        if (holdout < 0 | holdout >= 1) {
+            stop("The 'holdout' parameter must lie between 0 and 1, and leave something to estimate from.", call. = FALSE)
+        }
 
-    if (holdout < 0 | holdout >= 1) {
-      stop("The 'holdout' parameter must lie between 0 and 1, and leave something to estimate from.", call. = FALSE)
-    }
+        nullObject <- .nullMatrix(
+            counts = counts, source = source, regionSets = regionSets,
+            index = index, subset = subset, minCount = minCount, maxRows = maxRows
+        )
 
-    nullObject <- .nullMatrix(counts = counts, source = source, regionSets = regionSets,
-                              index = index, subset = subset, minCount = minCount, maxRows = maxRows)
+        if (length(nullObject$kept.rows) < 100) {
+            stop("Only ", length(nullObject$kept.rows), " null rows reach ", minCount,
+                " counts, which is too few to estimate a dispersion from.",
+                call. = FALSE
+            )
+        }
 
-    if (length(nullObject$kept.rows) < 100) {
-      stop("Only ", length(nullObject$kept.rows), " null rows reach ", minCount,
-           " counts, which is too few to estimate a dispersion from.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Split off the check rows      #
+        #-------------------------------#
+        # Checking a dispersion against the rows it was fitted to would be calibrated by construction
+        estimationRows <- seq_along(nullObject$kept.rows)
+        holdoutIndex <- integer(0)
+        holdoutType <- "none"
 
-    #-------------------------------#
-    # Split off the check rows      #
-    #-------------------------------#
-    # Checking a dispersion against the rows it was fitted to would be calibrated by construction
-    estimationRows <- seq_along(nullObject$kept.rows)
-    holdoutIndex <- integer(0)
-    holdoutType <- "none"
+        storedHoldout <- if (source == "background") {
+            S4Vectors::metadata(counts)$background.holdout
+        } else {
+            NULL
+        }
 
-    storedHoldout <- if (source == "background") {S4Vectors::metadata(counts)$background.holdout} else {NULL}
+        if (!is.null(storedHoldout) & length(storedHoldout) > 0) {
+            # normalizeCounts already kept these bins out of the factors, splitting again would undo that
+            holdoutIndex <- intersect(nullObject$kept.rows, as.integer(storedHoldout))
+            estimationRows <- which(!(nullObject$kept.rows %in% holdoutIndex))
+            holdoutType <- "normalization and dispersion"
 
-    if (!is.null(storedHoldout) & length(storedHoldout) > 0) {
-      # normalizeCounts already kept these bins out of the factors, splitting again would undo that
-      holdoutIndex <- intersect(nullObject$kept.rows, as.integer(storedHoldout))
-      estimationRows <- which(!(nullObject$kept.rows %in% holdoutIndex))
-      holdoutType <- "normalization and dispersion"
+            if (length(estimationRows) < 100) {
+                stop("Only ", length(estimationRows), " null rows are left outside the normalisation holdout, ",
+                    "lower 'backgroundHoldout' in normalizeCounts.",
+                    call. = FALSE
+                )
+            }
+        } else if (holdout > 0) {
+            estimationRows <- .thinIndex(
+                n = length(nullObject$kept.rows),
+                maxPoints = ceiling(length(nullObject$kept.rows) * (1 - holdout))
+            )
+            holdoutIndex <- nullObject$kept.rows[setdiff(seq_along(nullObject$kept.rows), estimationRows)]
+            holdoutType <- "dispersion"
+        }
 
-      if (length(estimationRows) < 100) {
-        stop("Only ", length(estimationRows), " null rows are left outside the normalisation holdout, ",
-             "lower 'backgroundHoldout' in normalizeCounts.", call. = FALSE)
-      }
+        countMatrix <- nullObject$counts[estimationRows, , drop = FALSE]
+        offsetMatrix <- nullObject$offset[estimationRows, , drop = FALSE]
 
-    } else if (holdout > 0) {
-      estimationRows <- .thinIndex(n = length(nullObject$kept.rows),
-                                   maxPoints = ceiling(length(nullObject$kept.rows) * (1 - holdout)))
-      holdoutIndex <- nullObject$kept.rows[setdiff(seq_along(nullObject$kept.rows), estimationRows)]
-      holdoutType <- "dispersion"
-    }
+        #-------------------------------#
+        # Variation under the null      #
+        #-------------------------------#
+        dgeList <- edgeR::DGEList(counts = countMatrix, lib.size = nullObject$library.size)
+        dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
 
-    countMatrix <- nullObject$counts[estimationRows, , drop = FALSE]
-    offsetMatrix <- nullObject$offset[estimationRows, , drop = FALSE]
+        # An intercept-only design leaves the whole between-sample variation in the residual, which is the point
+        nullDesign <- matrix(data = 1, nrow = ncol(countMatrix), ncol = 1, dimnames = list(colnames(countMatrix), "(Intercept)"))
 
-    #-------------------------------#
-    # Variation under the null      #
-    #-------------------------------#
-    dgeList <- edgeR::DGEList(counts = countMatrix, lib.size = nullObject$library.size)
-    dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
+        commonDispersion <- edgeR::estimateGLMCommonDisp(y = dgeList, design = nullDesign)$common.dispersion
 
-    # An intercept-only design leaves the whole between-sample variation in the residual, which is the point
-    nullDesign <- matrix(data = 1, nrow = ncol(countMatrix), ncol = 1, dimnames = list(colnames(countMatrix), "(Intercept)"))
+        if (!is.finite(commonDispersion) | commonDispersion <= 0) {
+            stop("The dispersion came out zero or undefined, which usually means the null rows carry no variation at all.", call. = FALSE)
+        }
 
-    commonDispersion <- edgeR::estimateGLMCommonDisp(y = dgeList, design = nullDesign)$common.dispersion
+        if (isTRUE(verbose)) {
+            message(
+                "Dispersion estimated on ", nrow(countMatrix), " ", source, " rows over ", ncol(countMatrix),
+                " samples: ", signif(commonDispersion, 3), " (BCV ", signif(sqrt(commonDispersion), 3), ")",
+                if (length(holdoutIndex) > 0) {
+                    c(", ", length(holdoutIndex), " rows held out for the check")
+                } else {
+                    ""
+                }, "."
+            )
+            message(
+                "This is an assumption, not a replicate: it measures how these two libraries differ, not how two ",
+                "biological samples would. Run checkNullCalibration before reading the p-values."
+            )
 
-    if (!is.finite(commonDispersion) | commonDispersion <= 0) {
-      stop("The dispersion came out zero or undefined, which usually means the null rows carry no variation at all.", call. = FALSE)
-    }
+            if (holdoutType == "dispersion") {
+                message(
+                    "The held-out rows are holdouts of the dispersion alone: they were already used to estimate the ",
+                    "normalisation factors. Split them earlier with normalizeCounts(backgroundHoldout = ) for a check ",
+                    "that sits outside the whole chain."
+                )
+            }
+        }
 
-    if (isTRUE(verbose)) {
-      message("Dispersion estimated on ", nrow(countMatrix), " ", source, " rows over ", ncol(countMatrix),
-              " samples: ", signif(commonDispersion, 3), " (BCV ", signif(sqrt(commonDispersion), 3), ")",
-              if (length(holdoutIndex) > 0) {c(", ", length(holdoutIndex), " rows held out for the check")} else {""}, ".")
-      message("This is an assumption, not a replicate: it measures how these two libraries differ, not how two ",
-              "biological samples would. Run checkNullCalibration before reading the p-values.")
-
-      if (holdoutType == "dispersion") {
-        message("The held-out rows are holdouts of the dispersion alone: they were already used to estimate the ",
-                "normalisation factors. Split them earlier with normalizeCounts(backgroundHoldout = ) for a check ",
-                "that sits outside the whole chain.")
-      }
-    }
-
-    return(list(dispersion = commonDispersion,
-                bcv = sqrt(commonDispersion),
-                source = source,
-                n.rows = nrow(countMatrix),
-                holdout.index = holdoutIndex,
-                holdout.type = holdoutType,
-                samples = colnames(counts)))
-  } # END function
-
-
+        return(list(
+            dispersion = commonDispersion,
+            bcv = sqrt(commonDispersion),
+            source = source,
+            n.rows = nrow(countMatrix),
+            holdout.index = holdoutIndex,
+            holdout.type = holdoutType,
+            samples = colnames(counts)
+        ))
+    } # END function
 
 
 #' @title .nullMatrix
@@ -190,89 +213,88 @@ estimateNullDispersion <-
 #' @keywords internal
 
 .nullMatrix <-
-  function(counts,
-           source = "background",
-           regionSets = NULL,
-           index = NULL,
-           subset = NULL,
-           minCount = 10,
-           maxRows = 50000) {
+    function(counts,
+             source = "background",
+             regionSets = NULL,
+             index = NULL,
+             subset = NULL,
+             minCount = 10,
+             maxRows = 50000) {
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(as.matrix(SummarizedExperiment::assay(counts, 1)))
+        }
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(as.matrix(SummarizedExperiment::assay(counts, 1)))
-    }
+        #-------------------------------#
+        # The rows                      #
+        #-------------------------------#
+        if (source == "background") {
+            backgroundBins <- S4Vectors::metadata(counts)$background
 
-    #-------------------------------#
-    # The rows                      #
-    #-------------------------------#
-    if (source == "background") {
-      backgroundBins <- S4Vectors::metadata(counts)$background
+            if (is.null(backgroundBins)) {
+                stop("No background bin is stored in the object, run 'countBackground' first.", call. = FALSE)
+            }
+            countMatrix <- as.matrix(SummarizedExperiment::assay(backgroundBins, 1))
+        } else if (source == "regionSet") {
+            if (is.null(regionSets)) {
+                stop("The 'regionSet' source needs the names of the sets in 'regionSets'.", call. = FALSE)
+            }
 
-      if (is.null(backgroundBins)) {
-        stop("No background bin is stored in the object, run 'countBackground' first.", call. = FALSE)
-      }
-      countMatrix <- as.matrix(SummarizedExperiment::assay(backgroundBins, 1))
+            rowSets <- as.character(SummarizedExperiment::rowData(counts)$region.set)
+            absentSets <- setdiff(regionSets, unique(rowSets))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))[rowSets %in% regionSets, , drop = FALSE]
+        } else {
+            if (is.null(index)) {
+                stop("The 'supplied' source needs the row positions in 'index'.", call. = FALSE)
+            }
+            index <- as.integer(index)
+            if (any(is.na(index)) | any(index < 1) | any(index > nrow(counts))) {
+                stop("The 'index' parameter contains positions outside the range of the rows.", call. = FALSE)
+            }
+            countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))[index, , drop = FALSE]
+        }
 
-    } else if (source == "regionSet") {
-      if (is.null(regionSets)) {
-        stop("The 'regionSet' source needs the names of the sets in 'regionSets'.", call. = FALSE)
-      }
+        #-------------------------------#
+        # The offsets                   #
+        #-------------------------------#
+        # The null rows have to be normalised the way the regions are, or the estimate absorbs the depth differences
+        scalingFactors <- SummarizedExperiment::colData(counts)$scaling.factor
 
-      rowSets <- as.character(SummarizedExperiment::rowData(counts)$region.set)
-      absentSets <- setdiff(regionSets, unique(rowSets))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))[rowSets %in% regionSets, , drop = FALSE]
+        offsetMatrix <- if (is.null(scalingFactors) | all(is.na(scalingFactors))) {
+            matrix(data = rep(log(librarySizes), each = nrow(countMatrix)), nrow = nrow(countMatrix), ncol = ncol(countMatrix))
+        } else {
+            matrix(data = rep(log(scalingFactors), each = nrow(countMatrix)), nrow = nrow(countMatrix), ncol = ncol(countMatrix))
+        }
 
-    } else {
-      if (is.null(index)) {
-        stop("The 'supplied' source needs the row positions in 'index'.", call. = FALSE)
-      }
-      index <- as.integer(index)
-      if (any(is.na(index)) | any(index < 1) | any(index > nrow(counts))) {
-        stop("The 'index' parameter contains positions outside the range of the rows.", call. = FALSE)
-      }
-      countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))[index, , drop = FALSE]
-    }
+        dimnames(countMatrix) <- list(rownames(countMatrix), colnames(counts))
 
-    #-------------------------------#
-    # The offsets                   #
-    #-------------------------------#
-    # The null rows have to be normalised the way the regions are, or the estimate absorbs the depth differences
-    scalingFactors <- SummarizedExperiment::colData(counts)$scaling.factor
+        #-------------------------------#
+        # Restrict and filter           #
+        #-------------------------------#
+        if (!is.null(subset)) {
+            subset <- as.integer(subset)
+            if (any(is.na(subset)) | any(subset < 1) | any(subset > nrow(countMatrix))) {
+                stop("The 'subset' parameter contains positions outside the selected null rows.", call. = FALSE)
+            }
+            countMatrix <- countMatrix[subset, , drop = FALSE]
+            offsetMatrix <- offsetMatrix[subset, , drop = FALSE]
+        }
 
-    offsetMatrix <- if (is.null(scalingFactors) | all(is.na(scalingFactors))) {
-      matrix(data = rep(log(librarySizes), each = nrow(countMatrix)), nrow = nrow(countMatrix), ncol = ncol(countMatrix))
-    } else {
-      matrix(data = rep(log(scalingFactors), each = nrow(countMatrix)), nrow = nrow(countMatrix), ncol = ncol(countMatrix))
-    }
+        # A row seen a handful of times carries Poisson noise and nothing else, and it would drag the estimate up
+        rowAbundance <- edgeR::aveLogCPM(y = countMatrix, lib.size = librarySizes)
+        abundanceThreshold <- edgeR::aveLogCPM(y = minCount, lib.size = mean(librarySizes))
 
-    dimnames(countMatrix) <- list(rownames(countMatrix), colnames(counts))
+        keptRows <- which(rowAbundance >= abundanceThreshold)
+        keptRows <- keptRows[.thinIndex(n = length(keptRows), maxPoints = maxRows)]
 
-    #-------------------------------#
-    # Restrict and filter           #
-    #-------------------------------#
-    if (!is.null(subset)) {
-      subset <- as.integer(subset)
-      if (any(is.na(subset)) | any(subset < 1) | any(subset > nrow(countMatrix))) {
-        stop("The 'subset' parameter contains positions outside the selected null rows.", call. = FALSE)
-      }
-      countMatrix <- countMatrix[subset, , drop = FALSE]
-      offsetMatrix <- offsetMatrix[subset, , drop = FALSE]
-    }
-
-    # A row seen a handful of times carries Poisson noise and nothing else, and it would drag the estimate up
-    rowAbundance <- edgeR::aveLogCPM(y = countMatrix, lib.size = librarySizes)
-    abundanceThreshold <- edgeR::aveLogCPM(y = minCount, lib.size = mean(librarySizes))
-
-    keptRows <- which(rowAbundance >= abundanceThreshold)
-    keptRows <- keptRows[.thinIndex(n = length(keptRows), maxPoints = maxRows)]
-
-    return(list(counts = countMatrix[keptRows, , drop = FALSE],
-                offset = offsetMatrix[keptRows, , drop = FALSE],
-                abundance = rowAbundance[keptRows],
-                kept.rows = keptRows,
-                library.size = librarySizes))
-  } # END function
+        return(list(
+            counts = countMatrix[keptRows, , drop = FALSE],
+            offset = offsetMatrix[keptRows, , drop = FALSE],
+            abundance = rowAbundance[keptRows],
+            kept.rows = keptRows,
+            library.size = librarySizes
+        ))
+    } # END function

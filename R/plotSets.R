@@ -26,8 +26,10 @@
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
-#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-#'                              verbose = FALSE)
+#' setResults <- testRegionSets(fit,
+#'     contrast = c("condition", "SHR", "BN"),
+#'     verbose = FALSE
+#' )
 #'
 #' # One point per set, with its confidence interval
 #' plotSetEffect(setResults)
@@ -47,134 +49,173 @@
 #' @export plotSetEffect
 
 plotSetEffect <-
-  function(setResults,
-           value = "delta.log2FC",
-           contrast = NULL,
-           colourBy = "FDR",
-           FDR = NULL,
-           showN = TRUE,
-           orderBy = "effect",
-           colours = NULL,
-           pointSize = 2.5,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "right",
-           baseSize = 12) {
+    function(setResults,
+             value = "delta.log2FC",
+             contrast = NULL,
+             colourBy = "FDR",
+             FDR = NULL,
+             showN = TRUE,
+             orderBy = "effect",
+             colours = NULL,
+             pointSize = 2.5,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "right",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        setResults <- .pickResults(results = setResults, contrast = contrast)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    setResults <- .pickResults(results = setResults, contrast = contrast)
+        if (!methods::is(setResults, "RegionSetDE.setResults")) {
+            stop("The 'setResults' parameter must be a RegionSetDE.setResults object.", call. = FALSE)
+        }
 
-    if (!methods::is(setResults, "RegionSetDE.setResults")) {
-      stop("The 'setResults' parameter must be a RegionSetDE.setResults object.", call. = FALSE)
-    }
+        if (!(value %in% c("delta.log2FC", "mean.log2FC"))) {
+            stop("The 'value' parameter must be either 'delta.log2FC' or 'mean.log2FC'.", call. = FALSE)
+        }
 
-    if (!(value %in% c("delta.log2FC", "mean.log2FC"))) {
-      stop("The 'value' parameter must be either 'delta.log2FC' or 'mean.log2FC'.", call. = FALSE)
-    }
+        if (!(colourBy %in% c("FDR", "direction", "none"))) {
+            stop("The 'colourBy' parameter must be one of 'FDR', 'direction', 'none'.", call. = FALSE)
+        }
 
-    if (!(colourBy %in% c("FDR", "direction", "none"))) {
-      stop("The 'colourBy' parameter must be one of 'FDR', 'direction', 'none'.", call. = FALSE)
-    }
+        plotTable <- resultsTable(setResults)
+        FDRthreshold <- if (is.null(FDR)) {
+            thresholdInfo(setResults)$FDR
+        } else {
+            FDR
+        }
 
-    plotTable <- setResults@results
-    FDRthreshold <- if (is.null(FDR)) {setResults@thresholds$FDR} else {FDR}
+        #-------------------------------#
+        # Label of every row            #
+        #-------------------------------#
+        plotTable$set.label <- if (setTestType(setResults) == "setContrast") {
+            paste(plotTable$set.1, "vs", plotTable$set.2)
+        } else {
+            plotTable$region.set
+        }
 
-    #-------------------------------#
-    # Label of every row            #
-    #-------------------------------#
-    plotTable$set.label <- if (setResults@test == "setContrast") {
-      paste(plotTable$set.1, "vs", plotTable$set.2)
-    } else {
-      plotTable$region.set
-    }
+        plotTable$n.label <- if (setTestType(setResults) == "setContrast") {
+            paste0("n=", plotTable$n.regions.1, "/", plotTable$n.regions.2)
+        } else {
+            paste0("n=", plotTable$n.regions)
+        }
 
-    plotTable$n.label <- if (setResults@test == "setContrast") {
-      paste0("n=", plotTable$n.regions.1, "/", plotTable$n.regions.2)
-    } else {
-      paste0("n=", plotTable$n.regions)
-    }
+        #-------------------------------#
+        # The interval follows delta    #
+        #-------------------------------#
+        # The bounds were computed on the difference, drawing them around the self-contained mean would misplace them
+        plotTable <- dplyr::mutate(plotTable,
+            effect = .data[[value]],
+            lower = if (value == "delta.log2FC") {
+                .data$CI.lower
+            } else {
+                NA_real_
+            },
+            upper = if (value == "delta.log2FC") {
+                .data$CI.upper
+            } else {
+                NA_real_
+            }
+        )
 
-    #-------------------------------#
-    # The interval follows delta    #
-    #-------------------------------#
-    # The bounds were computed on the difference, drawing them around the self-contained mean would misplace them
-    plotTable <- dplyr::mutate(plotTable,
-                               effect = .data[[value]],
-                               lower = if (value == "delta.log2FC") {.data$CI.lower} else {NA_real_},
-                               upper = if (value == "delta.log2FC") {.data$CI.upper} else {NA_real_})
+        if (orderBy == "effect") {
+            plotTable$set.label <- stats::reorder(plotTable$set.label, plotTable$effect)
+        } else {
+            plotTable$set.label <- factor(plotTable$set.label, levels = sort(unique(as.character(plotTable$set.label)), decreasing = TRUE))
+        }
 
-    if (orderBy == "effect") {
-      plotTable$set.label <- stats::reorder(plotTable$set.label, plotTable$effect)
-    } else {
-      plotTable$set.label <- factor(plotTable$set.label, levels = sort(unique(as.character(plotTable$set.label)), decreasing = TRUE))
-    }
+        #-------------------------------#
+        # Colour                        #
+        #-------------------------------#
+        significanceColumn <- if ("camera.FDR" %in% colnames(plotTable)) {
+            "camera.FDR"
+        } else {
+            "fry.FDR"
+        }
 
-    #-------------------------------#
-    # Colour                        #
-    #-------------------------------#
-    significanceColumn <- if ("camera.FDR" %in% colnames(plotTable)) {"camera.FDR"} else {"fry.FDR"}
+        if (colourBy == "FDR") {
+            significanceLevels <- c(paste0("FDR < ", FDRthreshold), paste0("FDR \u2265 ", FDRthreshold))
 
-    if (colourBy == "FDR") {
-      significanceLevels <- c(paste0("FDR < ", FDRthreshold), paste0("FDR \u2265 ", FDRthreshold))
+            # Both levels stay in the scale, so a panel where nothing passes still declares the cut-off it used
+            plotTable$colour.group <- factor(
+                ifelse(plotTable[[significanceColumn]] < FDRthreshold,
+                    significanceLevels[1], significanceLevels[2]
+                ),
+                levels = significanceLevels
+            )
 
-      # Both levels stay in the scale, so a panel where nothing passes still declares the cut-off it used
-      plotTable$colour.group <- factor(ifelse(plotTable[[significanceColumn]] < FDRthreshold,
-                                              significanceLevels[1], significanceLevels[2]),
-                                       levels = significanceLevels)
+            colourValues <- if (is.null(colours)) {
+                c("#B2182B", "grey60")
+            } else {
+                colours
+            }
+            names(colourValues) <- significanceLevels
+        } else if (colourBy == "direction") {
+            plotTable$colour.group <- factor(ifelse(plotTable$effect > 0, "up", "down"), levels = c("down", "up"))
+            colourValues <- if (is.null(colours)) {
+                c("down" = "#2166AC", "up" = "#B2182B")
+            } else {
+                colours
+            }
+        } else {
+            plotTable$colour.group <- factor("all")
+            colourValues <- c("all" = "black")
+        }
 
-      colourValues <- if (is.null(colours)) {c("#B2182B", "grey60")} else {colours}
-      names(colourValues) <- significanceLevels
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        effectPlot <-
+            ggplot2::ggplot(
+                data = plotTable,
+                mapping = ggplot2::aes(x = .data$effect, y = .data$set.label, colour = .data$colour.group)
+            ) +
+            ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "black") +
+            ggplot2::geom_point(size = pointSize, stroke = NA) +
+            ggplot2::scale_colour_manual(values = colourValues, drop = FALSE) +
+            ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3))))) +
+            ggplot2::labs(
+                x = paste0(sub("log2FC", "log<sub>2</sub>FC", value), " (", contrastName(setResults), ")"),
+                y = "",
+                colour = "",
+                title = if (is.null(title)) {
+                    contrastName(setResults)
+                } else {
+                    title
+                },
+                subtitle = subtitle,
+                caption = paste0(
+                    paste(setTestMethods(setResults), collapse = " and "),
+                    ", intervals inflated for the correlation between regions"
+                )
+            ) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize) +
+            ggplot2::theme(
+                axis.line = ggplot2::element_blank(),
+                panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.5, colour = "black"),
+                axis.ticks.y = ggplot2::element_blank(),
+                panel.grid.major = ggplot2::element_line(linewidth = 0.2, colour = "gray")
+            )
 
-    } else if (colourBy == "direction") {
-      plotTable$colour.group <- factor(ifelse(plotTable$effect > 0, "up", "down"), levels = c("down", "up"))
-      colourValues <- if (is.null(colours)) {c("down" = "#2166AC", "up" = "#B2182B")} else {colours}
+        if (value == "delta.log2FC") {
+            effectPlot <- effectPlot +
+                ggplot2::geom_errorbar(
+                    mapping = ggplot2::aes(xmin = .data$lower, xmax = .data$upper),
+                    orientation = "y", width = 0.15, linewidth = 0.5
+                )
+        }
 
-    } else {
-      plotTable$colour.group <- factor("all")
-      colourValues <- c("all" = "black")
-    }
+        if (isTRUE(showN)) {
+            effectPlot <- effectPlot +
+                ggplot2::geom_text(
+                    mapping = ggplot2::aes(label = .data$n.label),
+                    hjust = -0.2, vjust = -1, size = baseSize / 4.5, colour = "grey30", show.legend = FALSE
+                )
+        }
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    effectPlot <-
-      ggplot2::ggplot(data = plotTable,
-                      mapping = ggplot2::aes(x = .data$effect, y = .data$set.label, colour = .data$colour.group)) +
-      ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "black") +
-      ggplot2::geom_point(size = pointSize, stroke = NA) +
-      ggplot2::scale_colour_manual(values = colourValues, drop = FALSE) +
-      ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3))))) +
-      ggplot2::labs(x = paste0(sub("log2FC", "log<sub>2</sub>FC", value), " (", setResults@contrast, ")"),
-                    y = "",
-                    colour = "",
-                    title = if (is.null(title)) {setResults@contrast} else {title},
-                    subtitle = subtitle,
-                    caption = paste0(paste(setResults@methods, collapse = " and "),
-                                     ", intervals inflated for the correlation between regions")) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize) +
-      ggplot2::theme(axis.line = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.5, colour = "black"),
-                     axis.ticks.y = ggplot2::element_blank(),
-                     panel.grid.major = ggplot2::element_line(linewidth = 0.2, colour = "gray"))
-
-    if (value == "delta.log2FC") {
-      effectPlot <- effectPlot +
-        ggplot2::geom_errorbar(mapping = ggplot2::aes(xmin = .data$lower, xmax = .data$upper),
-                               orientation = "y", width = 0.15, linewidth = 0.5)
-    }
-
-    if (isTRUE(showN)) {
-      effectPlot <- effectPlot +
-        ggplot2::geom_text(mapping = ggplot2::aes(label = .data$n.label),
-                           hjust = -0.2, vjust = -1, size = baseSize / 4.5, colour = "grey30", show.legend = FALSE)
-    }
-
-    return(effectPlot)
-  } # END function
-
-
+        return(effectPlot)
+    } # END function
 
 
 #' @title plotSetDistribution
@@ -196,8 +237,10 @@ plotSetEffect <-
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
-#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-#'                              verbose = FALSE)
+#' setResults <- testRegionSets(fit,
+#'     contrast = c("condition", "SHR", "BN"),
+#'     verbose = FALSE
+#' )
 #'
 #' # The whole fold change distribution behind each set-level statistic
 #' plotSetDistribution(setResults)
@@ -217,114 +260,134 @@ plotSetEffect <-
 #' @export plotSetDistribution
 
 plotSetDistribution <-
-  function(setResults,
-           style = "violin",
-           set = NULL,
-           contrast = NULL,
-           annotate = TRUE,
-           colours = NULL,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = NULL,
-           baseSize = 12) {
+    function(setResults,
+             style = "violin",
+             set = NULL,
+             contrast = NULL,
+             annotate = TRUE,
+             colours = NULL,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = NULL,
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        setResults <- .pickResults(results = setResults, contrast = contrast)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    setResults <- .pickResults(results = setResults, contrast = contrast)
+        if (!methods::is(setResults, "RegionSetDE.setResults")) {
+            stop("The 'setResults' parameter must be a RegionSetDE.setResults object.", call. = FALSE)
+        }
 
-    if (!methods::is(setResults, "RegionSetDE.setResults")) {
-      stop("The 'setResults' parameter must be a RegionSetDE.setResults object.", call. = FALSE)
-    }
+        if (!(style %in% c("violin", "boxplot", "ecdf"))) {
+            stop("The 'style' parameter must be one of 'violin', 'boxplot', 'ecdf'.", call. = FALSE)
+        }
 
-    if (!(style %in% c("violin", "boxplot", "ecdf"))) {
-      stop("The 'style' parameter must be one of 'violin', 'boxplot', 'ecdf'.", call. = FALSE)
-    }
+        # The sets are written on the x axis of a violin, a legend would repeat them
+        if (is.null(legendPosition)) {
+            legendPosition <- if (style == "ecdf") {
+                "right"
+            } else {
+                "none"
+            }
+        }
 
-    # The sets are written on the x axis of a violin, a legend would repeat them
-    if (is.null(legendPosition)) {
-      legendPosition <- if (style == "ecdf") {"right"} else {"none"}
-    }
+        plotTable <- regionStats(setResults)
 
-    plotTable <- setResults@regionStats
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(plotTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            plotTable <- dplyr::filter(plotTable, .data$region.set %in% set)
+        }
 
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(plotTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      plotTable <- dplyr::filter(plotTable, .data$region.set %in% set)
-    }
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        if (style == "ecdf") {
+            distributionPlot <-
+                ggplot2::ggplot(
+                    data = plotTable,
+                    mapping = ggplot2::aes(x = .data$log2FC, colour = .data$region.set)
+                ) +
+                ggplot2::stat_ecdf(geom = "step", linewidth = 0.7) +
+                ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "black") +
+                ggplot2::labs(
+                    x = paste0("log<sub>2</sub> fold change (", contrastName(setResults), ")"),
+                    y = "Cumulative fraction of regions",
+                    colour = ""
+                ) +
+                .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+        } else {
+            distributionPlot <-
+                ggplot2::ggplot(
+                    data = plotTable,
+                    mapping = ggplot2::aes(
+                        x = .data$region.set, y = .data$log2FC,
+                        colour = .data$region.set, fill = .data$region.set
+                    )
+                ) +
+                ggplot2::geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "black") +
+                ggplot2::labs(
+                    x = "",
+                    y = paste0("log<sub>2</sub> fold change (", contrastName(setResults), ")"),
+                    colour = "", fill = ""
+                ) +
+                .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
+                ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    if (style == "ecdf") {
-      distributionPlot <-
-        ggplot2::ggplot(data = plotTable,
-                        mapping = ggplot2::aes(x = .data$log2FC, colour = .data$region.set)) +
-        ggplot2::stat_ecdf(geom = "step", linewidth = 0.7) +
-        ggplot2::geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "black") +
-        ggplot2::labs(x = paste0("log<sub>2</sub> fold change (", setResults@contrast, ")"),
-                      y = "Cumulative fraction of regions",
-                      colour = "") +
-        .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+            if (style == "violin") {
+                distributionPlot <- distributionPlot +
+                    ggplot2::geom_violin(alpha = 0.3, linewidth = 0.4, scale = "width") +
+                    ggplot2::geom_boxplot(width = 0.12, outlier.shape = NA, fill = "white", linewidth = 0.4)
+            } else {
+                distributionPlot <- distributionPlot +
+                    ggplot2::geom_boxplot(alpha = 0.3, outlier.size = 0.3, outlier.stroke = NA, linewidth = 0.4)
+            }
 
-    } else {
-      distributionPlot <-
-        ggplot2::ggplot(data = plotTable,
-                        mapping = ggplot2::aes(x = .data$region.set, y = .data$log2FC,
-                                               colour = .data$region.set, fill = .data$region.set)) +
-        ggplot2::geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "black") +
-        ggplot2::labs(x = "",
-                      y = paste0("log<sub>2</sub> fold change (", setResults@contrast, ")"),
-                      colour = "", fill = "") +
-        .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
-        ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
+            #-------------------------------#
+            # Annotation over each set      #
+            #-------------------------------#
+            # The two lines of text sit above the highest fold change, and the axis is stretched to hold them:
+            # a label outside the range of the axis is cut by the panel, whatever the background or the border
+            if (isTRUE(annotate) & setTestType(setResults) == "set") {
+                valueRange <- range(plotTable$log2FC, na.rm = TRUE)
+                valueSpan <- max(diff(valueRange), 1e-6)
+                labelPosition <- valueRange[2] + 0.04 * valueSpan
 
-      if (style == "violin") {
+                distributionPlot <- distributionPlot +
+                    ggplot2::geom_text(
+                        data = .setAnnotation(
+                            setResults = setResults,
+                            setNames = unique(plotTable$region.set),
+                            yPosition = labelPosition
+                        ),
+                        mapping = ggplot2::aes(x = .data$region.set, y = .data$y.position, label = .data$label),
+                        inherit.aes = FALSE, size = baseSize / 4.5, colour = "grey20", vjust = 0, lineheight = 0.9
+                    ) +
+                    ggplot2::expand_limits(y = labelPosition + 0.16 * valueSpan)
+            }
+        }
+
         distributionPlot <- distributionPlot +
-          ggplot2::geom_violin(alpha = 0.3, linewidth = 0.4, scale = "width") +
-          ggplot2::geom_boxplot(width = 0.12, outlier.shape = NA, fill = "white", linewidth = 0.4)
-      } else {
-        distributionPlot <- distributionPlot +
-          ggplot2::geom_boxplot(alpha = 0.3, outlier.size = 0.3, outlier.stroke = NA, linewidth = 0.4)
-      }
+            ggplot2::labs(
+                title = if (is.null(title)) {
+                    contrastName(setResults)
+                } else {
+                    title
+                },
+                subtitle = subtitle
+            )
 
-      #-------------------------------#
-      # Annotation over each set      #
-      #-------------------------------#
-      # The two lines of text sit above the highest fold change, and the axis is stretched to hold them:
-      # a label outside the range of the axis is cut by the panel, whatever the background or the border
-      if (isTRUE(annotate) & setResults@test == "set") {
-        valueRange <- range(plotTable$log2FC, na.rm = TRUE)
-        valueSpan <- max(diff(valueRange), 1e-6)
-        labelPosition <- valueRange[2] + 0.04 * valueSpan
+        if (!is.null(colours)) {
+            distributionPlot <- distributionPlot +
+                ggplot2::scale_colour_manual(values = colours) +
+                ggplot2::scale_fill_manual(values = colours)
+        }
 
-        distributionPlot <- distributionPlot +
-          ggplot2::geom_text(data = .setAnnotation(setResults = setResults,
-                                                   setNames = unique(plotTable$region.set),
-                                                   yPosition = labelPosition),
-                             mapping = ggplot2::aes(x = .data$region.set, y = .data$y.position, label = .data$label),
-                             inherit.aes = FALSE, size = baseSize / 4.5, colour = "grey20", vjust = 0, lineheight = 0.9) +
-          ggplot2::expand_limits(y = labelPosition + 0.16 * valueSpan)
-      }
-    }
-
-    distributionPlot <- distributionPlot +
-      ggplot2::labs(title = if (is.null(title)) {setResults@contrast} else {title},
-                    subtitle = subtitle)
-
-    if (!is.null(colours)) {
-      distributionPlot <- distributionPlot +
-        ggplot2::scale_colour_manual(values = colours) +
-        ggplot2::scale_fill_manual(values = colours)
-    }
-
-    return(distributionPlot)
-  } # END function
-
-
+        return(distributionPlot)
+    } # END function
 
 
 #' @title plotSetSignal
@@ -366,13 +429,17 @@ plotSetDistribution <-
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
-#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-#'                              verbose = FALSE)
+#' setResults <- testRegionSets(fit,
+#'     contrast = c("condition", "SHR", "BN"),
+#'     verbose = FALSE
+#' )
 #'
 #' plotSetSignal(setResults, groupBy = "condition")
 #'
-#' plotSetSignal(setResults, set = "promoterCpG", groupBy = "condition",
-#'               style = "boxplot")
+#' plotSetSignal(setResults,
+#'     set = "promoterCpG", groupBy = "condition",
+#'     style = "boxplot"
+#' )
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -388,217 +455,272 @@ plotSetDistribution <-
 #' @export plotSetSignal
 
 plotSetSignal <-
-  function(setResults,
-           counts = NULL,
-           contrast = NULL,
-           set = NULL,
-           groupBy = NULL,
-           groupOrder = NULL,
-           comparisons = NULL,
-           valueColumn = "mean.log2FC",
-           style = "violin",
-           assay = NULL,
-           log2Scale = TRUE,
-           annotate = TRUE,
-           facetScales = "fixed",
-           maxRegions = 20000,
-           colours = NULL,
-           baseColours = NULL,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "none",
-           baseSize = 12) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # Scores carry one value per library instead of per region, and no contrast, so they need their own figure
-    if (methods::is(setResults, "RegionSetDE.setScores")) {
-      return(.plotSetScores(setScores = setResults,
-                            set = set,
-                            groupBy = groupBy,
-                            groupOrder = groupOrder,
-                            comparisons = comparisons,
-                            annotate = annotate,
-                            colours = colours,
-                            baseColours = baseColours,
-                            title = title,
-                            subtitle = subtitle,
-                            legendPosition = legendPosition,
-                            baseSize = baseSize))
-    }
-
-    if (!(style %in% c("violin", "boxplot"))) {
-      stop("The 'style' parameter must be either 'violin' or 'boxplot'.", call. = FALSE)
-    }
-
-    if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
-      stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
-    }
-
-    if (!(valueColumn %in% c("mean.log2FC", "delta.log2FC"))) {
-      stop("The 'valueColumn' parameter must be either 'mean.log2FC' or 'delta.log2FC'.", call. = FALSE)
-    }
-
-    resolvedObject <- .resolveCounts(object = setResults, counts = counts, contrast = contrast)
-    counts <- resolvedObject$counts
-    setResults <- resolvedObject$results
-
-    #-------------------------------#
-    # Long table of the values      #
-    #-------------------------------#
-    assay <- .defaultAssay(counts = counts, assay = assay)
-
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
-    rowTable$row.index <- seq_len(nrow(counts))
-
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(as.character(rowTable$region.set)))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      rowTable <- dplyr::filter(rowTable, .data$region.set %in% set)
-    }
-
-    # A violin over a hundred thousand regions draws the same shape as one over twenty thousand, at a fraction of the cost
-    rowTable <- .thinBySet(regionTable = rowTable, maxPoints = maxRegions, bySet = TRUE)
-
-    valueMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))[rowTable$row.index, , drop = FALSE]
-
-    plotTable <- data.frame(sample = rep(colnames(counts), each = nrow(valueMatrix)),
-                            region.set = rep(as.character(rowTable$region.set), times = ncol(valueMatrix)),
-                            value = as.numeric(valueMatrix),
-                            stringsAsFactors = FALSE)
-
-    if (isTRUE(log2Scale)) {
-      plotTable <- dplyr::mutate(plotTable, value = log2(.data$value + 1))
-    }
-
-    #-------------------------------#
-    # Order the samples by group    #
-    #-------------------------------#
-    colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    colTable$sample <- colnames(counts)
-
-    # The contrast knows which variable it separates, and that is the only grouping its numbers describe
-    contrastInfo <- if (is.null(setResults)) {list()} else {setResults@contrast.groups}
-    contrastColumn <- contrastInfo$column
-    contrastGroups <- contrastInfo$groups
-
-    if (is.null(groupBy)) {
-      groupBy <- contrastColumn
-    }
-
-    if (!is.null(groupBy)) {
-      if (!(groupBy %in% colnames(colTable))) {
-        stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
-      }
-      colTable$group <- as.character(colTable[[groupBy]])
-    } else {
-      colTable$group <- colTable$sample
-    }
-
-    groupsMatchContrast <- !is.null(contrastColumn) && identical(groupBy, contrastColumn)
-
-    groupOrder <- .resolveGroupOrder(groupOrder = groupOrder,
-                                     groupLevels = unique(colTable$group),
-                                     contrastGroups = if (isTRUE(groupsMatchContrast)) {contrastGroups} else {NULL})
-
-    # Ordering the axis by group puts the replicates of a condition next to each other
-    colTable$group <- factor(colTable$group, levels = groupOrder)
-    colTable <- colTable[order(colTable$group, colTable$sample), , drop = FALSE]
-
-    plotTable$group <- as.character(colTable$group)[match(plotTable$sample, colTable$sample)]
-    plotTable$sample <- factor(plotTable$sample, levels = colTable$sample)
-
-    sampleColours <- if (is.null(colours)) {
-      .groupShades(colTable = colTable, baseColours = baseColours)
-    } else {
-      colours
-    }
-
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    contrastLabel <- if (is.null(setResults)) {NULL} else {setResults@contrast}
-
-    signalPlot <-
-      ggplot2::ggplot(data = plotTable,
-                      mapping = ggplot2::aes(x = .data$sample, y = .data$value,
-                                             colour = .data$sample, fill = .data$sample)) +
-      ggplot2::facet_wrap(facets = ~ region.set, scales = facetScales) +
-      ggplot2::scale_colour_manual(values = sampleColours) +
-      ggplot2::scale_fill_manual(values = sampleColours) +
-      ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.05, 0.18))) +
-      ggplot2::labs(x = "",
-                    y = paste0(if (isTRUE(log2Scale)) {"log<sub>2</sub> "} else {""}, assay),
-                    colour = "", fill = "",
-                    title = if (is.null(title)) {contrastLabel} else {title},
-                    subtitle = subtitle) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
-      ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
-
-    if (style == "violin") {
-      signalPlot <- signalPlot +
-        ggplot2::geom_violin(alpha = 0.35, linewidth = 0.4, scale = "width") +
-        ggplot2::geom_boxplot(width = 0.12, outlier.shape = NA, fill = "white", linewidth = 0.4)
-    } else {
-      signalPlot <- signalPlot +
-        ggplot2::geom_boxplot(alpha = 0.35, outlier.size = 0.3, outlier.stroke = NA, linewidth = 0.4)
-    }
-
-    #-------------------------------#
-    # Bracket over the groups       #
-    #-------------------------------#
-    if (isTRUE(annotate) & !is.null(setResults)) {
-      if (setResults@test != "set") {
-        warning("The annotation is written from a set level test, and this object holds a contrast between sets.", call. = FALSE)
-
-      } else if (isFALSE(groupsMatchContrast)) {
-        # Labelling a bracket over the replicates with the treatment effect would attach the number to the wrong comparison
-        message("The samples are grouped by '", if (is.null(groupBy)) {"sample"} else {groupBy},
-                "' while the contrast compares ",
-                if (is.null(contrastColumn)) {"coefficients of the design"} else {c("'", contrastColumn, "'")},
-                ", so no fold change is written.")
-
-      } else {
-        bracketTable <- .signalBrackets(plotTable = plotTable,
-                                        colTable = colTable,
-                                        setResults = setResults,
-                                        comparisons = comparisons,
-                                        contrastGroups = contrastGroups,
-                                        groupOrder = groupOrder,
-                                        valueColumn = valueColumn,
-                                        perFacet = grepl("free", facetScales) & facetScales != "free_x")
-
-        if (!is.null(bracketTable)) {
-          signalPlot <- signalPlot +
-            ggplot2::geom_segment(data = bracketTable,
-                                  mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.end,
-                                                         y = .data$y.bracket, yend = .data$y.bracket),
-                                  inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-            ggplot2::geom_segment(data = bracketTable,
-                                  mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.start,
-                                                         y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
-                                  inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-            ggplot2::geom_segment(data = bracketTable,
-                                  mapping = ggplot2::aes(x = .data$x.end, xend = .data$x.end,
-                                                         y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
-                                  inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-            ggtext::geom_richtext(data = bracketTable,
-                                  mapping = ggplot2::aes(x = (.data$x.start + .data$x.end) / 2,
-                                                         y = .data$y.bracket, label = .data$label),
-                                  inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
-                                  colour = "grey20", fill = NA, label.color = NA,
-                                  label.padding = grid::unit(rep(1, 4), "pt"))
+    function(setResults,
+             counts = NULL,
+             contrast = NULL,
+             set = NULL,
+             groupBy = NULL,
+             groupOrder = NULL,
+             comparisons = NULL,
+             valueColumn = "mean.log2FC",
+             style = "violin",
+             assay = NULL,
+             log2Scale = TRUE,
+             annotate = TRUE,
+             facetScales = "fixed",
+             maxRegions = 20000,
+             colours = NULL,
+             baseColours = NULL,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "none",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        # Scores carry one value per library instead of per region, and no contrast, so they need their own figure
+        if (methods::is(setResults, "RegionSetDE.setScores")) {
+            return(.plotSetScores(
+                setScores = setResults,
+                set = set,
+                groupBy = groupBy,
+                groupOrder = groupOrder,
+                comparisons = comparisons,
+                annotate = annotate,
+                colours = colours,
+                baseColours = baseColours,
+                title = title,
+                subtitle = subtitle,
+                legendPosition = legendPosition,
+                baseSize = baseSize
+            ))
         }
-      }
-    }
 
-    return(signalPlot)
-  } # END function
+        if (!(style %in% c("violin", "boxplot"))) {
+            stop("The 'style' parameter must be either 'violin' or 'boxplot'.", call. = FALSE)
+        }
 
+        if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
+            stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
+        }
 
+        if (!(valueColumn %in% c("mean.log2FC", "delta.log2FC"))) {
+            stop("The 'valueColumn' parameter must be either 'mean.log2FC' or 'delta.log2FC'.", call. = FALSE)
+        }
+
+        resolvedObject <- .resolveCounts(object = setResults, counts = counts, contrast = contrast)
+        counts <- resolvedObject$counts
+        setResults <- resolvedObject$results
+
+        #-------------------------------#
+        # Long table of the values      #
+        #-------------------------------#
+        assay <- .defaultAssay(counts = counts, assay = assay)
+
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
+        rowTable$row.index <- seq_len(nrow(counts))
+
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(as.character(rowTable$region.set)))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            rowTable <- dplyr::filter(rowTable, .data$region.set %in% set)
+        }
+
+        # A violin over a hundred thousand regions draws the same shape as one over twenty thousand, at a fraction of the cost
+        rowTable <- .thinBySet(regionTable = rowTable, maxPoints = maxRegions, bySet = TRUE)
+
+        valueMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))[rowTable$row.index, , drop = FALSE]
+
+        plotTable <- data.frame(
+            sample = rep(colnames(counts), each = nrow(valueMatrix)),
+            region.set = rep(as.character(rowTable$region.set), times = ncol(valueMatrix)),
+            value = as.numeric(valueMatrix),
+            stringsAsFactors = FALSE
+        )
+
+        if (isTRUE(log2Scale)) {
+            plotTable <- dplyr::mutate(plotTable, value = log2(.data$value + 1))
+        }
+
+        #-------------------------------#
+        # Order the samples by group    #
+        #-------------------------------#
+        colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        colTable$sample <- colnames(counts)
+
+        # The contrast knows which variable it separates, and that is the only grouping its numbers describe
+        contrastInfo <- if (is.null(setResults)) {
+            list()
+        } else {
+            contrastGroups(setResults)
+        }
+        contrastColumn <- contrastInfo$column
+        contrastGroups <- contrastInfo$groups
+
+        if (is.null(groupBy)) {
+            groupBy <- contrastColumn
+        }
+
+        if (!is.null(groupBy)) {
+            if (!(groupBy %in% colnames(colTable))) {
+                stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
+            }
+            colTable$group <- as.character(colTable[[groupBy]])
+        } else {
+            colTable$group <- colTable$sample
+        }
+
+        groupsMatchContrast <- !is.null(contrastColumn) && identical(groupBy, contrastColumn)
+
+        groupOrder <- .resolveGroupOrder(
+            groupOrder = groupOrder,
+            groupLevels = unique(colTable$group),
+            contrastGroups = if (isTRUE(groupsMatchContrast)) {
+                contrastGroups
+            } else {
+                NULL
+            }
+        )
+
+        # Ordering the axis by group puts the replicates of a condition next to each other
+        colTable$group <- factor(colTable$group, levels = groupOrder)
+        colTable <- colTable[order(colTable$group, colTable$sample), , drop = FALSE]
+
+        plotTable$group <- as.character(colTable$group)[match(plotTable$sample, colTable$sample)]
+        plotTable$sample <- factor(plotTable$sample, levels = colTable$sample)
+
+        sampleColours <- if (is.null(colours)) {
+            .groupShades(colTable = colTable, baseColours = baseColours)
+        } else {
+            colours
+        }
+
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        contrastLabel <- if (is.null(setResults)) {
+            NULL
+        } else {
+            contrastName(setResults)
+        }
+
+        signalPlot <-
+            ggplot2::ggplot(
+                data = plotTable,
+                mapping = ggplot2::aes(
+                    x = .data$sample, y = .data$value,
+                    colour = .data$sample, fill = .data$sample
+                )
+            ) +
+            ggplot2::facet_wrap(facets = ~region.set, scales = facetScales) +
+            ggplot2::scale_colour_manual(values = sampleColours) +
+            ggplot2::scale_fill_manual(values = sampleColours) +
+            ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.05, 0.18))) +
+            ggplot2::labs(
+                x = "",
+                y = paste0(if (isTRUE(log2Scale)) {
+                    "log<sub>2</sub> "
+                } else {
+                    ""
+                }, assay),
+                colour = "", fill = "",
+                title = if (is.null(title)) {
+                    contrastLabel
+                } else {
+                    title
+                },
+                subtitle = subtitle
+            ) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
+            ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
+
+        if (style == "violin") {
+            signalPlot <- signalPlot +
+                ggplot2::geom_violin(alpha = 0.35, linewidth = 0.4, scale = "width") +
+                ggplot2::geom_boxplot(width = 0.12, outlier.shape = NA, fill = "white", linewidth = 0.4)
+        } else {
+            signalPlot <- signalPlot +
+                ggplot2::geom_boxplot(alpha = 0.35, outlier.size = 0.3, outlier.stroke = NA, linewidth = 0.4)
+        }
+
+        #-------------------------------#
+        # Bracket over the groups       #
+        #-------------------------------#
+        if (isTRUE(annotate) & !is.null(setResults)) {
+            if (setTestType(setResults) != "set") {
+                warning("The annotation is written from a set level test, and this object holds a contrast between sets.", call. = FALSE)
+            } else if (isFALSE(groupsMatchContrast)) {
+                # Labelling a bracket over the replicates with the treatment effect would attach the number to the wrong comparison
+                message(
+                    "The samples are grouped by '", if (is.null(groupBy)) {
+                        "sample"
+                    } else {
+                        groupBy
+                    },
+                    "' while the contrast compares ",
+                    if (is.null(contrastColumn)) {
+                        "coefficients of the design"
+                    } else {
+                        c("'", contrastColumn, "'")
+                    },
+                    ", so no fold change is written."
+                )
+            } else {
+                bracketTable <- .signalBrackets(
+                    plotTable = plotTable,
+                    colTable = colTable,
+                    setResults = setResults,
+                    comparisons = comparisons,
+                    contrastGroups = contrastGroups,
+                    groupOrder = groupOrder,
+                    valueColumn = valueColumn,
+                    perFacet = grepl("free", facetScales) & facetScales != "free_x"
+                )
+
+                if (!is.null(bracketTable)) {
+                    signalPlot <- signalPlot +
+                        ggplot2::geom_segment(
+                            data = bracketTable,
+                            mapping = ggplot2::aes(
+                                x = .data$x.start, xend = .data$x.end,
+                                y = .data$y.bracket, yend = .data$y.bracket
+                            ),
+                            inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                        ) +
+                        ggplot2::geom_segment(
+                            data = bracketTable,
+                            mapping = ggplot2::aes(
+                                x = .data$x.start, xend = .data$x.start,
+                                y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick
+                            ),
+                            inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                        ) +
+                        ggplot2::geom_segment(
+                            data = bracketTable,
+                            mapping = ggplot2::aes(
+                                x = .data$x.end, xend = .data$x.end,
+                                y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick
+                            ),
+                            inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                        ) +
+                        ggtext::geom_richtext(
+                            data = bracketTable,
+                            mapping = ggplot2::aes(
+                                x = (.data$x.start + .data$x.end) / 2,
+                                y = .data$y.bracket, label = .data$label
+                            ),
+                            inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
+                            colour = "grey20", fill = NA, label.color = NA,
+                            label.padding = grid::unit(rep(1, 4), "pt")
+                        )
+                }
+            }
+        }
+
+        return(signalPlot)
+    } # END function
 
 
 #' @title .resolveGroupOrder
@@ -616,30 +738,27 @@ plotSetSignal <-
 #' @keywords internal
 
 .resolveGroupOrder <-
-  function(groupOrder = NULL,
-           groupLevels,
-           contrastGroups = NULL) {
+    function(groupOrder = NULL,
+             groupLevels,
+             contrastGroups = NULL) {
+        if (!is.null(groupOrder)) {
+            absentGroups <- setdiff(groupOrder, groupLevels)
+            if (length(absentGroups) > 0) {
+                stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
+            }
+            return(c(groupOrder, setdiff(groupLevels, groupOrder)))
+        }
 
-    if (!is.null(groupOrder)) {
-      absentGroups <- setdiff(groupOrder, groupLevels)
-      if (length(absentGroups) > 0) {
-        stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
-      }
-      return(c(groupOrder, setdiff(groupLevels, groupOrder)))
-    }
+        #-------------------------------#
+        # Read it from the contrast     #
+        #-------------------------------#
+        # The fold change is positive for the first level, so the second one is the reference and belongs on the left
+        if (!is.null(contrastGroups) && length(contrastGroups) == 2 && all(contrastGroups %in% groupLevels)) {
+            return(c(contrastGroups[2], contrastGroups[1], setdiff(groupLevels, contrastGroups)))
+        }
 
-    #-------------------------------#
-    # Read it from the contrast     #
-    #-------------------------------#
-    # The fold change is positive for the first level, so the second one is the reference and belongs on the left
-    if (!is.null(contrastGroups) && length(contrastGroups) == 2 && all(contrastGroups %in% groupLevels)) {
-      return(c(contrastGroups[2], contrastGroups[1], setdiff(groupLevels, contrastGroups)))
-    }
-
-    return(sort(groupLevels))
-  } # END function
-
-
+        return(sort(groupLevels))
+    } # END function
 
 
 #' @title .groupShades
@@ -658,40 +777,39 @@ plotSetSignal <-
 #' @keywords internal
 
 .groupShades <-
-  function(colTable,
-           baseColours = NULL) {
+    function(colTable,
+             baseColours = NULL) {
+        # Blue then red, the same pair the volcano and the MA plot use for the down and up regions
+        if (is.null(baseColours)) {
+            baseColours <- c("#2166AC", "#B2182B", "#1B7837", "#E08214", "#762A83", "#01665E")
+        }
 
-    # Blue then red, the same pair the volcano and the MA plot use for the down and up regions
-    if (is.null(baseColours)) {
-      baseColours <- c("#2166AC", "#B2182B", "#1B7837", "#E08214", "#762A83", "#01665E")
-    }
+        groupLevels <- levels(colTable$group)
+        if (is.null(groupLevels)) {
+            groupLevels <- unique(as.character(colTable$group))
+        }
 
-    groupLevels <- levels(colTable$group)
-    if (is.null(groupLevels)) {
-      groupLevels <- unique(as.character(colTable$group))
-    }
+        shadeList <-
+            lapply(
+                seq_along(groupLevels),
+                function(i) {
+                    groupSamples <- colTable$sample[as.character(colTable$group) == groupLevels[i]]
+                    baseColour <- baseColours[((i - 1) %% length(baseColours)) + 1]
 
-    shadeList <-
-      lapply(seq_along(groupLevels),
-             function(i) {
-               groupSamples <- colTable$sample[as.character(colTable$group) == groupLevels[i]]
-               baseColour <- baseColours[((i - 1) %% length(baseColours)) + 1]
+                    # A single replicate has no shading to do, and colorRampPalette of length one returns the light end
+                    groupShades <- if (length(groupSamples) < 2) {
+                        baseColour
+                    } else {
+                        grDevices::colorRampPalette(c(.lightenColour(colour = baseColour, amount = 0.55), baseColour))(length(groupSamples))
+                    }
 
-               # A single replicate has no shading to do, and colorRampPalette of length one returns the light end
-               groupShades <- if (length(groupSamples) < 2) {
-                 baseColour
-               } else {
-                 grDevices::colorRampPalette(c(.lightenColour(colour = baseColour, amount = 0.55), baseColour))(length(groupSamples))
-               }
+                    names(groupShades) <- groupSamples
+                    return(groupShades)
+                }
+            )
 
-               names(groupShades) <- groupSamples
-               return(groupShades)
-             })
-
-    return(unlist(shadeList))
-  } # END function
-
-
+        return(unlist(shadeList))
+    } # END function
 
 
 #' @title .lightenColour
@@ -710,16 +828,13 @@ plotSetSignal <-
 #' @keywords internal
 
 .lightenColour <-
-  function(colour,
-           amount = 0.5) {
+    function(colour,
+             amount = 0.5) {
+        colourChannels <- as.numeric(grDevices::col2rgb(colour)) / 255
+        mixedChannels <- colourChannels + (1 - colourChannels) * amount
 
-    colourChannels <- as.numeric(grDevices::col2rgb(colour)) / 255
-    mixedChannels <- colourChannels + (1 - colourChannels) * amount
-
-    return(grDevices::rgb(red = mixedChannels[1], green = mixedChannels[2], blue = mixedChannels[3]))
-  } # END function
-
-
+        return(grDevices::rgb(red = mixedChannels[1], green = mixedChannels[2], blue = mixedChannels[3]))
+    } # END function
 
 
 #' @title .signalBrackets
@@ -746,104 +861,121 @@ plotSetSignal <-
 #' @keywords internal
 
 .signalBrackets <-
-  function(plotTable,
-           colTable,
-           setResults,
-           comparisons = NULL,
-           contrastGroups = NULL,
-           groupOrder,
-           valueColumn = "mean.log2FC",
-           perFacet = FALSE) {
+    function(plotTable,
+             colTable,
+             setResults,
+             comparisons = NULL,
+             contrastGroups = NULL,
+             groupOrder,
+             valueColumn = "mean.log2FC",
+             perFacet = FALSE) {
+        #-------------------------------#
+        # Pairs to join                 #
+        #-------------------------------#
+        if (is.null(contrastGroups) | length(contrastGroups) != 2) {
+            return(NULL)
+        }
 
-    #-------------------------------#
-    # Pairs to join                 #
-    #-------------------------------#
-    if (is.null(contrastGroups) | length(contrastGroups) != 2) {
-      return(NULL)
-    }
+        if (is.null(comparisons)) {
+            comparisons <- list(contrastGroups)
+        }
 
-    if (is.null(comparisons)) {
-      comparisons <- list(contrastGroups)
-    }
+        if (!is.list(comparisons) | any(vapply(comparisons, length, integer(1)) != 2)) {
+            stop("The 'comparisons' parameter must be a list of character vectors of length two.", call. = FALSE)
+        }
 
-    if (!is.list(comparisons) | any(vapply(comparisons, length, integer(1)) != 2)) {
-      stop("The 'comparisons' parameter must be a list of character vectors of length two.", call. = FALSE)
-    }
+        absentGroups <- setdiff(unlist(comparisons), groupOrder)
+        if (length(absentGroups) > 0) {
+            stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
+        }
 
-    absentGroups <- setdiff(unlist(comparisons), groupOrder)
-    if (length(absentGroups) > 0) {
-      stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
-    }
+        # A pair the contrast did not compare has no fold change of its own, so it gets no bracket rather than a borrowed one
+        comparisons <- comparisons[vapply(comparisons, function(x) {
+            setequal(x, contrastGroups)
+        }, logical(1))]
 
-    # A pair the contrast did not compare has no fold change of its own, so it gets no bracket rather than a borrowed one
-    comparisons <- comparisons[vapply(comparisons, function(x) {setequal(x, contrastGroups)}, logical(1))]
+        if (length(comparisons) == 0) {
+            message("None of the requested comparisons matches the pair the contrast tested, no bracket has been drawn.")
+            return(NULL)
+        }
 
-    if (length(comparisons) == 0) {
-      message("None of the requested comparisons matches the pair the contrast tested, no bracket has been drawn.")
-      return(NULL)
-    }
+        significanceColumn <- if ("camera.FDR" %in% colnames(resultsTable(setResults))) {
+            "camera.FDR"
+        } else {
+            "fry.FDR"
+        }
+        testName <- if (significanceColumn == "camera.FDR") {
+            "camera"
+        } else {
+            "fry"
+        }
 
-    significanceColumn <- if ("camera.FDR" %in% colnames(setResults@results)) {"camera.FDR"} else {"fry.FDR"}
-    testName <- if (significanceColumn == "camera.FDR") {"camera"} else {"fry"}
+        samplePositions <- stats::setNames(seq_along(levels(plotTable$sample)), levels(plotTable$sample))
+        setNames <- unique(plotTable$region.set)
 
-    samplePositions <- stats::setNames(seq_along(levels(plotTable$sample)), levels(plotTable$sample))
-    setNames <- unique(plotTable$region.set)
+        #-------------------------------#
+        # One bracket per set and pair  #
+        #-------------------------------#
+        bracketList <-
+            lapply(
+                setNames,
+                function(setName) {
+                    setRow <- dplyr::filter(resultsTable(setResults), .data$region.set == setName)
+                    if (nrow(setRow) != 1) {
+                        return(NULL)
+                    }
 
-    #-------------------------------#
-    # One bracket per set and pair  #
-    #-------------------------------#
-    bracketList <-
-      lapply(setNames,
-             function(setName) {
-               setRow <- dplyr::filter(setResults@results, .data$region.set == setName)
-               if (nrow(setRow) != 1) {
-                 return(NULL)
-               }
+                    # With free scales every panel has its own ceiling, otherwise they share the one of the whole plot
+                    panelValues <- if (isTRUE(perFacet)) {
+                        plotTable$value[plotTable$region.set == setName]
+                    } else {
+                        plotTable$value
+                    }
 
-               # With free scales every panel has its own ceiling, otherwise they share the one of the whole plot
-               panelValues <- if (isTRUE(perFacet)) {
-                 plotTable$value[plotTable$region.set == setName]
-               } else {
-                 plotTable$value
-               }
+                    valueRange <- range(panelValues, na.rm = TRUE)
+                    valueSpan <- diff(valueRange)
+                    if (!is.finite(valueSpan) | valueSpan == 0) {
+                        valueSpan <- 1
+                    }
 
-               valueRange <- range(panelValues, na.rm = TRUE)
-               valueSpan <- diff(valueRange)
-               if (!is.finite(valueSpan) | valueSpan == 0) {
-                 valueSpan <- 1
-               }
+                    pairList <-
+                        lapply(
+                            seq_along(comparisons),
+                            function(i) {
+                                firstSamples <- colTable$sample[as.character(colTable$group) == comparisons[[i]][1]]
+                                secondSamples <- colTable$sample[as.character(colTable$group) == comparisons[[i]][2]]
 
-               pairList <-
-                 lapply(seq_along(comparisons),
-                        function(i) {
-                          firstSamples <- colTable$sample[as.character(colTable$group) == comparisons[[i]][1]]
-                          secondSamples <- colTable$sample[as.character(colTable$group) == comparisons[[i]][2]]
+                                return(data.frame(
+                                    region.set = setName,
+                                    x.start = mean(samplePositions[firstSamples]),
+                                    x.end = mean(samplePositions[secondSamples]),
+                                    y.bracket = valueRange[2] + valueSpan * (0.04 + 0.12 * (i - 1)),
+                                    y.tick = valueSpan * 0.02,
+                                    label = sprintf(
+                                        "log<sub>2</sub>FC = %.2f<br>%s FDR = %.1e",
+                                        setRow[[valueColumn]][1], testName, setRow[[significanceColumn]][1]
+                                    ),
+                                    stringsAsFactors = FALSE
+                                ))
+                            }
+                        )
 
-                          return(data.frame(region.set = setName,
-                                            x.start = mean(samplePositions[firstSamples]),
-                                            x.end = mean(samplePositions[secondSamples]),
-                                            y.bracket = valueRange[2] + valueSpan * (0.04 + 0.12 * (i - 1)),
-                                            y.tick = valueSpan * 0.02,
-                                            label = sprintf("log<sub>2</sub>FC = %.2f<br>%s FDR = %.1e",
-                                                            setRow[[valueColumn]][1], testName, setRow[[significanceColumn]][1]),
-                                            stringsAsFactors = FALSE))
-                        })
+                    return(do.call(what = rbind, args = pairList))
+                }
+            )
 
-               return(do.call(what = rbind, args = pairList))
-             })
+        bracketTable <- do.call(what = rbind, args = bracketList)
 
-    bracketTable <- do.call(what = rbind, args = bracketList)
+        if (is.null(bracketTable)) {
+            return(NULL)
+        }
 
-    if (is.null(bracketTable)) {
-      return(NULL)
-    }
+        if (nrow(bracketTable) == 0) {
+            return(NULL)
+        }
 
-    if (nrow(bracketTable) == 0) {
-      return(NULL)
-    }
-
-    return(bracketTable)
-  } # END function
+        return(bracketTable)
+    } # END function
 
 
 #' @title plotUniverseMatching
@@ -862,12 +994,14 @@ plotSetSignal <-
 #'
 #' @return A \code{ggplot} object.
 #'
-#' @details One panel per region set, holding two density curves: the regions of the set and the rows it is compared against. Read it as a check on the matching rather than as a result. Curves lying on top of each other mean the two groups are comparable on that covariate, so a difference found by \code{\link{testRegionSets}} cannot be attributed to it. Curves offset from each other mean the matching did not find enough eligible rows in some strata, which happens when a set occupies a corner of the width or abundance range that nothing else reaches, and the numbers behind it are in the \code{diagnostics} slot of the universe.
+#' @details One panel per region set, holding two density curves: the regions of the set and the rows it is compared against. Read it as a check on the matching rather than as a result. Curves lying on top of each other mean the two groups are comparable on that covariate, so a difference found by \code{\link{testRegionSets}} cannot be attributed to it. Curves offset from each other mean the matching did not find enough eligible rows in some strata, which happens when a set occupies a corner of the width or abundance range that nothing else reaches, and the numbers behind it are in the \code{diagnostics} slot (read with \code{\link{universeDiagnostics}}) of the universe.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
-#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-#'                              verbose = FALSE)
+#' setResults <- testRegionSets(fit,
+#'     contrast = c("condition", "SHR", "BN"),
+#'     verbose = FALSE
+#' )
 #'
 #' # Whether the universe really matches the set it is compared against
 #' plotUniverseMatching(setResults, set = "promoterCpG")
@@ -889,113 +1023,138 @@ plotSetSignal <-
 #' @export plotUniverseMatching
 
 plotUniverseMatching <-
-  function(object,
-           universe = NULL,
-           contrast = NULL,
-           set = NULL,
-           covariate = "abundance",
-           colours = NULL,
-           title = NULL,
-           legendPosition = "right",
-           baseSize = 12) {
+    function(object,
+             universe = NULL,
+             contrast = NULL,
+             set = NULL,
+             covariate = "abundance",
+             colours = NULL,
+             title = NULL,
+             legendPosition = "right",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        resolvedObject <- .resolveCounts(object = object, counts = NULL, contrast = contrast)
+        counts <- resolvedObject$counts
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    resolvedObject <- .resolveCounts(object = object, counts = NULL, contrast = contrast)
-    counts <- resolvedObject$counts
+        # The fit and the set level result both carry the universe they used
+        if (is.null(universe)) {
+            universe <- if (methods::is(object, "RegionSetDE.fit")) {
+                setUniverse(object)
+            } else if (methods::is(resolvedObject$results, "RegionSetDE.setResults")) {
+                setUniverse(resolvedObject$results)
+            } else {
+                NULL
+            }
+        }
 
-    # The fit and the set level result both carry the universe they used
-    if (is.null(universe)) {
-      universe <- if (methods::is(object, "RegionSetDE.fit")) {
-        object@universe
-      } else if (methods::is(resolvedObject$results, "RegionSetDE.setResults")) {
-        resolvedObject$results@universe
-      } else {
-        NULL
-      }
-    }
+        if (!methods::is(universe, "RegionSetDE.universe")) {
+            stop("No universe is available, pass one built with makeSetUniverse through 'universe'.", call. = FALSE)
+        }
 
-    if (!methods::is(universe, "RegionSetDE.universe")) {
-      stop("No universe is available, pass one built with makeSetUniverse through 'universe'.", call. = FALSE)
-    }
+        if (length(universeIndex(universe)) == 0) {
+            stop("The universe is empty, which happens when the object holds a single region set.", call. = FALSE)
+        }
 
-    if (length(universe@index) == 0) {
-      stop("The universe is empty, which happens when the object holds a single region set.", call. = FALSE)
-    }
+        if (!(covariate %in% c("width", "abundance"))) {
+            stop("The 'covariate' parameter must be either 'width' or 'abundance'.", call. = FALSE)
+        }
 
-    if (!(covariate %in% c("width", "abundance"))) {
-      stop("The 'covariate' parameter must be either 'width' or 'abundance'.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Row level covariates          #
+        #-------------------------------#
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))
+        rowWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(counts))
 
-    #-------------------------------#
-    # Row level covariates          #
-    #-------------------------------#
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, 1))
-    rowWidths <- BiocGenerics::width(SummarizedExperiment::rowRanges(counts))
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(countMatrix)
+        }
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(countMatrix)
-    }
+        rowTable <- data.frame(
+            region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
+            row.index = seq_len(nrow(counts)),
+            width = rowWidths,
+            abundance = .regionAbundance(
+                countMatrix = countMatrix,
+                librarySizes = librarySizes,
+                rowWidths = rowWidths,
+                referenceWidth = stats::median(rowWidths)
+            ),
+            stringsAsFactors = FALSE
+        )
 
-    rowTable <- data.frame(region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
-                           row.index = seq_len(nrow(counts)),
-                           width = rowWidths,
-                           abundance = .regionAbundance(countMatrix = countMatrix,
-                                                        librarySizes = librarySizes,
-                                                        rowWidths = rowWidths,
-                                                        referenceWidth = stats::median(rowWidths)),
-                           stringsAsFactors = FALSE)
+        setNames <- if (is.null(set)) {
+            names(universeIndex(universe))
+        } else {
+            set
+        }
+        absentSets <- setdiff(setNames, names(universeIndex(universe)))
+        if (length(absentSets) > 0) {
+            stop("The universe holds no entry for: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+        }
 
-    setNames <- if (is.null(set)) {names(universe@index)} else {set}
-    absentSets <- setdiff(setNames, names(universe@index))
-    if (length(absentSets) > 0) {
-      stop("The universe holds no entry for: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-    }
+        #-------------------------------#
+        # Set against its background    #
+        #-------------------------------#
+        plotTable <-
+            dplyr::bind_rows(lapply(
+                setNames,
+                function(setName) {
+                    setIndex <- rowTable$row.index[rowTable$region.set == setName]
 
-    #-------------------------------#
-    # Set against its background    #
-    #-------------------------------#
-    plotTable <-
-      dplyr::bind_rows(lapply(setNames,
-                              function(setName) {
-                                setIndex <- rowTable$row.index[rowTable$region.set == setName]
+                    # The universe holds the set as well, the curve to compare against is what is left
+                    comparisonIndex <- setdiff(universeIndex(universe)[[setName]], setIndex)
 
-                                # The universe holds the set as well, the curve to compare against is what is left
-                                comparisonIndex <- setdiff(universe@index[[setName]], setIndex)
+                    setRows <- dplyr::mutate(rowTable[setIndex, , drop = FALSE],
+                        panel = setName, origin = "set"
+                    )
+                    comparisonRows <- dplyr::mutate(rowTable[comparisonIndex, , drop = FALSE],
+                        panel = setName, origin = "compared against"
+                    )
+                    return(rbind(setRows, comparisonRows))
+                }
+            ))
 
-                                setRows <- dplyr::mutate(rowTable[setIndex, , drop = FALSE],
-                                                         panel = setName, origin = "set")
-                                comparisonRows <- dplyr::mutate(rowTable[comparisonIndex, , drop = FALSE],
-                                                                panel = setName, origin = "compared against")
-                                return(rbind(setRows, comparisonRows))
-                              }))
+        plotTable$origin <- factor(plotTable$origin, levels = c("set", "compared against"))
 
-    plotTable$origin <- factor(plotTable$origin, levels = c("set", "compared against"))
+        colourValues <- if (is.null(colours)) {
+            c("set" = "#B2182B", "compared against" = "grey55")
+        } else {
+            colours
+        }
 
-    colourValues <- if (is.null(colours)) {c("set" = "#B2182B", "compared against" = "grey55")} else {colours}
+        matchingPlot <-
+            ggplot2::ggplot(
+                data = plotTable,
+                mapping = ggplot2::aes(x = .data[[covariate]], colour = .data$origin, fill = .data$origin)
+            ) +
+            ggplot2::geom_density(alpha = 0.25, linewidth = 0.5) +
+            ggplot2::facet_wrap(facets = ~panel, scales = "free_y") +
+            ggplot2::scale_colour_manual(values = colourValues, drop = FALSE) +
+            ggplot2::scale_fill_manual(values = colourValues, drop = FALSE) +
+            ggplot2::labs(
+                x = if (covariate == "width") {
+                    "Region width (bp)"
+                } else {
+                    "Width-adjusted abundance (log<sub>2</sub> CPM)"
+                },
+                y = "Density", colour = "", fill = "",
+                title = if (is.null(title)) {
+                    paste0("Universe matching on ", covariate)
+                } else {
+                    title
+                }
+            ) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
 
-    matchingPlot <-
-      ggplot2::ggplot(data = plotTable,
-                      mapping = ggplot2::aes(x = .data[[covariate]], colour = .data$origin, fill = .data$origin)) +
-      ggplot2::geom_density(alpha = 0.25, linewidth = 0.5) +
-      ggplot2::facet_wrap(facets = ~ panel, scales = "free_y") +
-      ggplot2::scale_colour_manual(values = colourValues, drop = FALSE) +
-      ggplot2::scale_fill_manual(values = colourValues, drop = FALSE) +
-      ggplot2::labs(x = if (covariate == "width") {"Region width (bp)"} else {"Width-adjusted abundance (log<sub>2</sub> CPM)"},
-                    y = "Density", colour = "", fill = "",
-                    title = if (is.null(title)) {paste0("Universe matching on ", covariate)} else {title}) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+        if (covariate == "width") {
+            matchingPlot <- matchingPlot + ggplot2::scale_x_log10()
+        }
 
-    if (covariate == "width") {
-      matchingPlot <- matchingPlot + ggplot2::scale_x_log10()
-    }
-
-    return(matchingPlot)
-  } # END function
-
-
+        return(matchingPlot)
+    } # END function
 
 
 #' @title .setAnnotation
@@ -1016,22 +1175,31 @@ plotUniverseMatching <-
 #' @keywords internal
 
 .setAnnotation <-
-  function(setResults,
-           setNames,
-           yPosition) {
+    function(setResults,
+             setNames,
+             yPosition) {
+        significanceColumn <- if ("camera.FDR" %in% colnames(resultsTable(setResults))) {
+            "camera.FDR"
+        } else {
+            "fry.FDR"
+        }
+        testName <- if (significanceColumn == "camera.FDR") {
+            "camera"
+        } else {
+            "fry"
+        }
 
-    significanceColumn <- if ("camera.FDR" %in% colnames(setResults@results)) {"camera.FDR"} else {"fry.FDR"}
-    testName <- if (significanceColumn == "camera.FDR") {"camera"} else {"fry"}
+        # The label names the test, since a self-contained and a competitive FDR are not the same claim
+        annotationTable <- dplyr::mutate(resultsTable(setResults),
+            label = sprintf(
+                "delta %.2f\n%s FDR %.1e",
+                .data$delta.log2FC, testName, .data[[significanceColumn]]
+            ),
+            y.position = yPosition
+        )
 
-    # The label names the test, since a self-contained and a competitive FDR are not the same claim
-    annotationTable <- dplyr::mutate(setResults@results,
-                                     label = sprintf("delta %.2f\n%s FDR %.1e",
-                                                     .data$delta.log2FC, testName, .data[[significanceColumn]]),
-                                     y.position = yPosition)
-
-    return(as.data.frame(dplyr::filter(annotationTable, .data$region.set %in% setNames)))
-  } # END function
-
+        return(as.data.frame(dplyr::filter(annotationTable, .data$region.set %in% setNames)))
+    } # END function
 
 
 #' @title .plotSetScores
@@ -1065,148 +1233,180 @@ plotUniverseMatching <-
 #' @keywords internal
 
 .plotSetScores <-
-  function(setScores,
-           set = NULL,
-           groupBy = NULL,
-           groupOrder = NULL,
-           comparisons = NULL,
-           annotate = TRUE,
-           colours = NULL,
-           baseColours = NULL,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "none",
-           baseSize = 12) {
+    function(setScores,
+             set = NULL,
+             groupBy = NULL,
+             groupOrder = NULL,
+             comparisons = NULL,
+             annotate = TRUE,
+             colours = NULL,
+             baseColours = NULL,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "none",
+             baseSize = 12) {
+        scoresTable <- scoreTable(setScores)
+        comparisonTable <- scoreComparisons(setScores)
 
-    scoresTable <- setScores@scores
-    comparisonTable <- setScores@comparisons
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(scoresTable$region.set))
 
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(scoresTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets were not scored: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
 
-      if (length(absentSets) > 0) {
-        stop("The following region sets were not scored: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-
-      scoresTable <- dplyr::filter(scoresTable, .data$region.set %in% set)
-      comparisonTable <- dplyr::filter(comparisonTable, .data$set.1 %in% set & .data$set.2 %in% set)
-    }
-
-    #---------------------------------#
-    # Colour and order the libraries  #
-    #---------------------------------#
-    colTable <- setScores@sample.metadata
-
-    if (!is.null(groupBy)) {
-      if (!(groupBy %in% colnames(colTable))) {
-        stop("The column '", groupBy, "' is absent from the metadata of the samples.", call. = FALSE)
-      }
-      colTable$group <- as.character(colTable[[groupBy]])
-    } else {
-      colTable$group <- colTable$sample
-    }
-
-    groupOrder <- .resolveGroupOrder(groupOrder = groupOrder,
-                                     groupLevels = unique(colTable$group))
-
-    colTable$group <- factor(colTable$group, levels = groupOrder)
-    colTable <- colTable[order(colTable$group, colTable$sample), , drop = FALSE]
-
-    sampleColours <- if (is.null(colours)) {
-      .groupShades(colTable = colTable, baseColours = baseColours)
-    } else {
-      colours
-    }
-
-    setLevels <- sort(unique(scoresTable$region.set))
-    scoresTable <- dplyr::mutate(scoresTable,
-                                 sample = factor(.data$sample, levels = colTable$sample),
-                                 region.set = factor(.data$region.set, levels = setLevels))
-    scoresTable <- dplyr::arrange(scoresTable, .data$region.set, .data$sample)
-
-    #----------------#
-    # Build the plot #
-    #----------------#
-    axisLabel <- if (setScores@reference == "none") {
-      paste0("log<sub>2</sub> ", setScores@assay)
-    } else {
-      paste0("log<sub>2</sub> (set / ", setScores@reference, ")")
-    }
-
-    scorePlot <-
-      ggplot2::ggplot(data = scoresTable,
-                      mapping = ggplot2::aes(x = .data$region.set, y = .data$score)) +
-      # One line per library across the sets, because the comparison is paired and a figure hiding that shows another test
-      ggplot2::geom_line(mapping = ggplot2::aes(group = .data$sample), colour = "grey70", linewidth = 0.4) +
-      ggplot2::geom_point(mapping = ggplot2::aes(colour = .data$sample), size = 3) +
-      ggplot2::scale_colour_manual(values = sampleColours) +
-      ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.08, 0.18))) +
-      ggplot2::labs(x = "",
-                    y = axisLabel,
-                    colour = "",
-                    title = title,
-                    subtitle = subtitle) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
-      ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
-                     panel.grid.major.x = ggplot2::element_blank())
-
-    #----------------------------------------#
-    # Brackets carrying the paired result    #
-    #----------------------------------------#
-    if (isTRUE(annotate) & nrow(comparisonTable) > 0) {
-
-      if (!is.null(comparisons)) {
-        requestedPairs <- vapply(comparisons, function(x) {paste(sort(x), collapse = "|")}, character(1))
-        comparisonTable <- dplyr::filter(comparisonTable,
-                                         paste(pmin(.data$set.1, .data$set.2),
-                                               pmax(.data$set.1, .data$set.2), sep = "|") %in% requestedPairs)
-      }
-
-      if (nrow(comparisonTable) > 0) {
-        scoreRange <- range(scoresTable$score, na.rm = TRUE)
-        scoreSpan <- diff(scoreRange)
-
-        if (!is.finite(scoreSpan) | scoreSpan == 0) {
-          scoreSpan <- 1
+            scoresTable <- dplyr::filter(scoresTable, .data$region.set %in% set)
+            comparisonTable <- dplyr::filter(comparisonTable, .data$set.1 %in% set & .data$set.2 %in% set)
         }
 
-        bracketStep <- scoreSpan * 0.13
+        #---------------------------------#
+        # Colour and order the libraries  #
+        #---------------------------------#
+        colTable <- scoreSamples(setScores)
 
-        # Neighbouring pairs first, so the short brackets sit under the long ones instead of crossing them
-        comparisonTable <- dplyr::arrange(comparisonTable,
-                                          abs(match(.data$set.1, setLevels) - match(.data$set.2, setLevels)))
+        if (!is.null(groupBy)) {
+            if (!(groupBy %in% colnames(colTable))) {
+                stop("The column '", groupBy, "' is absent from the metadata of the samples.", call. = FALSE)
+            }
+            colTable$group <- as.character(colTable[[groupBy]])
+        } else {
+            colTable$group <- colTable$sample
+        }
 
-        bracketTable <-
-          dplyr::mutate(comparisonTable,
+        groupOrder <- .resolveGroupOrder(
+            groupOrder = groupOrder,
+            groupLevels = unique(colTable$group)
+        )
+
+        colTable$group <- factor(colTable$group, levels = groupOrder)
+        colTable <- colTable[order(colTable$group, colTable$sample), , drop = FALSE]
+
+        sampleColours <- if (is.null(colours)) {
+            .groupShades(colTable = colTable, baseColours = baseColours)
+        } else {
+            colours
+        }
+
+        setLevels <- sort(unique(scoresTable$region.set))
+        scoresTable <- dplyr::mutate(scoresTable,
+            sample = factor(.data$sample, levels = colTable$sample),
+            region.set = factor(.data$region.set, levels = setLevels)
+        )
+        scoresTable <- dplyr::arrange(scoresTable, .data$region.set, .data$sample)
+
+        #----------------#
+        # Build the plot #
+        #----------------#
+        axisLabel <- if (scoreReference(setScores) == "none") {
+            paste0("log<sub>2</sub> ", scoreAssay(setScores))
+        } else {
+            paste0("log<sub>2</sub> (set / ", scoreReference(setScores), ")")
+        }
+
+        scorePlot <-
+            ggplot2::ggplot(
+                data = scoresTable,
+                mapping = ggplot2::aes(x = .data$region.set, y = .data$score)
+            ) +
+            # One line per library across the sets, because the comparison is paired and a figure hiding that shows another test
+            ggplot2::geom_line(mapping = ggplot2::aes(group = .data$sample), colour = "grey70", linewidth = 0.4) +
+            ggplot2::geom_point(mapping = ggplot2::aes(colour = .data$sample), size = 3) +
+            ggplot2::scale_colour_manual(values = sampleColours) +
+            ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.08, 0.18))) +
+            ggplot2::labs(
+                x = "",
+                y = axisLabel,
+                colour = "",
+                title = title,
+                subtitle = subtitle
+            ) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = TRUE) +
+            ggplot2::theme(
+                axis.ticks.x = ggplot2::element_blank(),
+                panel.grid.major.x = ggplot2::element_blank()
+            )
+
+        #----------------------------------------#
+        # Brackets carrying the paired result    #
+        #----------------------------------------#
+        if (isTRUE(annotate) & nrow(comparisonTable) > 0) {
+            if (!is.null(comparisons)) {
+                requestedPairs <- vapply(comparisons, function(x) {
+                    paste(sort(x), collapse = "|")
+                }, character(1))
+                comparisonTable <- dplyr::filter(
+                    comparisonTable,
+                    paste(pmin(.data$set.1, .data$set.2),
+                        pmax(.data$set.1, .data$set.2),
+                        sep = "|"
+                    ) %in% requestedPairs
+                )
+            }
+
+            if (nrow(comparisonTable) > 0) {
+                scoreRange <- range(scoresTable$score, na.rm = TRUE)
+                scoreSpan <- diff(scoreRange)
+
+                if (!is.finite(scoreSpan) | scoreSpan == 0) {
+                    scoreSpan <- 1
+                }
+
+                bracketStep <- scoreSpan * 0.13
+
+                # Neighbouring pairs first, so the short brackets sit under the long ones instead of crossing them
+                comparisonTable <- dplyr::arrange(
+                    comparisonTable,
+                    abs(match(.data$set.1, setLevels) - match(.data$set.2, setLevels))
+                )
+
+                bracketTable <-
+                    dplyr::mutate(comparisonTable,
                         x.start = match(.data$set.1, setLevels),
                         x.end = match(.data$set.2, setLevels),
                         y.bracket = scoreRange[2] + bracketStep * seq_len(nrow(comparisonTable)),
                         y.tick = bracketStep * 0.2,
                         # The delta is the paired difference between the two sets, the reference having cancelled out of it
-                        label = sprintf("&Delta;score = %.2f<br>FDR = %.1e", .data$mean.delta.score, .data$FDR))
+                        label = sprintf("&Delta;score = %.2f<br>FDR = %.1e", .data$mean.delta.score, .data$FDR)
+                    )
 
-        scorePlot <-
-          scorePlot +
-          ggplot2::geom_segment(data = bracketTable,
-                                mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.end,
-                                                       y = .data$y.bracket, yend = .data$y.bracket),
-                                inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-          ggplot2::geom_segment(data = bracketTable,
-                                mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.start,
-                                                       y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
-                                inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-          ggplot2::geom_segment(data = bracketTable,
-                                mapping = ggplot2::aes(x = .data$x.end, xend = .data$x.end,
-                                                       y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
-                                inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-          ggtext::geom_richtext(data = bracketTable,
-                                mapping = ggplot2::aes(x = (.data$x.start + .data$x.end) / 2,
-                                                       y = .data$y.bracket, label = .data$label),
-                                inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
-                                colour = "grey20", fill = NA, label.color = NA,
-                                label.padding = grid::unit(rep(1, 4), "pt"))
-      }
-    }
+                scorePlot <-
+                    scorePlot +
+                    ggplot2::geom_segment(
+                        data = bracketTable,
+                        mapping = ggplot2::aes(
+                            x = .data$x.start, xend = .data$x.end,
+                            y = .data$y.bracket, yend = .data$y.bracket
+                        ),
+                        inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                    ) +
+                    ggplot2::geom_segment(
+                        data = bracketTable,
+                        mapping = ggplot2::aes(
+                            x = .data$x.start, xend = .data$x.start,
+                            y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick
+                        ),
+                        inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                    ) +
+                    ggplot2::geom_segment(
+                        data = bracketTable,
+                        mapping = ggplot2::aes(
+                            x = .data$x.end, xend = .data$x.end,
+                            y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick
+                        ),
+                        inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                    ) +
+                    ggtext::geom_richtext(
+                        data = bracketTable,
+                        mapping = ggplot2::aes(
+                            x = (.data$x.start + .data$x.end) / 2,
+                            y = .data$y.bracket, label = .data$label
+                        ),
+                        inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
+                        colour = "grey20", fill = NA, label.color = NA,
+                        label.padding = grid::unit(rep(1, 4), "pt")
+                    )
+            }
+        }
 
-    return(scorePlot)
-  } # END function
+        return(scorePlot)
+    } # END function

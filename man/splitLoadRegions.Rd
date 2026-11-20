@@ -66,21 +66,27 @@ Imports a collection of genomic regions stored in a single object or file and sp
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
 regionRanges <- GenomicRanges::makeGRangesFromDataFrame(regionTable,
-                                                        keep.extra.columns = TRUE)
+    keep.extra.columns = TRUE
+)
 
 regions <- splitLoadRegions(regionRanges,
-                            splitBy = "setName",
-                            genomeAssembly = "rn4",
-                            verbose = FALSE)
+    splitBy = "setName",
+    genomeAssembly = "rn4",
+    verbose = FALSE
+)
 regionSetNames(regions)
 
 # A BED file, 0-based, whose name column carries the set of every region
 bedFile <- tempfile(fileext = ".bed")
-utils::write.table(data.frame(chrom = regionTable$seqnames,
-                              start = regionTable$start - 1,
-                              end = regionTable$end,
-                              name = regionTable$setName),
-                   file = bedFile, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+utils::write.table(
+    data.frame(
+        chrom = regionTable$seqnames,
+        start = regionTable$start - 1,
+        end = regionTable$end,
+        name = regionTable$setName
+    ),
+    file = bedFile, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE
+)
 
 regions <- splitLoadRegions(bedFile, splitBy = "name", genomeAssembly = "rn4", verbose = FALSE)
 regionSetNames(regions)

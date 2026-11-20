@@ -15,28 +15,32 @@
 #' @keywords internal
 
 .provenanceSlots <-
-  function(regionSet) {
-    if (methods::is(regionSet, "RegionSetDE.provenance")) {
-      return(list(blacklist = regionSet@blacklist,
-                  greylist = regionSet@greylist,
-                  whitelist = regionSet@whitelist,
-                  genome.assembly = regionSet@genome.assembly,
-                  seqlevels.style = regionSet@seqlevels.style,
-                  filtering.log = regionSet@filtering.log,
-                  parameters = regionSet@parameters))
-    }
+    function(regionSet) {
+        if (methods::is(regionSet, "RegionSetDE.provenance")) {
+            return(list(
+                blacklist = blacklistRanges(regionSet),
+                greylist = greylistRanges(regionSet),
+                whitelist = whitelistRanges(regionSet),
+                genome.assembly = genomeAssembly(regionSet),
+                seqlevels.style = chromosomeStyle(regionSet),
+                filtering.log = filteringLog(regionSet),
+                parameters = parameterLog(regionSet)
+            ))
+        }
 
-    return(list(blacklist = NULL,
-                greylist = NULL,
-                whitelist = NULL,
-                genome.assembly = NULL,
-                seqlevels.style = NA_character_,
-                filtering.log = data.frame(step = character(0), region.set = character(0),
-                                           n.before = numeric(0), n.after = numeric(0), n.removed = numeric(0)),
-                parameters = list()))
-  } # END function
-
-
+        return(list(
+            blacklist = NULL,
+            greylist = NULL,
+            whitelist = NULL,
+            genome.assembly = NULL,
+            seqlevels.style = NA_character_,
+            filtering.log = data.frame(
+                step = character(0), region.set = character(0),
+                n.before = numeric(0), n.after = numeric(0), n.removed = numeric(0)
+            ),
+            parameters = list()
+        ))
+    } # END function
 
 
 #' @title .tileRegionSets
@@ -61,44 +65,43 @@
 #' @keywords internal
 
 .tileRegionSets <-
-  function(regions,
-           tileWidth,
-           partialTiles = TRUE,
-           verbose = TRUE) {
+    function(regions,
+             tileWidth,
+             partialTiles = TRUE,
+             verbose = TRUE) {
+        tileWidth <- as.integer(tileWidth[1])
+        if (is.na(tileWidth) | tileWidth < 1) {
+            stop("The 'tileWidth' parameter must be a positive integer.", call. = FALSE)
+        }
 
-    tileWidth <- as.integer(tileWidth[1])
-    if (is.na(tileWidth) | tileWidth < 1) {
-      stop("The 'tileWidth' parameter must be a positive integer.", call. = FALSE)
-    }
+        # A step equal to the width returns adjacent, non overlapping tiles
+        tileList <- IRanges::slidingWindows(x = regions, width = tileWidth, step = tileWidth)
+        tilesPerRegion <- S4Vectors::elementNROWS(tileList)
 
-    # A step equal to the width returns adjacent, non overlapping tiles
-    tileList <- IRanges::slidingWindows(x = regions, width = tileWidth, step = tileWidth)
-    tilesPerRegion <- S4Vectors::elementNROWS(tileList)
+        tiles <- unlist(tileList, use.names = FALSE)
+        S4Vectors::mcols(tiles) <- S4Vectors::mcols(regions)[rep(seq_along(regions), times = tilesPerRegion), , drop = FALSE]
+        S4Vectors::mcols(tiles)$tile.id <- unlist(lapply(tilesPerRegion, seq_len), use.names = FALSE)
 
-    tiles <- unlist(tileList, use.names = FALSE)
-    S4Vectors::mcols(tiles) <- S4Vectors::mcols(regions)[rep(seq_along(regions), times = tilesPerRegion), , drop = FALSE]
-    S4Vectors::mcols(tiles)$tile.id <- unlist(lapply(tilesPerRegion, seq_len), use.names = FALSE)
+        # A shorter trailing tile collects less signal than its siblings and distorts any per-tile comparison
+        if (isFALSE(partialTiles)) {
+            tileTable <- data.frame(
+                region.key = paste(S4Vectors::mcols(tiles)$region.set, S4Vectors::mcols(tiles)$region.id, sep = "|"),
+                tile.width = BiocGenerics::width(tiles),
+                stringsAsFactors = FALSE
+            )
 
-    # A shorter trailing tile collects less signal than its siblings and distorts any per-tile comparison
-    if (isFALSE(partialTiles)) {
-      tileTable <- data.frame(region.key = paste(S4Vectors::mcols(tiles)$region.set, S4Vectors::mcols(tiles)$region.id, sep = "|"),
-                              tile.width = BiocGenerics::width(tiles),
-                              stringsAsFactors = FALSE)
+            keptTiles <- dplyr::filter(tileTable, .data$tile.width == tileWidth)
+            lostRegions <- dplyr::n_distinct(tileTable$region.key) - dplyr::n_distinct(keptTiles$region.key)
 
-      keptTiles <- dplyr::filter(tileTable, .data$tile.width == tileWidth)
-      lostRegions <- dplyr::n_distinct(tileTable$region.key) - dplyr::n_distinct(keptTiles$region.key)
+            if (lostRegions > 0 & isTRUE(verbose)) {
+                warning(lostRegions, " regions are narrower than 'tileWidth' and have been removed together with their partial tiles.", call. = FALSE)
+            }
 
-      if (lostRegions > 0 & isTRUE(verbose)) {
-        warning(lostRegions, " regions are narrower than 'tileWidth' and have been removed together with their partial tiles.", call. = FALSE)
-      }
+            tiles <- tiles[BiocGenerics::width(tiles) == tileWidth]
+        }
 
-      tiles <- tiles[BiocGenerics::width(tiles) == tileWidth]
-    }
-
-    return(tiles)
-  } # END function
-
-
+        return(tiles)
+    } # END function
 
 
 #' @title .flattenRegionSets
@@ -124,82 +127,88 @@
 #' @keywords internal
 
 .flattenRegionSets <-
-  function(regionSet,
-           tileWidth = NULL,
-           partialTiles = TRUE,
-           keepMetadata = TRUE,
-           regionId = NULL,
-           verbose = TRUE) {
+    function(regionSet,
+             tileWidth = NULL,
+             partialTiles = TRUE,
+             keepMetadata = TRUE,
+             regionId = NULL,
+             verbose = TRUE) {
+        #------------------------------#
+        # Uniform the input to a list  #
+        #------------------------------#
+        if (methods::is(regionSet, "RegionSetDE.counts")) {
+            stop("The counts have already been computed for this object.", call. = FALSE)
+        } else if (methods::is(regionSet, "RegionSetDE")) {
+            regionList <- as.list(regionRanges(regionSet))
+        } else if (methods::is(regionSet, "GRangesList")) {
+            regionList <- as.list(regionSet)
+        } else if (is.list(regionSet) & all(vapply(regionSet, function(x) {
+            methods::is(x, "GRanges")
+        }, logical(1)))) {
+            regionList <- regionSet
+        } else {
+            stop("The 'regionSet' parameter must be a RegionSetDE object, a GRangesList, a named list of GRanges or a GRanges.", call. = FALSE)
+        }
 
-    #------------------------------#
-    # Uniform the input to a list  #
-    #------------------------------#
-    if (methods::is(regionSet, "RegionSetDE.counts")) {
-      stop("The counts have already been computed for this object.", call. = FALSE)
-    } else if (methods::is(regionSet, "RegionSetDE")) {
-      regionList <- as.list(regionSet@regions)
-    } else if (methods::is(regionSet, "GRangesList")) {
-      regionList <- as.list(regionSet)
-    } else if (is.list(regionSet) & all(vapply(regionSet, function(x) {methods::is(x, "GRanges")}, logical(1)))) {
-      regionList <- regionSet
-    } else {
-      stop("The 'regionSet' parameter must be a RegionSetDE object, a GRangesList, a named list of GRanges or a GRanges.", call. = FALSE)
-    }
+        if (is.null(names(regionList)) | any(is.na(names(regionList))) | any(names(regionList) == "")) {
+            stop("All the region sets must be named.", call. = FALSE)
+        }
 
-    if (is.null(names(regionList)) | any(is.na(names(regionList))) | any(names(regionList) == "")) {
-      stop("All the region sets must be named.", call. = FALSE)
-    }
+        #--------------------------------#
+        # Stack the sets, one after the  #
+        # other, harmonising what they   #
+        # carry                          #
+        #--------------------------------#
+        # Sets loaded from different files rarely share the same columns, and the stacking needs them to
+        annotationPlan <- .metadataPlan(regionList = regionList, keepMetadata = keepMetadata, verbose = verbose)
 
-    #--------------------------------#
-    # Stack the sets, one after the  #
-    # other, harmonising what they   #
-    # carry                          #
-    #--------------------------------#
-    # Sets loaded from different files rarely share the same columns, and the stacking needs them to
-    annotationPlan <- .metadataPlan(regionList = regionList, keepMetadata = keepMetadata, verbose = verbose)
+        flatList <-
+            lapply(
+                names(regionList),
+                function(setName) {
+                    gr <- regionList[[setName]]
 
-    flatList <-
-      lapply(names(regionList),
-             function(setName) {
-               gr <- regionList[[setName]]
+                    identifiers <- .regionIdentifiers(gr = gr, regionId = regionId, setName = setName)
+                    annotationTable <- .alignMetadata(gr = gr, plan = annotationPlan)
 
-               identifiers <- .regionIdentifiers(gr = gr, regionId = regionId, setName = setName)
-               annotationTable <- .alignMetadata(gr = gr, plan = annotationPlan)
+                    S4Vectors::mcols(gr) <- cbind(
+                        S4Vectors::DataFrame(region.set = setName, region.id = identifiers),
+                        annotationTable
+                    )
+                    names(gr) <- NULL
+                    return(gr)
+                }
+            )
 
-               S4Vectors::mcols(gr) <- cbind(S4Vectors::DataFrame(region.set = setName, region.id = identifiers),
-                                             annotationTable)
-               names(gr) <- NULL
-               return(gr)
-             })
+        allRegions <- do.call(what = c, args = flatList)
 
-    allRegions <- do.call(what = c, args = flatList)
+        #-----------------#
+        # Optional tiling #
+        #-----------------#
+        if (!is.null(tileWidth)) {
+            allRegions <- .tileRegionSets(regions = allRegions, tileWidth = tileWidth, partialTiles = partialTiles, verbose = verbose)
+            names(allRegions) <- paste0(S4Vectors::mcols(allRegions)$region.set, "|", S4Vectors::mcols(allRegions)$region.id, "|tile", S4Vectors::mcols(allRegions)$tile.id)
+        } else {
+            S4Vectors::mcols(allRegions)$tile.id <- NA_integer_
+            names(allRegions) <- paste0(S4Vectors::mcols(allRegions)$region.set, "|", S4Vectors::mcols(allRegions)$region.id)
+        }
 
-    #-----------------#
-    # Optional tiling #
-    #-----------------#
-    if (!is.null(tileWidth)) {
-      allRegions <- .tileRegionSets(regions = allRegions, tileWidth = tileWidth, partialTiles = partialTiles, verbose = verbose)
-      names(allRegions) <- paste0(S4Vectors::mcols(allRegions)$region.set, "|", S4Vectors::mcols(allRegions)$region.id, "|tile", S4Vectors::mcols(allRegions)$tile.id)
-    } else {
-      S4Vectors::mcols(allRegions)$tile.id <- NA_integer_
-      names(allRegions) <- paste0(S4Vectors::mcols(allRegions)$region.set, "|", S4Vectors::mcols(allRegions)$region.id)
-    }
+        # The three identifiers first, the annotation of the regions behind them
+        identifierColumns <- c("region.set", "region.id", "tile.id")
+        S4Vectors::mcols(allRegions) <- S4Vectors::mcols(allRegions)[, c(
+            identifierColumns,
+            setdiff(colnames(S4Vectors::mcols(allRegions)), identifierColumns)
+        ),
+        drop = FALSE
+        ]
 
-    # The three identifiers first, the annotation of the regions behind them
-    identifierColumns <- c("region.set", "region.id", "tile.id")
-    S4Vectors::mcols(allRegions) <- S4Vectors::mcols(allRegions)[, c(identifierColumns,
-                                                                     setdiff(colnames(S4Vectors::mcols(allRegions)), identifierColumns)),
-                                                                 drop = FALSE]
+        # The row names index the object from here on, a collision would silently mix up two regions
+        if (any(duplicated(names(allRegions)))) {
+            stop("Some regions share the same identifier within a set, run 'loadRegions' with 'removeDuplicatedRegions = TRUE'.", call. = FALSE)
+        }
 
-    # The row names index the object from here on, a collision would silently mix up two regions
-    if (any(duplicated(names(allRegions)))) {
-      stop("Some regions share the same identifier within a set, run 'loadRegions' with 'removeDuplicatedRegions = TRUE'.", call. = FALSE)
-    }
-
-    return(allRegions)
-  } # END function
-
-
+        return(allRegions)
+    } # END function
 
 
 #' @title .buildSampleTable
@@ -221,93 +230,99 @@
 #' @keywords internal
 
 .buildSampleTable <-
-  function(files,
-           sampleNames = NULL,
-           sampleMetadata = NULL,
-           fileColumn = "file",
-           extensionPattern = "\\.[^.]*$") {
-
-    if (is.null(sampleNames)) {
-      sampleNames <- sub(extensionPattern, "", basename(files), ignore.case = TRUE)
-    }
-
-    if (length(sampleNames) != length(files)) {
-      stop("The 'sampleNames' parameter must have the same length as the number of files.", call. = FALSE)
-    }
-
-    # The names become the column names of the assay, duplicates would make the samples unaddressable
-    if (any(duplicated(sampleNames))) {
-      stop("The sample names must be unique.", call. = FALSE)
-    }
-
-    sampleTable <- data.frame(sample = sampleNames, file = files, stringsAsFactors = FALSE)
-    colnames(sampleTable)[2] <- fileColumn
-
-    if (!is.null(sampleMetadata)) {
-      sampleMetadata <- as.data.frame(sampleMetadata, stringsAsFactors = FALSE)
-
-      if ("sample" %in% colnames(sampleMetadata)) {
-        # Joining on the sample name tolerates a metadata table in a different order
-        absentSamples <- setdiff(sampleTable$sample, sampleMetadata$sample)
-        if (length(absentSamples) > 0) {
-          stop("The following samples are missing from 'sampleMetadata': ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+    function(files,
+             sampleNames = NULL,
+             sampleMetadata = NULL,
+             fileColumn = "file",
+             extensionPattern = "\\.[^.]*$") {
+        if (is.null(sampleNames)) {
+            sampleNames <- sub(extensionPattern, "", basename(files), ignore.case = TRUE)
         }
-        sampleTable <- dplyr::left_join(sampleTable, sampleMetadata, by = "sample")
-      } else {
-        if (nrow(sampleMetadata) != length(files)) {
-          stop("Without a 'sample' column, 'sampleMetadata' must have one row per file, in the same order.", call. = FALSE)
+
+        if (length(sampleNames) != length(files)) {
+            stop("The 'sampleNames' parameter must have the same length as the number of files.", call. = FALSE)
         }
-        sampleTable <- dplyr::bind_cols(sampleTable, sampleMetadata)
-      }
-    }
 
-    return(sampleTable)
-  } # END function
+        # The names become the column names of the assay, duplicates would make the samples unaddressable
+        if (any(duplicated(sampleNames))) {
+            stop("The sample names must be unique.", call. = FALSE)
+        }
+
+        sampleTable <- data.frame(sample = sampleNames, file = files, stringsAsFactors = FALSE)
+        colnames(sampleTable)[2] <- fileColumn
+
+        if (!is.null(sampleMetadata)) {
+            sampleMetadata <- as.data.frame(sampleMetadata, stringsAsFactors = FALSE)
+
+            if ("sample" %in% colnames(sampleMetadata)) {
+                # Joining on the sample name tolerates a metadata table in a different order
+                absentSamples <- setdiff(sampleTable$sample, sampleMetadata$sample)
+                if (length(absentSamples) > 0) {
+                    stop("The following samples are missing from 'sampleMetadata': ", paste(absentSamples, collapse = ", "), ".", call. = FALSE)
+                }
+                sampleTable <- dplyr::left_join(sampleTable, sampleMetadata, by = "sample")
+            } else {
+                if (nrow(sampleMetadata) != length(files)) {
+                    stop("Without a 'sample' column, 'sampleMetadata' must have one row per file, in the same order.", call. = FALSE)
+                }
+                sampleTable <- dplyr::bind_cols(sampleTable, sampleMetadata)
+            }
+        }
+
+        return(sampleTable)
+    } # END function
 
 
-
-
-#' @title .makeParallelParam
+#' @title .resolveBPPARAM
 #'
-#' @description Builds the \code{BiocParallel} back end matching the number of requested threads and the operating system.
+#' @description Turns the \code{BPPARAM} argument of the user into a \code{BiocParallel} back end. A \code{BiocParallelParam} object is returned untouched, a number of cores builds the back end matching the operating system, and \code{NULL} gives a serial one.
 #'
-#' @param nThreads Number of threads. Default: \code{1}.
-#' @param tasks Number of tasks the work is split into, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the threads become free. Default: \code{0}, one task per thread.
-#' @param progressBar Logical value to indicate whether the back end must draw its progress bar, which advances by one step for every task that comes back. Default: \code{FALSE}.
+#' @param BPPARAM A \code{BiocParallelParam} object, a number of cores, or \code{NULL}. Default: \code{NULL}.
+#' @param tasks Number of tasks the work is split into when the back end is built here, see \code{\link[BiocParallel]{MulticoreParam}}. Setting it to the number of jobs hands the jobs out one at a time, as the workers become free. Default: \code{0}, one task per worker.
+#' @param progressBar Logical value to indicate whether a back end built here must draw its progress bar, which advances by one step for every task that comes back. Default: \code{FALSE}.
 #'
 #' @return A \code{BiocParallelParam} object.
 #'
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom BiocParallel SerialParam MulticoreParam SnowParam
+#' @importFrom methods is
 #'
 #' @keywords internal
 
-.makeParallelParam <-
-  function(nThreads = 1,
-           tasks = 0L,
-           progressBar = FALSE) {
-    nThreads <- as.integer(nThreads[1])
-    progressBar <- isTRUE(progressBar)
+.resolveBPPARAM <-
+    function(BPPARAM = NULL,
+             tasks = 0L,
+             progressBar = FALSE) {
+        progressBar <- isTRUE(progressBar)
 
-    if (is.na(nThreads) | nThreads < 1) {
-      stop("The 'nThreads' parameter must be a positive integer.", call. = FALSE)
-    }
+        # Nothing asked for, so nothing runs in parallel
+        if (is.null(BPPARAM)) {
+            return(BiocParallel::SerialParam(progressbar = progressBar))
+        }
 
-    if (nThreads == 1) {
-      return(BiocParallel::SerialParam(progressbar = progressBar))
-    }
+        # A back end of the user is a reference object, changing its tasks or its progress bar here would change it behind the user's back
+        if (methods::is(BPPARAM, "BiocParallelParam")) {
+            return(BPPARAM)
+        }
 
-    # Windows has no forking, sockets give the same result at a higher start-up cost
-    if (.Platform$OS.type == "windows") {
-      return(BiocParallel::SnowParam(workers = nThreads, tasks = as.integer(tasks), progressbar = progressBar))
-    }
+        if (!is.numeric(BPPARAM) || length(BPPARAM) != 1 || !is.finite(BPPARAM) || BPPARAM < 1) {
+            stop("The 'BPPARAM' parameter must be a BiocParallelParam object, a number of cores, or NULL.", call. = FALSE)
+        }
 
-    # Forked workers already see the options of the session, sending them along with every task only costs time
-    return(BiocParallel::MulticoreParam(workers = nThreads, tasks = as.integer(tasks), exportglobals = FALSE, progressbar = progressBar))
-  } # END function
+        nCores <- as.integer(BPPARAM)
+        if (nCores == 1L) {
+            return(BiocParallel::SerialParam(progressbar = progressBar))
+        }
 
+        # Windows has no forking, sockets give the same result at a higher start-up cost
+        if (.Platform$OS.type == "windows") {
+            return(BiocParallel::SnowParam(workers = nCores, tasks = as.integer(tasks), progressbar = progressBar))
+        }
 
+        # Forked workers already see the options of the session, sending them along with every task only costs time
+        return(BiocParallel::MulticoreParam(workers = nCores, tasks = as.integer(tasks), exportglobals = FALSE, progressbar = progressBar))
+    } # END function
 
 
 #' @title .elapsedTime
@@ -323,23 +338,19 @@
 #' @keywords internal
 
 .elapsedTime <-
-  function(startTime) {
+    function(startTime) {
+        elapsedSeconds <- as.numeric(difftime(Sys.time(), startTime, units = "secs"))
 
-    elapsedSeconds <- as.numeric(difftime(Sys.time(), startTime, units = "secs"))
+        if (elapsedSeconds < 60) {
+            return(paste(round(elapsedSeconds), "s"))
+        }
 
-    if (elapsedSeconds < 60) {
-      return(paste(round(elapsedSeconds), "s"))
-    }
+        if (elapsedSeconds < 3600) {
+            return(paste(round(elapsedSeconds / 60, 1), "min"))
+        }
 
-    if (elapsedSeconds < 3600) {
-      return(paste(round(elapsedSeconds / 60, 1), "min"))
-    }
-
-    return(paste(round(elapsedSeconds / 3600, 1), "h"))
-  } # END function
-
-
-
+        return(paste(round(elapsedSeconds / 3600, 1), "h"))
+    } # END function
 
 
 #' @title .registeredChromosomeNames
@@ -358,29 +369,36 @@
 #' @keywords internal
 
 .registeredChromosomeNames <-
-  function(chromosomeNames,
-           targetSeqlevels) {
+    function(chromosomeNames,
+             targetSeqlevels) {
+        unknownNames <- rep(NA_character_, length(chromosomeNames))
 
-    unknownNames <- rep(NA_character_, length(chromosomeNames))
+        registeredNames <-
+            tryCatch(
+                {
+                    mappedNames <- GenomeInfoDb::mapSeqlevels(
+                        seqlevels = chromosomeNames,
+                        style = GenomeInfoDb::seqlevelsStyle(targetSeqlevels)[1]
+                    )
+                    if (is.matrix(mappedNames)) {
+                        mappedNames <- mappedNames[1, ]
+                    }
+                    as.character(mappedNames)
+                },
+                error = function(e) {
+                    unknownNames
+                },
+                warning = function(w) {
+                    unknownNames
+                }
+            )
 
-    registeredNames <-
-      tryCatch({
-        mappedNames <- GenomeInfoDb::mapSeqlevels(seqlevels = chromosomeNames,
-                                                  style = GenomeInfoDb::seqlevelsStyle(targetSeqlevels)[1])
-        if (is.matrix(mappedNames)) {mappedNames <- mappedNames[1, ]}
-        as.character(mappedNames)
-      },
-      error = function(e) {unknownNames},
-      warning = function(w) {unknownNames})
+        if (length(registeredNames) != length(chromosomeNames)) {
+            return(unknownNames)
+        }
 
-    if (length(registeredNames) != length(chromosomeNames)) {
-      return(unknownNames)
-    }
-
-    return(registeredNames)
-  } # END function
-
-
+        return(registeredNames)
+    } # END function
 
 
 #' @title .translateChromosomeNames
@@ -397,51 +415,50 @@
 #' @keywords internal
 
 .translateChromosomeNames <-
-  function(chromosomeNames,
-           targetSeqlevels) {
+    function(chromosomeNames,
+             targetSeqlevels) {
+        chromosomeNames <- as.character(chromosomeNames)
+        translatedNames <- as.character(ifelse(chromosomeNames %in% targetSeqlevels, chromosomeNames, NA_character_))
+        missingIndex <- which(is.na(translatedNames))
 
-    chromosomeNames <- as.character(chromosomeNames)
-    translatedNames <- as.character(ifelse(chromosomeNames %in% targetSeqlevels, chromosomeNames, NA_character_))
-    missingIndex <- which(is.na(translatedNames))
+        if (length(missingIndex) == 0 | length(targetSeqlevels) == 0) {
+            return(translatedNames)
+        }
 
-    if (length(missingIndex) == 0 | length(targetSeqlevels) == 0) {
-      return(translatedNames)
-    }
+        missingNames <- chromosomeNames[missingIndex]
 
-    missingNames <- chromosomeNames[missingIndex]
+        #-------------------------------#
+        # Candidates for every name     #
+        #-------------------------------#
+        # GenomeInfoDb knows the registered styles, the mitochondrion of the species it lists included
+        registeredNames <- .registeredChromosomeNames(chromosomeNames = missingNames, targetSeqlevels = targetSeqlevels)
 
-    #-------------------------------#
-    # Candidates for every name     #
-    #-------------------------------#
-    # GenomeInfoDb knows the registered styles, the mitochondrion of the species it lists included
-    registeredNames <- .registeredChromosomeNames(chromosomeNames = missingNames, targetSeqlevels = targetSeqlevels)
+        # Scaffolds and custom contigs are in no table, for them the prefix is the only thing to try
+        prefixNames <- ifelse(grepl("^chr", missingNames), sub("^chr", "", missingNames), paste0("chr", missingNames))
 
-    # Scaffolds and custom contigs are in no table, for them the prefix is the only thing to try
-    prefixNames <- ifelse(grepl("^chr", missingNames), sub("^chr", "", missingNames), paste0("chr", missingNames))
+        # The mitochondrion is the one chromosome the styles disagree on beyond the prefix
+        mitochondrialNames <- c("chrM", "MT", "chrMT", "M")
+        candidateList <- c(
+            list(registeredNames, prefixNames),
+            lapply(mitochondrialNames, function(mitochondrialName) {
+                ifelse(missingNames %in% mitochondrialNames, mitochondrialName, NA_character_)
+            })
+        )
 
-    # The mitochondrion is the one chromosome the styles disagree on beyond the prefix
-    mitochondrialNames <- c("chrM", "MT", "chrMT", "M")
-    candidateList <- c(list(registeredNames, prefixNames),
-                       lapply(mitochondrialNames, function(mitochondrialName) {
-                         ifelse(missingNames %in% mitochondrialNames, mitochondrialName, NA_character_)
-                       }))
+        #-------------------------------#
+        # First candidate that exists   #
+        #-------------------------------#
+        foundNames <- rep(NA_character_, length(missingNames))
 
-    #-------------------------------#
-    # First candidate that exists   #
-    #-------------------------------#
-    foundNames <- rep(NA_character_, length(missingNames))
+        for (candidateNames in candidateList) {
+            usable <- is.na(foundNames) & !is.na(candidateNames) & candidateNames %in% targetSeqlevels
+            foundNames[usable] <- candidateNames[usable]
+        }
 
-    for (candidateNames in candidateList) {
-      usable <- is.na(foundNames) & !is.na(candidateNames) & candidateNames %in% targetSeqlevels
-      foundNames[usable] <- candidateNames[usable]
-    }
+        translatedNames[missingIndex] <- foundNames
 
-    translatedNames[missingIndex] <- foundNames
-
-    return(translatedNames)
-  } # END function
-
-
+        return(translatedNames)
+    } # END function
 
 
 #' @title .matchChromosomeNames
@@ -461,30 +478,29 @@
 #' @keywords internal
 
 .matchChromosomeNames <-
-  function(chromosomeNames,
-           targetSeqlevels,
-           argumentName = "excludeChromosomes") {
+    function(chromosomeNames,
+             targetSeqlevels,
+             argumentName = "excludeChromosomes") {
+        if (length(chromosomeNames) == 0) {
+            return(chromosomeNames)
+        }
 
-    if (length(chromosomeNames) == 0) {
-      return(chromosomeNames)
-    }
+        # Only the names that miss are touched, so a list mixing the two styles still works
+        translatedNames <- .translateChromosomeNames(chromosomeNames = chromosomeNames, targetSeqlevels = targetSeqlevels)
+        chromosomeNames <- ifelse(is.na(translatedNames), as.character(chromosomeNames), translatedNames)
 
-    # Only the names that miss are touched, so a list mixing the two styles still works
-    translatedNames <- .translateChromosomeNames(chromosomeNames = chromosomeNames, targetSeqlevels = targetSeqlevels)
-    chromosomeNames <- ifelse(is.na(translatedNames), as.character(chromosomeNames), translatedNames)
+        stillMissing <- setdiff(chromosomeNames, targetSeqlevels)
 
-    stillMissing <- setdiff(chromosomeNames, targetSeqlevels)
+        if (length(stillMissing) > 0) {
+            warning("The following names in '", argumentName, "' match no chromosome of the files and exclude nothing: ",
+                paste(stillMissing, collapse = ", "), ". The files use names such as ",
+                paste(utils::head(targetSeqlevels, 3), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (length(stillMissing) > 0) {
-      warning("The following names in '", argumentName, "' match no chromosome of the files and exclude nothing: ",
-              paste(stillMissing, collapse = ", "), ". The files use names such as ",
-              paste(utils::head(targetSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
-    }
-
-    return(chromosomeNames)
-  } # END function
-
-
+        return(chromosomeNames)
+    } # END function
 
 
 #' @title .matchSeqlevels
@@ -511,86 +527,94 @@
 #' @keywords internal
 
 .matchSeqlevels <-
-  function(x,
-           targetSeqlevels,
-           fileName = NULL,
-           verbose = TRUE) {
+    function(x,
+             targetSeqlevels,
+             fileName = NULL,
+             verbose = TRUE) {
+        currentSeqlevels <- GenomeInfoDb::seqlevels(x)
 
-    currentSeqlevels <- GenomeInfoDb::seqlevels(x)
-
-    if (length(currentSeqlevels) == 0 | length(targetSeqlevels) == 0) {
-      return(x)
-    }
-
-    translatedSeqlevels <- .translateChromosomeNames(chromosomeNames = currentSeqlevels, targetSeqlevels = targetSeqlevels)
-
-    # Not a single chromosome in common under any name: the two sides are not on the same assembly
-    if (all(is.na(translatedSeqlevels))) {
-      stop("The chromosome names of ", if (is.null(fileName)) {"the signal file"} else {c("'", basename(fileName), "'")},
-           " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
-           " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), ".", call. = FALSE)
-    }
-
-    # The chromosomes the target does not have do no harm. They follow its style all the same, GenomeInfoDb
-    # first and the prefix by hand for the rest, the mitochondrion being renamed before the prefix is taken off it
-    unmatchedSeqlevels <- is.na(translatedSeqlevels)
-    styledSeqlevels <- currentSeqlevels
-
-    if (any(unmatchedSeqlevels)) {
-      registeredSeqlevels <- .registeredChromosomeNames(chromosomeNames = currentSeqlevels, targetSeqlevels = targetSeqlevels)
-
-      manualSeqlevels <-
-        if (any(grepl("^chr", targetSeqlevels))) {
-          ifelse(grepl("^chr", currentSeqlevels), currentSeqlevels, paste0("chr", sub("^MT$", "M", currentSeqlevels)))
-        } else {
-          ifelse(grepl("^chr", currentSeqlevels),
-                 ifelse(currentSeqlevels == "chrM", "MT", sub("^chr", "", currentSeqlevels)),
-                 currentSeqlevels)
+        if (length(currentSeqlevels) == 0 | length(targetSeqlevels) == 0) {
+            return(x)
         }
 
-      styledSeqlevels <- ifelse(is.na(registeredSeqlevels), manualSeqlevels, registeredSeqlevels)
-    }
+        translatedSeqlevels <- .translateChromosomeNames(chromosomeNames = currentSeqlevels, targetSeqlevels = targetSeqlevels)
 
-    renamedSeqlevels <- ifelse(unmatchedSeqlevels, styledSeqlevels, translatedSeqlevels)
+        # Not a single chromosome in common under any name: the two sides are not on the same assembly
+        if (all(is.na(translatedSeqlevels))) {
+            stop("The chromosome names of ", if (is.null(fileName)) {
+                "the signal file"
+            } else {
+                c("'", basename(fileName), "'")
+            },
+            " cannot be reconciled with the ones of the regions: the file uses ", paste(utils::head(targetSeqlevels, 3), collapse = ", "),
+            " while the regions use ", paste(utils::head(currentSeqlevels, 3), collapse = ", "), ".",
+            call. = FALSE
+            )
+        }
 
-    # A styled name must not land on a chromosome that is there already, it is then left as it was
-    clashingSeqlevels <- unmatchedSeqlevels &
-      (renamedSeqlevels %in% renamedSeqlevels[!unmatchedSeqlevels] | duplicated(ifelse(unmatchedSeqlevels, renamedSeqlevels, NA_character_)) |
-         (renamedSeqlevels != currentSeqlevels & renamedSeqlevels %in% currentSeqlevels))
-    renamedSeqlevels[clashingSeqlevels] <- currentSeqlevels[clashingSeqlevels]
+        # The chromosomes the target does not have do no harm. They follow its style all the same, GenomeInfoDb
+        # first and the prefix by hand for the rest, the mitochondrion being renamed before the prefix is taken off it
+        unmatchedSeqlevels <- is.na(translatedSeqlevels)
+        styledSeqlevels <- currentSeqlevels
 
-    changedSeqlevels <- renamedSeqlevels != currentSeqlevels
+        if (any(unmatchedSeqlevels)) {
+            registeredSeqlevels <- .registeredChromosomeNames(chromosomeNames = currentSeqlevels, targetSeqlevels = targetSeqlevels)
 
-    if (!any(changedSeqlevels)) {
-      return(x)
-    }
+            manualSeqlevels <-
+                if (any(grepl("^chr", targetSeqlevels))) {
+                    ifelse(grepl("^chr", currentSeqlevels), currentSeqlevels, paste0("chr", sub("^MT$", "M", currentSeqlevels)))
+                } else {
+                    ifelse(grepl("^chr", currentSeqlevels),
+                        ifelse(currentSeqlevels == "chrM", "MT", sub("^chr", "", currentSeqlevels)),
+                        currentSeqlevels
+                    )
+                }
 
-    if (any(duplicated(renamedSeqlevels))) {
-      # Ranges written half as chr1 and half as 1 end up on one chromosome, and the two levels have to merge
-      if (!methods::is(x, "GRanges")) {
-        stop("The conversion of the chromosome names produced duplicated entries, harmonise the styles before counting.", call. = FALSE)
-      }
+            styledSeqlevels <- ifelse(is.na(registeredSeqlevels), manualSeqlevels, registeredSeqlevels)
+        }
 
-      rangeSeqnames <- renamedSeqlevels[match(as.character(GenomeInfoDb::seqnames(x)), currentSeqlevels)]
+        renamedSeqlevels <- ifelse(unmatchedSeqlevels, styledSeqlevels, translatedSeqlevels)
 
-      mergedRanges <- GenomicRanges::GRanges(seqnames = factor(rangeSeqnames, levels = unique(renamedSeqlevels)),
-                                             ranges = IRanges::ranges(x),
-                                             strand = BiocGenerics::strand(x))
-      S4Vectors::mcols(mergedRanges) <- S4Vectors::mcols(x)
-      x <- mergedRanges
-    } else {
-      GenomeInfoDb::seqlevels(x) <- renamedSeqlevels
-    }
+        # A styled name must not land on a chromosome that is there already, it is then left as it was
+        clashingSeqlevels <- unmatchedSeqlevels &
+            (renamedSeqlevels %in% renamedSeqlevels[!unmatchedSeqlevels] | duplicated(ifelse(unmatchedSeqlevels, renamedSeqlevels, NA_character_)) |
+                (renamedSeqlevels != currentSeqlevels & renamedSeqlevels %in% currentSeqlevels))
+        renamedSeqlevels[clashingSeqlevels] <- currentSeqlevels[clashingSeqlevels]
 
-    if (isTRUE(verbose)) {
-      message("The chromosome names have been converted from ", paste(utils::head(currentSeqlevels[changedSeqlevels], 2), collapse = ", "),
-              " to ", paste(utils::head(renamedSeqlevels[changedSeqlevels], 2), collapse = ", "), " to match the signal files.")
-    }
+        changedSeqlevels <- renamedSeqlevels != currentSeqlevels
 
-    return(x)
-  } # END function
+        if (!any(changedSeqlevels)) {
+            return(x)
+        }
 
+        if (any(duplicated(renamedSeqlevels))) {
+            # Ranges written half as chr1 and half as 1 end up on one chromosome, and the two levels have to merge
+            if (!methods::is(x, "GRanges")) {
+                stop("The conversion of the chromosome names produced duplicated entries, harmonise the styles before counting.", call. = FALSE)
+            }
 
+            rangeSeqnames <- renamedSeqlevels[match(as.character(GenomeInfoDb::seqnames(x)), currentSeqlevels)]
+
+            mergedRanges <- GenomicRanges::GRanges(
+                seqnames = factor(rangeSeqnames, levels = unique(renamedSeqlevels)),
+                ranges = IRanges::ranges(x),
+                strand = BiocGenerics::strand(x)
+            )
+            S4Vectors::mcols(mergedRanges) <- S4Vectors::mcols(x)
+            x <- mergedRanges
+        } else {
+            GenomeInfoDb::seqlevels(x) <- renamedSeqlevels
+        }
+
+        if (isTRUE(verbose)) {
+            message(
+                "The chromosome names have been converted from ", paste(utils::head(currentSeqlevels[changedSeqlevels], 2), collapse = ", "),
+                " to ", paste(utils::head(renamedSeqlevels[changedSeqlevels], 2), collapse = ", "), " to match the signal files."
+            )
+        }
+
+        return(x)
+    } # END function
 
 
 #' @title .asRegionSet
@@ -612,41 +636,50 @@
 #' @keywords internal
 
 .asRegionSet <-
-  function(regionSet,
-           setName = "regions",
-           verbose = TRUE) {
+    function(regionSet,
+             setName = "regions",
+             verbose = TRUE) {
+        if (!methods::is(regionSet, "GRanges")) {
+            return(regionSet)
+        }
 
-    if (!methods::is(regionSet, "GRanges")) {
-      return(regionSet)
-    }
+        if (length(regionSet) == 0) {
+            stop("The GRanges given as 'regionSet' holds no region.", call. = FALSE)
+        }
 
-    if (length(regionSet) == 0) {
-      stop("The GRanges given as 'regionSet' holds no region.", call. = FALSE)
-    }
+        # The assembly written in the ranges is the only thing known about them, it follows the object
+        regionAssembly <- unique(as.character(GenomeInfoDb::genome(regionSet)))
+        regionAssembly <- regionAssembly[!is.na(regionAssembly) & regionAssembly != ""]
 
-    # The assembly written in the ranges is the only thing known about them, it follows the object
-    regionAssembly <- unique(as.character(GenomeInfoDb::genome(regionSet)))
-    regionAssembly <- regionAssembly[!is.na(regionAssembly) & regionAssembly != ""]
+        # The order and the chromosome names of the ranges are kept, so that the rows can be matched back to them
+        loadedSet <- loadRegions(
+            regions = stats::setNames(list(regionSet), setName),
+            sortRegions = FALSE,
+            seqlevelsStyle = NULL,
+            genomeAssembly = if (length(regionAssembly) == 1) {
+                regionAssembly
+            } else {
+                NULL
+            },
+            verbose = FALSE
+        )
 
-    # The order and the chromosome names of the ranges are kept, so that the rows can be matched back to them
-    loadedSet <- loadRegions(regions = stats::setNames(list(regionSet), setName),
-                             sortRegions = FALSE,
-                             seqlevelsStyle = NULL,
-                             genomeAssembly = if (length(regionAssembly) == 1) {regionAssembly} else {NULL},
-                             verbose = FALSE)
+        if (isTRUE(verbose)) {
+            removedRegions <- length(regionSet) - length(regionRanges(loadedSet)[[1]])
 
-    if (isTRUE(verbose)) {
-      removedRegions <- length(regionSet) - length(loadedSet@regions[[1]])
+            message(
+                "The GRanges given as 'regionSet' has been loaded with loadRegions() as a single set named '", setName, "' (",
+                length(regionRanges(loadedSet)[[1]]), " regions",
+                if (removedRegions > 0) {
+                    c(", ", removedRegions, " duplicated ones removed")
+                } else {
+                    ""
+                }, ")."
+            )
+        }
 
-      message("The GRanges given as 'regionSet' has been loaded with loadRegions() as a single set named '", setName, "' (",
-              length(loadedSet@regions[[1]]), " regions",
-              if (removedRegions > 0) {c(", ", removedRegions, " duplicated ones removed")} else {""}, ").")
-    }
-
-    return(loadedSet)
-  } # END function
-
-
+        return(loadedSet)
+    } # END function
 
 
 #' @title .storedDiscardRegions
@@ -665,21 +698,22 @@
 #' @keywords internal
 
 .storedDiscardRegions <-
-  function(counts,
-           targetSeqlevels) {
+    function(counts,
+             targetSeqlevels) {
+        discardRegions <- S4Vectors::metadata(counts)$discard.regions
 
-    discardRegions <- S4Vectors::metadata(counts)$discard.regions
+        if (is.null(discardRegions) || length(discardRegions) == 0) {
+            return(NULL)
+        }
 
-    if (is.null(discardRegions) || length(discardRegions) == 0) {
-      return(NULL)
-    }
-
-    # Regions sharing no chromosome with the files have no read to take away
-    return(tryCatch(expr = .matchSeqlevels(x = discardRegions, targetSeqlevels = targetSeqlevels, verbose = FALSE),
-                    error = function(e) {return(NULL)}))
-  } # END function
-
-
+        # Regions sharing no chromosome with the files have no read to take away
+        return(tryCatch(
+            expr = .matchSeqlevels(x = discardRegions, targetSeqlevels = targetSeqlevels, verbose = FALSE),
+            error = function(e) {
+                return(NULL)
+            }
+        ))
+    } # END function
 
 
 #' @title .newCountsObject
@@ -705,36 +739,36 @@
 #' @keywords internal
 
 .newCountsObject <-
-  function(countMatrix,
-           regions,
-           sampleTable,
-           provenance,
-           countingLevel = "region",
-           newParameters = list(),
-           metadataList = list()) {
+    function(countMatrix,
+             regions,
+             sampleTable,
+             provenance,
+             countingLevel = "region",
+             newParameters = list(),
+             metadataList = list()) {
+        rownames(countMatrix) <- names(regions)
+        colnames(countMatrix) <- sampleTable$sample
 
-    rownames(countMatrix) <- names(regions)
-    colnames(countMatrix) <- sampleTable$sample
+        countsExperiment <-
+            SummarizedExperiment::SummarizedExperiment(
+                assays = list(counts = countMatrix),
+                rowRanges = regions,
+                colData = S4Vectors::DataFrame(sampleTable, row.names = sampleTable$sample),
+                metadata = metadataList
+            )
 
-    countsExperiment <-
-      SummarizedExperiment::SummarizedExperiment(assays = list(counts = countMatrix),
-                                                 rowRanges = regions,
-                                                 colData = S4Vectors::DataFrame(sampleTable, row.names = sampleTable$sample),
-                                                 metadata = metadataList)
-
-    return(methods::new("RegionSetDE.counts",
-                        countsExperiment,
-                        counting.level = countingLevel,
-                        blacklist = provenance$blacklist,
-                        greylist = provenance$greylist,
-                        whitelist = provenance$whitelist,
-                        genome.assembly = provenance$genome.assembly,
-                        seqlevels.style = provenance$seqlevels.style,
-                        filtering.log = provenance$filtering.log,
-                        parameters = c(provenance$parameters, newParameters)))
-  } # END function
-
-
+        return(.newObject("RegionSetDE.counts",
+            countsExperiment,
+            counting.level = countingLevel,
+            blacklist = provenance$blacklist,
+            greylist = provenance$greylist,
+            whitelist = provenance$whitelist,
+            genome.assembly = provenance$genome.assembly,
+            seqlevels.style = provenance$seqlevels.style,
+            filtering.log = provenance$filtering.log,
+            parameters = c(provenance$parameters, newParameters)
+        ))
+    } # END function
 
 
 #' @title .metadataPlan
@@ -754,90 +788,93 @@
 #' @keywords internal
 
 .metadataPlan <-
-  function(regionList,
-           keepMetadata = TRUE,
-           verbose = TRUE) {
-
-    if (isFALSE(keepMetadata)) {
-      return(list())
-    }
-
-    identifierColumns <- c("region.set", "region.id", "tile.id")
-
-    #-------------------------------#
-    # What every set carries        #
-    #-------------------------------#
-    columnClasses <- list()
-    droppedColumns <- character(0)
-
-    for (setName in names(regionList)) {
-      setMetadata <- S4Vectors::mcols(regionList[[setName]])
-
-      if (is.null(setMetadata) | ncol(setMetadata) == 0) {
-        next
-      }
-
-      for (columnName in colnames(setMetadata)) {
-        # A list column cannot be stacked into a flat table and would break the binding rather than the row
-        if (!is.atomic(setMetadata[[columnName]])) {
-          droppedColumns <- unique(c(droppedColumns, columnName))
-          next
+    function(regionList,
+             keepMetadata = TRUE,
+             verbose = TRUE) {
+        if (isFALSE(keepMetadata)) {
+            return(list())
         }
 
-        columnClasses[[columnName]] <- unique(c(columnClasses[[columnName]], class(setMetadata[[columnName]])[1]))
-      }
-    }
+        identifierColumns <- c("region.set", "region.id", "tile.id")
 
-    if (length(droppedColumns) > 0 & isTRUE(verbose)) {
-      message("The following region columns are not atomic and have been left out: ",
-              paste(droppedColumns, collapse = ", "), ".")
-    }
+        #-------------------------------#
+        # What every set carries        #
+        #-------------------------------#
+        columnClasses <- list()
+        droppedColumns <- character(0)
 
-    if (length(columnClasses) == 0) {
-      return(list())
-    }
+        for (setName in names(regionList)) {
+            setMetadata <- S4Vectors::mcols(regionList[[setName]])
 
-    #-------------------------------#
-    # One name and one type each    #
-    #-------------------------------#
-    plan <- list()
-    renamedColumns <- character(0)
-    coercedColumns <- character(0)
+            if (is.null(setMetadata) | ncol(setMetadata) == 0) {
+                next
+            }
 
-    for (columnName in names(columnClasses)) {
-      outputName <- columnName
+            for (columnName in colnames(setMetadata)) {
+                # A list column cannot be stacked into a flat table and would break the binding rather than the row
+                if (!is.atomic(setMetadata[[columnName]])) {
+                    droppedColumns <- unique(c(droppedColumns, columnName))
+                    next
+                }
 
-      # The package writes these three itself, so a column of the same name has to step aside
-      if (columnName %in% identifierColumns) {
-        outputName <- paste0(columnName, ".original")
-        renamedColumns <- c(renamedColumns, columnName)
-      }
+                columnClasses[[columnName]] <- unique(c(columnClasses[[columnName]], class(setMetadata[[columnName]])[1]))
+            }
+        }
 
-      # One set calling a column a number and another calling it a word leaves character as the only common ground
-      outputClass <- columnClasses[[columnName]]
-      if (length(outputClass) > 1) {
-        outputClass <- "character"
-        coercedColumns <- c(coercedColumns, columnName)
-      }
+        if (length(droppedColumns) > 0 & isTRUE(verbose)) {
+            message(
+                "The following region columns are not atomic and have been left out: ",
+                paste(droppedColumns, collapse = ", "), "."
+            )
+        }
 
-      plan[[columnName]] <- list(name = outputName, class = outputClass)
-    }
+        if (length(columnClasses) == 0) {
+            return(list())
+        }
 
-    if (isTRUE(verbose)) {
-      if (length(renamedColumns) > 0) {
-        message("The following region columns share a name with an identifier and carry the suffix '.original': ",
-                paste(renamedColumns, collapse = ", "), ".")
-      }
-      if (length(coercedColumns) > 0) {
-        message("The following region columns hold different types across the sets and have been read as text: ",
-                paste(coercedColumns, collapse = ", "), ".")
-      }
-    }
+        #-------------------------------#
+        # One name and one type each    #
+        #-------------------------------#
+        plan <- list()
+        renamedColumns <- character(0)
+        coercedColumns <- character(0)
 
-    return(plan)
-  } # END function
+        for (columnName in names(columnClasses)) {
+            outputName <- columnName
 
+            # The package writes these three itself, so a column of the same name has to step aside
+            if (columnName %in% identifierColumns) {
+                outputName <- paste0(columnName, ".original")
+                renamedColumns <- c(renamedColumns, columnName)
+            }
 
+            # One set calling a column a number and another calling it a word leaves character as the only common ground
+            outputClass <- columnClasses[[columnName]]
+            if (length(outputClass) > 1) {
+                outputClass <- "character"
+                coercedColumns <- c(coercedColumns, columnName)
+            }
+
+            plan[[columnName]] <- list(name = outputName, class = outputClass)
+        }
+
+        if (isTRUE(verbose)) {
+            if (length(renamedColumns) > 0) {
+                message(
+                    "The following region columns share a name with an identifier and carry the suffix '.original': ",
+                    paste(renamedColumns, collapse = ", "), "."
+                )
+            }
+            if (length(coercedColumns) > 0) {
+                message(
+                    "The following region columns hold different types across the sets and have been read as text: ",
+                    paste(coercedColumns, collapse = ", "), "."
+                )
+            }
+        }
+
+        return(plan)
+    } # END function
 
 
 #' @title .alignMetadata
@@ -856,40 +893,41 @@
 #' @keywords internal
 
 .alignMetadata <-
-  function(gr,
-           plan) {
+    function(gr,
+             plan) {
+        if (length(plan) == 0) {
+            return(S4Vectors::DataFrame(row.names = seq_along(gr)))
+        }
 
-    if (length(plan) == 0) {
-      return(S4Vectors::DataFrame(row.names = seq_along(gr)))
-    }
+        setMetadata <- S4Vectors::mcols(gr)
 
-    setMetadata <- S4Vectors::mcols(gr)
+        columnList <-
+            lapply(
+                names(plan),
+                function(columnName) {
+                    targetClass <- plan[[columnName]]$class
 
-    columnList <-
-      lapply(names(plan),
-             function(columnName) {
-               targetClass <- plan[[columnName]]$class
+                    # A set that never had this column contributes a column of the right type full of NA
+                    if (is.null(setMetadata) || !(columnName %in% colnames(setMetadata))) {
+                        return(as.vector(rep(NA, length(gr)), mode = targetClass))
+                    }
 
-               # A set that never had this column contributes a column of the right type full of NA
-               if (is.null(setMetadata) || !(columnName %in% colnames(setMetadata))) {
-                 return(as.vector(rep(NA, length(gr)), mode = targetClass))
-               }
+                    columnValues <- setMetadata[[columnName]]
 
-               columnValues <- setMetadata[[columnName]]
+                    if (!identical(class(columnValues)[1], targetClass)) {
+                        columnValues <- as.vector(columnValues, mode = targetClass)
+                    }
 
-               if (!identical(class(columnValues)[1], targetClass)) {
-                 columnValues <- as.vector(columnValues, mode = targetClass)
-               }
+                    return(columnValues)
+                }
+            )
 
-               return(columnValues)
-             })
+        names(columnList) <- vapply(plan, function(x) {
+            x$name
+        }, character(1))
 
-    names(columnList) <- vapply(plan, function(x) {x$name}, character(1))
-
-    return(S4Vectors::DataFrame(columnList, row.names = NULL, check.names = FALSE))
-  } # END function
-
-
+        return(S4Vectors::DataFrame(columnList, row.names = NULL, check.names = FALSE))
+    } # END function
 
 
 #' @title .regionIdentifiers
@@ -911,37 +949,40 @@
 #' @keywords internal
 
 .regionIdentifiers <-
-  function(gr,
-           regionId = NULL,
-           setName = "") {
+    function(gr,
+             regionId = NULL,
+             setName = "") {
+        coordinateId <- paste0(
+            as.character(GenomeInfoDb::seqnames(gr)), ":",
+            BiocGenerics::start(gr), "-", BiocGenerics::end(gr)
+        )
 
-    coordinateId <- paste0(as.character(GenomeInfoDb::seqnames(gr)), ":",
-                           BiocGenerics::start(gr), "-", BiocGenerics::end(gr))
+        #-------------------------------#
+        # A column asked for by name    #
+        #-------------------------------#
+        if (!is.null(regionId)) {
+            setMetadata <- S4Vectors::mcols(gr)
 
-    #-------------------------------#
-    # A column asked for by name    #
-    #-------------------------------#
-    if (!is.null(regionId)) {
-      setMetadata <- S4Vectors::mcols(gr)
+            if (is.null(setMetadata) || !(regionId %in% colnames(setMetadata))) {
+                stop("The column '", regionId, "' is absent from the set '", setName, "'.", call. = FALSE)
+            }
 
-      if (is.null(setMetadata) || !(regionId %in% colnames(setMetadata))) {
-        stop("The column '", regionId, "' is absent from the set '", setName, "'.", call. = FALSE)
-      }
+            identifiers <- as.character(setMetadata[[regionId]])
 
-      identifiers <- as.character(setMetadata[[regionId]])
+            # The identifier indexes the object from here on, and two regions sharing one would be mixed up
+            if (any(is.na(identifiers)) | any(duplicated(identifiers))) {
+                stop("The column '", regionId, "' does not hold a unique identifier for every region of the set '",
+                    setName, "'.",
+                    call. = FALSE
+                )
+            }
 
-      # The identifier indexes the object from here on, and two regions sharing one would be mixed up
-      if (any(is.na(identifiers)) | any(duplicated(identifiers))) {
-        stop("The column '", regionId, "' does not hold a unique identifier for every region of the set '",
-             setName, "'.", call. = FALSE)
-      }
+            return(identifiers)
+        }
 
-      return(identifiers)
-    }
+        if (is.null(names(gr))) {
+            return(coordinateId)
+        }
 
-    if (is.null(names(gr))) {
-      return(coordinateId)
-    }
-
-    return(names(gr))
-  } # END function
+        return(names(gr))
+    } # END function

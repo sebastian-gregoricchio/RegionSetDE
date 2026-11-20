@@ -20,8 +20,14 @@ Description:
   greenlist approaches. A single model fit supports testing at two levels:
   individual regions, and whole region sets, including direct contrasts
   between two sets to ask whether a condition effect differs across
-  classes of regions.
-License: GPL-3 + file LICENSE
+  classes of regions. Differential binding packages such as DiffBind and
+  csaw take the regions from the data, through a consensus of peak calls
+  or sliding windows, and test them one at a time. Here the regions are
+  fixed in advance and a whole set can be tested as one unit, the way the
+  camera and fry tests of limma treat gene sets, while the region-level
+  test stays available from the same fit. Peak calls can still be turned
+  into regions through consensusRegions.
+License: GPL-3
 Depends:
 	R (>= 4.6.0),
 	GenomicRanges,
@@ -55,7 +61,7 @@ Suggests:
   BiocManager,
   circlize,
   ComplexHeatmap,
-  consensusRegions (>= 0.99.2),
+  consensusRegions (>= 0.99.3),
   covr,
   DESeq2,
   GenomicFeatures,

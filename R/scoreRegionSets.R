@@ -55,254 +55,326 @@
 #' @export scoreRegionSets
 
 scoreRegionSets <-
-  function(counts,
-           regionSets = NULL,
-           comparisons = NULL,
-           reference = "background",
-           assay = NULL,
-           perBasepair = TRUE,
-           summary = "mean",
-           pseudoCount = 0.5,
-           minRegions = 10,
-           confLevel = 0.95,
-           adjustMethod = "BH",
-           verbose = TRUE) {
+    function(counts,
+             regionSets = NULL,
+             comparisons = NULL,
+             reference = "background",
+             assay = NULL,
+             perBasepair = TRUE,
+             summary = "mean",
+             pseudoCount = 0.5,
+             minRegions = 10,
+             confLevel = 0.95,
+             adjustMethod = "BH",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkScoreRegionSetsArguments(
+            counts = counts,
+            reference = reference,
+            assay = assay,
+            summary = summary,
+            confLevel = confLevel
+        )
+        assay <- checkedArguments$assay
+        backgroundCounts <- checkedArguments$backgroundCounts
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        #-----------------------------#
+        # Table of the scored regions #
+        #-----------------------------#
+        regionTable <- data.frame(
+            row.index = seq_len(nrow(counts)),
+            region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
+            width = as.numeric(BiocGenerics::width(SummarizedExperiment::rowRanges(counts))),
+            stringsAsFactors = FALSE
+        )
 
-    if (!(summary %in% c("mean", "median"))) {
-      stop("The 'summary' parameter must be either 'mean' or 'median'.", call. = FALSE)
-    }
+        if (!is.null(regionSets)) {
+            absentSets <- setdiff(regionSets, unique(regionTable$region.set))
 
-    if (!(reference %in% c("background", "regions", "none"))) {
-      stop("The 'reference' parameter must be one among 'background', 'regions' or 'none'.", call. = FALSE)
-    }
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
 
-    if (ncol(counts) < 2) {
-      stop("At least two libraries are required, the difference between two sets is measured across them.", call. = FALSE)
-    }
+            regionTable <- dplyr::filter(regionTable, .data$region.set %in% regionSets)
+        }
 
-    if (!is.numeric(confLevel) | confLevel[1] <= 0 | confLevel[1] >= 1) {
-      stop("The 'confLevel' parameter must be a number strictly between 0 and 1.", call. = FALSE)
-    }
+        # A summary over a handful of regions is one that a single locus can move on its own
+        setSizes <- dplyr::count(regionTable, .data$region.set, name = "n.regions")
+        smallSets <- dplyr::filter(setSizes, .data$n.regions < minRegions)
 
-    if (reference == "background") {
-      backgroundCounts <- S4Vectors::metadata(counts)$background
+        if (nrow(smallSets) > 0) {
+            warning("Dropped for holding fewer than ", minRegions, " regions: ", paste(smallSets$region.set, collapse = ", "), ".", call. = FALSE)
+            regionTable <- dplyr::filter(regionTable, !(.data$region.set %in% smallSets$region.set))
+        }
 
-      if (is.null(backgroundCounts)) {
-        stop("No background bins are stored in the object, run countBackground() first or set 'reference' to 'regions'.", call. = FALSE)
-      }
+        if (dplyr::n_distinct(regionTable$region.set) < 2) {
+            stop("At least two region sets must survive the filters, there is nothing to compare otherwise.", call. = FALSE)
+        }
 
-      # The bins hold raw counts, so a ratio against them has to be taken on raw counts too
-      if (!is.null(assay) && assay != "counts") {
-        stop("The background bins hold raw counts, the 'assay' parameter cannot be set together with reference = 'background'.", call. = FALSE)
-      }
+        #------------------------------#
+        # Summarise the signal per set #
+        #------------------------------#
+        signalMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))[regionTable$row.index, , drop = FALSE] + pseudoCount
 
-      assay <- "counts"
+        # Wide regions collect more reads before any factor is involved, this removes the crudest part of that
+        if (isTRUE(perBasepair)) {
+            signalMatrix <- signalMatrix / regionTable$width
+        }
 
-    } else {
-      assay <- .defaultAssay(counts = counts, assay = assay)
-    }
+        summaryFunction <- if (summary == "mean") {
+            mean
+        } else {
+            stats::median
+        }
 
-    #-----------------------------#
-    # Table of the scored regions #
-    #-----------------------------#
-    regionTable <- data.frame(row.index = seq_len(nrow(counts)),
-                              region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
-                              width = as.numeric(BiocGenerics::width(SummarizedExperiment::rowRanges(counts))),
-                              stringsAsFactors = FALSE)
+        signalTable <- data.frame(
+            sample = rep(colnames(counts), each = nrow(signalMatrix)),
+            region.set = rep(regionTable$region.set, times = ncol(signalMatrix)),
+            signal = as.numeric(signalMatrix),
+            stringsAsFactors = FALSE
+        )
 
-    if (!is.null(regionSets)) {
-      absentSets <- setdiff(regionSets, unique(regionTable$region.set))
+        setSignal <-
+            dplyr::summarise(dplyr::group_by(signalTable, .data$sample, .data$region.set),
+                n.regions = dplyr::n(),
+                set.signal = summaryFunction(.data$signal),
+                .groups = "drop"
+            )
 
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
+        #-------------------------------------------#
+        # Reference measured in the same library    #
+        #-------------------------------------------#
+        referenceSignal <-
+            switch(reference,
+                "background" = {
+                    backgroundMatrix <- as.matrix(SummarizedExperiment::assay(backgroundCounts, "counts")) + pseudoCount
 
-      regionTable <- dplyr::filter(regionTable, .data$region.set %in% regionSets)
-    }
+                    if (isTRUE(perBasepair)) {
+                        backgroundMatrix <- backgroundMatrix / as.numeric(BiocGenerics::width(SummarizedExperiment::rowRanges(backgroundCounts)))
+                    }
 
-    # A summary over a handful of regions is one that a single locus can move on its own
-    setSizes <- dplyr::count(regionTable, .data$region.set, name = "n.regions")
-    smallSets <- dplyr::filter(setSizes, .data$n.regions < minRegions)
+                    data.frame(
+                        sample = colnames(backgroundCounts),
+                        reference.signal = as.numeric(apply(backgroundMatrix, 2, summaryFunction)),
+                        stringsAsFactors = FALSE
+                    )
+                },
+                "regions" = {
+                    as.data.frame(dplyr::summarise(dplyr::group_by(signalTable, .data$sample),
+                        reference.signal = summaryFunction(.data$signal),
+                        .groups = "drop"
+                    ))
+                },
+                "none" = {
+                    data.frame(
+                        sample = colnames(counts),
+                        reference.signal = 1,
+                        stringsAsFactors = FALSE
+                    )
+                }
+            )
 
-    if (nrow(smallSets) > 0) {
-      warning("Dropped for holding fewer than ", minRegions, " regions: ", paste(smallSets$region.set, collapse = ", "), ".", call. = FALSE)
-      regionTable <- dplyr::filter(regionTable, !(.data$region.set %in% smallSets$region.set))
-    }
+        if (!all(colnames(counts) %in% referenceSignal$sample)) {
+            stop("The reference is missing for some libraries, the regions and the bins were not counted from the same samples.", call. = FALSE)
+        }
 
-    if (dplyr::n_distinct(regionTable$region.set) < 2) {
-      stop("At least two region sets must survive the filters, there is nothing to compare otherwise.", call. = FALSE)
-    }
+        setScores <-
+            as.data.frame(dplyr::arrange(
+                dplyr::mutate(dplyr::left_join(setSignal, referenceSignal, by = "sample"),
+                    score = log2(.data$set.signal / .data$reference.signal)
+                ),
+                .data$region.set, .data$sample
+            ))
 
-    #------------------------------#
-    # Summarise the signal per set #
-    #------------------------------#
-    signalMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))[regionTable$row.index, , drop = FALSE] + pseudoCount
+        #------------------------------------------#
+        # Compare the sets, one library at a time  #
+        #------------------------------------------#
+        scoredSets <- sort(unique(setScores$region.set))
 
-    # Wide regions collect more reads before any factor is involved, this removes the crudest part of that
-    if (isTRUE(perBasepair)) {
-      signalMatrix <- signalMatrix / regionTable$width
-    }
+        if (is.null(comparisons)) {
+            comparisons <- utils::combn(scoredSets, m = 2, simplify = FALSE)
+        }
 
-    summaryFunction <- if (summary == "mean") {mean} else {stats::median}
+        if (!is.list(comparisons) | any(lengths(comparisons) != 2)) {
+            stop("The 'comparisons' parameter must be a list of character vectors of length two.", call. = FALSE)
+        }
 
-    signalTable <- data.frame(sample = rep(colnames(counts), each = nrow(signalMatrix)),
-                              region.set = rep(regionTable$region.set, times = ncol(signalMatrix)),
-                              signal = as.numeric(signalMatrix),
-                              stringsAsFactors = FALSE)
+        unknownSets <- setdiff(unlist(comparisons), scoredSets)
 
-    setSignal <-
-      dplyr::summarise(dplyr::group_by(signalTable, .data$sample, .data$region.set),
-                       n.regions = dplyr::n(),
-                       set.signal = summaryFunction(.data$signal),
-                       .groups = "drop")
+        if (length(unknownSets) > 0) {
+            stop("The following sets are named in 'comparisons' but were not scored: ", paste(unknownSets, collapse = ", "), ".", call. = FALSE)
+        }
 
-    #-------------------------------------------#
-    # Reference measured in the same library    #
-    #-------------------------------------------#
-    referenceSignal <-
-      switch(reference,
-             "background" = {
-               backgroundMatrix <- as.matrix(SummarizedExperiment::assay(backgroundCounts, "counts")) + pseudoCount
+        if (isTRUE(verbose)) {
+            message("Comparing ", length(comparisons), " pair(s) of region sets across ", ncol(counts), " libraries...")
+        }
 
-               if (isTRUE(perBasepair)) {
-                 backgroundMatrix <- backgroundMatrix / as.numeric(BiocGenerics::width(SummarizedExperiment::rowRanges(backgroundCounts)))
-               }
+        comparisonTable <-
+            do.call(
+                rbind,
+                lapply(
+                    comparisons,
+                    function(pair) {
+                        firstScores <- dplyr::filter(setScores, .data$region.set == pair[1])
+                        secondScores <- dplyr::filter(setScores, .data$region.set == pair[2])
 
-               data.frame(sample = colnames(backgroundCounts),
-                          reference.signal = as.numeric(apply(backgroundMatrix, 2, summaryFunction)),
-                          stringsAsFactors = FALSE)
-             },
-             "regions" = {
-               as.data.frame(dplyr::summarise(dplyr::group_by(signalTable, .data$sample),
-                                              reference.signal = summaryFunction(.data$signal),
-                                              .groups = "drop"))
-             },
-             "none" = {
-               data.frame(sample = colnames(counts),
-                          reference.signal = 1,
-                          stringsAsFactors = FALSE)
-             })
+                        # Both scores of a library were divided by the same reference, so it drops out of the difference
+                        sharedSamples <- intersect(firstScores$sample, secondScores$sample)
+                        pairedDifference <- firstScores$score[match(sharedSamples, firstScores$sample)] -
+                            secondScores$score[match(sharedSamples, secondScores$sample)]
 
-    if (!all(colnames(counts) %in% referenceSignal$sample)) {
-      stop("The reference is missing for some libraries, the regions and the bins were not counted from the same samples.", call. = FALSE)
-    }
+                        nLibraries <- length(pairedDifference)
+                        meanDifference <- mean(pairedDifference)
+                        standardError <- stats::sd(pairedDifference) / sqrt(nLibraries)
 
-    setScores <-
-      as.data.frame(dplyr::arrange(dplyr::mutate(dplyr::left_join(setSignal, referenceSignal, by = "sample"),
-                                                 score = log2(.data$set.signal / .data$reference.signal)),
-                                   .data$region.set, .data$sample))
+                        # Differences identical to the last digit leave nothing to divide by, which is degenerate and not decisive
+                        if (is.na(standardError) || standardError == 0) {
+                            tStatistic <- NA_real_
+                            pValue <- NA_real_
+                            marginOfError <- NA_real_
+                        } else {
+                            tStatistic <- meanDifference / standardError
+                            pValue <- 2 * stats::pt(-abs(tStatistic), df = nLibraries - 1)
+                            marginOfError <- stats::qt(1 - (1 - confLevel) / 2, df = nLibraries - 1) * standardError
+                        }
 
-    #------------------------------------------#
-    # Compare the sets, one library at a time  #
-    #------------------------------------------#
-    scoredSets <- sort(unique(setScores$region.set))
+                        data.frame(
+                            set.1 = pair[1],
+                            set.2 = pair[2],
+                            n.libraries = nLibraries,
+                            mean.delta.score = meanDifference,
+                            CI.lower = meanDifference - marginOfError,
+                            CI.upper = meanDifference + marginOfError,
+                            t.statistic = tStatistic,
+                            df = nLibraries - 1,
+                            p.value = pValue,
+                            stringsAsFactors = FALSE
+                        )
+                    }
+                )
+            )
 
-    if (is.null(comparisons)) {
-      comparisons <- utils::combn(scoredSets, m = 2, simplify = FALSE)
-    }
+        comparisonTable$FDR <- stats::p.adjust(comparisonTable$p.value, method = adjustMethod)
+        comparisonTable <- dplyr::arrange(comparisonTable, .data$p.value)
 
-    if (!is.list(comparisons) | any(lengths(comparisons) != 2)) {
-      stop("The 'comparisons' parameter must be a list of character vectors of length two.", call. = FALSE)
-    }
+        #---------------------#
+        # Assemble the object #
+        #---------------------#
+        # The colData travels with the scores, so the libraries can be grouped later without the counts object
+        sampleMetadata <- data.frame(
+            sample = colnames(counts),
+            as.data.frame(SummarizedExperiment::colData(counts)),
+            row.names = NULL,
+            stringsAsFactors = FALSE
+        )
 
-    unknownSets <- setdiff(unlist(comparisons), scoredSets)
+        scoresObject <-
+            .newObject(
+                Class = "RegionSetDE.setScores",
+                scores = setScores,
+                comparisons = comparisonTable,
+                sample.metadata = sampleMetadata,
+                reference = reference,
+                assay = assay,
+                summary = summary,
+                per.basepair = perBasepair,
+                blacklist = blacklistRanges(counts),
+                greylist = greylistRanges(counts),
+                whitelist = whitelistRanges(counts),
+                genome.assembly = genomeAssembly(counts),
+                seqlevels.style = chromosomeStyle(counts),
+                filtering.log = filteringLog(counts),
+                parameters = c(
+                    parameterLog(counts),
+                    list(scoreRegionSets = list(
+                        reference = reference,
+                        assay = assay,
+                        perBasepair = perBasepair,
+                        summary = summary,
+                        pseudoCount = pseudoCount,
+                        minRegions = minRegions,
+                        confLevel = confLevel,
+                        adjustMethod = adjustMethod
+                    ))
+                )
+            )
 
-    if (length(unknownSets) > 0) {
-      stop("The following sets are named in 'comparisons' but were not scored: ", paste(unknownSets, collapse = ", "), ".", call. = FALSE)
-    }
+        methods::validObject(scoresObject)
 
-    if (isTRUE(verbose)) {
-      message("Comparing ", length(comparisons), " pair(s) of region sets across ", ncol(counts), " libraries...")
-    }
+        if (isTRUE(verbose)) {
+            message("Done. What separates two sets here is signal, the composition of the sets is not controlled for.")
+        }
 
-    comparisonTable <-
-      do.call(rbind,
-              lapply(comparisons,
-                     function(pair) {
-                       firstScores <- dplyr::filter(setScores, .data$region.set == pair[1])
-                       secondScores <- dplyr::filter(setScores, .data$region.set == pair[2])
+        return(scoresObject)
+    } # END function
 
-                       # Both scores of a library were divided by the same reference, so it drops out of the difference
-                       sharedSamples <- intersect(firstScores$sample, secondScores$sample)
-                       pairedDifference <- firstScores$score[match(sharedSamples, firstScores$sample)] -
-                         secondScores$score[match(sharedSamples, secondScores$sample)]
 
-                       nLibraries <- length(pairedDifference)
-                       meanDifference <- mean(pairedDifference)
-                       standardError <- stats::sd(pairedDifference) / sqrt(nLibraries)
+#' @title .checkScoreRegionSetsArguments
+#'
+#' @description Checks the arguments of \code{\link{scoreRegionSets}} and brings them to the form the rest of the function works with.
+#'
+#' @param counts See \code{\link{scoreRegionSets}}.
+#' @param reference See \code{\link{scoreRegionSets}}.
+#' @param assay See \code{\link{scoreRegionSets}}.
+#' @param summary See \code{\link{scoreRegionSets}}.
+#' @param confLevel See \code{\link{scoreRegionSets}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{assay}, \code{backgroundCounts}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
 
-                       # Differences identical to the last digit leave nothing to divide by, which is degenerate and not decisive
-                       if (is.na(standardError) || standardError == 0) {
-                         tStatistic <- NA_real_
-                         pValue <- NA_real_
-                         marginOfError <- NA_real_
-                       } else {
-                         tStatistic <- meanDifference / standardError
-                         pValue <- 2 * stats::pt(-abs(tStatistic), df = nLibraries - 1)
-                         marginOfError <- stats::qt(1 - (1 - confLevel) / 2, df = nLibraries - 1) * standardError
-                       }
+.checkScoreRegionSetsArguments <-
+    function(counts,
+             reference,
+             assay,
+             summary,
+             confLevel) {
+        # Only the background reference reads bins
+        backgroundCounts <- NULL
 
-                       data.frame(set.1 = pair[1],
-                                  set.2 = pair[2],
-                                  n.libraries = nLibraries,
-                                  mean.delta.score = meanDifference,
-                                  CI.lower = meanDifference - marginOfError,
-                                  CI.upper = meanDifference + marginOfError,
-                                  t.statistic = tStatistic,
-                                  df = nLibraries - 1,
-                                  p.value = pValue,
-                                  stringsAsFactors = FALSE)
-                     }))
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    comparisonTable$FDR <- stats::p.adjust(comparisonTable$p.value, method = adjustMethod)
-    comparisonTable <- dplyr::arrange(comparisonTable, .data$p.value)
+        if (!(summary %in% c("mean", "median"))) {
+            stop("The 'summary' parameter must be either 'mean' or 'median'.", call. = FALSE)
+        }
 
-    #---------------------#
-    # Assemble the object #
-    #---------------------#
-    # The colData travels with the scores, so the libraries can be grouped later without the counts object
-    sampleMetadata <- data.frame(sample = colnames(counts),
-                                 as.data.frame(SummarizedExperiment::colData(counts)),
-                                 row.names = NULL,
-                                 stringsAsFactors = FALSE)
+        if (!(reference %in% c("background", "regions", "none"))) {
+            stop("The 'reference' parameter must be one among 'background', 'regions' or 'none'.", call. = FALSE)
+        }
 
-    scoresObject <-
-      methods::new(Class = "RegionSetDE.setScores",
-                   scores = setScores,
-                   comparisons = comparisonTable,
-                   sample.metadata = sampleMetadata,
-                   reference = reference,
-                   assay = assay,
-                   summary = summary,
-                   per.basepair = perBasepair,
-                   blacklist = counts@blacklist,
-                   greylist = counts@greylist,
-                   whitelist = counts@whitelist,
-                   genome.assembly = counts@genome.assembly,
-                   seqlevels.style = counts@seqlevels.style,
-                   filtering.log = counts@filtering.log,
-                   parameters = c(counts@parameters,
-                                  list(scoreRegionSets = list(reference = reference,
-                                                              assay = assay,
-                                                              perBasepair = perBasepair,
-                                                              summary = summary,
-                                                              pseudoCount = pseudoCount,
-                                                              minRegions = minRegions,
-                                                              confLevel = confLevel,
-                                                              adjustMethod = adjustMethod))))
+        if (ncol(counts) < 2) {
+            stop("At least two libraries are required, the difference between two sets is measured across them.", call. = FALSE)
+        }
 
-    methods::validObject(scoresObject)
+        if (!is.numeric(confLevel) | confLevel[1] <= 0 | confLevel[1] >= 1) {
+            stop("The 'confLevel' parameter must be a number strictly between 0 and 1.", call. = FALSE)
+        }
 
-    if (isTRUE(verbose)) {
-      message("Done. What separates two sets here is signal, the composition of the sets is not controlled for.")
-    }
+        if (reference == "background") {
+            backgroundCounts <- S4Vectors::metadata(counts)$background
 
-    return(scoresObject)
-  } # END function
+            if (is.null(backgroundCounts)) {
+                stop("No background bins are stored in the object, run countBackground() first or set 'reference' to 'regions'.", call. = FALSE)
+            }
+
+            # The bins hold raw counts, so a ratio against them has to be taken on raw counts too
+            if (!is.null(assay) && assay != "counts") {
+                stop("The background bins hold raw counts, the 'assay' parameter cannot be set together with reference = 'background'.", call. = FALSE)
+            }
+
+            assay <- "counts"
+        } else {
+            assay <- .defaultAssay(counts = counts, assay = assay)
+        }
+
+        return(list(
+            assay = assay,
+            backgroundCounts = backgroundCounts
+        ))
+    } # END function

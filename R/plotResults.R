@@ -53,137 +53,170 @@
 #' @export plotVolcano
 
 plotVolcano <-
-  function(results,
-           set = NULL,
-           contrast = NULL,
-           colourBy = "diff.status",
-           facetBySet = TRUE,
-           facetScales = "fixed",
-           yValue = "FDR",
-           FDR = NULL,
-           log2FC = NULL,
-           showCounts = TRUE,
-           labelTop = 0,
-           labelColumn = "region.id",
-           colours = NULL,
-           pointSize = 2,
-           maxPoints = 20000,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "right",
-           baseSize = 12) {
+    function(results,
+             set = NULL,
+             contrast = NULL,
+             colourBy = "diff.status",
+             facetBySet = TRUE,
+             facetScales = "fixed",
+             yValue = "FDR",
+             FDR = NULL,
+             log2FC = NULL,
+             showCounts = TRUE,
+             labelTop = 0,
+             labelColumn = "region.id",
+             colours = NULL,
+             pointSize = 2,
+             maxPoints = 20000,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "right",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        results <- .pickResults(results = results, contrast = contrast)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    results <- .pickResults(results = results, contrast = contrast)
+        if (!(colourBy %in% c("diff.status", "region.set"))) {
+            stop("The 'colourBy' parameter must be either 'diff.status' or 'region.set'.", call. = FALSE)
+        }
 
-    if (!(colourBy %in% c("diff.status", "region.set"))) {
-      stop("The 'colourBy' parameter must be either 'diff.status' or 'region.set'.", call. = FALSE)
-    }
+        if (!(yValue %in% c("FDR", "p.value"))) {
+            stop("The 'yValue' parameter must be either 'FDR' or 'p.value'.", call. = FALSE)
+        }
 
-    if (!(yValue %in% c("FDR", "p.value"))) {
-      stop("The 'yValue' parameter must be either 'FDR' or 'p.value'.", call. = FALSE)
-    }
+        if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
+            stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
+        }
 
-    if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
-      stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
-    }
+        plotTable <- .prepareResultTable(results = results, set = set, FDR = FDR, log2FC = log2FC)
 
-    plotTable <- .prepareResultTable(results = results, set = set, FDR = FDR, log2FC = log2FC)
+        FDRthreshold <- if (is.null(FDR)) {
+            thresholdInfo(results)$FDR
+        } else {
+            FDR
+        }
+        log2FCthreshold <- if (is.null(log2FC)) {
+            thresholdInfo(results)$log2FC
+        } else {
+            log2FC
+        }
 
-    FDRthreshold <- if (is.null(FDR)) {results@thresholds$FDR} else {FDR}
-    log2FCthreshold <- if (is.null(log2FC)) {results@thresholds$log2FC} else {log2FC}
+        plotTable$y.value <- -log10(plotTable[[yValue]])
 
-    plotTable$y.value <- -log10(plotTable[[yValue]])
+        statusColours <- .diffStatusColours(colours = colours)
 
-    statusColours <- .diffStatusColours(colours = colours)
+        #-------------------------------#
+        # Thin the unchanging cloud     #
+        #-------------------------------#
+        drawnTable <- rbind(
+            .thinBySet(
+                regionTable = dplyr::filter(plotTable, .data$diff.status == "null"),
+                maxPoints = maxPoints,
+                bySet = facetBySet
+            ),
+            dplyr::filter(plotTable, .data$diff.status != "null")
+        )
 
-    #-------------------------------#
-    # Thin the unchanging cloud     #
-    #-------------------------------#
-    drawnTable <- rbind(.thinBySet(regionTable = dplyr::filter(plotTable, .data$diff.status == "null"),
-                                   maxPoints = maxPoints,
-                                   bySet = facetBySet),
-                        dplyr::filter(plotTable, .data$diff.status != "null"))
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        volcanoPlot <-
+            ggplot2::ggplot(
+                data = drawnTable,
+                mapping = ggplot2::aes(x = .data$log2FC, y = .data$y.value, colour = .data[[colourBy]])
+            ) +
+            ggplot2::geom_point(size = pointSize, alpha = 0.6, stroke = NA) +
+            ggplot2::geom_hline(yintercept = -log10(FDRthreshold), linetype = "dashed", linewidth = 0.3, colour = "black") +
+            ggplot2::labs(
+                x = paste0("log<sub>2</sub> fold change (", contrastName(results), ")"),
+                y = paste0("-log<sub>10</sub>(", if (yValue == "FDR") {
+                    "FDR"
+                } else {
+                    "p-value"
+                }, ")"),
+                colour = if (colourBy == "diff.status") {
+                    "Status"
+                } else {
+                    "Region set"
+                },
+                title = if (is.null(title)) {
+                    contrastName(results)
+                } else {
+                    title
+                },
+                subtitle = subtitle
+            ) +
+            ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3)), alpha = 1))) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    volcanoPlot <-
-      ggplot2::ggplot(data = drawnTable,
-                      mapping = ggplot2::aes(x = .data$log2FC, y = .data$y.value, colour = .data[[colourBy]])) +
-      ggplot2::geom_point(size = pointSize, alpha = 0.6, stroke = NA) +
-      ggplot2::geom_hline(yintercept = -log10(FDRthreshold), linetype = "dashed", linewidth = 0.3, colour = "black") +
-      ggplot2::labs(x = paste0("log<sub>2</sub> fold change (", results@contrast, ")"),
-                    y = paste0("-log<sub>10</sub>(", if (yValue == "FDR") {"FDR"} else {"p-value"}, ")"),
-                    colour = if (colourBy == "diff.status") {"Status"} else {"Region set"},
-                    title = if (is.null(title)) {results@contrast} else {title},
-                    subtitle = subtitle) +
-      ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3)), alpha = 1))) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+        if (log2FCthreshold > 0) {
+            volcanoPlot <- volcanoPlot +
+                ggplot2::geom_vline(
+                    xintercept = c(-log2FCthreshold, log2FCthreshold),
+                    linetype = "dashed", linewidth = 0.3, colour = "black"
+                )
+        }
 
-    if (log2FCthreshold > 0) {
-      volcanoPlot <- volcanoPlot +
-        ggplot2::geom_vline(xintercept = c(-log2FCthreshold, log2FCthreshold),
-                            linetype = "dashed", linewidth = 0.3, colour = "black")
-    }
+        if (colourBy == "diff.status") {
+            volcanoPlot <- volcanoPlot + ggplot2::scale_colour_manual(values = statusColours, drop = FALSE)
+        } else if (!is.null(colours)) {
+            volcanoPlot <- volcanoPlot + ggplot2::scale_colour_manual(values = colours)
+        }
 
-    if (colourBy == "diff.status") {
-      volcanoPlot <- volcanoPlot + ggplot2::scale_colour_manual(values = statusColours, drop = FALSE)
-    } else if (!is.null(colours)) {
-      volcanoPlot <- volcanoPlot + ggplot2::scale_colour_manual(values = colours)
-    }
+        if (isTRUE(facetBySet)) {
+            volcanoPlot <- volcanoPlot + ggplot2::facet_wrap(facets = ~region.set, scales = facetScales)
+        }
 
-    if (isTRUE(facetBySet)) {
-      volcanoPlot <- volcanoPlot + ggplot2::facet_wrap(facets = ~ region.set, scales = facetScales)
-    }
+        #-------------------------------#
+        # Counts in the corners         #
+        #-------------------------------#
+        if (isTRUE(showCounts)) {
+            countTable <- .diffCounts(regionTable = plotTable, bySet = facetBySet)
 
-    #-------------------------------#
-    # Counts in the corners         #
-    #-------------------------------#
-    if (isTRUE(showCounts)) {
-      countTable <- .diffCounts(regionTable = plotTable, bySet = facetBySet)
+            volcanoPlot <- volcanoPlot +
+                ggplot2::geom_text(
+                    data = countTable,
+                    mapping = ggplot2::aes(x = -Inf, y = Inf, label = paste0("n = ", .data$n.down)),
+                    inherit.aes = FALSE, hjust = -0.15, vjust = 1.4,
+                    size = baseSize / 4.5, colour = statusColours[["down"]]
+                ) +
+                ggplot2::geom_text(
+                    data = countTable,
+                    mapping = ggplot2::aes(x = Inf, y = Inf, label = paste0("n = ", .data$n.up)),
+                    inherit.aes = FALSE, hjust = 1.15, vjust = 1.4,
+                    size = baseSize / 4.5, colour = statusColours[["up"]]
+                )
+        }
 
-      volcanoPlot <- volcanoPlot +
-        ggplot2::geom_text(data = countTable,
-                           mapping = ggplot2::aes(x = -Inf, y = Inf, label = paste0("n = ", .data$n.down)),
-                           inherit.aes = FALSE, hjust = -0.15, vjust = 1.4,
-                           size = baseSize / 4.5, colour = statusColours[["down"]]) +
-        ggplot2::geom_text(data = countTable,
-                           mapping = ggplot2::aes(x = Inf, y = Inf, label = paste0("n = ", .data$n.up)),
-                           inherit.aes = FALSE, hjust = 1.15, vjust = 1.4,
-                           size = baseSize / 4.5, colour = statusColours[["up"]])
-    }
+        #-------------------------------#
+        # Labels on the top regions     #
+        #-------------------------------#
+        if (labelTop > 0) {
+            if (!(labelColumn %in% colnames(plotTable))) {
+                stop("The column '", labelColumn, "' is absent from the results table.", call. = FALSE)
+            }
+            if (!requireNamespace("ggrepel", quietly = TRUE)) {
+                stop("The 'ggrepel' package is needed to label the points.", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # Labels on the top regions     #
-    #-------------------------------#
-    if (labelTop > 0) {
-      if (!(labelColumn %in% colnames(plotTable))) {
-        stop("The column '", labelColumn, "' is absent from the results table.", call. = FALSE)
-      }
-      if (!requireNamespace("ggrepel", quietly = TRUE)) {
-        stop("The 'ggrepel' package is needed to label the points.", call. = FALSE)
-      }
+            labelTable <- dplyr::arrange(dplyr::filter(plotTable, .data$diff.status != "null"), .data$FDR, .data$p.value)
+            labelTable <- if (isTRUE(facetBySet)) {
+                dplyr::ungroup(dplyr::slice_head(dplyr::group_by(labelTable, .data$region.set), n = labelTop))
+            } else {
+                dplyr::slice_head(labelTable, n = labelTop)
+            }
 
-      labelTable <- dplyr::arrange(dplyr::filter(plotTable, .data$diff.status != "null"), .data$FDR, .data$p.value)
-      labelTable <- if (isTRUE(facetBySet)) {
-        dplyr::ungroup(dplyr::slice_head(dplyr::group_by(labelTable, .data$region.set), n = labelTop))
-      } else {
-        dplyr::slice_head(labelTable, n = labelTop)
-      }
+            volcanoPlot <- volcanoPlot +
+                ggrepel::geom_text_repel(
+                    data = labelTable,
+                    mapping = ggplot2::aes(label = .data[[labelColumn]]),
+                    size = baseSize / 4.5, colour = "black", max.overlaps = Inf, show.legend = FALSE
+                )
+        }
 
-      volcanoPlot <- volcanoPlot +
-        ggrepel::geom_text_repel(data = labelTable,
-                                 mapping = ggplot2::aes(label = .data[[labelColumn]]),
-                                 size = baseSize / 4.5, colour = "black", max.overlaps = Inf, show.legend = FALSE)
-    }
-
-    return(volcanoPlot)
-  } # END function
-
-
+        return(volcanoPlot)
+    } # END function
 
 
 #' @title plotResultsMA
@@ -232,122 +265,151 @@ plotVolcano <-
 #' @export plotResultsMA
 
 plotResultsMA <-
-  function(results,
-           set = NULL,
-           contrast = NULL,
-           colourBy = "diff.status",
-           facetBySet = TRUE,
-           facetScales = "fixed",
-           FDR = NULL,
-           log2FC = NULL,
-           showCounts = TRUE,
-           showTrend = TRUE,
-           colours = NULL,
-           pointSize = 2,
-           maxPoints = 20000,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "right",
-           baseSize = 12) {
+    function(results,
+             set = NULL,
+             contrast = NULL,
+             colourBy = "diff.status",
+             facetBySet = TRUE,
+             facetScales = "fixed",
+             FDR = NULL,
+             log2FC = NULL,
+             showCounts = TRUE,
+             showTrend = TRUE,
+             colours = NULL,
+             pointSize = 2,
+             maxPoints = 20000,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "right",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        results <- .pickResults(results = results, contrast = contrast)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    results <- .pickResults(results = results, contrast = contrast)
+        if (!(colourBy %in% c("diff.status", "region.set"))) {
+            stop("The 'colourBy' parameter must be either 'diff.status' or 'region.set'.", call. = FALSE)
+        }
 
-    if (!(colourBy %in% c("diff.status", "region.set"))) {
-      stop("The 'colourBy' parameter must be either 'diff.status' or 'region.set'.", call. = FALSE)
-    }
+        if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
+            stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
+        }
 
-    if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
-      stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
-    }
+        plotTable <- .prepareResultTable(results = results, set = set, FDR = FDR, log2FC = log2FC)
 
-    plotTable <- .prepareResultTable(results = results, set = set, FDR = FDR, log2FC = log2FC)
+        if (!("average.signal" %in% colnames(plotTable))) {
+            stop("The results table carries no 'average.signal' column.", call. = FALSE)
+        }
 
-    if (!("average.signal" %in% colnames(plotTable))) {
-      stop("The results table carries no 'average.signal' column.", call. = FALSE)
-    }
+        statusColours <- .diffStatusColours(colours = colours)
 
-    statusColours <- .diffStatusColours(colours = colours)
+        #-------------------------------#
+        # Thin the unchanging cloud     #
+        #-------------------------------#
+        drawnTable <- rbind(
+            .thinBySet(
+                regionTable = dplyr::filter(plotTable, .data$diff.status == "null"),
+                maxPoints = maxPoints,
+                bySet = facetBySet
+            ),
+            dplyr::filter(plotTable, .data$diff.status != "null")
+        )
 
-    #-------------------------------#
-    # Thin the unchanging cloud     #
-    #-------------------------------#
-    drawnTable <- rbind(.thinBySet(regionTable = dplyr::filter(plotTable, .data$diff.status == "null"),
-                                   maxPoints = maxPoints,
-                                   bySet = facetBySet),
-                        dplyr::filter(plotTable, .data$diff.status != "null"))
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        maPlot <-
+            ggplot2::ggplot(
+                data = drawnTable,
+                mapping = ggplot2::aes(x = .data$average.signal, y = .data$log2FC, colour = .data[[colourBy]])
+            ) +
+            ggplot2::geom_point(size = pointSize, alpha = 0.6, stroke = NA) +
+            ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, colour = "black") +
+            # DESeq2 reports the mean of the normalised counts, the other engines log2 counts per million
+            ggplot2::labs(
+                x = if (identical(fitEngine(results), "deseq2")) {
+                    "Average signal (log<sub>2</sub> normalised count + 1)"
+                } else {
+                    "Average signal (log<sub>2</sub> CPM)"
+                },
+                y = paste0("log<sub>2</sub> fold change (", contrastName(results), ")"),
+                colour = if (colourBy == "diff.status") {
+                    "Status"
+                } else {
+                    "Region set"
+                },
+                title = if (is.null(title)) {
+                    contrastName(results)
+                } else {
+                    title
+                },
+                subtitle = subtitle
+            ) +
+            ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3)), alpha = 1))) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    maPlot <-
-      ggplot2::ggplot(data = drawnTable,
-                      mapping = ggplot2::aes(x = .data$average.signal, y = .data$log2FC, colour = .data[[colourBy]])) +
-      ggplot2::geom_point(size = pointSize, alpha = 0.6, stroke = NA) +
-      ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, colour = "black") +
-      # DESeq2 reports the mean of the normalised counts, the other engines log2 counts per million
-      ggplot2::labs(x = if (identical(results@engine, "deseq2")) {"Average signal (log<sub>2</sub> normalised count + 1)"} else {"Average signal (log<sub>2</sub> CPM)"},
-                    y = paste0("log<sub>2</sub> fold change (", results@contrast, ")"),
-                    colour = if (colourBy == "diff.status") {"Status"} else {"Region set"},
-                    title = if (is.null(title)) {results@contrast} else {title},
-                    subtitle = subtitle) +
-      ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = max(c(pointSize, 3)), alpha = 1))) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+        # The fold change cut-off of the up and down labels, the same one the volcano draws as vertical lines
+        log2FCthreshold <- if (is.null(log2FC)) {
+            thresholdInfo(results)$log2FC
+        } else {
+            log2FC
+        }
 
-    # The fold change cut-off of the up and down labels, the same one the volcano draws as vertical lines
-    log2FCthreshold <- if (is.null(log2FC)) {results@thresholds$log2FC} else {log2FC}
+        if (isTRUE(log2FCthreshold > 0)) {
+            maPlot <- maPlot +
+                ggplot2::geom_hline(
+                    yintercept = c(-log2FCthreshold, log2FCthreshold),
+                    linetype = "dashed", linewidth = 0.3, colour = "black"
+                )
+        }
 
-    if (isTRUE(log2FCthreshold > 0)) {
-      maPlot <- maPlot +
-        ggplot2::geom_hline(yintercept = c(-log2FCthreshold, log2FCthreshold),
-                            linetype = "dashed", linewidth = 0.3, colour = "black")
-    }
+        if (colourBy == "diff.status") {
+            maPlot <- maPlot + ggplot2::scale_colour_manual(values = statusColours, drop = FALSE)
+        } else if (!is.null(colours)) {
+            maPlot <- maPlot + ggplot2::scale_colour_manual(values = colours)
+        }
 
-    if (colourBy == "diff.status") {
-      maPlot <- maPlot + ggplot2::scale_colour_manual(values = statusColours, drop = FALSE)
-    } else if (!is.null(colours)) {
-      maPlot <- maPlot + ggplot2::scale_colour_manual(values = colours)
-    }
+        if (isTRUE(showTrend)) {
+            # One loess per set, on a thinned sample: the fit costs the square of the points and draws the same line either way
+            trendTable <- .thinBySet(regionTable = plotTable, maxPoints = maxPoints, bySet = TRUE)
 
-    if (isTRUE(showTrend)) {
-      # One loess per set, on a thinned sample: the fit costs the square of the points and draws the same line either way
-      trendTable <- .thinBySet(regionTable = plotTable, maxPoints = maxPoints, bySet = TRUE)
+            maPlot <- maPlot +
+                ggplot2::geom_smooth(
+                    data = trendTable,
+                    mapping = ggplot2::aes(group = .data$region.set),
+                    method = "loess", formula = y ~ x, se = FALSE,
+                    colour = "black", linewidth = 0.5
+                )
+        }
 
-      maPlot <- maPlot +
-        ggplot2::geom_smooth(data = trendTable,
-                             mapping = ggplot2::aes(group = .data$region.set),
-                             method = "loess", formula = y ~ x, se = FALSE,
-                             colour = "black", linewidth = 0.5)
-    }
+        if (isTRUE(facetBySet)) {
+            maPlot <- maPlot + ggplot2::facet_wrap(facets = ~region.set, scales = facetScales)
+        }
 
-    if (isTRUE(facetBySet)) {
-      maPlot <- maPlot + ggplot2::facet_wrap(facets = ~ region.set, scales = facetScales)
-    }
+        #-------------------------------#
+        # Counts in the corners         #
+        #-------------------------------#
+        if (isTRUE(showCounts)) {
+            countTable <- .diffCounts(regionTable = plotTable, bySet = facetBySet)
 
-    #-------------------------------#
-    # Counts in the corners         #
-    #-------------------------------#
-    if (isTRUE(showCounts)) {
-      countTable <- .diffCounts(regionTable = plotTable, bySet = facetBySet)
+            # The y axis carries the fold change here, so the labels sit on the side they describe
+            maPlot <- maPlot +
+                ggplot2::geom_text(
+                    data = countTable,
+                    mapping = ggplot2::aes(x = Inf, y = Inf, label = paste0("n = ", .data$n.up)),
+                    inherit.aes = FALSE, hjust = 1.15, vjust = 1.4,
+                    size = baseSize / 4.5, colour = statusColours[["up"]]
+                ) +
+                ggplot2::geom_text(
+                    data = countTable,
+                    mapping = ggplot2::aes(x = Inf, y = -Inf, label = paste0("n = ", .data$n.down)),
+                    inherit.aes = FALSE, hjust = 1.15, vjust = -0.6,
+                    size = baseSize / 4.5, colour = statusColours[["down"]]
+                )
+        }
 
-      # The y axis carries the fold change here, so the labels sit on the side they describe
-      maPlot <- maPlot +
-        ggplot2::geom_text(data = countTable,
-                           mapping = ggplot2::aes(x = Inf, y = Inf, label = paste0("n = ", .data$n.up)),
-                           inherit.aes = FALSE, hjust = 1.15, vjust = 1.4,
-                           size = baseSize / 4.5, colour = statusColours[["up"]]) +
-        ggplot2::geom_text(data = countTable,
-                           mapping = ggplot2::aes(x = Inf, y = -Inf, label = paste0("n = ", .data$n.down)),
-                           inherit.aes = FALSE, hjust = 1.15, vjust = -0.6,
-                           size = baseSize / 4.5, colour = statusColours[["down"]])
-    }
-
-    return(maPlot)
-  } # END function
-
-
+        return(maPlot)
+    } # END function
 
 
 #' @title plotRegion
@@ -384,7 +446,7 @@ plotResultsMA <-
 #'
 #' Few replicates limit these tests more than they limit the model. With three samples per group the exact Wilcoxon test cannot go below p = 0.1, and with three pairs the signed-rank test cannot go below 0.25; a message says so when the groups are that small. With \code{pairBy} the samples are matched on the value of that column, whatever their order in the object. A test paired by replicate asks what \code{design = ~ replicate + condition} asks in \code{\link{fitRegions}}, and the model is the place for that pairing when the numbers are meant to be reported.
 #'
-#' \code{"model"} writes on each bracket the log2 fold change and the FDR that \code{\link{testRegions}} gave to the region, one bracket per contrast comparing two levels of \code{groupBy}. A contrast qualifies when it was written as \code{c("column", "groupA", "groupB")}, or when it reduces to that difference, which the result records in its \code{contrast.groups} slot. The caption says which test, or which fit, the brackets come from.
+#' \code{"model"} writes on each bracket the log2 fold change and the FDR that \code{\link{testRegions}} gave to the region, one bracket per contrast comparing two levels of \code{groupBy}. A contrast qualifies when it was written as \code{c("column", "groupA", "groupB")}, or when it reduces to that difference, which the result records in its \code{contrast.groups} slot (read with \code{\link{contrastGroups}}). The caption says which test, or which fit, the brackets come from.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -407,8 +469,10 @@ plotResultsMA <-
 #' pairedCounts <- resultCounts(results)
 #' pairedCounts$pair <- c("p1", "p2", "p1", "p2")
 #'
-#' plotRegion(pairedCounts, region = topRegion, groupBy = "condition",
-#'            pairwiseTest = "t.test", pairBy = "pair")
+#' plotRegion(pairedCounts,
+#'     region = topRegion, groupBy = "condition",
+#'     pairwiseTest = "t.test", pairBy = "pair"
+#' )
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -430,331 +494,516 @@ plotResultsMA <-
 #' @export plotRegion
 
 plotRegion <-
-  function(object,
-           region,
-           counts = NULL,
-           contrast = NULL,
-           groupBy = NULL,
-           assay = NULL,
-           log2Scale = TRUE,
-           summarise = FALSE,
-           pairwiseTest = NULL,
-           pairBy = NULL,
-           comparisons = NULL,
-           pAdjustMethod = "none",
-           pLabel = "p.value",
-           pDecimals = 2,
-           colours = NULL,
-           pointSize = 3,
-           rotateX = TRUE,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "right",
-           baseSize = 12) {
+    function(object,
+             region,
+             counts = NULL,
+             contrast = NULL,
+             groupBy = NULL,
+             assay = NULL,
+             log2Scale = TRUE,
+             summarise = FALSE,
+             pairwiseTest = NULL,
+             pairBy = NULL,
+             comparisons = NULL,
+             pAdjustMethod = "none",
+             pLabel = "p.value",
+             pDecimals = 2,
+             colours = NULL,
+             pointSize = 3,
+             rotateX = TRUE,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "right",
+             baseSize = 12) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkPlotRegionArguments(
+            object = object,
+            counts = counts,
+            contrast = contrast,
+            groupBy = groupBy,
+            summarise = summarise,
+            pairwiseTest = pairwiseTest,
+            pairBy = pairBy,
+            comparisons = comparisons,
+            pAdjustMethod = pAdjustMethod,
+            pLabel = pLabel,
+            pDecimals = pDecimals
+        )
+        counts <- checkedArguments$counts
+        modelResults <- checkedArguments$modelResults
+        results <- checkedArguments$results
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!is.null(pairwiseTest)) {
-      if (length(pairwiseTest) != 1 || !(pairwiseTest %in% c("t.test", "wilcox.test", "model"))) {
-        stop("The 'pairwiseTest' parameter must be one of 't.test', 'wilcox.test', 'model'.", call. = FALSE)
-      }
+        #-------------------------------#
+        # Locate the region             #
+        #-------------------------------#
+        regionRows <- .locateRegion(counts = counts, region = region)
 
-      if (is.null(groupBy)) {
-        stop("The 'pairwiseTest' parameter needs a 'groupBy' column.", call. = FALSE)
-      }
+        #-------------------------------#
+        # Extract the values            #
+        #-------------------------------#
+        assay <- .defaultAssay(counts = counts, assay = assay)
 
-      if (length(pAdjustMethod) != 1 || !(pAdjustMethod %in% stats::p.adjust.methods)) {
-        stop("The 'pAdjustMethod' parameter must be one of ", paste(stats::p.adjust.methods, collapse = ", "), ".", call. = FALSE)
-      }
+        valueMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))[regionRows$row.index, , drop = FALSE]
+        rowRangesObject <- SummarizedExperiment::rowRanges(counts)[regionRows$row.index]
 
-      if (length(pLabel) != 1 || !(pLabel %in% c("p.value", "stars"))) {
-        stop("The 'pLabel' parameter must be either 'p.value' or 'stars'.", call. = FALSE)
-      }
+        plotTable <- data.frame(
+            sample = rep(colnames(counts), each = nrow(valueMatrix)),
+            position = rep((BiocGenerics::start(rowRangesObject) + BiocGenerics::end(rowRangesObject)) / 2,
+                times = ncol(valueMatrix)
+            ),
+            value = as.numeric(valueMatrix),
+            stringsAsFactors = FALSE
+        )
 
-      if (!is.numeric(pDecimals) || length(pDecimals) != 1 || is.na(pDecimals) || pDecimals < 0) {
-        stop("The 'pDecimals' parameter must be a single number, zero or above.", call. = FALSE)
-      }
-
-    } else if (!is.null(pairBy) | !is.null(comparisons)) {
-      warning("No 'pairwiseTest' was given, the 'pairBy' and 'comparisons' parameters have been ignored.", call. = FALSE)
-    }
-
-    # The model brackets read every contrast of a list, so a single one is picked only when it is named
-    modelResults <- NULL
-    if (identical(pairwiseTest, "model")) {
-      modelResults <- .modelResultsList(object = object, contrast = contrast)
-    }
-
-    resolvedObject <- .resolveCounts(object = object,
-                                     counts = counts,
-                                     contrast = if (length(modelResults) > 1) {1} else {contrast})
-    counts <- resolvedObject$counts
-
-    # With several contrasts on the brackets, none of them can speak for the subtitle alone
-    results <- if (length(modelResults) > 1) {NULL} else {resolvedObject$results}
-
-    if (isTRUE(summarise) & is.null(groupBy)) {
-      stop("The 'summarise' parameter needs a 'groupBy' column.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Locate the region             #
-    #-------------------------------#
-    regionRows <- .locateRegion(counts = counts, region = region)
-
-    #-------------------------------#
-    # Extract the values            #
-    #-------------------------------#
-    assay <- .defaultAssay(counts = counts, assay = assay)
-
-    valueMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))[regionRows$row.index, , drop = FALSE]
-    rowRangesObject <- SummarizedExperiment::rowRanges(counts)[regionRows$row.index]
-
-    plotTable <- data.frame(sample = rep(colnames(counts), each = nrow(valueMatrix)),
-                            position = rep((BiocGenerics::start(rowRangesObject) + BiocGenerics::end(rowRangesObject)) / 2,
-                                           times = ncol(valueMatrix)),
-                            value = as.numeric(valueMatrix),
-                            stringsAsFactors = FALSE)
-
-    if (isTRUE(log2Scale)) {
-      plotTable <- dplyr::mutate(plotTable, value = log2(.data$value + 1))
-    }
-
-    #-------------------------------#
-    # Attach the sample metadata    #
-    #-------------------------------#
-    colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    colTable$sample <- colnames(counts)
-
-    if (!is.null(groupBy)) {
-      if (!(groupBy %in% colnames(colTable))) {
-        stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
-      }
-      plotTable$group <- as.character(colTable[[groupBy]])[match(plotTable$sample, colTable$sample)]
-    } else {
-      plotTable$group <- plotTable$sample
-    }
-
-    # The order is fixed here, so that the brackets land where the axis puts the groups
-    plotTable$group <- factor(plotTable$group, levels = sort(unique(plotTable$group)))
-
-    #-------------------------------#
-    # Statistics of the region      #
-    #-------------------------------#
-    isTiled <- nrow(valueMatrix) > 1
-    yLabel <- paste0(if (isTRUE(log2Scale)) {"log<sub>2</sub> "} else {""}, assay)
-
-    if (is.null(subtitle) & !is.null(results)) {
-      statisticsRow <- dplyr::filter(resultsTable(results),
-                                     paste(.data$region.set, .data$region.id, sep = "|") == unique(regionRows$region.key))
-      if (nrow(statisticsRow) == 1) {
-        subtitle <- sprintf("*%s*: log<sub>2</sub>FC %.2f, FDR %.1e",
-                            results@contrast, statisticsRow$log2FC[1], statisticsRow$FDR[1])
-      }
-    }
-
-    #-------------------------------#
-    # Pairwise comparisons          #
-    #-------------------------------#
-    comparisonTable <- NULL
-    captionText <- NULL
-
-    if (!is.null(pairwiseTest)) {
-      # A bracket joins two positions of the axis, and along a tiled region the axis holds the coordinates
-      if (isTRUE(isTiled)) {
-        stop("The pairwise comparisons need a region counted as a single row, on a tiled region the x axis holds the coordinates.", call. = FALSE)
-      }
-
-      if (pairwiseTest == "model") {
-        if (!is.null(pairBy)) {
-          warning("The model brackets follow the design of the fit, the 'pairBy' parameter has been ignored.", call. = FALSE)
+        if (isTRUE(log2Scale)) {
+            plotTable <- dplyr::mutate(plotTable, value = log2(.data$value + 1))
         }
 
-        if (pAdjustMethod != "none") {
-          warning("The FDR of the model is already corrected over the regions, the 'pAdjustMethod' parameter has been ignored.", call. = FALSE)
-        }
+        #-------------------------------#
+        # Attach the sample metadata    #
+        #-------------------------------#
+        colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        colTable$sample <- colnames(counts)
 
-        comparisonTable <- .modelBrackets(resultsList = modelResults,
-                                          regionKey = unique(regionRows$region.key),
-                                          groupBy = groupBy,
-                                          groupLevels = levels(plotTable$group),
-                                          comparisons = comparisons)
-
-        comparisonTable$label <- .bracketLabels(pValues = comparisonTable$FDR,
-                                                prefix = "FDR",
-                                                pLabel = pLabel,
-                                                pDecimals = pDecimals,
-                                                log2FC = comparisonTable$log2FC)
-
-        engineNames <- unique(vapply(modelResults, function(x) {x@engine}, character(1)))
-        captionText <- paste0("log<sub>2</sub>FC and FDR from the ", paste(engineNames, collapse = " and "), " fit")
-
-      } else {
-        # Coverage declared as not count-like is taken as already scaled, while counts need the normalisation first
-        objectMetadata <- S4Vectors::metadata(counts)
-        if (!isFALSE(objectMetadata$count.like) & !identical(assay, objectMetadata$normalization$normalized.assay)) {
-          warning("The test runs on the '", assay, "' assay, which is not normalised: a difference in sequencing depth between the groups ",
-                  "is read as a difference in signal. Run normalizeCounts() first, or pick the normalised values through 'assay'.", call. = FALSE)
-        }
-
-        comparisonTable <- .pairwiseTests(plotTable = plotTable,
-                                          colTable = colTable,
-                                          test = pairwiseTest,
-                                          pairBy = pairBy,
-                                          comparisons = comparisons,
-                                          groupLevels = levels(plotTable$group),
-                                          pAdjustMethod = pAdjustMethod)
-
-        # One comparison leaves nothing to correct for, the label keeps the plain p-value then
-        isAdjusted <- pAdjustMethod != "none" & nrow(comparisonTable) > 1
-
-        comparisonTable$label <- .bracketLabels(pValues = if (isTRUE(isAdjusted)) {comparisonTable$p.adjusted} else {comparisonTable$p.value},
-                                                prefix = if (isTRUE(isAdjusted)) {"p<sub>adj</sub>"} else {"p"},
-                                                pLabel = pLabel,
-                                                pDecimals = pDecimals)
-
-        testName <- if (pairwiseTest == "t.test") {
-          if (is.null(pairBy)) {"Welch t-test"} else {"Paired t-test"}
+        if (!is.null(groupBy)) {
+            if (!(groupBy %in% colnames(colTable))) {
+                stop("The column '", groupBy, "' is absent from the colData.", call. = FALSE)
+            }
+            plotTable$group <- as.character(colTable[[groupBy]])[match(plotTable$sample, colTable$sample)]
         } else {
-          if (is.null(pairBy)) {"Wilcoxon rank-sum test"} else {"Wilcoxon signed-rank test"}
+            plotTable$group <- plotTable$sample
         }
 
-        captionText <- paste0(testName, " on ", yLabel,
-                              if (!is.null(pairBy)) {paste0(", paired by ", pairBy)} else {""},
-                              if (isTRUE(isAdjusted)) {paste0(", ", pAdjustMethod, " adjustment over ", nrow(comparisonTable), " comparisons")} else {""},
-                              "<br>Not corrected for the number of regions tested")
-      }
-    }
+        # The order is fixed here, so that the brackets land where the axis puts the groups
+        plotTable$group <- factor(plotTable$group, levels = sort(unique(plotTable$group)))
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    summaryTable <- NULL
-    if (isTRUE(summarise)) {
-      summaryTable <- dplyr::ungroup(dplyr::summarise(dplyr::group_by(plotTable, .data$group, .data$position),
-                                                      mean.value = mean(.data$value),
-                                                      sd.value = stats::sd(.data$value),
-                                                      .groups = "drop"))
-      summaryTable$sd.value[is.na(summaryTable$sd.value)] <- 0
-    }
+        #-------------------------------#
+        # Statistics of the region      #
+        #-------------------------------#
+        isTiled <- nrow(valueMatrix) > 1
+        yLabel <- paste0(if (isTRUE(log2Scale)) {
+            "log<sub>2</sub> "
+        } else {
+            ""
+        }, assay)
 
-    # A ribbon needs a coordinate to run along, which only a tiled region has
-    hasRibbon <- isTiled & isTRUE(summarise)
+        if (is.null(subtitle) & !is.null(results)) {
+            statisticsRow <- dplyr::filter(
+                resultsTable(results),
+                paste(.data$region.set, .data$region.id, sep = "|") == unique(regionRows$region.key)
+            )
+            if (nrow(statisticsRow) == 1) {
+                subtitle <- sprintf(
+                    "*%s*: log<sub>2</sub>FC %.2f, FDR %.1e",
+                    contrastName(results), statisticsRow$log2FC[1], statisticsRow$FDR[1]
+                )
+            }
+        }
 
-    if (isTRUE(hasRibbon)) {
-      # One line per group, with the spread of the replicates around it, when the individual samples clutter the panel
-      regionPlot <-
-        ggplot2::ggplot(data = summaryTable,
-                        mapping = ggplot2::aes(x = .data$position, y = .data$mean.value,
-                                               colour = .data$group, fill = .data$group)) +
-        ggplot2::geom_ribbon(mapping = ggplot2::aes(ymin = .data$mean.value - .data$sd.value,
-                                                    ymax = .data$mean.value + .data$sd.value),
-                             alpha = 0.2, colour = NA) +
-        ggplot2::geom_line(linewidth = 0.6)
+        #-------------------------------#
+        # Pairwise comparisons          #
+        #-------------------------------#
+        comparisonTable <- NULL
+        captionText <- NULL
 
-    } else if (isTRUE(isTiled)) {
-      regionPlot <-
-        ggplot2::ggplot(data = plotTable,
-                        mapping = ggplot2::aes(x = .data$position, y = .data$value,
-                                               colour = .data$group, group = .data$sample)) +
-        ggplot2::geom_line(linewidth = 0.5)
+        if (!is.null(pairwiseTest)) {
+            # A bracket joins two positions of the axis, and along a tiled region the axis holds the coordinates
+            if (isTRUE(isTiled)) {
+                stop("The pairwise comparisons need a region counted as a single row, on a tiled region the x axis holds the coordinates.", call. = FALSE)
+            }
 
-    } else if (isTRUE(summarise)) {
-      # The region holds one value per sample, so the summary is a mean with its spread rather than a profile
-      regionPlot <-
-        ggplot2::ggplot(data = plotTable,
-                        mapping = ggplot2::aes(x = .data$group, y = .data$value, colour = .data$group)) +
-        ggplot2::geom_errorbar(data = summaryTable,
-                               mapping = ggplot2::aes(x = .data$group,
-                                                      ymin = .data$mean.value - .data$sd.value,
-                                                      ymax = .data$mean.value + .data$sd.value),
-                               inherit.aes = FALSE, width = 0.15, linewidth = 0.4, colour = "black") +
-        ggplot2::geom_crossbar(data = summaryTable,
-                               mapping = ggplot2::aes(x = .data$group, y = .data$mean.value,
-                                                      ymin = .data$mean.value, ymax = .data$mean.value),
-                               inherit.aes = FALSE, width = 0.35, linewidth = 0.4, colour = "black") +
-        ggplot2::geom_point(size = pointSize, stroke = NA)
+            if (pairwiseTest == "model") {
+                if (!is.null(pairBy)) {
+                    warning("The model brackets follow the design of the fit, the 'pairBy' parameter has been ignored.", call. = FALSE)
+                }
 
-    } else {
-      regionPlot <-
-        ggplot2::ggplot(data = plotTable,
-                        mapping = ggplot2::aes(x = .data$group, y = .data$value, colour = .data$group)) +
-        ggplot2::geom_point(size = pointSize, stroke = NA)
-    }
+                if (pAdjustMethod != "none") {
+                    warning("The FDR of the model is already corrected over the regions, the 'pAdjustMethod' parameter has been ignored.", call. = FALSE)
+                }
 
-    #-------------------------------#
-    # Brackets over the groups      #
-    #-------------------------------#
-    if (!is.null(comparisonTable)) {
-      # The error bars of a summarised plot can reach above the points, the brackets start above both
-      valueRange <- range(c(plotTable$value,
-                            if (!is.null(summaryTable)) {summaryTable$mean.value + summaryTable$sd.value} else {NULL}),
-                          na.rm = TRUE)
+                comparisonTable <- .modelBrackets(
+                    resultsList = modelResults,
+                    regionKey = unique(regionRows$region.key),
+                    groupBy = groupBy,
+                    groupLevels = levels(plotTable$group),
+                    comparisons = comparisons
+                )
 
-      comparisonTable <- .placeBrackets(bracketTable = comparisonTable,
-                                        groupLevels = levels(plotTable$group),
-                                        valueRange = valueRange,
-                                        labelLines = if (pairwiseTest == "model") {2} else {1})
+                comparisonTable$label <- .bracketLabels(
+                    pValues = comparisonTable$FDR,
+                    prefix = "FDR",
+                    pLabel = pLabel,
+                    pDecimals = pDecimals,
+                    log2FC = comparisonTable$log2FC
+                )
 
-      regionPlot <- regionPlot +
-        ggplot2::geom_segment(data = comparisonTable,
-                              mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.end,
-                                                     y = .data$y.bracket, yend = .data$y.bracket),
-                              inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-        ggplot2::geom_segment(data = comparisonTable,
-                              mapping = ggplot2::aes(x = .data$x.start, xend = .data$x.start,
-                                                     y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
-                              inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-        ggplot2::geom_segment(data = comparisonTable,
-                              mapping = ggplot2::aes(x = .data$x.end, xend = .data$x.end,
-                                                     y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick),
-                              inherit.aes = FALSE, linewidth = 0.4, colour = "grey20") +
-        ggtext::geom_richtext(data = comparisonTable,
-                              mapping = ggplot2::aes(x = (.data$x.start + .data$x.end) / 2,
-                                                     y = .data$y.bracket, label = .data$label),
-                              inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
-                              colour = "grey20", fill = NA, label.color = NA,
-                              label.padding = grid::unit(rep(1, 4), "pt")) +
-        ggplot2::expand_limits(y = comparisonTable$y.top[1])
-    }
+                engineNames <- unique(vapply(modelResults, function(x) {
+                    fitEngine(x)
+                }, character(1)))
+                captionText <- paste0("log<sub>2</sub>FC and FDR from the ", paste(engineNames, collapse = " and "), " fit")
+            } else {
+                # Coverage declared as not count-like is taken as already scaled, while counts need the normalisation first
+                objectMetadata <- S4Vectors::metadata(counts)
+                if (!isFALSE(objectMetadata$count.like) & !identical(assay, objectMetadata$normalization$normalized.assay)) {
+                    warning("The test runs on the '", assay, "' assay, which is not normalised: a difference in sequencing depth between the groups ",
+                        "is read as a difference in signal. Run normalizeCounts() first, or pick the normalised values through 'assay'.",
+                        call. = FALSE
+                    )
+                }
 
-    # Only the summarised plot maps a fill, naming the others would raise an unknown label warning
-    labelList <- list(x = if (isTiled) {paste0(as.character(GenomeInfoDb::seqnames(rowRangesObject))[1], " (bp)")} else {""},
-                      y = yLabel,
-                      colour = if (is.null(groupBy)) {"Sample"} else {groupBy},
-                      title = if (is.null(title)) {unique(regionRows$region.key)} else {title},
-                      subtitle = subtitle)
+                comparisonTable <- .pairwiseTests(
+                    plotTable = plotTable,
+                    colTable = colTable,
+                    test = pairwiseTest,
+                    pairBy = pairBy,
+                    comparisons = comparisons,
+                    groupLevels = levels(plotTable$group),
+                    pAdjustMethod = pAdjustMethod
+                )
 
-    if (isTRUE(hasRibbon)) {
-      labelList$fill <- if (is.null(groupBy)) {"Sample"} else {groupBy}
-    }
+                # One comparison leaves nothing to correct for, the label keeps the plain p-value then
+                isAdjusted <- pAdjustMethod != "none" & nrow(comparisonTable) > 1
 
-    if (!is.null(captionText)) {
-      labelList$caption <- captionText
-    }
+                comparisonTable$label <- .bracketLabels(
+                    pValues = if (isTRUE(isAdjusted)) {
+                        comparisonTable$p.adjusted
+                    } else {
+                        comparisonTable$p.value
+                    },
+                    prefix = if (isTRUE(isAdjusted)) {
+                        "p<sub>adj</sub>"
+                    } else {
+                        "p"
+                    },
+                    pLabel = pLabel,
+                    pDecimals = pDecimals
+                )
 
-    regionPlot <- regionPlot +
-      do.call(what = ggplot2::labs, args = labelList) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = rotateX) +
-      ggplot2::theme(axis.line = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.5, colour = "black"),
-                     axis.ticks.x = ggplot2::element_blank(),
-                     panel.grid.major = ggplot2::element_line(linewidth = 0.2, colour = "gray"),
-                     plot.caption = ggtext::element_markdown(colour = "gray30"))
+                testName <- if (pairwiseTest == "t.test") {
+                    if (is.null(pairBy)) {
+                        "Welch t-test"
+                    } else {
+                        "Paired t-test"
+                    }
+                } else {
+                    if (is.null(pairBy)) {
+                        "Wilcoxon rank-sum test"
+                    } else {
+                        "Wilcoxon signed-rank test"
+                    }
+                }
 
-    if (!is.null(colours)) {
-      regionPlot <- regionPlot + ggplot2::scale_colour_manual(values = colours)
+                captionText <- paste0(
+                    testName, " on ", yLabel,
+                    if (!is.null(pairBy)) {
+                        paste0(", paired by ", pairBy)
+                    } else {
+                        ""
+                    },
+                    if (isTRUE(isAdjusted)) {
+                        paste0(", ", pAdjustMethod, " adjustment over ", nrow(comparisonTable), " comparisons")
+                    } else {
+                        ""
+                    },
+                    "<br>Not corrected for the number of regions tested"
+                )
+            }
+        }
 
-      if (isTRUE(hasRibbon)) {
-        regionPlot <- regionPlot + ggplot2::scale_fill_manual(values = colours)
-      }
-    }
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        summaryTable <- NULL
+        if (isTRUE(summarise)) {
+            summaryTable <- dplyr::ungroup(dplyr::summarise(dplyr::group_by(plotTable, .data$group, .data$position),
+                mean.value = mean(.data$value),
+                sd.value = stats::sd(.data$value),
+                .groups = "drop"
+            ))
+            summaryTable$sd.value[is.na(summaryTable$sd.value)] <- 0
+        }
 
-    return(regionPlot)
-  } # END function
+        # A ribbon needs a coordinate to run along, which only a tiled region has
+        hasRibbon <- isTiled & isTRUE(summarise)
+
+        if (isTRUE(hasRibbon)) {
+            # One line per group, with the spread of the replicates around it, when the individual samples clutter the panel
+            regionPlot <-
+                ggplot2::ggplot(
+                    data = summaryTable,
+                    mapping = ggplot2::aes(
+                        x = .data$position, y = .data$mean.value,
+                        colour = .data$group, fill = .data$group
+                    )
+                ) +
+                ggplot2::geom_ribbon(
+                    mapping = ggplot2::aes(
+                        ymin = .data$mean.value - .data$sd.value,
+                        ymax = .data$mean.value + .data$sd.value
+                    ),
+                    alpha = 0.2, colour = NA
+                ) +
+                ggplot2::geom_line(linewidth = 0.6)
+        } else if (isTRUE(isTiled)) {
+            regionPlot <-
+                ggplot2::ggplot(
+                    data = plotTable,
+                    mapping = ggplot2::aes(
+                        x = .data$position, y = .data$value,
+                        colour = .data$group, group = .data$sample
+                    )
+                ) +
+                ggplot2::geom_line(linewidth = 0.5)
+        } else if (isTRUE(summarise)) {
+            # The region holds one value per sample, so the summary is a mean with its spread rather than a profile
+            regionPlot <-
+                ggplot2::ggplot(
+                    data = plotTable,
+                    mapping = ggplot2::aes(x = .data$group, y = .data$value, colour = .data$group)
+                ) +
+                ggplot2::geom_errorbar(
+                    data = summaryTable,
+                    mapping = ggplot2::aes(
+                        x = .data$group,
+                        ymin = .data$mean.value - .data$sd.value,
+                        ymax = .data$mean.value + .data$sd.value
+                    ),
+                    inherit.aes = FALSE, width = 0.15, linewidth = 0.4, colour = "black"
+                ) +
+                ggplot2::geom_crossbar(
+                    data = summaryTable,
+                    mapping = ggplot2::aes(
+                        x = .data$group, y = .data$mean.value,
+                        ymin = .data$mean.value, ymax = .data$mean.value
+                    ),
+                    inherit.aes = FALSE, width = 0.35, linewidth = 0.4, colour = "black"
+                ) +
+                ggplot2::geom_point(size = pointSize, stroke = NA)
+        } else {
+            regionPlot <-
+                ggplot2::ggplot(
+                    data = plotTable,
+                    mapping = ggplot2::aes(x = .data$group, y = .data$value, colour = .data$group)
+                ) +
+                ggplot2::geom_point(size = pointSize, stroke = NA)
+        }
+
+        #-------------------------------#
+        # Brackets over the groups      #
+        #-------------------------------#
+        if (!is.null(comparisonTable)) {
+            # The error bars of a summarised plot can reach above the points, the brackets start above both
+            valueRange <- range(
+                c(
+                    plotTable$value,
+                    if (!is.null(summaryTable)) {
+                        summaryTable$mean.value + summaryTable$sd.value
+                    } else {
+                        NULL
+                    }
+                ),
+                na.rm = TRUE
+            )
+
+            comparisonTable <- .placeBrackets(
+                bracketTable = comparisonTable,
+                groupLevels = levels(plotTable$group),
+                valueRange = valueRange,
+                labelLines = if (pairwiseTest == "model") {
+                    2
+                } else {
+                    1
+                }
+            )
+
+            regionPlot <- regionPlot +
+                ggplot2::geom_segment(
+                    data = comparisonTable,
+                    mapping = ggplot2::aes(
+                        x = .data$x.start, xend = .data$x.end,
+                        y = .data$y.bracket, yend = .data$y.bracket
+                    ),
+                    inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                ) +
+                ggplot2::geom_segment(
+                    data = comparisonTable,
+                    mapping = ggplot2::aes(
+                        x = .data$x.start, xend = .data$x.start,
+                        y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick
+                    ),
+                    inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                ) +
+                ggplot2::geom_segment(
+                    data = comparisonTable,
+                    mapping = ggplot2::aes(
+                        x = .data$x.end, xend = .data$x.end,
+                        y = .data$y.bracket, yend = .data$y.bracket - .data$y.tick
+                    ),
+                    inherit.aes = FALSE, linewidth = 0.4, colour = "grey20"
+                ) +
+                ggtext::geom_richtext(
+                    data = comparisonTable,
+                    mapping = ggplot2::aes(
+                        x = (.data$x.start + .data$x.end) / 2,
+                        y = .data$y.bracket, label = .data$label
+                    ),
+                    inherit.aes = FALSE, vjust = 0, size = baseSize / 4.5,
+                    colour = "grey20", fill = NA, label.color = NA,
+                    label.padding = grid::unit(rep(1, 4), "pt")
+                ) +
+                ggplot2::expand_limits(y = comparisonTable$y.top[1])
+        }
+
+        # Only the summarised plot maps a fill, naming the others would raise an unknown label warning
+        labelList <- list(
+            x = if (isTiled) {
+                paste0(as.character(GenomeInfoDb::seqnames(rowRangesObject))[1], " (bp)")
+            } else {
+                ""
+            },
+            y = yLabel,
+            colour = if (is.null(groupBy)) {
+                "Sample"
+            } else {
+                groupBy
+            },
+            title = if (is.null(title)) {
+                unique(regionRows$region.key)
+            } else {
+                title
+            },
+            subtitle = subtitle
+        )
+
+        if (isTRUE(hasRibbon)) {
+            labelList$fill <- if (is.null(groupBy)) {
+                "Sample"
+            } else {
+                groupBy
+            }
+        }
+
+        if (!is.null(captionText)) {
+            labelList$caption <- captionText
+        }
+
+        regionPlot <- regionPlot +
+            do.call(what = ggplot2::labs, args = labelList) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = rotateX) +
+            ggplot2::theme(
+                axis.line = ggplot2::element_blank(),
+                panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.5, colour = "black"),
+                axis.ticks.x = ggplot2::element_blank(),
+                panel.grid.major = ggplot2::element_line(linewidth = 0.2, colour = "gray"),
+                plot.caption = ggtext::element_markdown(colour = "gray30")
+            )
+
+        if (!is.null(colours)) {
+            regionPlot <- regionPlot + ggplot2::scale_colour_manual(values = colours)
+
+            if (isTRUE(hasRibbon)) {
+                regionPlot <- regionPlot + ggplot2::scale_fill_manual(values = colours)
+            }
+        }
+
+        return(regionPlot)
+    } # END function
 
 
+#' @title .checkPlotRegionArguments
+#'
+#' @description Checks the arguments of \code{\link{plotRegion}} and brings them to the form the rest of the function works with.
+#'
+#' @param object See \code{\link{plotRegion}}.
+#' @param counts See \code{\link{plotRegion}}.
+#' @param contrast See \code{\link{plotRegion}}.
+#' @param groupBy See \code{\link{plotRegion}}.
+#' @param summarise See \code{\link{plotRegion}}.
+#' @param pairwiseTest See \code{\link{plotRegion}}.
+#' @param pairBy See \code{\link{plotRegion}}.
+#' @param comparisons See \code{\link{plotRegion}}.
+#' @param pAdjustMethod See \code{\link{plotRegion}}.
+#' @param pLabel See \code{\link{plotRegion}}.
+#' @param pDecimals See \code{\link{plotRegion}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{counts}, \code{modelResults}, \code{results}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkPlotRegionArguments <-
+    function(object,
+             counts,
+             contrast,
+             groupBy,
+             summarise,
+             pairwiseTest,
+             pairBy,
+             comparisons,
+             pAdjustMethod,
+             pLabel,
+             pDecimals) {
+        if (!is.null(pairwiseTest)) {
+            if (length(pairwiseTest) != 1 || !(pairwiseTest %in% c("t.test", "wilcox.test", "model"))) {
+                stop("The 'pairwiseTest' parameter must be one of 't.test', 'wilcox.test', 'model'.", call. = FALSE)
+            }
+
+            if (is.null(groupBy)) {
+                stop("The 'pairwiseTest' parameter needs a 'groupBy' column.", call. = FALSE)
+            }
+
+            if (length(pAdjustMethod) != 1 || !(pAdjustMethod %in% stats::p.adjust.methods)) {
+                stop("The 'pAdjustMethod' parameter must be one of ", paste(stats::p.adjust.methods, collapse = ", "), ".", call. = FALSE)
+            }
+
+            if (length(pLabel) != 1 || !(pLabel %in% c("p.value", "stars"))) {
+                stop("The 'pLabel' parameter must be either 'p.value' or 'stars'.", call. = FALSE)
+            }
+
+            if (!is.numeric(pDecimals) || length(pDecimals) != 1 || is.na(pDecimals) || pDecimals < 0) {
+                stop("The 'pDecimals' parameter must be a single number, zero or above.", call. = FALSE)
+            }
+        } else if (!is.null(pairBy) | !is.null(comparisons)) {
+            warning("No 'pairwiseTest' was given, the 'pairBy' and 'comparisons' parameters have been ignored.", call. = FALSE)
+        }
+
+        # The model brackets read every contrast of a list, so a single one is picked only when it is named
+        modelResults <- NULL
+        if (identical(pairwiseTest, "model")) {
+            modelResults <- .modelResultsList(object = object, contrast = contrast)
+        }
+
+        resolvedObject <- .resolveCounts(
+            object = object,
+            counts = counts,
+            contrast = if (length(modelResults) > 1) {
+                1
+            } else {
+                contrast
+            }
+        )
+        counts <- resolvedObject$counts
+
+        # With several contrasts on the brackets, none of them can speak for the subtitle alone
+        results <- if (length(modelResults) > 1) {
+            NULL
+        } else {
+            resolvedObject$results
+        }
+
+        if (isTRUE(summarise) & is.null(groupBy)) {
+            stop("The 'summarise' parameter needs a 'groupBy' column.", call. = FALSE)
+        }
+
+        return(list(
+            counts = counts,
+            modelResults = modelResults,
+            results = results
+        ))
+    } # END function
 
 
 #' @title .resultsTheme
@@ -775,23 +1024,36 @@ plotRegion <-
 #' @keywords internal
 
 .resultsTheme <-
-  function(legendPosition = "right",
-           baseSize = 12,
-           rotateX = FALSE) {
+    function(legendPosition = "right",
+             baseSize = 12,
+             rotateX = FALSE) {
+        # The axis labels come out at rel(0.8) by default, which is smaller than the panels of a figure usually want
+        axisTextX <- ggplot2::element_text(
+            colour = "black", size = ggplot2::rel(1),
+            angle = if (isTRUE(rotateX)) {
+                45
+            } else {
+                0
+            },
+            hjust = if (isTRUE(rotateX)) {
+                1
+            } else {
+                0.5
+            },
+            vjust = if (isTRUE(rotateX)) {
+                1
+            } else {
+                0.5
+            }
+        )
 
-    # The axis labels come out at rel(0.8) by default, which is smaller than the panels of a figure usually want
-    axisTextX <- ggplot2::element_text(colour = "black", size = ggplot2::rel(1),
-                                       angle = if (isTRUE(rotateX)) {45} else {0},
-                                       hjust = if (isTRUE(rotateX)) {1} else {0.5},
-                                       vjust = if (isTRUE(rotateX)) {1} else {0.5})
-
-    return(.regionSetTheme(legendPosition = legendPosition, baseSize = baseSize) +
-             ggplot2::theme(plot.subtitle = ggtext::element_markdown(face = "plain", hjust = 0.5),
-                            axis.text.x = axisTextX,
-                            axis.text.y = ggplot2::element_text(colour = "black", size = ggplot2::rel(1))))
-  } # END function
-
-
+        return(.regionSetTheme(legendPosition = legendPosition, baseSize = baseSize) +
+            ggplot2::theme(
+                plot.subtitle = ggtext::element_markdown(face = "plain", hjust = 0.5),
+                axis.text.x = axisTextX,
+                axis.text.y = ggplot2::element_text(colour = "black", size = ggplot2::rel(1))
+            ))
+    } # END function
 
 
 #' @title .diffStatusColours
@@ -807,26 +1069,23 @@ plotRegion <-
 #' @keywords internal
 
 .diffStatusColours <-
-  function(colours = NULL) {
+    function(colours = NULL) {
+        defaultColours <- c("down" = "#2166AC", "null" = "grey70", "up" = "#B2182B")
 
-    defaultColours <- c("down" = "#2166AC", "null" = "grey70", "up" = "#B2182B")
+        if (is.null(colours)) {
+            return(defaultColours)
+        }
 
-    if (is.null(colours)) {
-      return(defaultColours)
-    }
+        if (is.null(names(colours))) {
+            if (length(colours) != 3) {
+                stop("The 'colours' parameter must be named, or hold three values for down, null and up.", call. = FALSE)
+            }
+            names(colours) <- c("down", "null", "up")
+        }
 
-    if (is.null(names(colours))) {
-      if (length(colours) != 3) {
-        stop("The 'colours' parameter must be named, or hold three values for down, null and up.", call. = FALSE)
-      }
-      names(colours) <- c("down", "null", "up")
-    }
-
-    defaultColours[names(colours)] <- colours
-    return(defaultColours)
-  } # END function
-
-
+        defaultColours[names(colours)] <- colours
+        return(defaultColours)
+    } # END function
 
 
 #' @title .diffCounts
@@ -846,23 +1105,23 @@ plotRegion <-
 #' @keywords internal
 
 .diffCounts <-
-  function(regionTable,
-           bySet = TRUE) {
+    function(regionTable,
+             bySet = TRUE) {
+        # The counts describe the whole table, not the thinned one, otherwise they would depend on maxPoints
+        if (isFALSE(bySet)) {
+            return(data.frame(
+                n.up = sum(regionTable$diff.status == "up"),
+                n.down = sum(regionTable$diff.status == "down"),
+                stringsAsFactors = FALSE
+            ))
+        }
 
-    # The counts describe the whole table, not the thinned one, otherwise they would depend on maxPoints
-    if (isFALSE(bySet)) {
-      return(data.frame(n.up = sum(regionTable$diff.status == "up"),
-                        n.down = sum(regionTable$diff.status == "down"),
-                        stringsAsFactors = FALSE))
-    }
-
-    return(as.data.frame(dplyr::ungroup(dplyr::summarise(dplyr::group_by(regionTable, .data$region.set),
-                                                         n.up = sum(.data$diff.status == "up"),
-                                                         n.down = sum(.data$diff.status == "down"),
-                                                         .groups = "drop"))))
-  } # END function
-
-
+        return(as.data.frame(dplyr::ungroup(dplyr::summarise(dplyr::group_by(regionTable, .data$region.set),
+            n.up = sum(.data$diff.status == "up"),
+            n.down = sum(.data$diff.status == "down"),
+            .groups = "drop"
+        ))))
+    } # END function
 
 
 #' @title .thinBySet
@@ -880,30 +1139,29 @@ plotRegion <-
 #' @keywords internal
 
 .thinBySet <-
-  function(regionTable,
-           maxPoints = 20000,
-           bySet = TRUE) {
+    function(regionTable,
+             maxPoints = 20000,
+             bySet = TRUE) {
+        if (nrow(regionTable) == 0) {
+            return(regionTable)
+        }
 
-    if (nrow(regionTable) == 0) {
-      return(regionTable)
-    }
+        if (isFALSE(bySet)) {
+            return(regionTable[.thinIndex(n = nrow(regionTable), maxPoints = maxPoints), , drop = FALSE])
+        }
 
-    if (isFALSE(bySet)) {
-      return(regionTable[.thinIndex(n = nrow(regionTable), maxPoints = maxPoints), , drop = FALSE])
-    }
+        # Thinning the pool would empty a small set to make room for a large one, each panel gets its own budget
+        thinnedList <-
+            lapply(
+                unique(regionTable$region.set),
+                function(setName) {
+                    setTable <- regionTable[regionTable$region.set == setName, , drop = FALSE]
+                    return(setTable[.thinIndex(n = nrow(setTable), maxPoints = maxPoints), , drop = FALSE])
+                }
+            )
 
-    # Thinning the pool would empty a small set to make room for a large one, each panel gets its own budget
-    thinnedList <-
-      lapply(unique(regionTable$region.set),
-             function(setName) {
-               setTable <- regionTable[regionTable$region.set == setName, , drop = FALSE]
-               return(setTable[.thinIndex(n = nrow(setTable), maxPoints = maxPoints), , drop = FALSE])
-             })
-
-    return(do.call(what = rbind, args = thinnedList))
-  } # END function
-
-
+        return(do.call(what = rbind, args = thinnedList))
+    } # END function
 
 
 #' @title .prepareResultTable
@@ -925,41 +1183,49 @@ plotRegion <-
 #' @keywords internal
 
 .prepareResultTable <-
-  function(results,
-           set = NULL,
-           FDR = NULL,
-           log2FC = NULL) {
+    function(results,
+             set = NULL,
+             FDR = NULL,
+             log2FC = NULL) {
+        plotTable <- resultsTable(results)
 
-    plotTable <- results@results
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(plotTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            plotTable <- dplyr::filter(plotTable, .data$region.set %in% set)
+        }
 
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(plotTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      plotTable <- dplyr::filter(plotTable, .data$region.set %in% set)
-    }
+        # A threshold given here only changes the labels, the p-values and the correction stay the ones of the test
+        if (!is.null(FDR) | !is.null(log2FC)) {
+            FDRthreshold <- if (is.null(FDR)) {
+                thresholdInfo(results)$FDR
+            } else {
+                FDR
+            }
+            log2FCthreshold <- if (is.null(log2FC)) {
+                thresholdInfo(results)$log2FC
+            } else {
+                log2FC
+            }
 
-    # A threshold given here only changes the labels, the p-values and the correction stay the ones of the test
-    if (!is.null(FDR) | !is.null(log2FC)) {
-      FDRthreshold <- if (is.null(FDR)) {results@thresholds$FDR} else {FDR}
-      log2FCthreshold <- if (is.null(log2FC)) {results@thresholds$log2FC} else {log2FC}
+            plotTable <- dplyr::mutate(plotTable,
+                diff.status = dplyr::case_when(
+                    .data$FDR < FDRthreshold & .data$log2FC > log2FCthreshold ~ "up",
+                    .data$FDR < FDRthreshold & .data$log2FC < (-log2FCthreshold) ~ "down",
+                    TRUE ~ "null"
+                )
+            )
+            plotTable$diff.status <- factor(plotTable$diff.status, levels = c("down", "null", "up"))
+        }
 
-      plotTable <- dplyr::mutate(plotTable,
-                                 diff.status = dplyr::case_when(.data$FDR < FDRthreshold & .data$log2FC > log2FCthreshold ~ "up",
-                                                                .data$FDR < FDRthreshold & .data$log2FC < (-log2FCthreshold) ~ "down",
-                                                                TRUE ~ "null"))
-      plotTable$diff.status <- factor(plotTable$diff.status, levels = c("down", "null", "up"))
-    }
+        if (nrow(plotTable) == 0) {
+            stop("The selection leaves no region to draw.", call. = FALSE)
+        }
 
-    if (nrow(plotTable) == 0) {
-      stop("The selection leaves no region to draw.", call. = FALSE)
-    }
-
-    return(plotTable)
-  } # END function
-
-
+        return(plotTable)
+    } # END function
 
 
 #' @title .resolveCounts
@@ -979,38 +1245,43 @@ plotRegion <-
 #' @keywords internal
 
 .resolveCounts <-
-  function(object,
-           counts = NULL,
-           contrast = NULL) {
+    function(object,
+             counts = NULL,
+             contrast = NULL) {
+        if (methods::is(object, "RegionSetDE.counts")) {
+            return(list(counts = object, results = NULL))
+        }
 
-    if (methods::is(object, "RegionSetDE.counts")) {
-      return(list(counts = object, results = NULL))
-    }
+        if (methods::is(object, "RegionSetDE.fit")) {
+            return(list(counts = fitCounts(object), results = NULL))
+        }
 
-    if (methods::is(object, "RegionSetDE.fit")) {
-      return(list(counts = object@counts, results = NULL))
-    }
+        resultClasses <- c(
+            "RegionSetDE.results", "RegionSetDE.resultsList",
+            "RegionSetDE.setResults", "RegionSetDE.setResultsList"
+        )
 
-    resultClasses <- c("RegionSetDE.results", "RegionSetDE.resultsList",
-                       "RegionSetDE.setResults", "RegionSetDE.setResultsList")
+        if (any(vapply(resultClasses, function(x) {
+            methods::is(object, x)
+        }, logical(1)))) {
+            results <- .pickResults(results = object, contrast = contrast)
 
-    if (any(vapply(resultClasses, function(x) {methods::is(object, x)}, logical(1)))) {
-      results <- .pickResults(results = object, contrast = contrast)
+            # A result built with carryCounts = FALSE has the statistics but not the values behind them
+            resolvedCounts <- if (!is.null(counts)) {
+                counts
+            } else {
+                .storedCounts(results)
+            }
 
-      # A result built with carryCounts = FALSE has the statistics but not the values behind them
-      resolvedCounts <- if (!is.null(counts)) {counts} else {results@counts}
+            if (ncol(resolvedCounts) == 0) {
+                stop("The result carries no counts, pass them through 'counts' or run the test with carryCounts = TRUE.", call. = FALSE)
+            }
 
-      if (ncol(resolvedCounts) == 0) {
-        stop("The result carries no counts, pass them through 'counts' or run the test with carryCounts = TRUE.", call. = FALSE)
-      }
+            return(list(counts = resolvedCounts, results = results))
+        }
 
-      return(list(counts = resolvedCounts, results = results))
-    }
-
-    stop("The object must be a counts, a fit or a results object of the package.", call. = FALSE)
-  } # END function
-
-
+        stop("The object must be a counts, a fit or a results object of the package.", call. = FALSE)
+    } # END function
 
 
 #' @title .locateRegion
@@ -1036,46 +1307,52 @@ plotRegion <-
 #' @keywords internal
 
 .locateRegion <-
-  function(counts,
-           region) {
+    function(counts,
+             region) {
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
+        rowTable$row.index <- seq_len(nrow(counts))
+        rowTable$region.key <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
 
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
-    rowTable$row.index <- seq_len(nrow(counts))
-    rowTable$region.key <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
+        if (methods::is(region, "GRanges")) {
+            if (length(region) != 1) {
+                stop("The 'region' parameter must be a GRanges of length one.", call. = FALSE)
+            }
+            # A region written as chr19 has to find the rows of an object written as 19
+            region <- tryCatch(
+                expr = .matchSeqlevels(x = region, targetSeqlevels = GenomeInfoDb::seqlevels(counts), verbose = FALSE),
+                error = function(e) {
+                    return(region)
+                }
+            )
 
-    if (methods::is(region, "GRanges")) {
-      if (length(region) != 1) {
-        stop("The 'region' parameter must be a GRanges of length one.", call. = FALSE)
-      }
-      # A region written as chr19 has to find the rows of an object written as 19
-      region <- tryCatch(expr = .matchSeqlevels(x = region, targetSeqlevels = GenomeInfoDb::seqlevels(counts), verbose = FALSE),
-                         error = function(e) {return(region)})
+            overlapIndex <- S4Vectors::queryHits(GenomicRanges::findOverlaps(
+                query = SummarizedExperiment::rowRanges(counts),
+                subject = region
+            ))
+            regionRows <- rowTable[overlapIndex, , drop = FALSE]
+            regionLabel <- paste0(
+                as.character(GenomeInfoDb::seqnames(region)), ":",
+                BiocGenerics::start(region), "-", BiocGenerics::end(region)
+            )
+        } else {
+            regionRows <- dplyr::filter(rowTable, .data$region.key == region | .data$region.id == region)
+            regionLabel <- region
+        }
 
-      overlapIndex <- S4Vectors::queryHits(GenomicRanges::findOverlaps(query = SummarizedExperiment::rowRanges(counts),
-                                                                       subject = region))
-      regionRows <- rowTable[overlapIndex, , drop = FALSE]
-      regionLabel <- paste0(as.character(GenomeInfoDb::seqnames(region)), ":",
-                            BiocGenerics::start(region), "-", BiocGenerics::end(region))
+        if (nrow(regionRows) == 0) {
+            stop("No row matches '", regionLabel, "'.", call. = FALSE)
+        }
 
-    } else {
-      regionRows <- dplyr::filter(rowTable, .data$region.key == region | .data$region.id == region)
-      regionLabel <- region
-    }
+        # An identifier shared by several sets points at two different rows, the set has to be named
+        if (length(unique(regionRows$region.key)) > 1) {
+            stop("The identifier matches several region sets (",
+                paste(unique(regionRows$region.set), collapse = ", "), "), write it as 'set|id'.",
+                call. = FALSE
+            )
+        }
 
-    if (nrow(regionRows) == 0) {
-      stop("No row matches '", regionLabel, "'.", call. = FALSE)
-    }
-
-    # An identifier shared by several sets points at two different rows, the set has to be named
-    if (length(unique(regionRows$region.key)) > 1) {
-      stop("The identifier matches several region sets (",
-           paste(unique(regionRows$region.set), collapse = ", "), "), write it as 'set|id'.", call. = FALSE)
-    }
-
-    return(regionRows)
-  } # END function
-
-
+        return(regionRows)
+    } # END function
 
 
 #' @title .defaultAssay
@@ -1095,22 +1372,23 @@ plotRegion <-
 #' @keywords internal
 
 .defaultAssay <-
-  function(counts,
-           assay = NULL) {
+    function(counts,
+             assay = NULL) {
+        if (is.null(assay)) {
+            normalizationInfo <- S4Vectors::metadata(counts)$normalization
+            assay <- if (!is.null(normalizationInfo)) {
+                normalizationInfo$normalized.assay
+            } else {
+                "counts"
+            }
+        }
 
-    if (is.null(assay)) {
-      normalizationInfo <- S4Vectors::metadata(counts)$normalization
-      assay <- if (!is.null(normalizationInfo)) {normalizationInfo$normalized.assay} else {"counts"}
-    }
+        if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
+            stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
+        }
 
-    if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
-    }
-
-    return(assay)
-  } # END function
-
-
+        return(assay)
+    } # END function
 
 
 #' @title .modelResultsList
@@ -1130,28 +1408,29 @@ plotRegion <-
 #' @keywords internal
 
 .modelResultsList <-
-  function(object,
-           contrast = NULL) {
+    function(object,
+             contrast = NULL) {
+        if (methods::is(object, "RegionSetDE.results")) {
+            return(stats::setNames(list(object), contrastName(object)))
+        }
 
-    if (methods::is(object, "RegionSetDE.results")) {
-      return(stats::setNames(list(object), object@contrast))
-    }
+        if (!methods::is(object, "RegionSetDE.resultsList")) {
+            stop("The model brackets need the statistics of a region level test, pass the object returned by testRegions().", call. = FALSE)
+        }
 
-    if (!methods::is(object, "RegionSetDE.resultsList")) {
-      stop("The model brackets need the statistics of a region level test, pass the object returned by testRegions().", call. = FALSE)
-    }
+        if (is.null(contrast)) {
+            return(as.list(object))
+        }
 
-    if (is.null(contrast)) {
-      return(object@results)
-    }
+        pickedResults <- .pickResults(results = object, contrast = contrast)
+        contrastName <- if (is.numeric(contrast)) {
+            names(object)[as.integer(contrast[1])]
+        } else {
+            contrast[1]
+        }
 
-    pickedResults <- .pickResults(results = object, contrast = contrast)
-    contrastName <- if (is.numeric(contrast)) {names(object@results)[as.integer(contrast[1])]} else {contrast[1]}
-
-    return(stats::setNames(list(pickedResults), contrastName))
-  } # END function
-
-
+        return(stats::setNames(list(pickedResults), contrastName))
+    } # END function
 
 
 #' @title .modelBrackets
@@ -1175,82 +1454,99 @@ plotRegion <-
 #' @keywords internal
 
 .modelBrackets <-
-  function(resultsList,
-           regionKey,
-           groupBy,
-           groupLevels,
-           comparisons = NULL) {
+    function(resultsList,
+             regionKey,
+             groupBy,
+             groupLevels,
+             comparisons = NULL) {
+        #-------------------------------#
+        # One bracket per contrast      #
+        #-------------------------------#
+        bracketList <-
+            lapply(
+                names(resultsList),
+                function(contrastName) {
+                    contrastResults <- resultsList[[contrastName]]
 
-    #-------------------------------#
-    # One bracket per contrast      #
-    #-------------------------------#
-    bracketList <-
-      lapply(names(resultsList),
-             function(contrastName) {
-               contrastResults <- resultsList[[contrastName]]
+                    # An object saved before the slot existed carries no groups, and is treated as such
+                    contrastGroups <- if (methods::.hasSlot(contrastResults, "contrast.groups")) {
+                        contrastGroups(contrastResults)
+                    } else {
+                        list()
+                    }
 
-               # An object saved before the slot existed carries no groups, and is treated as such
-               contrastGroups <- if (methods::.hasSlot(contrastResults, "contrast.groups")) {contrastResults@contrast.groups} else {list()}
+                    # Only a difference between two levels of the grouping column describes two positions of the axis
+                    if (!identical(contrastGroups$column, groupBy) || !all(contrastGroups$groups %in% groupLevels)) {
+                        return(NULL)
+                    }
 
-               # Only a difference between two levels of the grouping column describes two positions of the axis
-               if (!identical(contrastGroups$column, groupBy) || !all(contrastGroups$groups %in% groupLevels)) {
-                 return(NULL)
-               }
+                    statisticsRow <- dplyr::filter(
+                        resultsTable(contrastResults),
+                        paste(.data$region.set, .data$region.id, sep = "|") == regionKey
+                    )
 
-               statisticsRow <- dplyr::filter(resultsTable(contrastResults),
-                                              paste(.data$region.set, .data$region.id, sep = "|") == regionKey)
+                    if (nrow(statisticsRow) != 1) {
+                        return(NULL)
+                    }
 
-               if (nrow(statisticsRow) != 1) {
-                 return(NULL)
-               }
+                    return(data.frame(
+                        contrast = contrastName,
+                        group1 = contrastGroups$groups[1],
+                        group2 = contrastGroups$groups[2],
+                        log2FC = statisticsRow$log2FC[1],
+                        FDR = statisticsRow$FDR[1],
+                        stringsAsFactors = FALSE
+                    ))
+                }
+            )
 
-               return(data.frame(contrast = contrastName,
-                                 group1 = contrastGroups$groups[1],
-                                 group2 = contrastGroups$groups[2],
-                                 log2FC = statisticsRow$log2FC[1],
-                                 FDR = statisticsRow$FDR[1],
-                                 stringsAsFactors = FALSE))
-             })
+        missedContrasts <- names(resultsList)[vapply(bracketList, is.null, logical(1))]
+        bracketTable <- do.call(what = rbind, args = bracketList)
 
-    missedContrasts <- names(resultsList)[vapply(bracketList, is.null, logical(1))]
-    bracketTable <- do.call(what = rbind, args = bracketList)
+        if (is.null(bracketTable)) {
+            stop("None of the contrasts compares two levels of '", groupBy, "' on this region. The model brackets need a contrast written as c('",
+                groupBy, "', 'groupA', 'groupB'), or one that reduces to that difference.",
+                call. = FALSE
+            )
+        }
 
-    if (is.null(bracketTable)) {
-      stop("None of the contrasts compares two levels of '", groupBy, "' on this region. The model brackets need a contrast written as c('",
-           groupBy, "', 'groupA', 'groupB'), or one that reduces to that difference.", call. = FALSE)
-    }
+        if (length(missedContrasts) > 0) {
+            message(
+                "No bracket for ", paste(missedContrasts, collapse = ", "), ": the contrast does not compare two levels of '",
+                groupBy, "', or holds no statistics for this region."
+            )
+        }
 
-    if (length(missedContrasts) > 0) {
-      message("No bracket for ", paste(missedContrasts, collapse = ", "), ": the contrast does not compare two levels of '",
-              groupBy, "', or holds no statistics for this region.")
-    }
+        #-------------------------------#
+        # Pairs asked for               #
+        #-------------------------------#
+        if (!is.null(comparisons)) {
+            comparisons <- .checkComparisons(comparisons = comparisons, groupLevels = groupLevels)
 
-    #-------------------------------#
-    # Pairs asked for               #
-    #-------------------------------#
-    if (!is.null(comparisons)) {
-      comparisons <- .checkComparisons(comparisons = comparisons, groupLevels = groupLevels)
+            keptRows <- vapply(
+                seq_len(nrow(bracketTable)),
+                function(i) {
+                    any(vapply(
+                        comparisons,
+                        function(x) {
+                            setequal(x, c(bracketTable$group1[i], bracketTable$group2[i]))
+                        },
+                        logical(1)
+                    ))
+                },
+                logical(1)
+            )
 
-      keptRows <- vapply(seq_len(nrow(bracketTable)),
-                         function(i) {
-                           any(vapply(comparisons,
-                                      function(x) {setequal(x, c(bracketTable$group1[i], bracketTable$group2[i]))},
-                                      logical(1)))
-                         },
-                         logical(1))
+            bracketTable <- bracketTable[keptRows, , drop = FALSE]
 
-      bracketTable <- bracketTable[keptRows, , drop = FALSE]
+            if (nrow(bracketTable) == 0) {
+                stop("None of the requested comparisons matches a pair of groups tested by the contrasts.", call. = FALSE)
+            }
+        }
 
-      if (nrow(bracketTable) == 0) {
-        stop("None of the requested comparisons matches a pair of groups tested by the contrasts.", call. = FALSE)
-      }
-    }
-
-    rownames(bracketTable) <- NULL
-    return(bracketTable)
-  } # END function
-
-
+        rownames(bracketTable) <- NULL
+        return(bracketTable)
+    } # END function
 
 
 #' @title .pairwiseTests
@@ -1276,148 +1572,174 @@ plotRegion <-
 #' @keywords internal
 
 .pairwiseTests <-
-  function(plotTable,
-           colTable,
-           test = "t.test",
-           pairBy = NULL,
-           comparisons = NULL,
-           groupLevels,
-           pAdjustMethod = "none") {
+    function(plotTable,
+             colTable,
+             test = "t.test",
+             pairBy = NULL,
+             comparisons = NULL,
+             groupLevels,
+             pAdjustMethod = "none") {
+        comparisons <- .checkComparisons(comparisons = comparisons, groupLevels = groupLevels)
 
-    comparisons <- .checkComparisons(comparisons = comparisons, groupLevels = groupLevels)
+        #-------------------------------#
+        # Values and pairing column     #
+        #-------------------------------#
+        sampleTable <- data.frame(
+            sample = plotTable$sample,
+            value = plotTable$value,
+            group = as.character(plotTable$group),
+            stringsAsFactors = FALSE
+        )
 
-    #-------------------------------#
-    # Values and pairing column     #
-    #-------------------------------#
-    sampleTable <- data.frame(sample = plotTable$sample,
-                              value = plotTable$value,
-                              group = as.character(plotTable$group),
-                              stringsAsFactors = FALSE)
+        if (!is.null(pairBy)) {
+            if (!(pairBy %in% colnames(colTable))) {
+                stop("The column '", pairBy, "' is absent from the colData.", call. = FALSE)
+            }
+            sampleTable$pair <- as.character(colTable[[pairBy]])[match(sampleTable$sample, colTable$sample)]
+        }
 
-    if (!is.null(pairBy)) {
-      if (!(pairBy %in% colnames(colTable))) {
-        stop("The column '", pairBy, "' is absent from the colData.", call. = FALSE)
-      }
-      sampleTable$pair <- as.character(colTable[[pairBy]])[match(sampleTable$sample, colTable$sample)]
-    }
+        #-------------------------------#
+        # One test per pair of groups   #
+        #-------------------------------#
+        testList <-
+            lapply(
+                comparisons,
+                function(groupPair) {
+                    firstTable <- dplyr::filter(sampleTable, .data$group == groupPair[1])
+                    secondTable <- dplyr::filter(sampleTable, .data$group == groupPair[2])
 
-    #-------------------------------#
-    # One test per pair of groups   #
-    #-------------------------------#
-    testList <-
-      lapply(comparisons,
-             function(groupPair) {
-               firstTable <- dplyr::filter(sampleTable, .data$group == groupPair[1])
-               secondTable <- dplyr::filter(sampleTable, .data$group == groupPair[2])
+                    if (is.null(pairBy)) {
+                        firstValues <- firstTable$value
+                        secondValues <- secondTable$value
 
-               if (is.null(pairBy)) {
-                 firstValues <- firstTable$value
-                 secondValues <- secondTable$value
+                        if (test == "t.test" & (length(firstValues) < 2 | length(secondValues) < 2)) {
+                            stop("The t-test between '", groupPair[1], "' and '", groupPair[2],
+                                "' needs at least two samples per group, leave the pair out through 'comparisons'.",
+                                call. = FALSE
+                            )
+                        }
+                    } else {
+                        # A value repeated inside a group offers two partners for one sample, and nothing to choose between them
+                        for (groupTable in list(firstTable, secondTable)) {
+                            repeatedValues <- unique(groupTable$pair[duplicated(groupTable$pair) & !is.na(groupTable$pair)])
+                            if (length(repeatedValues) > 0) {
+                                stop("The value '", repeatedValues[1], "' of '", pairBy, "' appears more than once in the group '",
+                                    groupTable$group[1], "', the samples cannot be paired.",
+                                    call. = FALSE
+                                )
+                            }
+                        }
 
-                 if (test == "t.test" & (length(firstValues) < 2 | length(secondValues) < 2)) {
-                   stop("The t-test between '", groupPair[1], "' and '", groupPair[2],
-                        "' needs at least two samples per group, leave the pair out through 'comparisons'.", call. = FALSE)
-                 }
+                        sharedPairs <- sort(intersect(
+                            firstTable$pair[!is.na(firstTable$pair)],
+                            secondTable$pair[!is.na(secondTable$pair)]
+                        ))
 
-               } else {
-                 # A value repeated inside a group offers two partners for one sample, and nothing to choose between them
-                 for (groupTable in list(firstTable, secondTable)) {
-                   repeatedValues <- unique(groupTable$pair[duplicated(groupTable$pair) & !is.na(groupTable$pair)])
-                   if (length(repeatedValues) > 0) {
-                     stop("The value '", repeatedValues[1], "' of '", pairBy, "' appears more than once in the group '",
-                          groupTable$group[1], "', the samples cannot be paired.", call. = FALSE)
-                   }
-                 }
+                        if (length(sharedPairs) < 2) {
+                            stop("Fewer than two pairs of samples are matched by '", pairBy, "' between '", groupPair[1], "' and '", groupPair[2],
+                                "'. Leave the pair out through 'comparisons', or run the test unpaired.",
+                                call. = FALSE
+                            )
+                        }
 
-                 sharedPairs <- sort(intersect(firstTable$pair[!is.na(firstTable$pair)],
-                                               secondTable$pair[!is.na(secondTable$pair)]))
+                        unmatchedSamples <- c(
+                            firstTable$sample[!(firstTable$pair %in% sharedPairs)],
+                            secondTable$sample[!(secondTable$pair %in% sharedPairs)]
+                        )
 
-                 if (length(sharedPairs) < 2) {
-                   stop("Fewer than two pairs of samples are matched by '", pairBy, "' between '", groupPair[1], "' and '", groupPair[2],
-                        "'. Leave the pair out through 'comparisons', or run the test unpaired.", call. = FALSE)
-                 }
+                        if (length(unmatchedSamples) > 0) {
+                            warning("No partner in '", pairBy, "' for ", paste(unmatchedSamples, collapse = ", "),
+                                ", left out of the comparison between '", groupPair[1], "' and '", groupPair[2], "'.",
+                                call. = FALSE
+                            )
+                        }
 
-                 unmatchedSamples <- c(firstTable$sample[!(firstTable$pair %in% sharedPairs)],
-                                       secondTable$sample[!(secondTable$pair %in% sharedPairs)])
+                        firstValues <- firstTable$value[match(sharedPairs, firstTable$pair)]
+                        secondValues <- secondTable$value[match(sharedPairs, secondTable$pair)]
+                    }
 
-                 if (length(unmatchedSamples) > 0) {
-                   warning("No partner in '", pairBy, "' for ", paste(unmatchedSamples, collapse = ", "),
-                           ", left out of the comparison between '", groupPair[1], "' and '", groupPair[2], "'.", call. = FALSE)
-                 }
+                    # The exact Wilcoxon distribution needs untied values, with ties the normal approximation is used
+                    exactTest <- NULL
 
-                 firstValues <- firstTable$value[match(sharedPairs, firstTable$pair)]
-                 secondValues <- secondTable$value[match(sharedPairs, secondTable$pair)]
-               }
+                    if (test == "wilcox.test") {
+                        if (is.null(pairBy)) {
+                            hasTies <- anyDuplicated(c(firstValues, secondValues)) > 0
+                        } else {
+                            valueDifferences <- firstValues - secondValues
+                            hasTies <- any(valueDifferences == 0) | anyDuplicated(abs(valueDifferences)) > 0
+                        }
 
-               # The exact Wilcoxon distribution needs untied values, with ties the normal approximation is used
-               exactTest <- NULL
+                        if (isTRUE(hasTies)) {
+                            exactTest <- FALSE
+                            message(
+                                "Tied values between '", groupPair[1], "' and '", groupPair[2],
+                                "', the Wilcoxon p-value comes from the normal approximation."
+                            )
+                        } else if (is.null(pairBy)) {
+                            smallestP <- min(1, 2 / choose(length(firstValues) + length(secondValues), length(firstValues)))
+                            if (smallestP >= 0.05) {
+                                message(
+                                    "With ", length(firstValues), " and ", length(secondValues), " samples, the exact Wilcoxon test between '",
+                                    groupPair[1], "' and '", groupPair[2], "' cannot go below p = ", signif(smallestP, 2), "."
+                                )
+                            }
+                        } else {
+                            smallestP <- min(1, 2 / 2^length(firstValues))
+                            if (smallestP >= 0.05) {
+                                message(
+                                    "With ", length(firstValues), " pairs, the exact Wilcoxon test between '",
+                                    groupPair[1], "' and '", groupPair[2], "' cannot go below p = ", signif(smallestP, 2), "."
+                                )
+                            }
+                        }
+                    }
 
-               if (test == "wilcox.test") {
-                 if (is.null(pairBy)) {
-                   hasTies <- anyDuplicated(c(firstValues, secondValues)) > 0
-                 } else {
-                   valueDifferences <- firstValues - secondValues
-                   hasTies <- any(valueDifferences == 0) | anyDuplicated(abs(valueDifferences)) > 0
-                 }
+                    # Constant values leave the test without a variance, the bracket then reads NA
+                    testOutcome <-
+                        tryCatch(
+                            expr = {
+                                testResult <- if (test == "t.test") {
+                                    stats::t.test(x = firstValues, y = secondValues, paired = !is.null(pairBy))
+                                } else {
+                                    stats::wilcox.test(x = firstValues, y = secondValues, paired = !is.null(pairBy), exact = exactTest)
+                                }
+                                list(p.value = testResult$p.value, error = NULL)
+                            },
+                            error = function(e) {
+                                return(list(p.value = NA_real_, error = conditionMessage(e)))
+                            }
+                        )
 
-                 if (isTRUE(hasTies)) {
-                   exactTest <- FALSE
-                   message("Tied values between '", groupPair[1], "' and '", groupPair[2],
-                           "', the Wilcoxon p-value comes from the normal approximation.")
+                    if (is.na(testOutcome$p.value)) {
+                        warning("No p-value between '", groupPair[1], "' and '", groupPair[2], "' (",
+                            if (is.null(testOutcome$error)) {
+                                "the test returned NA"
+                            } else {
+                                testOutcome$error
+                            },
+                            "), the bracket reads NA.",
+                            call. = FALSE
+                        )
+                    }
 
-                 } else if (is.null(pairBy)) {
-                   smallestP <- min(1, 2 / choose(length(firstValues) + length(secondValues), length(firstValues)))
-                   if (smallestP >= 0.05) {
-                     message("With ", length(firstValues), " and ", length(secondValues), " samples, the exact Wilcoxon test between '",
-                             groupPair[1], "' and '", groupPair[2], "' cannot go below p = ", signif(smallestP, 2), ".")
-                   }
+                    return(data.frame(
+                        group1 = groupPair[1],
+                        group2 = groupPair[2],
+                        n.first = length(firstValues),
+                        n.second = length(secondValues),
+                        p.value = as.numeric(testOutcome$p.value),
+                        stringsAsFactors = FALSE
+                    ))
+                }
+            )
 
-                 } else {
-                   smallestP <- min(1, 2 / 2^length(firstValues))
-                   if (smallestP >= 0.05) {
-                     message("With ", length(firstValues), " pairs, the exact Wilcoxon test between '",
-                             groupPair[1], "' and '", groupPair[2], "' cannot go below p = ", signif(smallestP, 2), ".")
-                   }
-                 }
-               }
+        testTable <- do.call(what = rbind, args = testList)
 
-               # Constant values leave the test without a variance, the bracket then reads NA
-               testOutcome <-
-                 tryCatch(expr = {
-                   testResult <- if (test == "t.test") {
-                     stats::t.test(x = firstValues, y = secondValues, paired = !is.null(pairBy))
-                   } else {
-                     stats::wilcox.test(x = firstValues, y = secondValues, paired = !is.null(pairBy), exact = exactTest)
-                   }
-                   list(p.value = testResult$p.value, error = NULL)
-                 },
-                 error = function(e) {
-                   return(list(p.value = NA_real_, error = conditionMessage(e)))
-                 })
+        # The correction covers the brackets of this plot, the regions tested elsewhere do not enter it
+        testTable$p.adjusted <- stats::p.adjust(testTable$p.value, method = pAdjustMethod)
 
-               if (is.na(testOutcome$p.value)) {
-                 warning("No p-value between '", groupPair[1], "' and '", groupPair[2], "' (",
-                         if (is.null(testOutcome$error)) {"the test returned NA"} else {testOutcome$error},
-                         "), the bracket reads NA.", call. = FALSE)
-               }
-
-               return(data.frame(group1 = groupPair[1],
-                                 group2 = groupPair[2],
-                                 n.first = length(firstValues),
-                                 n.second = length(secondValues),
-                                 p.value = as.numeric(testOutcome$p.value),
-                                 stringsAsFactors = FALSE))
-             })
-
-    testTable <- do.call(what = rbind, args = testList)
-
-    # The correction covers the brackets of this plot, the regions tested elsewhere do not enter it
-    testTable$p.adjusted <- stats::p.adjust(testTable$p.value, method = pAdjustMethod)
-
-    return(testTable)
-  } # END function
-
-
+        return(testTable)
+    } # END function
 
 
 #' @title .checkComparisons
@@ -1436,39 +1758,40 @@ plotRegion <-
 #' @keywords internal
 
 .checkComparisons <-
-  function(comparisons = NULL,
-           groupLevels) {
+    function(comparisons = NULL,
+             groupLevels) {
+        if (length(groupLevels) < 2) {
+            stop("The 'groupBy' column holds a single group, there is nothing to compare.", call. = FALSE)
+        }
 
-    if (length(groupLevels) < 2) {
-      stop("The 'groupBy' column holds a single group, there is nothing to compare.", call. = FALSE)
-    }
+        if (is.null(comparisons)) {
+            return(utils::combn(groupLevels, 2, simplify = FALSE))
+        }
 
-    if (is.null(comparisons)) {
-      return(utils::combn(groupLevels, 2, simplify = FALSE))
-    }
+        if (!is.list(comparisons) || any(vapply(comparisons, length, integer(1)) != 2)) {
+            stop("The 'comparisons' parameter must be a list of character vectors of length two.", call. = FALSE)
+        }
 
-    if (!is.list(comparisons) || any(vapply(comparisons, length, integer(1)) != 2)) {
-      stop("The 'comparisons' parameter must be a list of character vectors of length two.", call. = FALSE)
-    }
+        comparisons <- lapply(comparisons, as.character)
 
-    comparisons <- lapply(comparisons, as.character)
+        absentGroups <- setdiff(unlist(comparisons), groupLevels)
+        if (length(absentGroups) > 0) {
+            stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
+        }
 
-    absentGroups <- setdiff(unlist(comparisons), groupLevels)
-    if (length(absentGroups) > 0) {
-      stop("The following groups are absent from the object: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
-    }
+        if (any(vapply(comparisons, function(x) {
+            x[1] == x[2]
+        }, logical(1)))) {
+            stop("Each element of 'comparisons' must name two different groups.", call. = FALSE)
+        }
 
-    if (any(vapply(comparisons, function(x) {x[1] == x[2]}, logical(1)))) {
-      stop("Each element of 'comparisons' must name two different groups.", call. = FALSE)
-    }
+        # The same pair written twice, in either order, would draw two brackets carrying the same number
+        pairKeys <- vapply(comparisons, function(x) {
+            paste(sort(x), collapse = "\t")
+        }, character(1))
 
-    # The same pair written twice, in either order, would draw two brackets carrying the same number
-    pairKeys <- vapply(comparisons, function(x) {paste(sort(x), collapse = "\t")}, character(1))
-
-    return(comparisons[!duplicated(pairKeys)])
-  } # END function
-
-
+        return(comparisons[!duplicated(pairKeys)])
+    } # END function
 
 
 #' @title .placeBrackets
@@ -1487,46 +1810,43 @@ plotRegion <-
 #' @keywords internal
 
 .placeBrackets <-
-  function(bracketTable,
-           groupLevels,
-           valueRange,
-           labelLines = 1) {
+    function(bracketTable,
+             groupLevels,
+             valueRange,
+             labelLines = 1) {
+        firstPositions <- match(bracketTable$group1, groupLevels)
+        secondPositions <- match(bracketTable$group2, groupLevels)
 
-    firstPositions <- match(bracketTable$group1, groupLevels)
-    secondPositions <- match(bracketTable$group2, groupLevels)
+        bracketTable$x.start <- pmin(firstPositions, secondPositions)
+        bracketTable$x.end <- pmax(firstPositions, secondPositions)
 
-    bracketTable$x.start <- pmin(firstPositions, secondPositions)
-    bracketTable$x.end <- pmax(firstPositions, secondPositions)
+        # Short brackets sit low, and a bracket goes up a level only when it would overlap one already placed
+        bracketLevels <- rep(0, nrow(bracketTable))
 
-    # Short brackets sit low, and a bracket goes up a level only when it would overlap one already placed
-    bracketLevels <- rep(0, nrow(bracketTable))
+        for (i in order(bracketTable$x.end - bracketTable$x.start, bracketTable$x.start)) {
+            candidateLevel <- 1
+            while (any(bracketLevels == candidateLevel &
+                bracketTable$x.start <= bracketTable$x.end[i] &
+                bracketTable$x.end >= bracketTable$x.start[i])) {
+                candidateLevel <- candidateLevel + 1
+            }
+            bracketLevels[i] <- candidateLevel
+        }
 
-    for (i in order(bracketTable$x.end - bracketTable$x.start, bracketTable$x.start)) {
-      candidateLevel <- 1
-      while (any(bracketLevels == candidateLevel &
-                 bracketTable$x.start <= bracketTable$x.end[i] &
-                 bracketTable$x.end >= bracketTable$x.start[i])) {
-        candidateLevel <- candidateLevel + 1
-      }
-      bracketLevels[i] <- candidateLevel
-    }
+        valueSpan <- diff(valueRange)
+        if (!is.finite(valueSpan) | valueSpan == 0) {
+            valueSpan <- 1
+        }
 
-    valueSpan <- diff(valueRange)
-    if (!is.finite(valueSpan) | valueSpan == 0) {
-      valueSpan <- 1
-    }
+        # Each level leaves room for the label written over the bracket below it
+        levelStep <- valueSpan * (0.06 + 0.1 * labelLines)
 
-    # Each level leaves room for the label written over the bracket below it
-    levelStep <- valueSpan * (0.06 + 0.1 * labelLines)
+        bracketTable$y.bracket <- valueRange[2] + valueSpan * 0.08 + levelStep * (bracketLevels - 1)
+        bracketTable$y.tick <- valueSpan * 0.02
+        bracketTable$y.top <- max(bracketTable$y.bracket) + levelStep
 
-    bracketTable$y.bracket <- valueRange[2] + valueSpan * 0.08 + levelStep * (bracketLevels - 1)
-    bracketTable$y.tick <- valueSpan * 0.02
-    bracketTable$y.top <- max(bracketTable$y.bracket) + levelStep
-
-    return(bracketTable)
-  } # END function
-
-
+        return(bracketTable)
+    } # END function
 
 
 #' @title .bracketLabels
@@ -1546,32 +1866,29 @@ plotRegion <-
 #' @keywords internal
 
 .bracketLabels <-
-  function(pValues,
-           prefix = "p",
-           pLabel = "p.value",
-           pDecimals = 2,
-           log2FC = NULL) {
+    function(pValues,
+             prefix = "p",
+             pLabel = "p.value",
+             pDecimals = 2,
+             log2FC = NULL) {
+        if (pLabel == "stars") {
+            # Escaped, since an asterisk is markdown emphasis and three of them make a horizontal rule
+            valueLabels <- as.character(cut(pValues,
+                breaks = c(-Inf, 1e-4, 1e-3, 1e-2, 0.05, Inf),
+                labels = c("\\*\\*\\*\\*", "\\*\\*\\*", "\\*\\*", "\\*", "ns")
+            ))
+            valueLabels[is.na(valueLabels)] <- "NA"
+        } else {
+            formattedValues <- .formatPvalue(p = pValues, decimals = pDecimals)
+            valueLabels <- paste0(prefix, ifelse(startsWith(formattedValues, "&lt;"), " ", " = "), formattedValues)
+        }
 
-    if (pLabel == "stars") {
-      # Escaped, since an asterisk is markdown emphasis and three of them make a horizontal rule
-      valueLabels <- as.character(cut(pValues,
-                                      breaks = c(-Inf, 1e-4, 1e-3, 1e-2, 0.05, Inf),
-                                      labels = c("\\*\\*\\*\\*", "\\*\\*\\*", "\\*\\*", "\\*", "ns")))
-      valueLabels[is.na(valueLabels)] <- "NA"
+        if (!is.null(log2FC)) {
+            valueLabels <- paste0("log<sub>2</sub>FC = ", sprintf("%.2f", log2FC), "<br>", valueLabels)
+        }
 
-    } else {
-      formattedValues <- .formatPvalue(p = pValues, decimals = pDecimals)
-      valueLabels <- paste0(prefix, ifelse(startsWith(formattedValues, "&lt;"), " ", " = "), formattedValues)
-    }
-
-    if (!is.null(log2FC)) {
-      valueLabels <- paste0("log<sub>2</sub>FC = ", sprintf("%.2f", log2FC), "<br>", valueLabels)
-    }
-
-    return(valueLabels)
-  } # END function
-
-
+        return(valueLabels)
+    } # END function
 
 
 #' @title .formatPvalue
@@ -1588,40 +1905,40 @@ plotRegion <-
 #' @keywords internal
 
 .formatPvalue <-
-  function(p,
-           decimals = 2) {
+    function(p,
+             decimals = 2) {
+        decimals <- max(0, as.integer(round(decimals)))
 
-    decimals <- max(0, as.integer(round(decimals)))
+        return(vapply(p,
+            function(value) {
+                if (is.na(value)) {
+                    return("NA")
+                }
 
-    return(vapply(p,
-                  function(value) {
-                    if (is.na(value)) {
-                      return("NA")
-                    }
+                # Zero is what the arithmetic ran out at, not what the test found
+                prefix <- ""
+                if (value <= 0) {
+                    value <- .Machine$double.xmin
+                    prefix <- "&lt; "
+                }
 
-                    # Zero is what the arithmetic ran out at, not what the test found
-                    prefix <- ""
-                    if (value <= 0) {
-                      value <- .Machine$double.xmin
-                      prefix <- "&lt; "
-                    }
+                exponent <- floor(log10(value))
+                mantissa <- round(value / 10^exponent, decimals)
 
-                    exponent <- floor(log10(value))
-                    mantissa <- round(value / 10^exponent, decimals)
+                # Rounding can carry the mantissa to 10, which belongs to the next power
+                if (mantissa >= 10) {
+                    mantissa <- mantissa / 10
+                    exponent <- exponent + 1
+                }
 
-                    # Rounding can carry the mantissa to 10, which belongs to the next power
-                    if (mantissa >= 10) {
-                      mantissa <- mantissa / 10
-                      exponent <- exponent + 1
-                    }
+                if (exponent > -2) {
+                    return(paste0(prefix, formatC(round(value, decimals), format = "f", digits = decimals)))
+                }
 
-                    if (exponent > -2) {
-                      return(paste0(prefix, formatC(round(value, decimals), format = "f", digits = decimals)))
-                    }
-
-                    # The entity keeps the label in ASCII, a literal sign breaks the markdown parser under a non UTF-8 locale
-                    return(paste0(prefix, formatC(mantissa, format = "f", digits = decimals), "&times;10<sup>", exponent, "</sup>"))
-                  },
-                  character(1),
-                  USE.NAMES = FALSE))
-  } # END function
+                # The entity keeps the label in ASCII, a literal sign breaks the markdown parser under a non UTF-8 locale
+                return(paste0(prefix, formatC(mantissa, format = "f", digits = decimals), "&times;10<sup>", exponent, "</sup>"))
+            },
+            character(1),
+            USE.NAMES = FALSE
+        ))
+    } # END function

@@ -39,8 +39,8 @@ counts <- loadExampleData("counts", verbose = FALSE)
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
 if (requireNamespace("DESeq2", quietly = TRUE)) {
-  deseqData <- asDESeqDataSet(counts, design = ~ condition, verbose = FALSE)
-  deseqData
+    deseqData <- asDESeqDataSet(counts, design = ~condition, verbose = FALSE)
+    deseqData
 }
 
 }

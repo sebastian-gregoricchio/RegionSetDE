@@ -61,7 +61,7 @@ fitRegions(
 
 \item{universeSets}{Character vector with the names of the sets the comparison rows are drawn from, which is what the competitive p-values will be relative to. Default: \code{NULL}, every set other than the one being tested.}
 
-\item{BPPARAM}{\code{BiocParallelParam} object passed to the \code{"dream"} engine. Default: \code{NULL}, sequential.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. Only the \code{"dream"} engine uses it, to fit the mixed models of the regions side by side. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
@@ -85,16 +85,27 @@ counts <- loadExampleData("counts", verbose = FALSE)
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 counts <- filterRegions(counts, verbose = FALSE)
 
-fit <- fitRegions(counts, design = ~ condition, engine = "edgeR", verbose = FALSE)
+fit <- fitRegions(counts, design = ~condition, engine = "edgeR", verbose = FALSE)
 fit
 
 # limma-voom on the same design
-voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
+voomFit <- fitRegions(counts, design = ~condition, engine = "voom", verbose = FALSE)
 
 # Random effects need the dream engine and the formula given as such, for instance
 # ~ condition + (1|donor) for repeated samples of the same donors. Four samples are
 # too few to estimate one, so the example data cannot show it.
 
+}
+\references{
+Robinson M.D., McCarthy D.J., Smyth G.K. (2010). edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. \emph{Bioinformatics} 26(1):139-140.
+
+Chen Y., Lun A.T.L., Smyth G.K. (2016). From reads to genes to pathways: differential expression analysis of RNA-Seq experiments using Rsubread and the edgeR quasi-likelihood pipeline. \emph{F1000Research} 5:1438.
+
+Law C.W., Chen Y., Shi W., Smyth G.K. (2014). voom: precision weights unlock linear model analysis tools for RNA-seq read counts. \emph{Genome Biology} 15:R29.
+
+Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. \emph{Genome Biology} 15:550.
+
+Hoffman G.E., Roussos P. (2021). Dream: powerful differential expression analysis for repeated measures designs. \emph{Bioinformatics} 37(2):192-201.
 }
 \seealso{
 \code{\link{testRegions}}, \code{\link{testRegionSets}}, \code{\link{makeSetUniverse}}, \code{\link{selectSamples}}

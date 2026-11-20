@@ -54,7 +54,7 @@ Invisibly, a character vector with the paths written.
 Writes a result to disk: the table as a compressed TSV, the coordinates as a BED that a genome browser will colour by direction, and every parameter the analysis was run with as a flat file next to them.
 }
 \details{
-The provenance file is the part worth keeping. It flattens everything the object carries in its \code{parameters} slot into one parameter per line: the counting level, the normalisation method and its factors, the filter and its threshold, the engine, the design, the contrast, the multiple testing correction, and on a fit with no replicates the dispersion and where it came from. Six months later that file is the difference between a result that can be reproduced and one that can only be repeated.
+The provenance file is the part worth keeping. It flattens everything the object carries in its \code{parameters} slot (read with \code{\link{parameterLog}}) into one parameter per line: the counting level, the normalisation method and its factors, the filter and its threshold, the engine, the design, the contrast, the multiple testing correction, and on a fit with no replicates the dispersion and where it came from. Six months later that file is the difference between a result that can be reproduced and one that can only be repeated.
 
 The BED is written with zero-based starts, as the format requires, so its coordinates are one lower than the ones in the TSV. With \code{colourByStatus} it carries nine columns and an item colour per direction, which is what makes a browser show the increasing and decreasing regions apart without a second file. The score maps \code{-log10(FDR)} onto the range the format allows and saturates at the top of it, so a score of 1000 means "at least that", not "exactly that".
 
@@ -67,8 +67,10 @@ results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FA
 outputDirectory <- file.path(tempdir(), "regionSetDE-example")
 dir.create(outputDirectory, showWarnings = FALSE)
 
-exportResults(results, path = outputDirectory, prefix = "euratrans",
-              verbose = FALSE)
+exportResults(results,
+    path = outputDirectory, prefix = "euratrans",
+    verbose = FALSE
+)
 
 list.files(outputDirectory)
 

@@ -4,22 +4,20 @@
 \alias{.consensusWorkers}
 \title{.consensusWorkers}
 \usage{
-.consensusWorkers(nThreads, nGroups, calibrate = FALSE, userBPPARAM = NULL)
+.consensusWorkers(BPPARAM, nGroups, calibrate = FALSE)
 }
 \arguments{
-\item{nThreads}{Number of threads asked for.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, a number of cores, or \code{NULL} for one core.}
 
 \item{nGroups}{Number of groups needing a consensus, the groups of a single sample left out.}
 
 \item{calibrate}{Logical value to indicate whether the threshold is calibrated inside each group.}
-
-\item{userBPPARAM}{The \code{BPPARAM} passed by the user to \code{consensusRegions::runConsensus}, or \code{NULL}.}
 }
 \value{
-A list with \code{outer}, the number of groups run at once, and \code{inner}, the number of threads each group gets for its permutations.
+A list with \code{outer}, the back end or the number of cores running the groups, \code{inner}, the back end or the number of cores each group gets for its permutations, and \code{nOuter} and \code{nInner}, the number of workers of each.
 }
 \description{
-Shares the threads between the groups built in parallel and the calibration run inside each group.
+Shares the cores between the groups built in parallel and the calibration run inside each group.
 }
 \author{
 Sebastian Gregoricchio

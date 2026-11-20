@@ -21,7 +21,7 @@
 #' @param matchOn Character vector with the covariates the comparison rows are matched on, among \code{"width"} and \code{"abundance"}. Default: \code{c("width", "abundance")}.
 #' @param universeRatio Numeric value with the number of comparison rows drawn per region of the set. Default: \code{5}.
 #' @param universeSets Character vector with the names of the sets the comparison rows are drawn from, which is what the competitive p-values will be relative to. Default: \code{NULL}, every set other than the one being tested.
-#' @param BPPARAM \code{BiocParallelParam} object passed to the \code{"dream"} engine. Default: \code{NULL}, sequential.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. Only the \code{"dream"} engine uses it, to fit the mixed models of the regions side by side. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{RegionSetDE.fit} object.
@@ -34,16 +34,27 @@
 #' The comparison universe of the set level tests is built here rather than there, because it depends on the rows and not on the contrast: one fit, one universe, however many contrasts are run on it afterwards. An object holding a single region set has nothing to compare that set against, and in that case the universe comes out empty with a message; the per-region analysis is unaffected.
 #' Low-count rows are not removed here. Filter them with \code{\link{filterRegions}} first, or the dispersion trend is fitted on rows that carry no information.
 #'
+#' @references
+#' Robinson M.D., McCarthy D.J., Smyth G.K. (2010). edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. \emph{Bioinformatics} 26(1):139-140.
+#'
+#' Chen Y., Lun A.T.L., Smyth G.K. (2016). From reads to genes to pathways: differential expression analysis of RNA-Seq experiments using Rsubread and the edgeR quasi-likelihood pipeline. \emph{F1000Research} 5:1438.
+#'
+#' Law C.W., Chen Y., Shi W., Smyth G.K. (2014). voom: precision weights unlock linear model analysis tools for RNA-seq read counts. \emph{Genome Biology} 15:R29.
+#'
+#' Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. \emph{Genome Biology} 15:550.
+#'
+#' Hoffman G.E., Roussos P. (2021). Dream: powerful differential expression analysis for repeated measures designs. \emph{Bioinformatics} 37(2):192-201.
+#'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #' counts <- filterRegions(counts, verbose = FALSE)
 #'
-#' fit <- fitRegions(counts, design = ~ condition, engine = "edgeR", verbose = FALSE)
+#' fit <- fitRegions(counts, design = ~condition, engine = "edgeR", verbose = FALSE)
 #' fit
 #'
 #' # limma-voom on the same design
-#' voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
+#' voomFit <- fitRegions(counts, design = ~condition, engine = "voom", verbose = FALSE)
 #'
 #' # Random effects need the dream engine and the formula given as such, for instance
 #' # ~ condition + (1|donor) for repeated samples of the same donors. Four samples are
@@ -61,227 +72,294 @@
 #' @export fitRegions
 
 fitRegions <-
-  function(counts,
-           design,
-           engine = "edgeR",
-           samples = NULL,
-           block = NULL,
-           random = NULL,
-           assay = "counts",
-           useOffsets = TRUE,
-           dispersion = NULL,
-           assumeCountLike = FALSE,
-           nullSource = "background",
-           nullRegionSets = NULL,
-           robust = TRUE,
-           universe = "matched",
-           matchOn = c("width", "abundance"),
-           universeRatio = 5,
-           universeSets = NULL,
-           BPPARAM = NULL,
-           verbose = TRUE) {
+    function(counts,
+             design,
+             engine = "edgeR",
+             samples = NULL,
+             block = NULL,
+             random = NULL,
+             assay = "counts",
+             useOffsets = TRUE,
+             dispersion = NULL,
+             assumeCountLike = FALSE,
+             nullSource = "background",
+             nullRegionSets = NULL,
+             robust = TRUE,
+             universe = "matched",
+             matchOn = c("width", "abundance"),
+             universeRatio = 5,
+             universeSets = NULL,
+             BPPARAM = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkFitRegionsArguments(
+            counts = counts,
+            engine = engine,
+            block = block,
+            random = random,
+            assay = assay
+        )
+        engine <- checkedArguments$engine
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Restrict the samples          #
+        #-------------------------------#
+        if (!is.null(samples)) {
+            counts <- selectSamples(counts = counts, samples = samples, dropNormalization = FALSE, verbose = FALSE)
+        }
 
-    engine <- tolower(as.character(engine[1]))
-    if (!(engine %in% c("edger", "voom", "dream", "deseq2", "limma"))) {
-      stop("The 'engine' parameter must be one of 'edgeR', 'voom', 'dream', 'deseq2', 'limma'.", call. = FALSE)
-    }
-    engine <- c("edger" = "edgeR", "voom" = "voom", "dream" = "dream", "deseq2" = "deseq2", "limma" = "limma")[[engine]]
+        if (ncol(counts) < 2) {
+            stop("At least two samples are needed to fit a model.", call. = FALSE)
+        }
 
-    enginePackage <- c("edgeR" = "edgeR", "voom" = "limma", "dream" = "variancePartition",
-                       "deseq2" = "DESeq2", "limma" = "limma")[[engine]]
-    if (!requireNamespace(enginePackage, quietly = TRUE)) {
-      stop("The '", enginePackage, "' package is needed for the '", engine, "' engine.", call. = FALSE)
-    }
+        colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        rownames(colTable) <- colnames(counts)
 
-    if (!is.null(block) & !(engine %in% c("voom", "limma"))) {
-      stop("The 'block' parameter applies to the 'voom' and 'limma' engines only, add the variable to the design for the other engines.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Build the design              #
+        #-------------------------------#
+        designObject <- .buildDesign(design = design, random = random, colTable = colTable, engine = engine)
+        designMatrix <- designObject$matrix
+        designFormula <- designObject$formula
 
-    if (!is.null(random) & engine != "dream") {
-      stop("The 'random' parameter applies to the 'dream' engine only.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Dispersion from outside       #
+        #-------------------------------#
+        residualDegrees <- nrow(designMatrix) - ncol(designMatrix)
 
-    if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
-      stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
-    }
+        dispersionObject <- .resolveDispersion(
+            counts = counts,
+            dispersion = dispersion,
+            residualDegrees = residualDegrees,
+            engine = engine,
+            nullSource = nullSource,
+            nullRegionSets = nullRegionSets,
+            verbose = verbose
+        )
 
-    #-------------------------------#
-    # Restrict the samples          #
-    #-------------------------------#
-    if (!is.null(samples)) {
-      counts <- selectSamples(counts = counts, samples = samples, dropNormalization = FALSE, verbose = FALSE)
-    }
+        dispersion <- dispersionObject$dispersion
 
-    if (ncol(counts) < 2) {
-      stop("At least two samples are needed to fit a model.", call. = FALSE)
-    }
+        if (residualDegrees < 1 & engine != "dream" & isTRUE(verbose)) {
+            message(
+                "No residual degree of freedom: fitting with a fixed dispersion of ", signif(dispersion, 3),
+                " (BCV ", signif(sqrt(dispersion), 3), ") and a likelihood ratio test."
+            )
+        }
 
-    colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    rownames(colTable) <- colnames(counts)
+        if (isTRUE(verbose)) {
+            message(
+                "Fitting ", nrow(counts), " ", countingLevel(counts), "s over ", ncol(counts),
+                " samples with '", engine, "' (", paste(colnames(designMatrix), collapse = ", "), ")."
+            )
+        }
 
-    #-------------------------------#
-    # Build the design              #
-    #-------------------------------#
-    designObject <- .buildDesign(design = design, random = random, colTable = colTable, engine = engine)
-    designMatrix <- designObject$matrix
-    designFormula <- designObject$formula
+        #-------------------------------#
+        # Counts, sizes and offsets     #
+        #-------------------------------#
+        countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
 
-    #-------------------------------#
-    # Dispersion from outside       #
-    #-------------------------------#
-    residualDegrees <- nrow(designMatrix) - ncol(designMatrix)
+        librarySizes <- SummarizedExperiment::colData(counts)$library.size
+        if (is.null(librarySizes) | any(is.na(librarySizes))) {
+            librarySizes <- colSums(countMatrix)
+        }
 
-    dispersionObject <- .resolveDispersion(counts = counts,
-                                           dispersion = dispersion,
-                                           residualDegrees = residualDegrees,
-                                           engine = engine,
-                                           nullSource = nullSource,
-                                           nullRegionSets = nullRegionSets,
-                                           verbose = verbose)
+        offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = verbose)
 
-    dispersion <- dispersionObject$dispersion
+        #-------------------------------#
+        # Counts, or something else     #
+        #-------------------------------#
+        countEngines <- c("edgeR", "voom", "dream", "deseq2")
+        signalType <- S4Vectors::metadata(counts)$signal.type
+        countLikeFlag <- S4Vectors::metadata(counts)$count.like
 
-    if (residualDegrees < 1 & engine != "dream" & isTRUE(verbose)) {
-      message("No residual degree of freedom: fitting with a fixed dispersion of ", signif(dispersion, 3),
-              " (BCV ", signif(sqrt(dispersion), 3), ") and a likelihood ratio test.")
-    }
+        # Objects built before the flag was recorded: alignments are counts, anything else has to say so
+        if (is.null(countLikeFlag)) {
+            countLikeFlag <- is.null(signalType) | identical(signalType, "reads")
+        }
 
-    if (isTRUE(verbose)) {
-      message("Fitting ", nrow(counts), " ", counts@counting.level, "s over ", ncol(counts),
-              " samples with '", engine, "' (", paste(colnames(designMatrix), collapse = ", "), ").")
-    }
+        countLike <- isTRUE(countLikeFlag) | isTRUE(assumeCountLike)
 
-    #-------------------------------#
-    # Counts, sizes and offsets     #
-    #-------------------------------#
-    countMatrix <- as.matrix(SummarizedExperiment::assay(counts, assay))
+        # Rounding coverage produces integers, which is not the same thing as producing counts, and every
+        # count engine here reads its input as a number of fragments whether or not that is what it holds
+        if (engine %in% countEngines & !is.null(signalType) & !countLike) {
+            stop("The values in this object were not declared as counts (signal.type '", signalType, "'), and the '",
+                engine, "' engine models a fragment count. Fit them with engine = 'limma', which models the log2 ",
+                "signal directly, or set 'assumeCountLike = TRUE' to state that the values are raw coverage and ",
+                "that the count model is an approximation you are willing to make.",
+                call. = FALSE
+            )
+        }
 
-    librarySizes <- SummarizedExperiment::colData(counts)$library.size
-    if (is.null(librarySizes) | any(is.na(librarySizes))) {
-      librarySizes <- colSums(countMatrix)
-    }
+        # A negative binomial likelihood is defined on integers, a normalised assay silently breaks it
+        if (engine %in% countEngines & any(abs(countMatrix - round(countMatrix)) > 1e-8)) {
+            if (engine == "deseq2") {
+                stop("The 'deseq2' engine needs integer counts, use the raw 'counts' assay and let the offsets carry the normalisation.", call. = FALSE)
+            }
+            warning("The assay does not contain integers, the count model is being applied to non-integer values.", call. = FALSE)
+        }
 
-    offsetMatrix <- .fitOffsets(counts = counts, useOffsets = useOffsets, verbose = verbose)
+        #-------------------------------#
+        # Fit                           #
+        #-------------------------------#
+        fitList <- switch(engine,
+            "edgeR" = .fitEdgeR(
+                countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
+                offsetMatrix = offsetMatrix, colTable = colTable, robust = robust,
+                dispersion = dispersion
+            ),
+            "voom" = .fitVoom(
+                countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
+                offsetMatrix = offsetMatrix, colTable = colTable, block = block, robust = robust, verbose = verbose
+            ),
+            "dream" = .fitDream(
+                countMatrix = countMatrix, designMatrix = designMatrix, designFormula = designFormula,
+                librarySizes = librarySizes, offsetMatrix = offsetMatrix, colTable = colTable, BPPARAM = BPPARAM
+            ),
+            "deseq2" = .fitDESeq2(
+                countMatrix = countMatrix, designMatrix = designMatrix, offsetMatrix = offsetMatrix,
+                librarySizes = librarySizes, colTable = colTable, verbose = verbose
+            ),
+            "limma" = .fitLimma(
+                countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
+                offsetMatrix = offsetMatrix, colTable = colTable, block = block,
+                robust = robust, verbose = verbose
+            )
+        )
 
-    #-------------------------------#
-    # Counts, or something else     #
-    #-------------------------------#
-    countEngines <- c("edgeR", "voom", "dream", "deseq2")
-    signalType <- S4Vectors::metadata(counts)$signal.type
-    countLikeFlag <- S4Vectors::metadata(counts)$count.like
+        fitList$dispersion$source <- dispersionObject$source
+        fitList$dispersion$holdout.index <- dispersionObject$holdout.index
+        fitList$dispersion$holdout.type <- dispersionObject$holdout.type
 
-    # Objects built before the flag was recorded: alignments are counts, anything else has to say so
-    if (is.null(countLikeFlag)) {
-      countLikeFlag <- is.null(signalType) | identical(signalType, "reads")
-    }
+        #-------------------------------#
+        # Universe of the set level     #
+        #-------------------------------#
+        # It reads the rows and the abundances, neither of which the contrast touches, so once is enough
+        universeObject <- .resolveUniverse(
+            object = counts,
+            universe = universe,
+            matchOn = matchOn,
+            universeRatio = universeRatio,
+            universeSets = universeSets,
+            soft = TRUE,
+            verbose = verbose
+        )
 
-    countLike <- isTRUE(countLikeFlag) | isTRUE(assumeCountLike)
+        #-------------------------------#
+        # Assemble the object           #
+        #-------------------------------#
+        fitObject <- .newObject(
+            Class = "RegionSetDE.fit",
+            fit = fitList$fit,
+            engine = engine,
+            design = designMatrix,
+            design.formula = if (is.null(designFormula)) {
+                list()
+            } else {
+                list(formula = designFormula)
+            },
+            blocking = fitList$blocking,
+            dispersion = fitList$dispersion,
+            counts = counts,
+            universe = universeObject,
+            samples = colnames(counts),
+            counting.level = countingLevel(counts),
+            blacklist = blacklistRanges(counts),
+            greylist = greylistRanges(counts),
+            whitelist = whitelistRanges(counts),
+            genome.assembly = genomeAssembly(counts),
+            seqlevels.style = chromosomeStyle(counts),
+            filtering.log = filteringLog(counts),
+            parameters = c(
+                parameterLog(counts),
+                list(fitRegions = list(
+                    engine = engine,
+                    design = designMatrix,
+                    block = block,
+                    random = random,
+                    assay = assay,
+                    useOffsets = useOffsets,
+                    assumeCountLike = assumeCountLike,
+                    dispersion = dispersion,
+                    dispersion.source = dispersionObject$source,
+                    robust = robust,
+                    universe = universe,
+                    matchOn = matchOn,
+                    universeRatio = universeRatio
+                ))
+            )
+        )
 
-    # Rounding coverage produces integers, which is not the same thing as producing counts, and every
-    # count engine here reads its input as a number of fragments whether or not that is what it holds
-    if (engine %in% countEngines & !is.null(signalType) & !countLike) {
-      stop("The values in this object were not declared as counts (signal.type '", signalType, "'), and the '",
-           engine, "' engine models a fragment count. Fit them with engine = 'limma', which models the log2 ",
-           "signal directly, or set 'assumeCountLike = TRUE' to state that the values are raw coverage and ",
-           "that the count model is an approximation you are willing to make.", call. = FALSE)
-    }
+        if (isTRUE(verbose)) {
+            if (!is.null(fitList$dispersion$common)) {
+                message(
+                    "Done. Common dispersion: ", signif(fitList$dispersion$common, 3),
+                    " (BCV ", signif(sqrt(fitList$dispersion$common), 3), ")."
+                )
+            } else {
+                message("Done.")
+            }
+        }
 
-    # A negative binomial likelihood is defined on integers, a normalised assay silently breaks it
-    if (engine %in% countEngines & any(abs(countMatrix - round(countMatrix)) > 1e-8)) {
-      if (engine == "deseq2") {
-        stop("The 'deseq2' engine needs integer counts, use the raw 'counts' assay and let the offsets carry the normalisation.", call. = FALSE)
-      }
-      warning("The assay does not contain integers, the count model is being applied to non-integer values.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Fit                           #
-    #-------------------------------#
-    fitList <- switch(engine,
-                      "edgeR" = .fitEdgeR(countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
-                                          offsetMatrix = offsetMatrix, colTable = colTable, robust = robust,
-                                          dispersion = dispersion),
-                      "voom" = .fitVoom(countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
-                                        offsetMatrix = offsetMatrix, colTable = colTable, block = block, robust = robust, verbose = verbose),
-                      "dream" = .fitDream(countMatrix = countMatrix, designMatrix = designMatrix, designFormula = designFormula,
-                                          librarySizes = librarySizes, offsetMatrix = offsetMatrix, colTable = colTable, BPPARAM = BPPARAM),
-                      "deseq2" = .fitDESeq2(countMatrix = countMatrix, designMatrix = designMatrix, offsetMatrix = offsetMatrix,
-                                            librarySizes = librarySizes, colTable = colTable, verbose = verbose),
-                      "limma" = .fitLimma(countMatrix = countMatrix, designMatrix = designMatrix, librarySizes = librarySizes,
-                                          offsetMatrix = offsetMatrix, colTable = colTable, block = block,
-                                          robust = robust, verbose = verbose))
-
-    fitList$dispersion$source <- dispersionObject$source
-    fitList$dispersion$holdout.index <- dispersionObject$holdout.index
-    fitList$dispersion$holdout.type <- dispersionObject$holdout.type
-
-    #-------------------------------#
-    # Universe of the set level     #
-    #-------------------------------#
-    # It reads the rows and the abundances, neither of which the contrast touches, so once is enough
-    universeObject <- .resolveUniverse(object = counts,
-                                       universe = universe,
-                                       matchOn = matchOn,
-                                       universeRatio = universeRatio,
-                                       universeSets = universeSets,
-                                       soft = TRUE,
-                                       verbose = verbose)
-
-    #-------------------------------#
-    # Assemble the object           #
-    #-------------------------------#
-    fitObject <- new(Class = "RegionSetDE.fit",
-                     fit = fitList$fit,
-                     engine = engine,
-                     design = designMatrix,
-                     design.formula = if (is.null(designFormula)) {list()} else {list(formula = designFormula)},
-                     blocking = fitList$blocking,
-                     dispersion = fitList$dispersion,
-                     counts = counts,
-                     universe = universeObject,
-                     samples = colnames(counts),
-                     counting.level = counts@counting.level,
-                     blacklist = counts@blacklist,
-                     greylist = counts@greylist,
-                     whitelist = counts@whitelist,
-                     genome.assembly = counts@genome.assembly,
-                     seqlevels.style = counts@seqlevels.style,
-                     filtering.log = counts@filtering.log,
-                     parameters = c(counts@parameters,
-                                    list(fitRegions = list(engine = engine,
-                                                           design = designMatrix,
-                                                           block = block,
-                                                           random = random,
-                                                           assay = assay,
-                                                           useOffsets = useOffsets,
-                                                           assumeCountLike = assumeCountLike,
-                                                           dispersion = dispersion,
-                                                           dispersion.source = dispersionObject$source,
-                                                           robust = robust,
-                                                           universe = universe,
-                                                           matchOn = matchOn,
-                                                           universeRatio = universeRatio))))
-
-    if (isTRUE(verbose)) {
-      if (!is.null(fitList$dispersion$common)) {
-        message("Done. Common dispersion: ", signif(fitList$dispersion$common, 3),
-                " (BCV ", signif(sqrt(fitList$dispersion$common), 3), ").")
-      } else {
-        message("Done.")
-      }
-    }
-
-    return(fitObject)
-  } # END function
+        return(fitObject)
+    } # END function
 
 
+#' @title .checkFitRegionsArguments
+#'
+#' @description Checks the arguments of \code{\link{fitRegions}} and brings them to the form the rest of the function works with.
+#'
+#' @param counts See \code{\link{fitRegions}}.
+#' @param engine See \code{\link{fitRegions}}.
+#' @param block See \code{\link{fitRegions}}.
+#' @param random See \code{\link{fitRegions}}.
+#' @param assay See \code{\link{fitRegions}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{engine}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkFitRegionsArguments <-
+    function(counts,
+             engine,
+             block,
+             random,
+             assay) {
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
+
+        engine <- tolower(as.character(engine[1]))
+        if (!(engine %in% c("edger", "voom", "dream", "deseq2", "limma"))) {
+            stop("The 'engine' parameter must be one of 'edgeR', 'voom', 'dream', 'deseq2', 'limma'.", call. = FALSE)
+        }
+        engine <- c("edger" = "edgeR", "voom" = "voom", "dream" = "dream", "deseq2" = "deseq2", "limma" = "limma")[[engine]]
+
+        enginePackage <- c(
+            "edgeR" = "edgeR", "voom" = "limma", "dream" = "variancePartition",
+            "deseq2" = "DESeq2", "limma" = "limma"
+        )[[engine]]
+        if (!requireNamespace(enginePackage, quietly = TRUE)) {
+            stop("The '", enginePackage, "' package is needed for the '", engine, "' engine.", call. = FALSE)
+        }
+
+        if (!is.null(block) & !(engine %in% c("voom", "limma"))) {
+            stop("The 'block' parameter applies to the 'voom' and 'limma' engines only, add the variable to the design for the other engines.", call. = FALSE)
+        }
+
+        if (!is.null(random) & engine != "dream") {
+            stop("The 'random' parameter applies to the 'dream' engine only.", call. = FALSE)
+        }
+
+        if (!(assay %in% SummarizedExperiment::assayNames(counts))) {
+            stop("The assay '", assay, "' is absent from the object.", call. = FALSE)
+        }
+
+        return(list(engine = engine))
+    } # END function
 
 
 #' @title .buildDesign
@@ -302,84 +380,83 @@ fitRegions <-
 #' @keywords internal
 
 .buildDesign <-
-  function(design,
-           random = NULL,
-           colTable,
-           engine) {
+    function(design,
+             random = NULL,
+             colTable,
+             engine) {
+        #-------------------------------#
+        # A matrix is taken as it is    #
+        #-------------------------------#
+        if (is.matrix(design)) {
+            if (engine == "dream") {
+                stop("The 'dream' engine needs the design as a formula, so that the random terms can be read.", call. = FALSE)
+            }
+            if (nrow(design) != nrow(colTable)) {
+                stop("The design matrix must have one row per sample.", call. = FALSE)
+            }
+            if (is.null(colnames(design))) {
+                stop("The columns of the design matrix must be named.", call. = FALSE)
+            }
+            return(list(matrix = design, formula = NULL))
+        }
 
-    #-------------------------------#
-    # A matrix is taken as it is    #
-    #-------------------------------#
-    if (is.matrix(design)) {
-      if (engine == "dream") {
-        stop("The 'dream' engine needs the design as a formula, so that the random terms can be read.", call. = FALSE)
-      }
-      if (nrow(design) != nrow(colTable)) {
-        stop("The design matrix must have one row per sample.", call. = FALSE)
-      }
-      if (is.null(colnames(design))) {
-        stop("The columns of the design matrix must be named.", call. = FALSE)
-      }
-      return(list(matrix = design, formula = NULL))
-    }
+        design <- .asFormula(x = design, parameterName = "design")
 
-    design <- .asFormula(x = design, parameterName = "design")
+        if (!inherits(design, "formula")) {
+            stop("The 'design' parameter must be a formula, a string holding a formula, or a design matrix.", call. = FALSE)
+        }
 
-    if (!inherits(design, "formula")) {
-      stop("The 'design' parameter must be a formula, a string holding a formula, or a design matrix.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Merge the random terms        #
+        #-------------------------------#
+        designFormula <- design
+        if (!is.null(random)) {
+            random <- .asFormula(x = random, parameterName = "random")
+            if (!inherits(random, "formula")) {
+                stop("The 'random' parameter must be a formula, e.g. ~ (1|donor).", call. = FALSE)
+            }
+            designFormula <- stats::as.formula(paste("~", paste(c(
+                attr(stats::terms(design), "term.labels"),
+                attr(stats::terms(random), "term.labels")
+            ), collapse = " + ")))
+        }
 
-    #-------------------------------#
-    # Merge the random terms        #
-    #-------------------------------#
-    designFormula <- design
-    if (!is.null(random)) {
-      random <- .asFormula(x = random, parameterName = "random")
-      if (!inherits(random, "formula")) {
-        stop("The 'random' parameter must be a formula, e.g. ~ (1|donor).", call. = FALSE)
-      }
-      designFormula <- stats::as.formula(paste("~", paste(c(attr(stats::terms(design), "term.labels"),
-                                                            attr(stats::terms(random), "term.labels")), collapse = " + ")))
-    }
+        hasRandomTerm <- any(grepl("\\|", attr(stats::terms(designFormula), "term.labels")))
 
-    hasRandomTerm <- any(grepl("\\|", attr(stats::terms(designFormula), "term.labels")))
+        if (hasRandomTerm & engine != "dream") {
+            stop("Random terms are supported by the 'dream' engine only.", call. = FALSE)
+        }
 
-    if (hasRandomTerm & engine != "dream") {
-      stop("Random terms are supported by the 'dream' engine only.", call. = FALSE)
-    }
+        if (engine == "dream" & !hasRandomTerm) {
+            warning("The formula carries no random term, the 'voom' engine gives the same answer faster.", call. = FALSE)
+        }
 
-    if (engine == "dream" & !hasRandomTerm) {
-      warning("The formula carries no random term, the 'voom' engine gives the same answer faster.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Fixed effect model matrix     #
+        #-------------------------------#
+        fixedFormula <- designFormula
+        if (hasRandomTerm) {
+            if (!requireNamespace("lme4", quietly = TRUE)) {
+                stop("The 'lme4' package is needed to separate the random terms from the design.", call. = FALSE)
+            }
+            fixedFormula <- lme4::nobars(designFormula)
+        }
 
-    #-------------------------------#
-    # Fixed effect model matrix     #
-    #-------------------------------#
-    fixedFormula <- designFormula
-    if (hasRandomTerm) {
-      if (!requireNamespace("lme4", quietly = TRUE)) {
-        stop("The 'lme4' package is needed to separate the random terms from the design.", call. = FALSE)
-      }
-      fixedFormula <- lme4::nobars(designFormula)
-    }
+        designVariables <- all.vars(fixedFormula)
+        absentVariables <- setdiff(designVariables, colnames(colTable))
+        if (length(absentVariables) > 0) {
+            stop("The following design variables are absent from the colData: ", paste(absentVariables, collapse = ", "), ".", call. = FALSE)
+        }
 
-    designVariables <- all.vars(fixedFormula)
-    absentVariables <- setdiff(designVariables, colnames(colTable))
-    if (length(absentVariables) > 0) {
-      stop("The following design variables are absent from the colData: ", paste(absentVariables, collapse = ", "), ".", call. = FALSE)
-    }
+        designMatrix <- stats::model.matrix(object = fixedFormula, data = colTable)
 
-    designMatrix <- stats::model.matrix(object = fixedFormula, data = colTable)
+        # A rank deficient design gives coefficients that cannot be told apart, better to catch it here than inside the engine
+        if (qr(designMatrix)$rank < ncol(designMatrix)) {
+            stop("The design matrix is rank deficient, some coefficients are confounded.", call. = FALSE)
+        }
 
-    # A rank deficient design gives coefficients that cannot be told apart, better to catch it here than inside the engine
-    if (qr(designMatrix)$rank < ncol(designMatrix)) {
-      stop("The design matrix is rank deficient, some coefficients are confounded.", call. = FALSE)
-    }
-
-    return(list(matrix = designMatrix, formula = designFormula))
-  } # END function
-
-
+        return(list(matrix = designMatrix, formula = designFormula))
+    } # END function
 
 
 #' @title .fitOffsets
@@ -399,41 +476,40 @@ fitRegions <-
 #' @keywords internal
 
 .fitOffsets <-
-  function(counts,
-           useOffsets = TRUE,
-           verbose = TRUE) {
+    function(counts,
+             useOffsets = TRUE,
+             verbose = TRUE) {
+        if (isFALSE(useOffsets)) {
+            return(NULL)
+        }
 
-    if (isFALSE(useOffsets)) {
-      return(NULL)
-    }
+        # The loess normalisation writes one value per row and per sample, nothing else can reproduce it
+        if ("offset" %in% SummarizedExperiment::assayNames(counts)) {
+            return(as.matrix(SummarizedExperiment::assay(counts, "offset")))
+        }
 
-    # The loess normalisation writes one value per row and per sample, nothing else can reproduce it
-    if ("offset" %in% SummarizedExperiment::assayNames(counts)) {
-      return(as.matrix(SummarizedExperiment::assay(counts, "offset")))
-    }
+        scalingFactors <- SummarizedExperiment::colData(counts)$scaling.factor
 
-    scalingFactors <- SummarizedExperiment::colData(counts)$scaling.factor
+        if (is.null(scalingFactors) | all(is.na(scalingFactors))) {
+            if (isTRUE(verbose)) {
+                warning("No normalisation is stored in the object, the model uses the library sizes alone.", call. = FALSE)
+            }
+            return(NULL)
+        }
 
-    if (is.null(scalingFactors) | all(is.na(scalingFactors))) {
-      if (isTRUE(verbose)) {
-        warning("No normalisation is stored in the object, the model uses the library sizes alone.", call. = FALSE)
-      }
-      return(NULL)
-    }
+        if (any(is.na(scalingFactors)) | any(scalingFactors <= 0)) {
+            stop("The scaling factors must be finite and strictly positive.", call. = FALSE)
+        }
 
-    if (any(is.na(scalingFactors)) | any(scalingFactors <= 0)) {
-      stop("The scaling factors must be finite and strictly positive.", call. = FALSE)
-    }
+        # One factor per sample, expanded so that every engine receives the same object shape
+        offsetMatrix <- matrix(
+            data = rep(log(scalingFactors), each = nrow(counts)),
+            nrow = nrow(counts), ncol = ncol(counts),
+            dimnames = list(rownames(counts), colnames(counts))
+        )
 
-    # One factor per sample, expanded so that every engine receives the same object shape
-    offsetMatrix <- matrix(data = rep(log(scalingFactors), each = nrow(counts)),
-                           nrow = nrow(counts), ncol = ncol(counts),
-                           dimnames = list(rownames(counts), colnames(counts)))
-
-    return(offsetMatrix)
-  } # END function
-
-
+        return(offsetMatrix)
+    } # END function
 
 
 #' @title .fitEdgeR
@@ -457,49 +533,54 @@ fitRegions <-
 #' @keywords internal
 
 .fitEdgeR <-
-  function(countMatrix,
-           designMatrix,
-           librarySizes,
-           offsetMatrix,
-           colTable,
-           robust = TRUE,
-           dispersion = NULL) {
+    function(countMatrix,
+             designMatrix,
+             librarySizes,
+             offsetMatrix,
+             colTable,
+             robust = TRUE,
+             dispersion = NULL) {
+        dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
 
-    dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
+        # scaleOffset puts the offsets back on the scale of the library sizes, so the intercept stays interpretable
+        if (!is.null(offsetMatrix)) {
+            dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
+        }
 
-    # scaleOffset puts the offsets back on the scale of the library sizes, so the intercept stays interpretable
-    if (!is.null(offsetMatrix)) {
-      dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
-    }
+        #-------------------------------#
+        # Dispersion held fixed         #
+        #-------------------------------#
+        # glmQLFit carries the uncertainty of an estimated dispersion, which there is none of when the value is given
+        if (!is.null(dispersion)) {
+            dgeList$common.dispersion <- dispersion
+            modelFit <- edgeR::glmFit(y = dgeList, design = designMatrix, dispersion = dispersion)
 
-    #-------------------------------#
-    # Dispersion held fixed         #
-    #-------------------------------#
-    # glmQLFit carries the uncertainty of an estimated dispersion, which there is none of when the value is given
-    if (!is.null(dispersion)) {
-      dgeList$common.dispersion <- dispersion
-      modelFit <- edgeR::glmFit(y = dgeList, design = designMatrix, dispersion = dispersion)
-
-      return(list(fit = list(object = modelFit, dge = dgeList, test = "lrt"),
-                  blocking = list(),
-                  dispersion = list(common = dispersion,
-                                    fixed = TRUE,
-                                    no.replicates = (nrow(designMatrix) - ncol(designMatrix)) < 1)))
-    }
-
-    dgeList <- edgeR::estimateDisp(y = dgeList, design = designMatrix, robust = robust)
-    quasiFit <- edgeR::glmQLFit(y = dgeList, design = designMatrix, robust = robust)
-
-    return(list(fit = list(object = quasiFit, dge = dgeList, test = "ql"),
+            return(list(
+                fit = list(object = modelFit, dge = dgeList, test = "lrt"),
                 blocking = list(),
-                dispersion = list(common = dgeList$common.dispersion,
-                                  trended = dgeList$trended.dispersion,
-                                  fixed = FALSE,
-                                  no.replicates = FALSE,
-                                  prior.df = quasiFit$df.prior)))
-  } # END function
+                dispersion = list(
+                    common = dispersion,
+                    fixed = TRUE,
+                    no.replicates = (nrow(designMatrix) - ncol(designMatrix)) < 1
+                )
+            ))
+        }
 
+        dgeList <- edgeR::estimateDisp(y = dgeList, design = designMatrix, robust = robust)
+        quasiFit <- edgeR::glmQLFit(y = dgeList, design = designMatrix, robust = robust)
 
+        return(list(
+            fit = list(object = quasiFit, dge = dgeList, test = "ql"),
+            blocking = list(),
+            dispersion = list(
+                common = dgeList$common.dispersion,
+                trended = dgeList$trended.dispersion,
+                fixed = FALSE,
+                no.replicates = FALSE,
+                prior.df = quasiFit$df.prior
+            )
+        ))
+    } # END function
 
 
 #' @title .fitVoom
@@ -525,56 +606,58 @@ fitRegions <-
 #' @keywords internal
 
 .fitVoom <-
-  function(countMatrix,
-           designMatrix,
-           librarySizes,
-           offsetMatrix,
-           colTable,
-           block = NULL,
-           robust = TRUE,
-           verbose = TRUE) {
+    function(countMatrix,
+             designMatrix,
+             librarySizes,
+             offsetMatrix,
+             colTable,
+             block = NULL,
+             robust = TRUE,
+             verbose = TRUE) {
+        dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
+        if (!is.null(offsetMatrix)) {
+            dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
+        }
 
-    dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
-    if (!is.null(offsetMatrix)) {
-      dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
-    }
+        voomObject <- limma::voom(counts = dgeList, design = designMatrix, plot = FALSE)
 
-    voomObject <- limma::voom(counts = dgeList, design = designMatrix, plot = FALSE)
+        #-------------------------------#
+        # Blocked, or not               #
+        #-------------------------------#
+        if (is.null(block)) {
+            linearFit <- limma::lmFit(object = voomObject, design = designMatrix)
+            blockingInfo <- list()
+        } else {
+            if (!(block %in% colnames(colTable))) {
+                stop("The column '", block, "' is absent from the colData.", call. = FALSE)
+            }
+            blockVector <- colTable[[block]]
 
-    #-------------------------------#
-    # Blocked, or not               #
-    #-------------------------------#
-    if (is.null(block)) {
-      linearFit <- limma::lmFit(object = voomObject, design = designMatrix)
-      blockingInfo <- list()
+            # The first correlation is estimated on unweighted values, the second pass feeds it back into voom
+            firstCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
+            voomObject <- limma::voom(
+                counts = dgeList, design = designMatrix, plot = FALSE,
+                block = blockVector, correlation = firstCorrelation
+            )
+            consensusCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
 
-    } else {
-      if (!(block %in% colnames(colTable))) {
-        stop("The column '", block, "' is absent from the colData.", call. = FALSE)
-      }
-      blockVector <- colTable[[block]]
+            if (isTRUE(verbose)) {
+                message("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), ".")
+            }
 
-      # The first correlation is estimated on unweighted values, the second pass feeds it back into voom
-      firstCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
-      voomObject <- limma::voom(counts = dgeList, design = designMatrix, plot = FALSE,
-                                block = blockVector, correlation = firstCorrelation)
-      consensusCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
+            linearFit <- limma::lmFit(
+                object = voomObject, design = designMatrix,
+                block = blockVector, correlation = consensusCorrelation
+            )
+            blockingInfo <- list(block = block, correlation = consensusCorrelation)
+        }
 
-      if (isTRUE(verbose)) {
-        message("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), ".")
-      }
-
-      linearFit <- limma::lmFit(object = voomObject, design = designMatrix,
-                                block = blockVector, correlation = consensusCorrelation)
-      blockingInfo <- list(block = block, correlation = consensusCorrelation)
-    }
-
-    return(list(fit = list(object = linearFit, voom = voomObject, robust = robust),
-                blocking = blockingInfo,
-                dispersion = list(sigma.median = stats::median(linearFit$sigma, na.rm = TRUE))))
-  } # END function
-
-
+        return(list(
+            fit = list(object = linearFit, voom = voomObject, robust = robust),
+            blocking = blockingInfo,
+            dispersion = list(sigma.median = stats::median(linearFit$sigma, na.rm = TRUE))
+        ))
+    } # END function
 
 
 #' @title .logSignalMatrix
@@ -593,26 +676,25 @@ fitRegions <-
 #' @keywords internal
 
 .logSignalMatrix <-
-  function(countMatrix,
-           librarySizes,
-           offsetMatrix = NULL,
-           priorCount = 2) {
+    function(countMatrix,
+             librarySizes,
+             offsetMatrix = NULL,
+             priorCount = 2) {
+        if (is.null(offsetMatrix)) {
+            offsetMatrix <- matrix(
+                data = rep(log(librarySizes), each = nrow(countMatrix)),
+                nrow = nrow(countMatrix), ncol = ncol(countMatrix)
+            )
+        } else {
+            # Centring on the row puts the offsets back on the scale of the library sizes, so the values stay readable
+            offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(librarySizes))
+        }
 
-    if (is.null(offsetMatrix)) {
-      offsetMatrix <- matrix(data = rep(log(librarySizes), each = nrow(countMatrix)),
-                             nrow = nrow(countMatrix), ncol = ncol(countMatrix))
-    } else {
-      # Centring on the row puts the offsets back on the scale of the library sizes, so the values stay readable
-      offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(librarySizes))
-    }
+        logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
+        dimnames(logMatrix) <- dimnames(countMatrix)
 
-    logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
-    dimnames(logMatrix) <- dimnames(countMatrix)
-
-    return(logMatrix)
-  } # END function
-
-
+        return(logMatrix)
+    } # END function
 
 
 #' @title .fitLimma
@@ -641,52 +723,54 @@ fitRegions <-
 #' @keywords internal
 
 .fitLimma <-
-  function(countMatrix,
-           designMatrix,
-           librarySizes,
-           offsetMatrix,
-           colTable,
-           block = NULL,
-           robust = TRUE,
-           priorCount = 2,
-           verbose = TRUE) {
+    function(countMatrix,
+             designMatrix,
+             librarySizes,
+             offsetMatrix,
+             colTable,
+             block = NULL,
+             robust = TRUE,
+             priorCount = 2,
+             verbose = TRUE) {
+        logMatrix <- .logSignalMatrix(
+            countMatrix = countMatrix,
+            librarySizes = librarySizes,
+            offsetMatrix = offsetMatrix,
+            priorCount = priorCount
+        )
 
-    logMatrix <- .logSignalMatrix(countMatrix = countMatrix,
-                                  librarySizes = librarySizes,
-                                  offsetMatrix = offsetMatrix,
-                                  priorCount = priorCount)
+        #-------------------------------#
+        # Blocked, or not               #
+        #-------------------------------#
+        if (is.null(block)) {
+            linearFit <- limma::lmFit(object = logMatrix, design = designMatrix)
+            blockingInfo <- list()
+        } else {
+            if (!(block %in% colnames(colTable))) {
+                stop("The column '", block, "' is absent from the colData.", call. = FALSE)
+            }
+            blockVector <- colTable[[block]]
 
-    #-------------------------------#
-    # Blocked, or not               #
-    #-------------------------------#
-    if (is.null(block)) {
-      linearFit <- limma::lmFit(object = logMatrix, design = designMatrix)
-      blockingInfo <- list()
+            consensusCorrelation <- limma::duplicateCorrelation(object = logMatrix, design = designMatrix, block = blockVector)$consensus.correlation
 
-    } else {
-      if (!(block %in% colnames(colTable))) {
-        stop("The column '", block, "' is absent from the colData.", call. = FALSE)
-      }
-      blockVector <- colTable[[block]]
+            if (isTRUE(verbose)) {
+                message("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), ".")
+            }
 
-      consensusCorrelation <- limma::duplicateCorrelation(object = logMatrix, design = designMatrix, block = blockVector)$consensus.correlation
+            linearFit <- limma::lmFit(
+                object = logMatrix, design = designMatrix,
+                block = blockVector, correlation = consensusCorrelation
+            )
+            blockingInfo <- list(block = block, correlation = consensusCorrelation)
+        }
 
-      if (isTRUE(verbose)) {
-        message("Consensus correlation within '", block, "': ", signif(consensusCorrelation, 3), ".")
-      }
-
-      linearFit <- limma::lmFit(object = logMatrix, design = designMatrix,
-                                block = blockVector, correlation = consensusCorrelation)
-      blockingInfo <- list(block = block, correlation = consensusCorrelation)
-    }
-
-    # The trend on the residual variance replaces the observation weights voom would have supplied
-    return(list(fit = list(object = linearFit, voom = list(E = logMatrix), robust = robust, trend = TRUE),
-                blocking = blockingInfo,
-                dispersion = list(sigma.median = stats::median(linearFit$sigma, na.rm = TRUE))))
-  } # END function
-
-
+        # The trend on the residual variance replaces the observation weights voom would have supplied
+        return(list(
+            fit = list(object = linearFit, voom = list(E = logMatrix), robust = robust, trend = TRUE),
+            blocking = blockingInfo,
+            dispersion = list(sigma.median = stats::median(linearFit$sigma, na.rm = TRUE))
+        ))
+    } # END function
 
 
 #' @title .fitDream
@@ -699,7 +783,7 @@ fitRegions <-
 #' @param librarySizes Numeric vector with the library sizes.
 #' @param offsetMatrix Matrix of log offsets, or \code{NULL}.
 #' @param colTable Data.frame with the sample metadata.
-#' @param BPPARAM \code{BiocParallelParam} object, or \code{NULL}.
+#' @param BPPARAM \code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.
 #'
 #' @return A list with the \code{fit}, the \code{blocking} and the \code{dispersion} elements.
 #'
@@ -710,43 +794,44 @@ fitRegions <-
 #' @keywords internal
 
 .fitDream <-
-  function(countMatrix,
-           designMatrix,
-           designFormula,
-           librarySizes,
-           offsetMatrix,
-           colTable,
-           BPPARAM = NULL) {
+    function(countMatrix,
+             designMatrix,
+             designFormula,
+             librarySizes,
+             offsetMatrix,
+             colTable,
+             BPPARAM = NULL) {
+        dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
+        if (!is.null(offsetMatrix)) {
+            dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
+        }
 
-    dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
-    if (!is.null(offsetMatrix)) {
-      dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
-    }
+        BPPARAM <- .resolveBPPARAM(BPPARAM = BPPARAM)
 
-    if (is.null(BPPARAM)) {
-      BPPARAM <- BiocParallel::SerialParam()
-    }
+        # The weights have to come from the same formula as the fit, a voom run on the fixed part alone underestimates them
+        voomObject <- variancePartition::voomWithDreamWeights(
+            counts = dgeList,
+            formula = designFormula,
+            data = colTable,
+            BPPARAM = BPPARAM,
+            quiet = TRUE
+        )
 
-    # The weights have to come from the same formula as the fit, a voom run on the fixed part alone underestimates them
-    voomObject <- variancePartition::voomWithDreamWeights(counts = dgeList,
-                                                          formula = designFormula,
-                                                          data = colTable,
-                                                          BPPARAM = BPPARAM,
-                                                          quiet = TRUE)
+        mixedFit <- variancePartition::dream(
+            exprObj = voomObject,
+            formula = designFormula,
+            data = colTable,
+            BPPARAM = BPPARAM,
+            quiet = TRUE
+        )
+        mixedFit <- variancePartition::eBayes(mixedFit)
 
-    mixedFit <- variancePartition::dream(exprObj = voomObject,
-                                         formula = designFormula,
-                                         data = colTable,
-                                         BPPARAM = BPPARAM,
-                                         quiet = TRUE)
-    mixedFit <- variancePartition::eBayes(mixedFit)
-
-    return(list(fit = list(object = mixedFit, voom = voomObject, data = colTable, formula = designFormula, BPPARAM = BPPARAM),
-                blocking = list(random = designFormula),
-                dispersion = list(sigma.median = stats::median(mixedFit$sigma, na.rm = TRUE))))
-  } # END function
-
-
+        return(list(
+            fit = list(object = mixedFit, voom = voomObject, data = colTable, formula = designFormula, BPPARAM = BPPARAM),
+            blocking = list(random = designFormula),
+            dispersion = list(sigma.median = stats::median(mixedFit$sigma, na.rm = TRUE))
+        ))
+    } # END function
 
 
 #' @title .fitDESeq2
@@ -767,38 +852,39 @@ fitRegions <-
 #' @keywords internal
 
 .fitDESeq2 <-
-  function(countMatrix,
-           designMatrix,
-           offsetMatrix,
-           librarySizes,
-           colTable,
-           verbose = TRUE) {
+    function(countMatrix,
+             designMatrix,
+             offsetMatrix,
+             librarySizes,
+             colTable,
+             verbose = TRUE) {
+        storage.mode(countMatrix) <- "integer"
 
-    storage.mode(countMatrix) <- "integer"
+        dds <- DESeq2::DESeqDataSetFromMatrix(
+            countData = countMatrix,
+            colData = colTable,
+            design = ~1
+        )
 
-    dds <- DESeq2::DESeqDataSetFromMatrix(countData = countMatrix,
-                                          colData = colTable,
-                                          design = ~ 1)
+        #-------------------------------#
+        # Offsets, in the DESeq2 idiom  #
+        #-------------------------------#
+        if (is.null(offsetMatrix)) {
+            DESeq2::sizeFactors(dds) <- librarySizes / exp(mean(log(librarySizes)))
+        } else {
+            # DESeq2 asks the factors to have geometric mean one on each row, which is where the row centring comes from
+            DESeq2::normalizationFactors(dds) <- exp(offsetMatrix - rowMeans(offsetMatrix))
+        }
 
-    #-------------------------------#
-    # Offsets, in the DESeq2 idiom  #
-    #-------------------------------#
-    if (is.null(offsetMatrix)) {
-      DESeq2::sizeFactors(dds) <- librarySizes / exp(mean(log(librarySizes)))
-    } else {
-      # DESeq2 asks the factors to have geometric mean one on each row, which is where the row centring comes from
-      DESeq2::normalizationFactors(dds) <- exp(offsetMatrix - rowMeans(offsetMatrix))
-    }
+        # The model matrix is passed as 'full', which keeps the coefficient names identical to the other engines
+        dds <- DESeq2::DESeq(object = dds, full = designMatrix, betaPrior = FALSE, quiet = !verbose)
 
-    # The model matrix is passed as 'full', which keeps the coefficient names identical to the other engines
-    dds <- DESeq2::DESeq(object = dds, full = designMatrix, betaPrior = FALSE, quiet = !verbose)
-
-    return(list(fit = list(object = dds),
-                blocking = list(),
-                dispersion = list(common = mean(DESeq2::dispersions(dds), na.rm = TRUE))))
-  } # END function
-
-
+        return(list(
+            fit = list(object = dds),
+            blocking = list(),
+            dispersion = list(common = mean(DESeq2::dispersions(dds), na.rm = TRUE))
+        ))
+    } # END function
 
 
 #' @title .asFormula
@@ -817,24 +903,21 @@ fitRegions <-
 #' @keywords internal
 
 .asFormula <-
-  function(x,
-           parameterName = "design") {
+    function(x,
+             parameterName = "design") {
+        if (!is.character(x) | length(x) != 1) {
+            return(x)
+        }
 
-    if (!is.character(x) | length(x) != 1) {
-      return(x)
-    }
+        # A formula stored in a table or read from a configuration file arrives as a string, parsing it here costs nothing
+        parsedFormula <- try(stats::as.formula(x), silent = TRUE)
 
-    # A formula stored in a table or read from a configuration file arrives as a string, parsing it here costs nothing
-    parsedFormula <- try(stats::as.formula(x), silent = TRUE)
+        if (inherits(parsedFormula, "try-error")) {
+            stop("The '", parameterName, "' parameter is a string that cannot be read as a formula.", call. = FALSE)
+        }
 
-    if (inherits(parsedFormula, "try-error")) {
-      stop("The '", parameterName, "' parameter is a string that cannot be read as a formula.", call. = FALSE)
-    }
-
-    return(parsedFormula)
-  } # END function
-
-
+        return(parsedFormula)
+    } # END function
 
 
 #' @title .resolveDispersion
@@ -856,75 +939,91 @@ fitRegions <-
 #' @keywords internal
 
 .resolveDispersion <-
-  function(counts,
-           dispersion = NULL,
-           residualDegrees,
-           engine = "edgeR",
-           nullSource = "background",
-           nullRegionSets = NULL,
-           verbose = TRUE) {
+    function(counts,
+             dispersion = NULL,
+             residualDegrees,
+             engine = "edgeR",
+             nullSource = "background",
+             nullRegionSets = NULL,
+             verbose = TRUE) {
+        #-------------------------------#
+        # Whatever was handed in        #
+        #-------------------------------#
+        if (is.list(dispersion)) {
+            if (is.null(dispersion$dispersion)) {
+                stop("The \'dispersion\' list must carry a \'dispersion\' element, as returned by estimateNullDispersion.", call. = FALSE)
+            }
+            dispersionList <- .checkDispersion(
+                dispersion = dispersion$dispersion,
+                source = if (is.null(dispersion$source)) {
+                    "supplied"
+                } else {
+                    dispersion$source
+                },
+                engine = engine
+            )
+            dispersionList$holdout.index <- dispersion$holdout.index
+            dispersionList$holdout.type <- if (is.null(dispersion$holdout.type)) {
+                "none"
+            } else {
+                dispersion$holdout.type
+            }
+            return(dispersionList)
+        }
 
-    #-------------------------------#
-    # Whatever was handed in        #
-    #-------------------------------#
-    if (is.list(dispersion)) {
-      if (is.null(dispersion$dispersion)) {
-        stop("The \'dispersion\' list must carry a \'dispersion\' element, as returned by estimateNullDispersion.", call. = FALSE)
-      }
-      dispersionList <- .checkDispersion(dispersion = dispersion$dispersion,
-                                         source = if (is.null(dispersion$source)) {"supplied"} else {dispersion$source},
-                                         engine = engine)
-      dispersionList$holdout.index <- dispersion$holdout.index
-      dispersionList$holdout.type <- if (is.null(dispersion$holdout.type)) {"none"} else {dispersion$holdout.type}
-      return(dispersionList)
-    }
+        if (is.character(dispersion)) {
+            if (!(dispersion %in% c("background", "regionSet"))) {
+                stop("The \'dispersion\' parameter must be a value, a list from estimateNullDispersion, \'background\' or \'regionSet\'.", call. = FALSE)
+            }
+            nullSource <- dispersion
+            dispersion <- NULL
+        } else if (!is.null(dispersion)) {
+            return(.checkDispersion(dispersion = dispersion, source = "supplied", engine = engine))
+        }
 
-    if (is.character(dispersion)) {
-      if (!(dispersion %in% c("background", "regionSet"))) {
-        stop("The \'dispersion\' parameter must be a value, a list from estimateNullDispersion, \'background\' or \'regionSet\'.", call. = FALSE)
-      }
-      nullSource <- dispersion
-      dispersion <- NULL
+        #-------------------------------#
+        # Nothing to estimate it from   #
+        #-------------------------------#
+        if (residualDegrees >= 1 | engine %in% c("dream", "limma")) {
+            return(list(dispersion = NULL, source = "residual", holdout.index = integer(0), holdout.type = "none"))
+        }
 
-    } else if (!is.null(dispersion)) {
-      return(.checkDispersion(dispersion = dispersion, source = "supplied", engine = engine))
-    }
+        if (engine != "edgeR") {
+            stop("The design uses one sample per coefficient, which leaves no residual to estimate the dispersion from. ",
+                "Only the \'edgeR\' engine can be fitted with a dispersion brought in from outside.",
+                call. = FALSE
+            )
+        }
 
-    #-------------------------------#
-    # Nothing to estimate it from   #
-    #-------------------------------#
-    if (residualDegrees >= 1 | engine %in% c("dream", "limma")) {
-      return(list(dispersion = NULL, source = "residual", holdout.index = integer(0), holdout.type = "none"))
-    }
+        # A fit that cannot be produced at all is worse than one that announces where its dispersion came from
+        if (isTRUE(verbose)) {
+            message("No residual degree of freedom, estimating the dispersion from rows assumed not to respond.")
+        }
 
-    if (engine != "edgeR") {
-      stop("The design uses one sample per coefficient, which leaves no residual to estimate the dispersion from. ",
-           "Only the \'edgeR\' engine can be fitted with a dispersion brought in from outside.", call. = FALSE)
-    }
-
-    # A fit that cannot be produced at all is worse than one that announces where its dispersion came from
-    if (isTRUE(verbose)) {
-      message("No residual degree of freedom, estimating the dispersion from rows assumed not to respond.")
-    }
-
-    nullDispersion <- try(estimateNullDispersion(counts = counts,
-                                                 source = nullSource,
-                                                 regionSets = nullRegionSets,
-                                                 verbose = verbose),
-                          silent = TRUE)
-
-    if (inherits(nullDispersion, "try-error")) {
-      stop("The dispersion could not be estimated: ", conditionMessage(attr(nullDispersion, "condition")),
-           "\n  Supply one through \'dispersion\', as a BCV squared, and check it with `checkNullCalibration()`.", call. = FALSE)
-    }
-
-    return(list(dispersion = nullDispersion$dispersion,
+        nullDispersion <- try(
+            estimateNullDispersion(
+                counts = counts,
                 source = nullSource,
-                holdout.index = nullDispersion$holdout.index,
-                holdout.type = nullDispersion$holdout.type))
-  } # END function
+                regionSets = nullRegionSets,
+                verbose = verbose
+            ),
+            silent = TRUE
+        )
 
+        if (inherits(nullDispersion, "try-error")) {
+            stop("The dispersion could not be estimated: ", conditionMessage(attr(nullDispersion, "condition")),
+                "\n  Supply one through \'dispersion\', as a BCV squared, and check it with `checkNullCalibration()`.",
+                call. = FALSE
+            )
+        }
 
+        return(list(
+            dispersion = nullDispersion$dispersion,
+            source = nullSource,
+            holdout.index = nullDispersion$holdout.index,
+            holdout.type = nullDispersion$holdout.type
+        ))
+    } # END function
 
 
 #' @title .checkDispersion
@@ -942,19 +1041,18 @@ fitRegions <-
 #' @keywords internal
 
 .checkDispersion <-
-  function(dispersion,
-           source = "supplied",
-           engine = "edgeR") {
+    function(dispersion,
+             source = "supplied",
+             engine = "edgeR") {
+        dispersion <- as.numeric(dispersion[1])
 
-    dispersion <- as.numeric(dispersion[1])
+        if (is.na(dispersion) | dispersion < 0) {
+            stop("The \'dispersion\' parameter must be a single non-negative value.", call. = FALSE)
+        }
 
-    if (is.na(dispersion) | dispersion < 0) {
-      stop("The \'dispersion\' parameter must be a single non-negative value.", call. = FALSE)
-    }
+        if (engine != "edgeR") {
+            stop("A dispersion brought in from outside is only available for the \'edgeR\' engine.", call. = FALSE)
+        }
 
-    if (engine != "edgeR") {
-      stop("A dispersion brought in from outside is only available for the \'edgeR\' engine.", call. = FALSE)
-    }
-
-    return(list(dispersion = dispersion, source = source, holdout.index = integer(0)))
-  } # END function
+        return(list(dispersion = dispersion, source = source, holdout.index = integer(0)))
+    } # END function

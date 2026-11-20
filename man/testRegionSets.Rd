@@ -122,6 +122,13 @@ plotSetEffect(setRes)
 setRes <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), universe = "all", verbose = FALSE)
 
 }
+\references{
+Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting for inter-gene correlation. \emph{Nucleic Acids Research} 40(17):e133.
+
+Wu D., Lim E., Vaillant F., Asselin-Labat M.L., Visvader J.E., Smyth G.K. (2010). ROAST: rotation gene set tests for complex microarray experiments. \emph{Bioinformatics} 26(17):2176-2182.
+
+Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. \emph{Nucleic Acids Research} 43(7):e47.
+}
 \seealso{
 \code{\link{testSetContrast}}, \code{\link{makeSetUniverse}}, \code{\link{testRegions}}, \code{\link{plotSetEffect}}
 }

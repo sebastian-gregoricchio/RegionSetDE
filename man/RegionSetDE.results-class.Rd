@@ -10,9 +10,9 @@ S4 class holding the outcome of a per-region contrast. The table in the \code{re
 \section{Slots}{
 
 \describe{
-\item{\code{results}}{Data.frame with one row per region.}
+\item{\code{results}}{\code{DataFrame} with one row per region. Read it with \code{\link{resultsTable}}.}
 
-\item{\code{tiles}}{Data.frame with one row per tile, empty when the counts were not tiled.}
+\item{\code{tiles}}{\code{DataFrame} with one row per tile, empty when the counts were not tiled. Read it with \code{\link{tileTable}}.}
 
 \item{\code{regions}}{\code{GRanges} with the coordinates of the rows of \code{results}.}
 

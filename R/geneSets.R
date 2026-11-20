@@ -16,18 +16,19 @@
 #' @keywords internal
 
 .setKeys <-
-  function(x) {
+    function(x) {
+        keyTable <- if (methods::is(x, "GRanges")) {
+            as.data.frame(S4Vectors::mcols(x), stringsAsFactors = FALSE)
+        } else {
+            x
+        }
 
-    keyTable <- if (methods::is(x, "GRanges")) {as.data.frame(S4Vectors::mcols(x), stringsAsFactors = FALSE)} else {x}
+        if (!all(c("region.set", "region.id") %in% colnames(keyTable))) {
+            stop("The region rows carry no 'region.set' and 'region.id' columns, which is what identifies a region inside a set.", call. = FALSE)
+        }
 
-    if (!all(c("region.set", "region.id") %in% colnames(keyTable))) {
-      stop("The region rows carry no 'region.set' and 'region.id' columns, which is what identifies a region inside a set.", call. = FALSE)
-    }
-
-    return(paste(as.character(keyTable$region.set), as.character(keyTable$region.id), sep = "|"))
-  } # END function
-
-
+        return(paste(as.character(keyTable$region.set), as.character(keyTable$region.id), sep = "|"))
+    } # END function
 
 
 #' @title .asGeneSetList
@@ -46,38 +47,47 @@
 #' @keywords internal
 
 .asGeneSetList <-
-  function(geneSets) {
+    function(geneSets) {
+        if (is.data.frame(geneSets)) {
+            if (ncol(geneSets) < 2) {
+                stop("The 'geneSets' parameter given as a table needs two columns, one naming the set and one naming the gene.", call. = FALSE)
+            }
 
-    if (is.data.frame(geneSets)) {
-      if (ncol(geneSets) < 2) {
-        stop("The 'geneSets' parameter given as a table needs two columns, one naming the set and one naming the gene.", call. = FALSE)
-      }
+            # The named columns win, the first two otherwise, which is the TERM2GENE order
+            setColumn <- if ("set.name" %in% colnames(geneSets)) {
+                "set.name"
+            } else {
+                colnames(geneSets)[1]
+            }
+            geneColumn <- if ("gene.id" %in% colnames(geneSets)) {
+                "gene.id"
+            } else {
+                setdiff(colnames(geneSets), setColumn)[1]
+            }
 
-      # The named columns win, the first two otherwise, which is the TERM2GENE order
-      setColumn <- if ("set.name" %in% colnames(geneSets)) {"set.name"} else {colnames(geneSets)[1]}
-      geneColumn <- if ("gene.id" %in% colnames(geneSets)) {"gene.id"} else {setdiff(colnames(geneSets), setColumn)[1]}
+            setTable <-
+                data.frame(
+                    set.name = as.character(geneSets[[setColumn]]),
+                    gene.id = as.character(geneSets[[geneColumn]]),
+                    stringsAsFactors = FALSE
+                ) %>%
+                dplyr::filter(!is.na(.data$set.name), !is.na(.data$gene.id))
 
-      setTable <-
-        data.frame(set.name = as.character(geneSets[[setColumn]]),
-                   gene.id = as.character(geneSets[[geneColumn]]),
-                   stringsAsFactors = FALSE) %>%
-        dplyr::filter(!is.na(.data$set.name), !is.na(.data$gene.id))
+            return(split(setTable$gene.id, setTable$set.name))
+        }
 
-      return(split(setTable$gene.id, setTable$set.name))
-    }
+        if (!is.list(geneSets)) {
+            stop("The 'geneSets' parameter must be a named list of gene identifiers, or a two-column table.", call. = FALSE)
+        }
 
-    if (!is.list(geneSets)) {
-      stop("The 'geneSets' parameter must be a named list of gene identifiers, or a two-column table.", call. = FALSE)
-    }
+        if (is.null(names(geneSets)) | any(is.na(names(geneSets))) | any(names(geneSets) == "")) {
+            stop("Every element of the 'geneSets' parameter must be named, the names are what the sets are reported under.", call. = FALSE)
+        }
 
-    if (is.null(names(geneSets)) | any(is.na(names(geneSets))) | any(names(geneSets) == "")) {
-      stop("Every element of the 'geneSets' parameter must be named, the names are what the sets are reported under.", call. = FALSE)
-    }
-
-    return(lapply(geneSets, function(setGenes) {unique(as.character(setGenes[!is.na(setGenes)]))}))
-  } # END function
-
-
+        return(lapply(geneSets, function(setGenes) {
+            unique(as.character(setGenes[!is.na(setGenes)]))
+        }))
+    } # END function
 
 
 #' @title geneSetsToRegionSets
@@ -112,13 +122,18 @@
 #'
 #' regionTable <- as.data.frame(SummarizedExperiment::rowRanges(counts))[1:8, 1:3]
 #' linkTable <- data.frame(regionTable,
-#'                         gene.id = c("geneA", "geneA", "geneB", "geneB",
-#'                                     "geneC", "geneC", "geneD", "geneD"))
+#'     gene.id = c(
+#'         "geneA", "geneA", "geneB", "geneB",
+#'         "geneC", "geneC", "geneD", "geneD"
+#'     )
+#' )
 #'
 #' counts <- annotateRegions(counts, linkTable = linkTable, verbose = FALSE)
 #'
-#' geneSets <- list(pathwayOne = c("geneA", "geneB"),
-#'                  pathwayTwo = c("geneC", "geneD", "geneE"))
+#' geneSets <- list(
+#'     pathwayOne = c("geneA", "geneB"),
+#'     pathwayTwo = c("geneC", "geneD", "geneE")
+#' )
 #'
 #' regionSets <- geneSetsToRegionSets(counts, geneSets = geneSets, verbose = FALSE)
 #' lengths(regionSets)
@@ -137,154 +152,167 @@
 #' @export geneSetsToRegionSets
 
 geneSetsToRegionSets <-
-  function(object,
-           geneSets,
-           minWeight = NULL,
-           linkType = NULL,
-           minRegions = 2,
-           maxRegions = NULL,
-           regionSets = NULL,
-           verbose = TRUE) {
+    function(object,
+             geneSets,
+             minWeight = NULL,
+             linkType = NULL,
+             minRegions = 2,
+             maxRegions = NULL,
+             regionSets = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        counts <- .countsOfObject(object)
+        links <- regionLinks(counts)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    counts <- .countsOfObject(object)
-    links <- regionLinks(counts)
+        if (is.null(links)) {
+            stop("The object carries no region to gene links, run annotateRegions() on it first.", call. = FALSE)
+        }
 
-    if (is.null(links)) {
-      stop("The object carries no region to gene links, run annotateRegions() on it first.", call. = FALSE)
-    }
+        geneSets <- .asGeneSetList(geneSets)
 
-    geneSets <- .asGeneSetList(geneSets)
+        if (length(geneSets) == 0) {
+            stop("The 'geneSets' parameter holds no set.", call. = FALSE)
+        }
 
-    if (length(geneSets) == 0) {
-      stop("The 'geneSets' parameter holds no set.", call. = FALSE)
-    }
+        minRegions <- as.integer(minRegions[1])
+        if (is.na(minRegions) | minRegions < 2) {
+            stop("The 'minRegions' parameter must be at least 2, a set level test cannot run on fewer regions.", call. = FALSE)
+        }
 
-    minRegions <- as.integer(minRegions[1])
-    if (is.na(minRegions) | minRegions < 2) {
-      stop("The 'minRegions' parameter must be at least 2, a set level test cannot run on fewer regions.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Links kept                    #
+        #-------------------------------#
+        # A region recorded with no gene stays in the object, and in the universe, while reaching no set
+        links <- dplyr::filter(links, !is.na(.data$gene.id))
 
-    #-------------------------------#
-    # Links kept                    #
-    #-------------------------------#
-    # A region recorded with no gene stays in the object, and in the universe, while reaching no set
-    links <- dplyr::filter(links, !is.na(.data$gene.id))
+        if (!is.null(linkType)) {
+            if (!("link.type" %in% colnames(links))) {
+                stop("The 'linkType' parameter was given but the links carry no 'link.type' column. Annotate the regions through 'txdb' or 'genes', which labels them, or leave 'linkType' at NULL.", call. = FALSE)
+            }
 
-    if (!is.null(linkType)) {
-      if (!("link.type" %in% colnames(links))) {
-        stop("The 'linkType' parameter was given but the links carry no 'link.type' column. Annotate the regions through 'txdb' or 'genes', which labels them, or leave 'linkType' at NULL.", call. = FALSE)
-      }
+            storedTypes <- unique(stats::na.omit(links$link.type))
+            absentTypes <- setdiff(linkType, storedTypes)
 
-      storedTypes <- unique(stats::na.omit(links$link.type))
-      absentTypes <- setdiff(linkType, storedTypes)
+            if (length(absentTypes) > 0) {
+                stop("The links carry no ", paste(absentTypes, collapse = " or "), " link. They hold: ",
+                    paste(storedTypes, collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      if (length(absentTypes) > 0) {
-        stop("The links carry no ", paste(absentTypes, collapse = " or "), " link. They hold: ",
-             paste(storedTypes, collapse = ", "), ".", call. = FALSE)
-      }
+            links <- dplyr::filter(links, .data$link.type %in% linkType)
+        }
 
-      links <- dplyr::filter(links, .data$link.type %in% linkType)
-    }
+        if (!is.null(minWeight)) {
+            if (!("link.weight" %in% colnames(links))) {
+                stop("The 'minWeight' parameter was given but the links carry no 'link.weight' column, so there is nothing to filter on. Annotate the regions with weighted links, or leave 'minWeight' at NULL.", call. = FALSE)
+            }
 
-    if (!is.null(minWeight)) {
-      if (!("link.weight" %in% colnames(links))) {
-        stop("The 'minWeight' parameter was given but the links carry no 'link.weight' column, so there is nothing to filter on. Annotate the regions with weighted links, or leave 'minWeight' at NULL.", call. = FALSE)
-      }
+            minWeight <- as.numeric(minWeight[1])
+            if (is.na(minWeight)) {
+                stop("The 'minWeight' parameter must be a number, or NULL.", call. = FALSE)
+            }
 
-      minWeight <- as.numeric(minWeight[1])
-      if (is.na(minWeight)) {
-        stop("The 'minWeight' parameter must be a number, or NULL.", call. = FALSE)
-      }
+            linksBefore <- nrow(links)
+            links <- dplyr::filter(links, .data$link.weight >= minWeight)
 
-      linksBefore <- nrow(links)
-      links <- dplyr::filter(links, .data$link.weight >= minWeight)
+            if (nrow(links) == 0) {
+                stop("No link carries a weight of at least ", minWeight, ", the highest one is ", max(regionLinks(counts)$link.weight, na.rm = TRUE), ".", call. = FALSE)
+            }
 
-      if (nrow(links) == 0) {
-        stop("No link carries a weight of at least ", minWeight, ", the highest one is ", max(regionLinks(counts)$link.weight, na.rm = TRUE), ".", call. = FALSE)
-      }
+            if (isTRUE(verbose)) {
+                message(linksBefore - nrow(links), " of the ", linksBefore, " links fall below a weight of ", minWeight, " and are not followed.")
+            }
+        }
 
-      if (isTRUE(verbose)) {
-        message(linksBefore - nrow(links), " of the ", linksBefore, " links fall below a weight of ", minWeight, " and are not followed.")
-      }
-    }
+        #-------------------------------#
+        # Regions reached by a link     #
+        #-------------------------------#
+        regions <- SummarizedExperiment::rowRanges(counts)
+        rowTable <- data.frame(
+            region = .regionKeys(regions),
+            set.key = .setKeys(regions),
+            region.set = as.character(S4Vectors::mcols(regions)$region.set),
+            stringsAsFactors = FALSE
+        )
 
-    #-------------------------------#
-    # Regions reached by a link     #
-    #-------------------------------#
-    regions <- SummarizedExperiment::rowRanges(counts)
-    rowTable <- data.frame(region = .regionKeys(regions),
-                           set.key = .setKeys(regions),
-                           region.set = as.character(S4Vectors::mcols(regions)$region.set),
-                           stringsAsFactors = FALSE)
+        if (!is.null(regionSets)) {
+            absentSets <- setdiff(regionSets, unique(rowTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
 
-    if (!is.null(regionSets)) {
-      absentSets <- setdiff(regionSets, unique(rowTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
+            rowTable <- dplyr::filter(rowTable, .data$region.set %in% regionSets)
+        }
 
-      rowTable <- dplyr::filter(rowTable, .data$region.set %in% regionSets)
-    }
+        # The same coordinates can be held by several sets, so a link reaches every row carrying them
+        # rather than the first of them, which is what match() would have given
+        keysByRegion <- split(rowTable$set.key, rowTable$region)
 
-    # The same coordinates can be held by several sets, so a link reaches every row carrying them
-    # rather than the first of them, which is what match() would have given
-    keysByRegion <- split(rowTable$set.key, rowTable$region)
+        geneToKeys <- split(links$region, links$gene.id)
+        geneToKeys <- lapply(
+            geneToKeys,
+            function(linkedRegions) {
+                unique(unlist(keysByRegion[intersect(linkedRegions, names(keysByRegion))], use.names = FALSE))
+            }
+        )
+        geneToKeys <- geneToKeys[lengths(geneToKeys) > 0]
 
-    geneToKeys <- split(links$region, links$gene.id)
-    geneToKeys <- lapply(geneToKeys,
-                         function(linkedRegions) {
-                           unique(unlist(keysByRegion[intersect(linkedRegions, names(keysByRegion))], use.names = FALSE))
-                         })
-    geneToKeys <- geneToKeys[lengths(geneToKeys) > 0]
+        #-------------------------------#
+        # One region set per gene set   #
+        #-------------------------------#
+        setKeyList <- lapply(geneSets, function(setGenes) {
+            unique(unlist(geneToKeys[intersect(setGenes, names(geneToKeys))], use.names = FALSE))
+        })
 
-    #-------------------------------#
-    # One region set per gene set   #
-    #-------------------------------#
-    setKeyList <- lapply(geneSets, function(setGenes) {unique(unlist(geneToKeys[intersect(setGenes, names(geneToKeys))], use.names = FALSE))})
+        summaryTable <-
+            data.frame(
+                set.name = names(geneSets),
+                n.genes = lengths(geneSets),
+                n.genes.linked = vapply(geneSets, function(setGenes) {
+                    length(intersect(setGenes, names(geneToKeys)))
+                }, integer(1)),
+                n.regions = lengths(setKeyList),
+                stringsAsFactors = FALSE,
+                row.names = NULL
+            )
 
-    summaryTable <-
-      data.frame(set.name = names(geneSets),
-                 n.genes = lengths(geneSets),
-                 n.genes.linked = vapply(geneSets, function(setGenes) {length(intersect(setGenes, names(geneToKeys)))}, integer(1)),
-                 n.regions = lengths(setKeyList),
-                 stringsAsFactors = FALSE,
-                 row.names = NULL)
+        #-------------------------------#
+        # Sets of a usable size         #
+        #-------------------------------#
+        keptSets <- summaryTable$n.regions >= minRegions
 
-    #-------------------------------#
-    # Sets of a usable size         #
-    #-------------------------------#
-    keptSets <- summaryTable$n.regions >= minRegions
+        if (!is.null(maxRegions)) {
+            maxRegions <- as.integer(maxRegions[1])
+            if (is.na(maxRegions) | maxRegions < minRegions) {
+                stop("The 'maxRegions' parameter must be at least as large as 'minRegions'.", call. = FALSE)
+            }
+            keptSets <- keptSets & summaryTable$n.regions <= maxRegions
+        }
 
-    if (!is.null(maxRegions)) {
-      maxRegions <- as.integer(maxRegions[1])
-      if (is.na(maxRegions) | maxRegions < minRegions) {
-        stop("The 'maxRegions' parameter must be at least as large as 'minRegions'.", call. = FALSE)
-      }
-      keptSets <- keptSets & summaryTable$n.regions <= maxRegions
-    }
+        if (!any(keptSets)) {
+            stop("Not one gene set reaches ", minRegions, " regions. The links reach ", length(geneToKeys),
+                " genes in all, check that the identifiers of 'geneSets' follow the same namespace as the links.",
+                call. = FALSE
+            )
+        }
 
-    if (!any(keptSets)) {
-      stop("Not one gene set reaches ", minRegions, " regions. The links reach ", length(geneToKeys),
-           " genes in all, check that the identifiers of 'geneSets' follow the same namespace as the links.", call. = FALSE)
-    }
+        setKeyList <- setKeyList[keptSets]
+        summaryTable <- summaryTable[keptSets, , drop = FALSE]
 
-    setKeyList <- setKeyList[keptSets]
-    summaryTable <- summaryTable[keptSets, , drop = FALSE]
+        if (isTRUE(verbose)) {
+            message(
+                length(setKeyList), " of the ", length(geneSets), " gene sets reach between ",
+                min(summaryTable$n.regions), " and ", max(summaryTable$n.regions), " regions and are returned."
+            )
+        }
 
-    if (isTRUE(verbose)) {
-      message(length(setKeyList), " of the ", length(geneSets), " gene sets reach between ",
-              min(summaryTable$n.regions), " and ", max(summaryTable$n.regions), " regions and are returned.")
-    }
+        attr(setKeyList, "geneSetSummary") <- summaryTable
 
-    attr(setKeyList, "geneSetSummary") <- summaryTable
-
-    return(setKeyList)
-  } # END function
-
-
+        return(setKeyList)
+    } # END function
 
 
 #' @title .setIndexList
@@ -304,56 +332,63 @@ geneSetsToRegionSets <-
 #' @keywords internal
 
 .setIndexList <-
-  function(regionStats,
-           regionSets = NULL) {
+    function(regionStats,
+             regionSets = NULL) {
+        #-------------------------------#
+        # Sets of the object            #
+        #-------------------------------#
+        if (is.null(regionSets) | is.character(regionSets)) {
+            setNames <- unique(as.character(regionStats$region.set))
 
-    #-------------------------------#
-    # Sets of the object            #
-    #-------------------------------#
-    if (is.null(regionSets) | is.character(regionSets)) {
-      setNames <- unique(as.character(regionStats$region.set))
+            if (!is.null(regionSets)) {
+                absentSets <- setdiff(regionSets, setNames)
+                if (length(absentSets) > 0) {
+                    stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+                }
+                setNames <- as.character(regionSets)
+            }
 
-      if (!is.null(regionSets)) {
-        absentSets <- setdiff(regionSets, setNames)
-        if (length(absentSets) > 0) {
-          stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            return(stats::setNames(lapply(setNames, function(setName) {
+                which(regionStats$region.set == setName)
+            }), setNames))
         }
-        setNames <- as.character(regionSets)
-      }
 
-      return(stats::setNames(lapply(setNames, function(setName) {which(regionStats$region.set == setName)}), setNames))
-    }
+        #-------------------------------#
+        # Sets supplied by the user     #
+        #-------------------------------#
+        if (!is.list(regionSets)) {
+            stop("The 'regionSets' parameter must be a character vector with the names of the sets, or a named list of region keys.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Sets supplied by the user     #
-    #-------------------------------#
-    if (!is.list(regionSets)) {
-      stop("The 'regionSets' parameter must be a character vector with the names of the sets, or a named list of region keys.", call. = FALSE)
-    }
+        if (is.null(names(regionSets)) | any(is.na(names(regionSets))) | any(names(regionSets) == "")) {
+            stop("Every element of the 'regionSets' parameter must be named, the names are what the sets are reported under.", call. = FALSE)
+        }
 
-    if (is.null(names(regionSets)) | any(is.na(names(regionSets))) | any(names(regionSets) == "")) {
-      stop("Every element of the 'regionSets' parameter must be named, the names are what the sets are reported under.", call. = FALSE)
-    }
+        rowKeys <- .setKeys(regionStats)
 
-    rowKeys <- .setKeys(regionStats)
+        setIndexList <- lapply(regionSets, function(setKeys) {
+            which(rowKeys %in% as.character(setKeys))
+        })
+        names(setIndexList) <- names(regionSets)
 
-    setIndexList <- lapply(regionSets, function(setKeys) {which(rowKeys %in% as.character(setKeys))})
-    names(setIndexList) <- names(regionSets)
+        # A set that reaches nothing is a namespace mismatch rather than an empty set, and it is worth saying so once
+        emptySets <- lengths(setIndexList) == 0
 
-    # A set that reaches nothing is a namespace mismatch rather than an empty set, and it is worth saying so once
-    emptySets <- lengths(setIndexList) == 0
+        if (all(emptySets)) {
+            stop("Not one region of the supplied sets matches a row of the object. The sets name regions such as ",
+                paste(utils::head(unlist(regionSets, use.names = FALSE), 2), collapse = ", "), " while the rows are named ",
+                paste(utils::head(rowKeys, 2), collapse = ", "), ". Build the sets with geneSetsToRegionSets() on this object.",
+                call. = FALSE
+            )
+        }
 
-    if (all(emptySets)) {
-      stop("Not one region of the supplied sets matches a row of the object. The sets name regions such as ",
-           paste(utils::head(unlist(regionSets, use.names = FALSE), 2), collapse = ", "), " while the rows are named ",
-           paste(utils::head(rowKeys, 2), collapse = ", "), ". Build the sets with geneSetsToRegionSets() on this object.", call. = FALSE)
-    }
+        if (any(emptySets)) {
+            warning(sum(emptySets), " of the supplied sets match no row of the object and are dropped: ",
+                paste(utils::head(names(setIndexList)[emptySets], 3), collapse = ", "), ".",
+                call. = FALSE
+            )
+            setIndexList <- setIndexList[!emptySets]
+        }
 
-    if (any(emptySets)) {
-      warning(sum(emptySets), " of the supplied sets match no row of the object and are dropped: ",
-              paste(utils::head(names(setIndexList)[emptySets], 3), collapse = ", "), ".", call. = FALSE)
-      setIndexList <- setIndexList[!emptySets]
-    }
-
-    return(setIndexList)
-  } # END function
+        return(setIndexList)
+    } # END function

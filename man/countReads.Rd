@@ -29,7 +29,7 @@ countReads(
   countInput = TRUE,
   summits = NULL,
   summitSource = "reads",
-  nThreads = 1,
+  BPPARAM = NULL,
   progressBar = interactive(),
   verbose = TRUE
 )
@@ -83,14 +83,14 @@ countReads(
 
 \item{summitSource}{String with where the summits are taken from: \code{"reads"}, the highest point of the fragment pileup of the samples, or \code{"peaks"}, the summits written by the peak caller in the narrowPeak files of a consensus built by \code{\link{loadConsensusPeaks}}. Default: \code{"reads"}.}
 
-\item{nThreads}{Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: \code{1}.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. The files are cut into pieces of at most 50 Mb, shared among the workers, so even a single file benefits from several of them. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
-\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when \code{verbose = TRUE}. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
+\item{progressBar}{Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the workers hand them back, and it is drawn only when \code{verbose = TRUE}. A \code{BPPARAM} given as a \code{BiocParallelParam} object keeps its own \code{progressbar} setting. Default: \code{interactive()}, which keeps it out of scripts and rendered documents.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist} as \code{\link{makeGreylist}} returned it. The lists applied, here or before, are in the \code{blacklist} and \code{greylist} slots.
+A \code{RegionSetDE.counts} object with one row per region, or per tile, and one column per sample. The library sizes are stored in the \code{library.size} column of the \code{colData}, the set membership in the \code{region.set} column of the \code{rowData}, and the length the single-end reads were extended to in \code{fragment.length} (\code{NA} for paired-end samples). With inputs, the \code{input} assay holds for every sample the counts of its input over the same rows (\code{NA} for a sample without one), and the \code{colData} gains \code{input.id} and \code{input.library.size}. With \code{summits}, the \code{rowData} gains \code{summit}, the position of the summit of every region. When reads were discarded, the \code{colData} gains \code{discarded.reads}, the fragments each sample lost to the discarded regions, and \code{metadata(x)$discard.regions} holds those regions, which \code{\link{countBackground}}, \code{\link{countGreenlist}} and \code{\link{computeProfiles}} read. A greylist built by this call is kept in \code{metadata(x)$greylist} as \code{\link{makeGreylist}} returned it. The lists applied, here or before, are in the \code{blacklist} and \code{greylist} slots (read with \code{\link{greylistRanges}}).
 }
 \description{
 Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the fragment length before the overlap is evaluated. The regions can be recentred on the summit of the signal, as DiffBind does with the peaks of a consensus, or cut into tiles of fixed width, in which case each tile becomes a row of the resulting object. The input libraries of the samples, when there are any, are counted over the same rows and stored beside the counts.
@@ -130,10 +130,11 @@ head(SummarizedExperiment::assay(counts, "input"), 3)
 
 # The same files given one by one, with the annotation as a table and no input
 counts <- countReads(peakRegions,
-                     bamFiles = sampleSheet$bam,
-                     sampleNames = sampleSheet$sample,
-                     sampleMetadata = sampleSheet[, c("sample", "condition")],
-                     verbose = FALSE)
+    bamFiles = sampleSheet$bam,
+    sampleNames = sampleSheet$sample,
+    sampleMetadata = sampleSheet[, c("sample", "condition")],
+    verbose = FALSE
+)
 
 # The ENCODE blacklist on the way: its regions are removed and its reads ignored
 blacklist <- loadBlacklist("hg38", verbose = FALSE)

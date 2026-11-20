@@ -14,26 +14,23 @@
 #' @keywords internal
 
 .resolveLinkWeights <-
-  function(linkTable,
-           decay = 5000) {
+    function(linkTable,
+             decay = 5000) {
+        ### A weight that was measured or predicted for the link beats anything derived from the coordinates
+        if ("link.weight" %in% colnames(linkTable)) {
+            return(list(weight = as.numeric(linkTable$link.weight), source = "link.weight"))
+        }
 
-    ### A weight that was measured or predicted for the link beats anything derived from the coordinates
-    if ("link.weight" %in% colnames(linkTable)) {
-      return(list(weight = as.numeric(linkTable$link.weight), source = "link.weight"))
-    }
+        ### Failing that, the distance to the start site, which is a guess about contact and not a measure of it
+        if ("distance.to.tss" %in% colnames(linkTable)) {
+            decayedWeight <- exp(-abs(as.numeric(linkTable$distance.to.tss)) / decay)
+            decayedWeight[is.na(decayedWeight)] <- 0
 
-    ### Failing that, the distance to the start site, which is a guess about contact and not a measure of it
-    if ("distance.to.tss" %in% colnames(linkTable)) {
-      decayedWeight <- exp(-abs(as.numeric(linkTable$distance.to.tss)) / decay)
-      decayedWeight[is.na(decayedWeight)] <- 0
+            return(list(weight = decayedWeight, source = "distance"))
+        }
 
-      return(list(weight = decayedWeight, source = "distance"))
-    }
-
-    return(list(weight = rep(1, nrow(linkTable)), source = "none"))
-  } # END function
-
-
+        return(list(weight = rep(1, nrow(linkTable)), source = "none"))
+    } # END function
 
 
 #' @title aggregateToGenes
@@ -73,25 +70,31 @@
 #'
 #' \code{score} is the ranked gene-level statistic a GSEA takes, so \code{fgsea::fgseaMultilevel(pathways = geneSets, stats = setNames(score, gene.id))} is the whole of that route; ranking on \code{score.magnitude} asks which sets were remodelled rather than which shifted, and \code{sign(score) * -log10(p.value)} ranks on significance rather than on effect. No wrapper for it is provided, since the call is one line and wrapping it would add a dependency without adding a decision. What does need stating in the methods is that the genes of the table are not independent, so the permutation behind any such test is anti-conservative.
 #'
-#' The weights come from the links. A weight measured or predicted for the link itself is used as it is, whatever it measures, which is what \code{weightSource} in \code{\link{annotateRegions}} records. Failing that, the distance to the start site is turned into \code{exp(-d / decay)}, which is a guess about contact rather than a measure of it. Failing both, every region of a gene counts the same. Which of the three applied is in the \code{weighting} slot and is printed by \code{show}.
+#' The weights come from the links. A weight measured or predicted for the link itself is used as it is, whatever it measures, which is what \code{weightSource} in \code{\link{annotateRegions}} records. Failing that, the distance to the start site is turned into \code{exp(-d / decay)}, which is a guess about contact rather than a measure of it. Failing both, every region of a gene counts the same. Which of the three applied is in the \code{weighting} slot (read with \code{\link{geneWeighting}}) and is printed by \code{show}.
 #'
 #' Two things this does not fix, both worth a line in the methods. Genes are not independent here: a region linked to three genes contributes to all three, so the rows of the table share data and any test run on them afterwards is anti-conservative to an unquantified degree. And the number of regions a gene carries depends on the length of its regulatory locus, so a gene set rich in long-locus genes is easier to hit; a count-based method built for that bias, \code{chipenrich} or \code{polyenrich}, is the comparison to run when it matters.
 #'
 #' A tiled result that was not combined back to regions is refused, since its rows are tiles and a gene would then be weighted by how finely its regions were cut. Test it with \code{combine = TRUE} first.
+#'
+#' @references
+#' Simes R.J. (1986). An improved Bonferroni procedure for multiple tests of significance. \emph{Biometrika} 73(3):751-754.
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #' fit <- loadExampleData("fit", verbose = FALSE)
 #'
 #' # Links of your own, four regions per gene
-#' regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fit@counts))[, 1:3]
+#' regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fitCounts(fit)))[, 1:3]
 #' geneNumber <- ceiling(nrow(regionTable) / 4)
 #'
 #' annotatedFit <- annotateRegions(fit,
-#'                                 linkTable = data.frame(regionTable,
-#'                                                        gene.id = rep(paste0("gene", seq_len(geneNumber)),
-#'                                                                      each = 4)[seq_len(nrow(regionTable))]),
-#'                                 verbose = FALSE)
+#'     linkTable = data.frame(regionTable,
+#'         gene.id = rep(paste0("gene", seq_len(geneNumber)),
+#'             each = 4
+#'         )[seq_len(nrow(regionTable))]
+#'     ),
+#'     verbose = FALSE
+#' )
 #'
 #' results <- testRegions(annotatedFit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 #'
@@ -114,202 +117,229 @@
 #' @export aggregateToGenes
 
 aggregateToGenes <-
-  function(results,
-           method = "simes",
-           decay = 5000,
-           linkType = NULL,
-           regionSets = NULL,
-           adjustMethod = "BH",
-           verbose = TRUE) {
+    function(results,
+             method = "simes",
+             decay = 5000,
+             linkType = NULL,
+             regionSets = NULL,
+             adjustMethod = "BH",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (methods::is(results, "RegionSetDE.resultsList")) {
+            stop("The 'results' parameter holds several contrasts. Take the one to aggregate out of it first, with results[[\"", names(results)[1], "\"]].", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (methods::is(results, "RegionSetDE.resultsList")) {
-      stop("The 'results' parameter holds several contrasts. Take the one to aggregate out of it first, with results[[\"", names(results@results)[1], "\"]].", call. = FALSE)
-    }
+        if (!methods::is(results, "RegionSetDE.results")) {
+            stop("The 'results' parameter must be a RegionSetDE.results object returned by testRegions().", call. = FALSE)
+        }
 
-    if (!methods::is(results, "RegionSetDE.results")) {
-      stop("The 'results' parameter must be a RegionSetDE.results object returned by testRegions().", call. = FALSE)
-    }
+        method <- unique(tolower(as.character(method)))
+        if (length(method) == 0 | !all(method %in% c("simes", "potential"))) {
+            stop("The 'method' parameter must contain only 'simes' and 'potential'.", call. = FALSE)
+        }
 
-    method <- unique(tolower(as.character(method)))
-    if (length(method) == 0 | !all(method %in% c("simes", "potential"))) {
-      stop("The 'method' parameter must contain only 'simes' and 'potential'.", call. = FALSE)
-    }
+        decay <- as.numeric(decay[1])
+        if (is.na(decay) | decay <= 0) {
+            stop("The 'decay' parameter must be a positive number.", call. = FALSE)
+        }
 
-    decay <- as.numeric(decay[1])
-    if (is.na(decay) | decay <= 0) {
-      stop("The 'decay' parameter must be a positive number.", call. = FALSE)
-    }
+        # Rows that are tiles would weight a gene by how finely its regions were cut rather than by how many it has
+        if (identical(countingLevel(results), "tile") & isFALSE(tileCombination(results)$applied)) {
+            stop("The rows of this result are tiles rather than regions. Run testRegions() with 'combine = TRUE' before aggregating to genes.", call. = FALSE)
+        }
 
-    # Rows that are tiles would weight a gene by how finely its regions were cut rather than by how many it has
-    if (identical(results@counting.level, "tile") & isFALSE(results@combination$applied)) {
-      stop("The rows of this result are tiles rather than regions. Run testRegions() with 'combine = TRUE' before aggregating to genes.", call. = FALSE)
-    }
+        links <- regionLinks(results)
+        if (is.null(links)) {
+            stop("The object carries no region to gene links, run annotateRegions() on it first.", call. = FALSE)
+        }
 
-    links <- regionLinks(results)
-    if (is.null(links)) {
-      stop("The object carries no region to gene links, run annotateRegions() on it first.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Regions entering the table    #
+        #-------------------------------#
+        regionTable <- resultsTable(results)
 
-    #-------------------------------#
-    # Regions entering the table    #
-    #-------------------------------#
-    regionTable <- results@results
+        if (!all(c("region.set", "log2FC", "p.value", "diff.status") %in% colnames(regionTable))) {
+            stop("The region table lacks the columns the aggregation reads: region.set, log2FC, p.value and diff.status.", call. = FALSE)
+        }
 
-    if (!all(c("region.set", "log2FC", "p.value", "diff.status") %in% colnames(regionTable))) {
-      stop("The region table lacks the columns the aggregation reads: region.set, log2FC, p.value and diff.status.", call. = FALSE)
-    }
+        if (!is.null(regionSets)) {
+            absentSets <- setdiff(regionSets, unique(as.character(regionTable$region.set)))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            regionTable <- dplyr::filter(regionTable, .data$region.set %in% regionSets)
+        }
 
-    if (!is.null(regionSets)) {
-      absentSets <- setdiff(regionSets, unique(as.character(regionTable$region.set)))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      regionTable <- dplyr::filter(regionTable, .data$region.set %in% regionSets)
-    }
+        regionTable$region <- .regionKeys(regionTable)
 
-    regionTable$region <- .regionKeys(regionTable)
+        #-------------------------------#
+        # One row per link              #
+        #-------------------------------#
+        # A region linked to three genes reaches all three, so the rows below are links and not regions
+        usableLinks <- dplyr::filter(links, !is.na(.data$gene.id), .data$region %in% regionTable$region)
 
-    #-------------------------------#
-    # One row per link              #
-    #-------------------------------#
-    # A region linked to three genes reaches all three, so the rows below are links and not regions
-    usableLinks <- dplyr::filter(links, !is.na(.data$gene.id), .data$region %in% regionTable$region)
+        if (!is.null(linkType)) {
+            if (!("link.type" %in% colnames(usableLinks))) {
+                stop("The 'linkType' parameter was given but the links carry no 'link.type' column. Annotate the regions through 'txdb' or 'genes', which labels them, or leave 'linkType' at NULL.", call. = FALSE)
+            }
 
-    if (!is.null(linkType)) {
-      if (!("link.type" %in% colnames(usableLinks))) {
-        stop("The 'linkType' parameter was given but the links carry no 'link.type' column. Annotate the regions through 'txdb' or 'genes', which labels them, or leave 'linkType' at NULL.", call. = FALSE)
-      }
+            storedTypes <- unique(stats::na.omit(usableLinks$link.type))
+            absentTypes <- setdiff(linkType, storedTypes)
 
-      storedTypes <- unique(stats::na.omit(usableLinks$link.type))
-      absentTypes <- setdiff(linkType, storedTypes)
+            if (length(absentTypes) > 0) {
+                stop("The links carry no ", paste(absentTypes, collapse = " or "), " link. They hold: ",
+                    paste(storedTypes, collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      if (length(absentTypes) > 0) {
-        stop("The links carry no ", paste(absentTypes, collapse = " or "), " link. They hold: ",
-             paste(storedTypes, collapse = ", "), ".", call. = FALSE)
-      }
+            usableLinks <- dplyr::filter(usableLinks, .data$link.type %in% linkType)
+        }
 
-      usableLinks <- dplyr::filter(usableLinks, .data$link.type %in% linkType)
-    }
+        if (nrow(usableLinks) == 0) {
+            stop("Not one link falls on a region of this result. Check that the links were built on the same object, and that 'regionSets' has not excluded all of them.", call. = FALSE)
+        }
 
-    if (nrow(usableLinks) == 0) {
-      stop("Not one link falls on a region of this result. Check that the links were built on the same object, and that 'regionSets' has not excluded all of them.", call. = FALSE)
-    }
+        matchedRows <- match(usableLinks$region, regionTable$region)
 
-    matchedRows <- match(usableLinks$region, regionTable$region)
+        linkStatistics <-
+            data.frame(
+                gene.id = usableLinks$gene.id,
+                gene.symbol = if ("gene.symbol" %in% colnames(usableLinks)) {
+                    usableLinks$gene.symbol
+                } else {
+                    NA_character_
+                },
+                log2FC = regionTable$log2FC[matchedRows],
+                p.value = regionTable$p.value[matchedRows],
+                diff.status = as.character(regionTable$diff.status[matchedRows]),
+                stringsAsFactors = FALSE
+            )
 
-    linkStatistics <-
-      data.frame(gene.id = usableLinks$gene.id,
-                 gene.symbol = if ("gene.symbol" %in% colnames(usableLinks)) {usableLinks$gene.symbol} else {NA_character_},
-                 log2FC = regionTable$log2FC[matchedRows],
-                 p.value = regionTable$p.value[matchedRows],
-                 diff.status = as.character(regionTable$diff.status[matchedRows]),
-                 stringsAsFactors = FALSE)
+        #-------------------------------#
+        # Simes over the regions        #
+        #-------------------------------#
+        # combineTests reads the grouping as a factor, its level order is what the output rows follow
+        geneGroups <- factor(linkStatistics$gene.id, levels = unique(linkStatistics$gene.id))
 
-    #-------------------------------#
-    # Simes over the regions        #
-    #-------------------------------#
-    # combineTests reads the grouping as a factor, its level order is what the output rows follow
-    geneGroups <- factor(linkStatistics$gene.id, levels = unique(linkStatistics$gene.id))
+        combinedTable <- csaw::combineTests(
+            ids = geneGroups,
+            tab = data.frame(
+                logFC = linkStatistics$log2FC,
+                PValue = linkStatistics$p.value,
+                stringsAsFactors = FALSE
+            ),
+            pval.col = "PValue",
+            fc.col = "logFC"
+        )
 
-    combinedTable <- csaw::combineTests(ids = geneGroups,
-                                        tab = data.frame(logFC = linkStatistics$log2FC,
-                                                         PValue = linkStatistics$p.value,
-                                                         stringsAsFactors = FALSE),
-                                        pval.col = "PValue",
-                                        fc.col = "logFC")
+        combinedTable <- as.data.frame(combinedTable)
+        geneIds <- rownames(combinedTable)
 
-    combinedTable <- as.data.frame(combinedTable)
-    geneIds <- rownames(combinedTable)
+        #-------------------------------#
+        # Directions of the regions     #
+        #-------------------------------#
+        # Read from diff.status rather than recomputed, so the gene table and the region table cannot
+        # disagree about what counts as up, updateThresholds() included
+        upCounts <- rowsum(x = as.numeric(linkStatistics$diff.status == "up"), group = as.character(geneGroups))[geneIds, 1]
+        downCounts <- rowsum(x = as.numeric(linkStatistics$diff.status == "down"), group = as.character(geneGroups))[geneIds, 1]
 
-    #-------------------------------#
-    # Directions of the regions     #
-    #-------------------------------#
-    # Read from diff.status rather than recomputed, so the gene table and the region table cannot
-    # disagree about what counts as up, updateThresholds() included
-    upCounts <- rowsum(x = as.numeric(linkStatistics$diff.status == "up"), group = as.character(geneGroups))[geneIds, 1]
-    downCounts <- rowsum(x = as.numeric(linkStatistics$diff.status == "down"), group = as.character(geneGroups))[geneIds, 1]
+        geneDirection <- ifelse(upCounts > 0 & downCounts > 0, "mixed",
+            ifelse(upCounts > 0, "up",
+                ifelse(downCounts > 0, "down", "unchanged")
+            )
+        )
 
-    geneDirection <- ifelse(upCounts > 0 & downCounts > 0, "mixed",
-                            ifelse(upCounts > 0, "up",
-                                   ifelse(downCounts > 0, "down", "unchanged")))
+        symbolByGene <- linkStatistics$gene.symbol[match(geneIds, linkStatistics$gene.id)]
 
-    symbolByGene <- linkStatistics$gene.symbol[match(geneIds, linkStatistics$gene.id)]
+        geneTable <- data.frame(
+            gene.id = geneIds,
+            gene.symbol = symbolByGene,
+            n.regions = as.integer(combinedTable$num.tests),
+            n.up = as.integer(upCounts),
+            n.down = as.integer(downCounts),
+            direction = geneDirection,
+            stringsAsFactors = FALSE,
+            row.names = NULL
+        )
 
-    geneTable <- data.frame(gene.id = geneIds,
-                            gene.symbol = symbolByGene,
-                            n.regions = as.integer(combinedTable$num.tests),
-                            n.up = as.integer(upCounts),
-                            n.down = as.integer(downCounts),
-                            direction = geneDirection,
-                            stringsAsFactors = FALSE,
-                            row.names = NULL)
+        if ("simes" %in% method) {
+            geneTable$log2FC <- linkStatistics$log2FC[combinedTable$rep.test]
+            geneTable$p.value <- combinedTable$PValue
+            geneTable$FDR <- stats::p.adjust(combinedTable$PValue, method = adjustMethod)
+        }
 
-    if ("simes" %in% method) {
-      geneTable$log2FC <- linkStatistics$log2FC[combinedTable$rep.test]
-      geneTable$p.value <- combinedTable$PValue
-      geneTable$FDR <- stats::p.adjust(combinedTable$PValue, method = adjustMethod)
-    }
+        #-------------------------------#
+        # Regulatory potential          #
+        #-------------------------------#
+        weighting <- NA_character_
 
-    #-------------------------------#
-    # Regulatory potential          #
-    #-------------------------------#
-    weighting <- NA_character_
+        if ("potential" %in% method) {
+            linkWeights <- .resolveLinkWeights(linkTable = usableLinks, decay = decay)
+            weighting <- linkWeights$source
 
-    if ("potential" %in% method) {
-      linkWeights <- .resolveLinkWeights(linkTable = usableLinks, decay = decay)
-      weighting <- linkWeights$source
+            weightedSum <- rowsum(x = linkWeights$weight * linkStatistics$log2FC, group = as.character(geneGroups))[geneIds, 1]
+            magnitudeSum <- rowsum(x = linkWeights$weight * abs(linkStatistics$log2FC), group = as.character(geneGroups))[geneIds, 1]
 
-      weightedSum <- rowsum(x = linkWeights$weight * linkStatistics$log2FC, group = as.character(geneGroups))[geneIds, 1]
-      magnitudeSum <- rowsum(x = linkWeights$weight * abs(linkStatistics$log2FC), group = as.character(geneGroups))[geneIds, 1]
+            geneTable$score <- as.numeric(weightedSum)
+            geneTable$score.magnitude <- as.numeric(magnitudeSum)
+        }
 
-      geneTable$score <- as.numeric(weightedSum)
-      geneTable$score.magnitude <- as.numeric(magnitudeSum)
-    }
+        #-------------------------------#
+        # Order and assemble            #
+        #-------------------------------#
+        geneTable <-
+            if ("simes" %in% method) {
+                dplyr::arrange(geneTable, .data$p.value)
+            } else {
+                dplyr::arrange(geneTable, dplyr::desc(abs(.data$score)))
+            }
 
-    #-------------------------------#
-    # Order and assemble            #
-    #-------------------------------#
-    geneTable <-
-      if ("simes" %in% method) {
-        dplyr::arrange(geneTable, .data$p.value)
-      } else {
-        dplyr::arrange(geneTable, dplyr::desc(abs(.data$score)))
-      }
+        rownames(geneTable) <- NULL
 
-    rownames(geneTable) <- NULL
+        if (isTRUE(verbose)) {
+            message(
+                nrow(geneTable), " genes aggregated from ", nrow(usableLinks), " links over ",
+                length(unique(usableLinks$region)), " regions, of which ",
+                sum(geneTable$direction == "mixed"), " are reached by regions moving both ways."
+            )
+        }
 
-    if (isTRUE(verbose)) {
-      message(nrow(geneTable), " genes aggregated from ", nrow(usableLinks), " links over ",
-              length(unique(usableLinks$region)), " regions, of which ",
-              sum(geneTable$direction == "mixed"), " are reached by regions moving both ways.")
-    }
+        geneResults <- .newObject(
+            Class = "RegionSetDE.geneResults",
+            results = geneTable,
+            contrast = contrastName(results),
+            method = method,
+            links = usableLinks,
+            weighting = if (is.na(weighting)) {
+                "none"
+            } else {
+                weighting
+            },
+            engine = fitEngine(results),
+            thresholds = c(thresholdInfo(results), list(adjust.method = adjustMethod, decay = decay)),
+            blacklist = blacklistRanges(results),
+            greylist = greylistRanges(results),
+            whitelist = whitelistRanges(results),
+            genome.assembly = genomeAssembly(results),
+            seqlevels.style = chromosomeStyle(results),
+            filtering.log = filteringLog(results),
+            parameters = c(
+                parameterLog(results),
+                list(aggregateToGenes = list(
+                    method = method,
+                    weighting = weighting,
+                    decay = decay,
+                    linkType = linkType,
+                    regionSets = regionSets,
+                    adjustMethod = adjustMethod,
+                    n.genes = nrow(geneTable),
+                    n.links = nrow(usableLinks)
+                ))
+            )
+        )
 
-    geneResults <- methods::new(Class = "RegionSetDE.geneResults",
-                                results = geneTable,
-                                contrast = results@contrast,
-                                method = method,
-                                links = usableLinks,
-                                weighting = if (is.na(weighting)) {"none"} else {weighting},
-                                engine = results@engine,
-                                thresholds = c(results@thresholds, list(adjust.method = adjustMethod, decay = decay)),
-                                blacklist = results@blacklist,
-                                greylist = results@greylist,
-                                whitelist = results@whitelist,
-                                genome.assembly = results@genome.assembly,
-                                seqlevels.style = results@seqlevels.style,
-                                filtering.log = results@filtering.log,
-                                parameters = c(results@parameters,
-                                               list(aggregateToGenes = list(method = method,
-                                                                            weighting = weighting,
-                                                                            decay = decay,
-                                                                            linkType = linkType,
-                                                                            regionSets = regionSets,
-                                                                            adjustMethod = adjustMethod,
-                                                                            n.genes = nrow(geneTable),
-                                                                            n.links = nrow(usableLinks)))))
-
-    return(geneResults)
-  } # END function
+        return(geneResults)
+    } # END function

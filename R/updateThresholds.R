@@ -10,7 +10,7 @@
 #' @param contrast Character vector with the names or the positions of the contrasts to update, when \code{results} holds several of them. Default: \code{NULL}, all of them.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return An object of the same class as \code{results}, with the new labels in \code{diff.status} and the new cut-offs in the \code{thresholds} slot and in the parameters recorded for the test. The previous cut-offs are kept in \code{parameters$updateThresholds}.
+#' @return An object of the same class as \code{results}, with the new labels in \code{diff.status} and the new cut-offs in the \code{thresholds} slot (read with \code{\link{thresholdInfo}}) and in the parameters recorded for the test. The previous cut-offs are kept in \code{parameters$updateThresholds}.
 #'
 #' @details The cut-offs only decide the labels. The p-values, the adjusted p-values and the fold changes come from the model and do not move, which is why nothing has to be fitted or tested again. What does need a new test is \code{lfcThreshold} of \code{\link{testRegions}}, which moves the fold change inside the test itself and changes the p-values; it stays as it was and is reported next to the new cut-offs.
 #'
@@ -40,69 +40,71 @@
 #' @export updateThresholds
 
 updateThresholds <-
-  function(results,
-           FDR = NULL,
-           log2FC = NULL,
-           contrast = NULL,
-           verbose = TRUE) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!is.null(FDR) && (!is.numeric(FDR) | length(FDR) != 1 || is.na(FDR) || FDR <= 0 || FDR > 1)) {
-      stop("The 'FDR' parameter must be a single number above 0 and not above 1.", call. = FALSE)
-    }
-
-    if (!is.null(log2FC) && (!is.numeric(log2FC) | length(log2FC) != 1 || is.na(log2FC) || log2FC < 0)) {
-      stop("The 'log2FC' parameter must be a single number of at least 0.", call. = FALSE)
-    }
-
-    if (is.null(FDR) & is.null(log2FC)) {
-      stop("Give at least one new cut-off, 'FDR' or 'log2FC'.", call. = FALSE)
-    }
-
-    #------------------------#
-    # One contrast or many   #
-    #------------------------#
-    if (methods::is(results, "RegionSetDE.results") | methods::is(results, "RegionSetDE.setResults")) {
-      if (!is.null(contrast)) {
-        stop("The object holds a single contrast, leave 'contrast' empty.", call. = FALSE)
-      }
-      return(.relabelContrast(results = results, FDR = FDR, log2FC = log2FC, verbose = verbose))
-    }
-
-    if (methods::is(results, "RegionSetDE.resultsList") | methods::is(results, "RegionSetDE.setResultsList")) {
-      contrastNames <- names(results@results)
-
-      # The contrasts are named as testRegions named them, or taken by position
-      contrastIndex <- if (is.null(contrast)) {
-        seq_along(contrastNames)
-      } else if (is.numeric(contrast)) {
-        if (any(is.na(contrast) | contrast < 1 | contrast > length(contrastNames))) {
-          stop("The 'contrast' parameter contains positions outside the range of the contrasts.", call. = FALSE)
+    function(results,
+             FDR = NULL,
+             log2FC = NULL,
+             contrast = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!is.null(FDR) && (!is.numeric(FDR) | length(FDR) != 1 || is.na(FDR) || FDR <= 0 || FDR > 1)) {
+            stop("The 'FDR' parameter must be a single number above 0 and not above 1.", call. = FALSE)
         }
-        as.integer(contrast)
-      } else {
-        absentContrasts <- setdiff(contrast, contrastNames)
-        if (length(absentContrasts) > 0) {
-          stop("The following contrasts are absent from the object: ", paste(absentContrasts, collapse = ", "),
-               ". The contrasts are: ", paste(contrastNames, collapse = ", "), ".", call. = FALSE)
+
+        if (!is.null(log2FC) && (!is.numeric(log2FC) | length(log2FC) != 1 || is.na(log2FC) || log2FC < 0)) {
+            stop("The 'log2FC' parameter must be a single number of at least 0.", call. = FALSE)
         }
-        match(contrast, contrastNames)
-      }
 
-      for (i in contrastIndex) {
-        if (isTRUE(verbose)) {message(contrastNames[i], ":")}
-        results@results[[i]] <- .relabelContrast(results = results@results[[i]], FDR = FDR, log2FC = log2FC, verbose = verbose)
-      }
+        if (is.null(FDR) & is.null(log2FC)) {
+            stop("Give at least one new cut-off, 'FDR' or 'log2FC'.", call. = FALSE)
+        }
 
-      return(results)
-    }
+        #------------------------#
+        # One contrast or many   #
+        #------------------------#
+        if (methods::is(results, "RegionSetDE.results") | methods::is(results, "RegionSetDE.setResults")) {
+            if (!is.null(contrast)) {
+                stop("The object holds a single contrast, leave 'contrast' empty.", call. = FALSE)
+            }
+            return(.relabelContrast(results = results, FDR = FDR, log2FC = log2FC, verbose = verbose))
+        }
 
-    stop("The 'results' parameter must be an object returned by testRegions(), testRegionSets() or testSetContrast().", call. = FALSE)
-  } # END function
+        if (methods::is(results, "RegionSetDE.resultsList") | methods::is(results, "RegionSetDE.setResultsList")) {
+            contrastNames <- names(results)
 
+            # The contrasts are named as testRegions named them, or taken by position
+            contrastIndex <- if (is.null(contrast)) {
+                seq_along(contrastNames)
+            } else if (is.numeric(contrast)) {
+                if (any(is.na(contrast) | contrast < 1 | contrast > length(contrastNames))) {
+                    stop("The 'contrast' parameter contains positions outside the range of the contrasts.", call. = FALSE)
+                }
+                as.integer(contrast)
+            } else {
+                absentContrasts <- setdiff(contrast, contrastNames)
+                if (length(absentContrasts) > 0) {
+                    stop("The following contrasts are absent from the object: ", paste(absentContrasts, collapse = ", "),
+                        ". The contrasts are: ", paste(contrastNames, collapse = ", "), ".",
+                        call. = FALSE
+                    )
+                }
+                match(contrast, contrastNames)
+            }
 
+            resultList <- as.list(results)
+            for (i in contrastIndex) {
+                if (isTRUE(verbose)) {
+                    message(contrastNames[i], ":")
+                }
+                resultList[[i]] <- .relabelContrast(results = resultList[[i]], FDR = FDR, log2FC = log2FC, verbose = verbose)
+            }
+
+            return(.replaceSlots(results, results = resultList))
+        }
+
+        stop("The 'results' parameter must be an object returned by testRegions(), testRegionSets() or testSetContrast().", call. = FALSE)
+    } # END function
 
 
 #' @title .relabelContrast
@@ -125,84 +127,102 @@ updateThresholds <-
 #' @keywords internal
 
 .relabelContrast <-
-  function(results,
-           FDR,
-           log2FC,
-           verbose) {
+    function(results,
+             FDR,
+             log2FC,
+             verbose) {
+        previousThresholds <- thresholdInfo(results)
+        newFDR <- if (is.null(FDR)) {
+            previousThresholds$FDR
+        } else {
+            FDR
+        }
 
-    previousThresholds <- results@thresholds
-    newFDR <- if (is.null(FDR)) {previousThresholds$FDR} else {FDR}
+        #-------------------------------#
+        # Region sets: the FDR alone    #
+        #-------------------------------#
+        if (methods::is(results, "RegionSetDE.setResults")) {
+            if (!is.null(log2FC)) {
+                stop("The results of the region sets carry no label per region, only 'FDR' can be updated.", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # Region sets: the FDR alone    #
-    #-------------------------------#
-    if (methods::is(results, "RegionSetDE.setResults")) {
-      if (!is.null(log2FC)) {
-        stop("The results of the region sets carry no label per region, only 'FDR' can be updated.", call. = FALSE)
-      }
+            thresholdInfo(results)$FDR <- newFDR
+            testStep <- intersect(c("testRegionSets", "testSetContrast"), names(parameterLog(results)))
+            for (stepName in testStep) {
+                parameterLog(results)[[stepName]]$FDR <- newFDR
+            }
 
-      results@thresholds$FDR <- newFDR
-      testStep <- intersect(c("testRegionSets", "testSetContrast"), names(results@parameters))
-      for (stepName in testStep) {
-        results@parameters[[stepName]]$FDR <- newFDR
-      }
+            parameterLog(results)$updateThresholds <- list(previous.FDR = previousThresholds$FDR, FDR = newFDR)
 
-      results@parameters$updateThresholds <- list(previous.FDR = previousThresholds$FDR, FDR = newFDR)
+            if (isTRUE(verbose)) {
+                setTable <- resultsTable(results)
+                significanceColumn <- intersect(c("camera.FDR", "fry.FDR"), colnames(setTable))[1]
+                message(
+                    "FDR cut-off moved from ", previousThresholds$FDR, " to ", newFDR, ": ",
+                    sum(setTable[[significanceColumn]] < newFDR, na.rm = TRUE), " of ", nrow(setTable),
+                    " sets below it (", significanceColumn, ")."
+                )
+            }
 
-      if (isTRUE(verbose)) {
-        significanceColumn <- intersect(c("camera.FDR", "fry.FDR"), colnames(results@results))[1]
-        message("FDR cut-off moved from ", previousThresholds$FDR, " to ", newFDR, ": ",
-                sum(results@results[[significanceColumn]] < newFDR, na.rm = TRUE), " of ", nrow(results@results),
-                " sets below it (", significanceColumn, ").")
-      }
+            methods::validObject(results)
+            return(results)
+        }
 
-      methods::validObject(results)
-      return(results)
-    }
+        #-------------------------------#
+        # Regions: new labels           #
+        #-------------------------------#
+        newLog2FC <- if (is.null(log2FC)) {
+            previousThresholds$log2FC
+        } else {
+            log2FC
+        }
 
-    #-------------------------------#
-    # Regions: new labels           #
-    #-------------------------------#
-    newLog2FC <- if (is.null(log2FC)) {previousThresholds$log2FC} else {log2FC}
+        # The arguments share their names with two columns of the table, which dplyr would read first
+        FDRthreshold <- newFDR
+        log2FCthreshold <- newLog2FC
 
-    # The arguments share their names with two columns of the table, which dplyr would read first
-    FDRthreshold <- newFDR
-    log2FCthreshold <- newLog2FC
+        relabelledTable <- dplyr::mutate(resultsTable(results),
+            diff.status = dplyr::case_when(
+                .data$FDR < FDRthreshold & .data$log2FC > log2FCthreshold ~ "up",
+                .data$FDR < FDRthreshold & .data$log2FC < (-log2FCthreshold) ~ "down",
+                TRUE ~ "null"
+            )
+        )
+        relabelledTable$diff.status <- factor(relabelledTable$diff.status, levels = c("down", "null", "up"))
+        resultsTable(results) <- relabelledTable
 
-    results@results <- dplyr::mutate(results@results,
-                                     diff.status = dplyr::case_when(.data$FDR < FDRthreshold & .data$log2FC > log2FCthreshold ~ "up",
-                                                                    .data$FDR < FDRthreshold & .data$log2FC < (-log2FCthreshold) ~ "down",
-                                                                    TRUE ~ "null"))
-    results@results$diff.status <- factor(results@results$diff.status, levels = c("down", "null", "up"))
+        #-------------------------------#
+        # Thresholds and parameters     #
+        #-------------------------------#
+        thresholdInfo(results)$FDR <- newFDR
+        thresholdInfo(results)$log2FC <- newLog2FC
 
-    #-------------------------------#
-    # Thresholds and parameters     #
-    #-------------------------------#
-    results@thresholds$FDR <- newFDR
-    results@thresholds$log2FC <- newLog2FC
+        if (!is.null(parameterLog(results)$testRegions)) {
+            parameterLog(results)$testRegions$FDR <- newFDR
+            parameterLog(results)$testRegions$log2FC <- newLog2FC
+        }
 
-    if (!is.null(results@parameters$testRegions)) {
-      results@parameters$testRegions$FDR <- newFDR
-      results@parameters$testRegions$log2FC <- newLog2FC
-    }
+        parameterLog(results)$updateThresholds <- list(
+            previous.FDR = previousThresholds$FDR,
+            previous.log2FC = previousThresholds$log2FC,
+            FDR = newFDR,
+            log2FC = newLog2FC,
+            lfcThreshold = previousThresholds$lfcThreshold
+        )
 
-    results@parameters$updateThresholds <- list(previous.FDR = previousThresholds$FDR,
-                                                previous.log2FC = previousThresholds$log2FC,
-                                                FDR = newFDR,
-                                                log2FC = newLog2FC,
-                                                lfcThreshold = previousThresholds$lfcThreshold)
+        if (isTRUE(verbose)) {
+            statusTable <- table(relabelledTable$diff.status)
+            message(
+                "Relabelled with FDR < ", newFDR, " and |log2FC| > ", newLog2FC, ": ",
+                statusTable[["up"]], " up and ", statusTable[["down"]], " down out of ", nrow(relabelledTable), " regions."
+            )
 
-    if (isTRUE(verbose)) {
-      statusTable <- table(results@results$diff.status)
-      message("Relabelled with FDR < ", newFDR, " and |log2FC| > ", newLog2FC, ": ",
-              statusTable[["up"]], " up and ", statusTable[["down"]], " down out of ", nrow(results@results), " regions.")
+            # The threshold inside the test shaped the p-values, relabelling cannot move it
+            if (isTRUE(previousThresholds$lfcThreshold > 0)) {
+                message("The p-values were computed against lfcThreshold = ", previousThresholds$lfcThreshold, ", which only a new test can change.")
+            }
+        }
 
-      # The threshold inside the test shaped the p-values, relabelling cannot move it
-      if (isTRUE(previousThresholds$lfcThreshold > 0)) {
-        message("The p-values were computed against lfcThreshold = ", previousThresholds$lfcThreshold, ", which only a new test can change.")
-      }
-    }
-
-    methods::validObject(results)
-    return(results)
-  } # END function
+        methods::validObject(results)
+        return(results)
+    } # END function

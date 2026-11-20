@@ -42,19 +42,21 @@ An object of the same class as the input, restricted to the whitelisted regions.
 Restricts every region set to the regions overlapping a whitelist, for instance a set of accessible or mappable regions. The whitelist can be provided as a BED-like file, a \code{GRanges} or a data.frame.
 }
 \details{
-A second whitelist restricts the first one: the regions left overlap both lists. The \code{whitelist} slot then holds the stretches the two lists have in common, and the \code{filtering.log} one step per call.
+A second whitelist restricts the first one: the regions left overlap both lists. The \code{whitelist} slot (read with \code{\link{whitelistRanges}}) then holds the stretches the two lists have in common, and the \code{filtering.log} one step per call.
 }
 \examples{
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
 regions <- splitLoadRegions(
-  GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-  splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 # Restrict the analysis to the first half of the chromosome
 whitelist <- GenomicRanges::GRanges(
-  seqnames = "chr12",
-  ranges = IRanges::IRanges(start = 1, end = 25e6))
+    seqnames = "chr12",
+    ranges = IRanges::IRanges(start = 1, end = 25e6)
+)
 
 regions <- applyWhitelist(regions, whitelist = whitelist, verbose = FALSE)
 regions

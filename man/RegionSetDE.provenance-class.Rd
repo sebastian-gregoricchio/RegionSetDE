@@ -20,7 +20,7 @@ Virtual class collecting the filters and the parameters shared by all the Region
 
 \item{\code{seqlevels.style}}{String with the chromosome naming style shared by all the sets.}
 
-\item{\code{filtering.log}}{Data.frame collecting the number of regions before and after each filtering step.}
+\item{\code{filtering.log}}{\code{DataFrame} collecting the number of regions before and after each filtering step. Read it with \code{\link{filteringLog}}.}
 
 \item{\code{parameters}}{List with the arguments used at each step.}
 }}

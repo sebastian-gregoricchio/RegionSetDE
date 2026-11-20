@@ -62,6 +62,13 @@
 #' A fit with no replicates loses the self-contained test. \code{fry} builds a linear model inside each set and needs a residual to measure it against, which a design with one sample per level does not have, so it is dropped with a message and only the competitive test runs. The correlation between regions goes the same way: it is estimated from the residuals of the fit, and without them it falls back to 0.01, the value \code{limma} uses when nothing better is available. That number sets how much the confidence interval is widened, so on such a fit the interval is as assumed as the dispersion is, and \code{interRegionCor} is worth setting by hand from a replicated experiment on the same assay when one exists.
 #' The competitive test runs through \code{limma::cameraPR} on the per-region statistics, which is what makes it work identically for the five engines. The self-contained test needs the values themselves. For \code{voom}, \code{limma} and \code{dream} they are the log values the model was fitted on. For \code{edgeR} and \code{DESeq2} the counts are turned into z-scores under the null model of the fit, with its offsets and its dispersion of every region, which is what \code{edgeR} does for its own \code{fry} method, and \code{fry} runs on those without standardising them again. The test then rests on the negative binomial model the regions were tested with rather than on a log-CPM approximation of it. For \code{DESeq2} the null model is refitted by \code{edgeR::glmFit} with the dispersions and normalisation factors of \code{DESeq2}, the same model fitted by another routine. On a fit collapsed from tiles the z-scores of a region are pooled as \code{sum(z) / sqrt(n.tiles)}, which keeps them on the scale of a single z-score. \code{fryInput = "logCPM"} brings back the earlier behaviour, which is worth keeping for comparing results with an older analysis.
 #'
+#' @references
+#' Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting for inter-gene correlation. \emph{Nucleic Acids Research} 40(17):e133.
+#'
+#' Wu D., Lim E., Vaillant F., Asselin-Labat M.L., Visvader J.E., Smyth G.K. (2010). ROAST: rotation gene set tests for complex microarray experiments. \emph{Bioinformatics} 26(17):2176-2182.
+#'
+#' Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. \emph{Nucleic Acids Research} 43(7):e47.
+#'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
 #'
@@ -92,463 +99,589 @@
 #' @export testRegionSets
 
 testRegionSets <-
-  function(fit,
-           contrast,
-           method = c("camera", "fry"),
-           universe = NULL,
-           matchOn = c("width", "abundance"),
-           universeRatio = 5,
-           universeSets = NULL,
-           effectMethod = "sample",
-           interRegionCor = NULL,
-           tileHandling = "collapse",
-           overlapPolicy = "drop",
-           overlapWithinSet = "warn",
-           fryInput = "auto",
-           useRanks = FALSE,
-           FDR = 0.05,
-           adjustMethod = "BH",
-           regionSets = NULL,
-           carryCounts = TRUE,
-           verbose = TRUE) {
+    function(fit,
+             contrast,
+             method = c("camera", "fry"),
+             universe = NULL,
+             matchOn = c("width", "abundance"),
+             universeRatio = 5,
+             universeSets = NULL,
+             effectMethod = "sample",
+             interRegionCor = NULL,
+             tileHandling = "collapse",
+             overlapPolicy = "drop",
+             overlapWithinSet = "warn",
+             fryInput = "auto",
+             useRanks = FALSE,
+             FDR = 0.05,
+             adjustMethod = "BH",
+             regionSets = NULL,
+             carryCounts = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkTestRegionSetsArguments(
+            fit = fit,
+            effectMethod = effectMethod,
+            tileHandling = tileHandling,
+            overlapPolicy = overlapPolicy,
+            overlapWithinSet = overlapWithinSet,
+            fryInput = fryInput
+        )
+        effectMethod <- checkedArguments$effectMethod
+        fryInput <- checkedArguments$fryInput
+        overlapPolicy <- checkedArguments$overlapPolicy
+        overlapWithinSet <- checkedArguments$overlapWithinSet
+        tileHandling <- checkedArguments$tileHandling
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(fit, "RegionSetDE.fit")) {
-      stop("The 'fit' parameter must be a RegionSetDE.fit object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Several contrasts at once     #
+        #-------------------------------#
+        # One fit, several contrasts: the recursion keeps a single code path for the test itself
+        if (is.list(contrast) & !is.data.frame(contrast)) {
+            if (is.null(names(contrast)) | any(names(contrast) == "")) {
+                names(contrast) <- paste0("contrast", seq_along(contrast))
+            }
 
-    effectMethod <- tolower(as.character(effectMethod[1]))
-    if (!(effectMethod %in% c("sample", "region"))) {
-      stop("The 'effectMethod' parameter must be either 'sample' or 'region'.", call. = FALSE)
-    }
+            # Resolved once here, so an override is not rebuilt for every contrast
+            if ("camera" %in% method) {
+                universe <- .setUniverseOf(
+                    fit = fit, universe = universe, matchOn = matchOn,
+                    universeRatio = universeRatio, regionSets = regionSets,
+                    universeSets = universeSets, verbose = verbose
+                )
+            }
 
-    tileHandling <- tolower(as.character(tileHandling[1]))
-    if (!(tileHandling %in% c("collapse", "keep"))) {
-      stop("The 'tileHandling' parameter must be either 'collapse' or 'keep'.", call. = FALSE)
-    }
+            resultsList <-
+                lapply(
+                    names(contrast),
+                    function(contrastName) {
+                        if (isTRUE(verbose)) {
+                            message("--- ", contrastName, " ---")
+                        }
+                        return(testRegionSets(
+                            fit = fit, contrast = contrast[[contrastName]], method = method,
+                            universe = universe, matchOn = matchOn, universeRatio = universeRatio,
+                            universeSets = universeSets, effectMethod = effectMethod, interRegionCor = interRegionCor,
+                            tileHandling = tileHandling, overlapPolicy = overlapPolicy,
+                            overlapWithinSet = overlapWithinSet, fryInput = fryInput,
+                            useRanks = useRanks, FDR = FDR, adjustMethod = adjustMethod,
+                            regionSets = regionSets, carryCounts = carryCounts, verbose = verbose
+                        ))
+                    }
+                )
 
-    overlapPolicy <- tolower(as.character(overlapPolicy[1]))
-    if (!(overlapPolicy %in% c("allow", "drop", "stop"))) {
-      stop("The 'overlapPolicy' parameter must be one among 'allow', 'drop' or 'stop'.", call. = FALSE)
-    }
+            names(resultsList) <- names(contrast)
 
-    overlapWithinSet <- .checkWithinSetPolicy(overlapWithinSet)
+            return(.newObject(
+                Class = "RegionSetDE.setResultsList",
+                results = resultsList,
+                contrasts = names(contrast)
+            ))
+        }
 
-    fryInput <- tolower(as.character(fryInput[1]))
-    if (!(fryInput %in% c("auto", "logcpm"))) {
-      stop("The 'fryInput' parameter must be either 'auto' or 'logCPM'.", call. = FALSE)
-    }
+        method <- unique(method)
+        if (!all(method %in% c("camera", "fry"))) {
+            stop("The 'method' parameter must contain only 'camera' and 'fry'.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Several contrasts at once     #
-    #-------------------------------#
-    # One fit, several contrasts: the recursion keeps a single code path for the test itself
-    if (is.list(contrast) & !is.data.frame(contrast)) {
-      if (is.null(names(contrast)) | any(names(contrast) == "")) {
-        names(contrast) <- paste0("contrast", seq_along(contrast))
-      }
+        #-------------------------------#
+        # What the design can support   #
+        #-------------------------------#
+        residualDegrees <- nrow(designMatrix(fit)) - ncol(designMatrix(fit))
 
-      # Resolved once here, so an override is not rebuilt for every contrast
-      if ("camera" %in% method) {
-        universe <- .setUniverseOf(fit = fit, universe = universe, matchOn = matchOn,
-                                   universeRatio = universeRatio, regionSets = regionSets,
-                                   universeSets = universeSets, verbose = verbose)
-      }
+        # fry fits a model inside each set, which needs something left over to measure it against
+        if ("fry" %in% method & residualDegrees < 1) {
+            if (identical(method, "fry")) {
+                stop("The design uses ", ncol(designMatrix(fit)), " coefficients for ", nrow(designMatrix(fit)),
+                    " samples, leaving no residual for the self-contained test. Use method = 'camera'.",
+                    call. = FALSE
+                )
+            }
 
-      resultsList <-
-        lapply(names(contrast),
-               function(contrastName) {
-                 if (isTRUE(verbose)) {
-                   message("--- ", contrastName, " ---")
-                 }
-                 return(testRegionSets(fit = fit, contrast = contrast[[contrastName]], method = method,
-                                       universe = universe, matchOn = matchOn, universeRatio = universeRatio,
-                                       universeSets = universeSets, effectMethod = effectMethod, interRegionCor = interRegionCor,
-                                       tileHandling = tileHandling, overlapPolicy = overlapPolicy,
-                                       overlapWithinSet = overlapWithinSet, fryInput = fryInput,
-                                       useRanks = useRanks, FDR = FDR, adjustMethod = adjustMethod,
-                                       regionSets = regionSets, carryCounts = carryCounts, verbose = verbose))
-               })
+            method <- setdiff(method, "fry")
+            if (isTRUE(verbose)) {
+                message("No residual degree of freedom: the self-contained test has been dropped and only camera is run.")
+            }
+        }
 
-      names(resultsList) <- names(contrast)
+        # The sample level interval is a model on one number per library, and one library per coefficient
+        # leaves nothing to measure it against
+        if (effectMethod == "sample" & residualDegrees < 1) {
+            effectMethod <- "region"
+            warning("The design leaves no residual degree of freedom, so no interval can be built on the samples. ",
+                "The reported interval is the region-heterogeneity one, which describes variation between loci ",
+                "and not between biological samples.",
+                call. = FALSE
+            )
+        }
 
-      return(new(Class = "RegionSetDE.setResultsList",
-                 results = resultsList,
-                 contrasts = names(contrast)))
-    }
+        # Not gated on 'verbose': 0.01 against a measured value of 0.4 is a fortyfold change in every
+        # variance, and a design that gains a coefficient can cross this line with nothing else looking different
+        if (is.null(interRegionCor) & residualDegrees < 2) {
+            interRegionCor <- 0.01
+            warning("The correlation between regions cannot be estimated with ", residualDegrees,
+                " residual degrees of freedom, and is held at 0.01. Every confidence interval and p-value ",
+                "below rests on that number. Set 'interRegionCor' from a replicated experiment on the same ",
+                "assay, and state the value in the methods.",
+                call. = FALSE
+            )
+        }
 
-    method <- unique(method)
-    if (!all(method %in% c("camera", "fry"))) {
-      stop("The 'method' parameter must contain only 'camera' and 'fry'.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Universe of the sets          #
+        #-------------------------------#
+        # Sets supplied as a list overlap each other, so a universe matched set by set against the other
+        # sets of the object describes a comparison that is not the one being made. Every other tested row
+        # is, and the loop below reaches it through an empty index
+        suppliedSets <- is.list(regionSets)
 
-    #-------------------------------#
-    # What the design can support   #
-    #-------------------------------#
-    residualDegrees <- nrow(fit@design) - ncol(fit@design)
+        if (isTRUE(suppliedSets)) {
+            if (!is.null(universe) & isTRUE(verbose)) {
+                message("The 'universe' argument is ignored for sets supplied as a list, each of them is compared against every other row of the object.")
+            }
+            universe <- .newObject(Class = "RegionSetDE.universe", type = "allRows", n.rows = nrow(fitCounts(fit)))
+        } else if ("camera" %in% method) {
+            universe <- .setUniverseOf(
+                fit = fit, universe = universe, matchOn = matchOn,
+                universeRatio = universeRatio, regionSets = regionSets,
+                universeSets = universeSets, verbose = verbose
+            )
+        } else {
+            universe <- .newObject(Class = "RegionSetDE.universe")
+        }
 
-    # fry fits a model inside each set, which needs something left over to measure it against
-    if ("fry" %in% method & residualDegrees < 1) {
-      if (identical(method, "fry")) {
-        stop("The design uses ", ncol(fit@design), " coefficients for ", nrow(fit@design),
-             " samples, leaving no residual for the self-contained test. Use method = 'camera'.", call. = FALSE)
-      }
+        contrastObject <- .resolveContrast(
+            contrast = contrast,
+            design = designMatrix(fit),
+            colData = SummarizedExperiment::colData(fitCounts(fit))
+        )
 
-      method <- setdiff(method, "fry")
-      if (isTRUE(verbose)) {
-        message("No residual degree of freedom: the self-contained test has been dropped and only camera is run.")
-      }
-    }
+        #-------------------------------#
+        # Per-region statistics         #
+        #-------------------------------#
+        regionStats <- .setStatistics(fit = fit, contrastObject = contrastObject)
 
-    # The sample level interval is a model on one number per library, and one library per coefficient
-    # leaves nothing to measure it against
-    if (effectMethod == "sample" & residualDegrees < 1) {
-      effectMethod <- "region"
-      warning("The design leaves no residual degree of freedom, so no interval can be built on the samples. ",
-              "The reported interval is the region-heterogeneity one, which describes variation between loci ",
-              "and not between biological samples.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Tiles back into regions       #
+        #-------------------------------#
+        # A row is the unit the set is averaged over, so on a tiled fit the wide regions would otherwise
+        # be counted once per tile and carry the set on their own
+        tileMap <- NULL
 
-    # Not gated on 'verbose': 0.01 against a measured value of 0.4 is a fortyfold change in every
-    # variance, and a design that gains a coefficient can cross this line with nothing else looking different
-    if (is.null(interRegionCor) & residualDegrees < 2) {
-      interRegionCor <- 0.01
-      warning("The correlation between regions cannot be estimated with ", residualDegrees,
-              " residual degrees of freedom, and is held at 0.01. Every confidence interval and p-value ",
-              "below rests on that number. Set 'interRegionCor' from a replicated experiment on the same ",
-              "assay, and state the value in the methods.", call. = FALSE)
-    }
+        if (identical(countingLevel(fit), "tile") & tileHandling == "collapse") {
+            collapsedList <- .collapseTileStats(regionStats = regionStats)
+            tileMap <- collapsedList$map
+            regionStats <- collapsedList$stats
 
-    #-------------------------------#
-    # Universe of the sets          #
-    #-------------------------------#
-    # Sets supplied as a list overlap each other, so a universe matched set by set against the other
-    # sets of the object describes a comparison that is not the one being made. Every other tested row
-    # is, and the loop below reaches it through an empty index
-    suppliedSets <- is.list(regionSets)
+            # The universe was indexed on the tiles and has to follow them
+            if (length(universeIndex(universe)) > 0) {
+                universeIndex(universe) <- lapply(universeIndex(universe), function(rowIndex) {
+                    sort(unique(tileMap[rowIndex]))
+                })
+                universeRows(universe) <- nrow(regionStats)
+            }
 
-    if (isTRUE(suppliedSets)) {
-      if (!is.null(universe) & isTRUE(verbose)) {
-        message("The 'universe' argument is ignored for sets supplied as a list, each of them is compared against every other row of the object.")
-      }
-      universe <- new(Class = "RegionSetDE.universe", type = "allRows", n.rows = nrow(fit@counts))
+            if (isTRUE(verbose)) {
+                message(
+                    length(tileMap), " tiles collapsed into ", nrow(regionStats),
+                    " regions, so that the region rather than the base pair is the unit of the set."
+                )
+            }
+        }
 
-    } else if ("camera" %in% method) {
-      universe <- .setUniverseOf(fit = fit, universe = universe, matchOn = matchOn,
-                                 universeRatio = universeRatio, regionSets = regionSets,
-                                 universeSets = universeSets, verbose = verbose)
-    } else {
-      universe <- new(Class = "RegionSetDE.universe")
-    }
+        # The sets of the object are a partition and supplied sets are not, so both are resolved to
+        # row positions once, here, rather than being looked up inside the loop
+        setIndexList <- .setIndexList(regionStats = regionStats, regionSets = regionSets)
+        setNames <- names(setIndexList)
 
-    contrastObject <- .resolveContrast(contrast = contrast,
-                                       design = fit@design,
-                                       colData = SummarizedExperiment::colData(fit@counts))
+        if (isTRUE(verbose)) {
+            message("Testing ", length(setNames), " region sets for '", contrastObject$label, "'.")
+        }
 
-    #-------------------------------#
-    # Per-region statistics         #
-    #-------------------------------#
-    regionStats <- .setStatistics(fit = fit, contrastObject = contrastObject)
+        # The correlation and the sample level effect read the values themselves, the competitive test
+        # reads the statistics only
+        expressionMatrix <- if (is.null(interRegionCor) | effectMethod == "sample") {
+            .expressionMatrix(fit = fit)
+        } else {
+            NULL
+        }
 
-    #-------------------------------#
-    # Tiles back into regions       #
-    #-------------------------------#
-    # A row is the unit the set is averaged over, so on a tiled fit the wide regions would otherwise
-    # be counted once per tile and carry the set on their own
-    tileMap <- NULL
+        # The values have to sit at the level the statistics do, or the two describe different rows
+        if (!is.null(tileMap) & !is.null(expressionMatrix)) {
+            expressionMatrix <- .collapseTileMatrix(expressionMatrix = expressionMatrix, tileMap = tileMap)
+        }
 
-    if (identical(fit@counting.level, "tile") & tileHandling == "collapse") {
-      collapsedList <- .collapseTileStats(regionStats = regionStats)
-      tileMap <- collapsedList$map
-      regionStats <- collapsedList$stats
+        # fry gets the values of the model the regions were tested with, z-scores for the count engines
+        fryList <- NULL
+        if ("fry" %in% method) {
+            fryList <- .fryValues(fit = fit, contrastVector = contrastObject$vector, fryInput = fryInput)
 
-      # The universe was indexed on the tiles and has to follow them
-      if (length(universe@index) > 0) {
-        universe@index <- lapply(universe@index, function(rowIndex) {sort(unique(tileMap[rowIndex]))})
-        universe@n.rows <- nrow(regionStats)
-      }
+            if (!is.null(tileMap)) {
+                fryList$values <- .collapseTileMatrix(
+                    expressionMatrix = fryList$values, tileMap = tileMap,
+                    pooling = if (fryList$standardize == "none") {
+                        "stouffer"
+                    } else {
+                        "mean"
+                    }
+                )
+            }
+        }
 
-      if (isTRUE(verbose)) {
-        message(length(tileMap), " tiles collapsed into ", nrow(regionStats),
-                " regions, so that the region rather than the base pair is the unit of the set.")
-      }
-    }
+        #-------------------------------#
+        # One set at a time             #
+        #-------------------------------#
+        resultList <-
+            lapply(
+                setNames,
+                function(setName) {
+                    setIndex <- setIndexList[[setName]]
 
-    # The sets of the object are a partition and supplied sets are not, so both are resolved to
-    # row positions once, here, rather than being looked up inside the loop
-    setIndexList <- .setIndexList(regionStats = regionStats, regionSets = regionSets)
-    setNames <- names(setIndexList)
+                    if (length(setIndex) < 2) {
+                        stop("The set '", setName, "' holds fewer than 2 regions, a set level test needs more.", call. = FALSE)
+                    }
 
-    if (isTRUE(verbose)) {
-      message("Testing ", length(setNames), " region sets for '", contrastObject$label, "'.")
-    }
+                    # Regions of the set sharing bases count those bases twice
+                    withinOverlap <- .withinSetOverlap(regionStats = regionStats, index = setIndex)
 
-    # The correlation and the sample level effect read the values themselves, the competitive test
-    # reads the statistics only
-    expressionMatrix <- if (is.null(interRegionCor) | effectMethod == "sample") {
-      .expressionMatrix(fit = fit)
-    } else {
-      NULL
-    }
+                    if (withinOverlap > 0 & overlapWithinSet == "stop") {
+                        stop(withinOverlap, " regions of the set '", setName, "' overlap another region of the same set. ",
+                            "Merge them with loadRegions(reduceRegions = TRUE), or set 'overlapWithinSet' to 'warn' or 'allow'.",
+                            call. = FALSE
+                        )
+                    }
 
-    # The values have to sit at the level the statistics do, or the two describe different rows
-    if (!is.null(tileMap) & !is.null(expressionMatrix)) {
-      expressionMatrix <- .collapseTileMatrix(expressionMatrix = expressionMatrix, tileMap = tileMap)
-    }
+                    # The universe holds the set as well, the comparison is what is left once it is taken out.
+                    # A supplied set is in no universe built from the sets of the object, and every other row
+                    # is the comparison it wants anyway: a pathway is asked about against the rest of what was
+                    # tested, not against the other pathways
+                    backgroundIndex <- if (length(universeIndex(universe)) == 0 | isTRUE(suppliedSets)) {
+                        setdiff(seq_len(nrow(regionStats)), setIndex)
+                    } else {
+                        setdiff(universeIndex(universe)[[setName]], setIndex)
+                    }
 
-    # fry gets the values of the model the regions were tested with, z-scores for the count engines
-    fryList <- NULL
-    if ("fry" %in% method) {
-      fryList <- .fryValues(fit = fit, contrastVector = contrastObject$vector, fryInput = fryInput)
+                    #-------------------------------#
+                    # Overlap with the comparison   #
+                    #-------------------------------#
+                    # Identifiers say nothing about shared reads: two sets can hold different regions covering
+                    # the same chromatin, and the difference between them is then partly a comparison with itself
+                    overlappingRows <- .overlappingRows(
+                        regionStats = regionStats,
+                        setIndex = setIndex,
+                        comparisonIndex = backgroundIndex
+                    )
 
-      if (!is.null(tileMap)) {
-        fryList$values <- .collapseTileMatrix(expressionMatrix = fryList$values, tileMap = tileMap,
-                                              pooling = if (fryList$standardize == "none") {"stouffer"} else {"mean"})
-      }
-    }
+                    if (length(overlappingRows) > 0) {
+                        if (overlapPolicy == "stop") {
+                            stop(length(overlappingRows), " comparison rows of the set '", setName,
+                                "' overlap the set itself in the genome. Set 'overlapPolicy' to 'drop' to remove them.",
+                                call. = FALSE
+                            )
+                        }
+                        if (overlapPolicy == "drop") {
+                            backgroundIndex <- setdiff(backgroundIndex, overlappingRows)
+                        }
+                    }
 
-    #-------------------------------#
-    # One set at a time             #
-    #-------------------------------#
-    resultList <-
-      lapply(setNames,
-             function(setName) {
-               setIndex <- setIndexList[[setName]]
+                    if (length(backgroundIndex) < 10) {
+                        stop("The set '", setName, "' has fewer than 10 rows in its universe to be compared against.", call. = FALSE)
+                    }
 
-               if (length(setIndex) < 2) {
-                 stop("The set '", setName, "' holds fewer than 2 regions, a set level test needs more.", call. = FALSE)
-               }
+                    #-------------------------------#
+                    # Correlation between regions   #
+                    #-------------------------------#
+                    setCorrelation <- if (is.null(interRegionCor)) {
+                        .interRegionCor(
+                            expressionMatrix = expressionMatrix, design = designMatrix(fit),
+                            index = setIndex, label = setName
+                        )
+                    } else {
+                        interRegionCor
+                    }
 
-               # Regions of the set sharing bases count those bases twice
-               withinOverlap <- .withinSetOverlap(regionStats = regionStats, index = setIndex)
+                    # The comparison rows are as correlated as the set, and treating their mean as known
+                    # would make the interval on the difference narrower than the data supports
+                    universeCorrelation <- if (is.null(interRegionCor)) {
+                        .interRegionCor(
+                            expressionMatrix = expressionMatrix, design = designMatrix(fit),
+                            index = backgroundIndex,
+                            label = paste0("the universe of ", setName)
+                        )
+                    } else {
+                        interRegionCor
+                    }
 
-               if (withinOverlap > 0 & overlapWithinSet == "stop") {
-                 stop(withinOverlap, " regions of the set '", setName, "' overlap another region of the same set. ",
-                      "Merge them with loadRegions(reduceRegions = TRUE), or set 'overlapWithinSet' to 'warn' or 'allow'.", call. = FALSE)
-               }
+                    #-------------------------------#
+                    # Effect size, both intervals   #
+                    #-------------------------------#
+                    # Between loci, conditional on these libraries
+                    heterogeneity <- .setEffectSize(
+                        logFC = regionStats$log2FC,
+                        setIndex = setIndex,
+                        backgroundIndex = backgroundIndex,
+                        correlation = setCorrelation,
+                        backgroundCorrelation = universeCorrelation
+                    )
 
-               # The universe holds the set as well, the comparison is what is left once it is taken out.
-               # A supplied set is in no universe built from the sets of the object, and every other row
-               # is the comparison it wants anyway: a pathway is asked about against the rest of what was
-               # tested, not against the other pathways
-               backgroundIndex <- if (length(universe@index) == 0 | isTRUE(suppliedSets)) {
-                 setdiff(seq_len(nrow(regionStats)), setIndex)
-               } else {
-                 setdiff(universe@index[[setName]], setIndex)
-               }
+                    # Between biological samples, which is where the replication of the experiment actually is
+                    sampleEffect <- if (effectMethod == "sample") {
+                        .sampleSetEffect(
+                            expressionMatrix = expressionMatrix,
+                            setIndex = setIndex,
+                            backgroundIndex = backgroundIndex,
+                            design = designMatrix(fit),
+                            contrastVector = contrastObject$vector
+                        )
+                    } else {
+                        NULL
+                    }
 
-               #-------------------------------#
-               # Overlap with the comparison   #
-               #-------------------------------#
-               # Identifiers say nothing about shared reads: two sets can hold different regions covering
-               # the same chromatin, and the difference between them is then partly a comparison with itself
-               overlappingRows <- .overlappingRows(regionStats = regionStats,
-                                                   setIndex = setIndex,
-                                                   comparisonIndex = backgroundIndex)
+                    # Regions moving each way inside the set, corrected within it the way csaw counts them
+                    # inside a cluster. A set with both counts large is being rearranged rather than shifted,
+                    # which is what the directional p-value cannot show
+                    setAdjusted <- stats::p.adjust(regionStats$p.value[setIndex], method = adjustMethod)
+                    setChanging <- !is.na(setAdjusted) & setAdjusted <= FDR
 
-               if (length(overlappingRows) > 0) {
-                 if (overlapPolicy == "stop") {
-                   stop(length(overlappingRows), " comparison rows of the set '", setName,
-                        "' overlap the set itself in the genome. Set 'overlapPolicy' to 'drop' to remove them.", call. = FALSE)
-                 }
-                 if (overlapPolicy == "drop") {
-                   backgroundIndex <- setdiff(backgroundIndex, overlappingRows)
-                 }
-               }
+                    setRow <- data.frame(
+                        region.set = setName,
+                        n.regions = length(setIndex),
+                        n.up = sum(setChanging & regionStats$log2FC[setIndex] > 0),
+                        n.down = sum(setChanging & regionStats$log2FC[setIndex] < 0),
+                        n.comparison = length(backgroundIndex),
+                        n.comparison.overlapping = length(overlappingRows),
+                        n.overlapping.within = withinOverlap,
+                        mean.log2FC = heterogeneity$mean.set,
+                        median.log2FC = stats::median(regionStats$log2FC[setIndex]),
+                        mean.log2FC.comparison = heterogeneity$mean.background,
+                        delta.log2FC = heterogeneity$delta,
+                        CI.lower = if (is.null(sampleEffect)) {
+                            heterogeneity$ci.lower
+                        } else {
+                            sampleEffect$ci.lower
+                        },
+                        CI.upper = if (is.null(sampleEffect)) {
+                            heterogeneity$ci.upper
+                        } else {
+                            sampleEffect$ci.upper
+                        },
+                        CI.type = effectMethod,
+                        heterogeneity.CI.lower = heterogeneity$ci.lower,
+                        heterogeneity.CI.upper = heterogeneity$ci.upper,
+                        inter.region.cor = setCorrelation,
+                        inter.region.cor.universe = universeCorrelation,
+                        median.width = stats::median(regionStats$width[setIndex]),
+                        stringsAsFactors = FALSE
+                    )
 
-               if (length(backgroundIndex) < 10) {
-                 stop("The set '", setName, "' has fewer than 10 rows in its universe to be compared against.", call. = FALSE)
-               }
+                    if (!is.null(sampleEffect)) {
+                        setRow$sample.delta.log2FC <- sampleEffect$delta
+                        setRow$sample.delta.SE <- sampleEffect$standard.error
+                        setRow$sample.delta.df <- sampleEffect$df
+                        setRow$sample.delta.p <- sampleEffect$p.value
+                    }
 
-               #-------------------------------#
-               # Correlation between regions   #
-               #-------------------------------#
-               setCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
-                                 index = setIndex, label = setName)
-               } else {
-                 interRegionCor
-               }
+                    #-------------------------------#
+                    # Competitive test              #
+                    #-------------------------------#
+                    if ("camera" %in% method) {
+                        # The test is restricted to the universe of the set, which is what makes the matching count
+                        universeIndex <- c(setIndex, backgroundIndex)
+                        cameraTable <- limma::cameraPR(
+                            statistic = regionStats$stat[universeIndex],
+                            index = list(set = seq_along(setIndex)),
+                            use.ranks = useRanks,
+                            inter.gene.cor = setCorrelation,
+                            sort = FALSE
+                        )
 
-               # The comparison rows are as correlated as the set, and treating their mean as known
-               # would make the interval on the difference narrower than the data supports
-               universeCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
-                                 index = backgroundIndex,
-                                 label = paste0("the universe of ", setName))
-               } else {
-                 interRegionCor
-               }
+                        setRow$camera.direction <- as.character(cameraTable$Direction[1])
+                        setRow$camera.p <- cameraTable$PValue[1]
+                    }
 
-               #-------------------------------#
-               # Effect size, both intervals   #
-               #-------------------------------#
-               # Between loci, conditional on these libraries
-               heterogeneity <- .setEffectSize(logFC = regionStats$log2FC,
-                                               setIndex = setIndex,
-                                               backgroundIndex = backgroundIndex,
-                                               correlation = setCorrelation,
-                                               backgroundCorrelation = universeCorrelation)
+                    #-------------------------------#
+                    # Self-contained test           #
+                    #-------------------------------#
+                    if ("fry" %in% method) {
+                        fryTable <- limma::fry(
+                            y = fryList$values,
+                            index = list(set = setIndex),
+                            design = designMatrix(fit),
+                            contrast = contrastObject$vector,
+                            standardize = fryList$standardize,
+                            sort = FALSE
+                        )
 
-               # Between biological samples, which is where the replication of the experiment actually is
-               sampleEffect <- if (effectMethod == "sample") {
-                 .sampleSetEffect(expressionMatrix = expressionMatrix,
-                                  setIndex = setIndex,
-                                  backgroundIndex = backgroundIndex,
-                                  design = fit@design,
-                                  contrastVector = contrastObject$vector)
-               } else {
-                 NULL
-               }
+                        setRow$fry.direction <- as.character(fryTable$Direction[1])
+                        setRow$fry.p <- fryTable$PValue[1]
 
-               # Regions moving each way inside the set, corrected within it the way csaw counts them
-               # inside a cluster. A set with both counts large is being rearranged rather than shifted,
-               # which is what the directional p-value cannot show
-               setAdjusted <- stats::p.adjust(regionStats$p.value[setIndex], method = adjustMethod)
-               setChanging <- !is.na(setAdjusted) & setAdjusted <= FDR
+                        # The directional p-value cancels when the regions of a set disagree, the mixed one does
+                        # not, which is the only place a set being rearranged rather than shifted is visible
+                        setRow$fry.mixed.p <- if ("PValue.Mixed" %in% colnames(fryTable)) {
+                            fryTable$PValue.Mixed[1]
+                        } else {
+                            NA_real_
+                        }
+                    }
 
-               setRow <- data.frame(region.set = setName,
-                                    n.regions = length(setIndex),
-                                    n.up = sum(setChanging & regionStats$log2FC[setIndex] > 0),
-                                    n.down = sum(setChanging & regionStats$log2FC[setIndex] < 0),
-                                    n.comparison = length(backgroundIndex),
-                                    n.comparison.overlapping = length(overlappingRows),
-                                    n.overlapping.within = withinOverlap,
-                                    mean.log2FC = heterogeneity$mean.set,
-                                    median.log2FC = stats::median(regionStats$log2FC[setIndex]),
-                                    mean.log2FC.comparison = heterogeneity$mean.background,
-                                    delta.log2FC = heterogeneity$delta,
-                                    CI.lower = if (is.null(sampleEffect)) {heterogeneity$ci.lower} else {sampleEffect$ci.lower},
-                                    CI.upper = if (is.null(sampleEffect)) {heterogeneity$ci.upper} else {sampleEffect$ci.upper},
-                                    CI.type = effectMethod,
-                                    heterogeneity.CI.lower = heterogeneity$ci.lower,
-                                    heterogeneity.CI.upper = heterogeneity$ci.upper,
-                                    inter.region.cor = setCorrelation,
-                                    inter.region.cor.universe = universeCorrelation,
-                                    median.width = stats::median(regionStats$width[setIndex]),
-                                    stringsAsFactors = FALSE)
+                    return(setRow)
+                }
+            )
 
-               if (!is.null(sampleEffect)) {
-                 setRow$sample.delta.log2FC <- sampleEffect$delta
-                 setRow$sample.delta.SE <- sampleEffect$standard.error
-                 setRow$sample.delta.df <- sampleEffect$df
-                 setRow$sample.delta.p <- sampleEffect$p.value
-               }
+        resultTable <- do.call(what = rbind, args = resultList)
 
-               #-------------------------------#
-               # Competitive test              #
-               #-------------------------------#
-               if ("camera" %in% method) {
-                 # The test is restricted to the universe of the set, which is what makes the matching count
-                 universeIndex <- c(setIndex, backgroundIndex)
-                 cameraTable <- limma::cameraPR(statistic = regionStats$stat[universeIndex],
-                                                index = list(set = seq_along(setIndex)),
-                                                use.ranks = useRanks,
-                                                inter.gene.cor = setCorrelation,
-                                                sort = FALSE)
+        # One warning for every set involved rather than one per set
+        .warnWithinSetOverlap(
+            setTable = resultTable, setColumns = "region.set",
+            countColumns = "n.overlapping.within", policy = overlapWithinSet
+        )
 
-                 setRow$camera.direction <- as.character(cameraTable$Direction[1])
-                 setRow$camera.p <- cameraTable$PValue[1]
-               }
+        #-------------------------------#
+        # Correct across the sets       #
+        #-------------------------------#
+        if ("camera" %in% method) {
+            resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
+        }
+        if ("fry" %in% method) {
+            resultTable$fry.FDR <- stats::p.adjust(resultTable$fry.p, method = adjustMethod)
 
-               #-------------------------------#
-               # Self-contained test           #
-               #-------------------------------#
-               if ("fry" %in% method) {
-                 fryTable <- limma::fry(y = fryList$values,
-                                        index = list(set = setIndex),
-                                        design = fit@design,
-                                        contrast = contrastObject$vector,
-                                        standardize = fryList$standardize,
-                                        sort = FALSE)
+            if (!all(is.na(resultTable$fry.mixed.p))) {
+                resultTable$fry.mixed.FDR <- stats::p.adjust(resultTable$fry.mixed.p, method = adjustMethod)
+            }
+        }
+        if ("sample.delta.p" %in% colnames(resultTable)) {
+            resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
+        }
 
-                 setRow$fry.direction <- as.character(fryTable$Direction[1])
-                 setRow$fry.p <- fryTable$PValue[1]
+        resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
+        rownames(resultTable) <- NULL
 
-                 # The directional p-value cancels when the regions of a set disagree, the mixed one does
-                 # not, which is the only place a set being rearranged rather than shifted is visible
-                 setRow$fry.mixed.p <- if ("PValue.Mixed" %in% colnames(fryTable)) {fryTable$PValue.Mixed[1]} else {NA_real_}
-               }
+        #-------------------------------#
+        # Assemble the object           #
+        #-------------------------------#
+        setResults <- .newObject(
+            Class = "RegionSetDE.setResults",
+            counts = if (isTRUE(carryCounts)) {
+                fitCounts(fit)
+            } else {
+                .newObject(Class = "RegionSetDE.counts")
+            },
+            results = resultTable,
+            regionStats = regionStats,
+            contrast = contrastObject$label,
+            contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
+            test = "set",
+            methods = method,
+            universe = universe,
+            engine = fitEngine(fit),
+            thresholds = list(FDR = FDR, adjust.method = adjustMethod),
+            blacklist = blacklistRanges(fit),
+            greylist = greylistRanges(fit),
+            whitelist = whitelistRanges(fit),
+            genome.assembly = genomeAssembly(fit),
+            seqlevels.style = chromosomeStyle(fit),
+            filtering.log = filteringLog(fit),
+            parameters = c(
+                parameterLog(fit),
+                list(testRegionSets = list(
+                    contrast = contrastObject$label,
+                    method = method,
+                    universe = universeType(universe),
+                    effectMethod = effectMethod,
+                    interRegionCor = interRegionCor,
+                    tileHandling = tileHandling,
+                    overlapPolicy = overlapPolicy,
+                    overlapWithinSet = overlapWithinSet,
+                    fryInput = if (is.null(fryList)) {
+                        NA_character_
+                    } else {
+                        fryList$input
+                    },
+                    useRanks = useRanks,
+                    adjustMethod = adjustMethod,
+                    carryCounts = carryCounts
+                ))
+            )
+        )
 
-               return(setRow)
-             })
+        if (isTRUE(verbose)) {
+            if (effectMethod == "sample") {
+                message(
+                    "Done. 'CI.lower' and 'CI.upper' come from the samples through the design; the region-to-region ",
+                    "spread is in the 'heterogeneity' columns beside them."
+                )
+            } else {
+                message(
+                    "Done. 'CI.lower' and 'CI.upper' describe how the effect varies between loci, not between ",
+                    "biological samples. Use effectMethod = 'sample' for the biological interval."
+                )
+            }
+        }
 
-    resultTable <- do.call(what = rbind, args = resultList)
-
-    # One warning for every set involved rather than one per set
-    .warnWithinSetOverlap(setTable = resultTable, setColumns = "region.set",
-                          countColumns = "n.overlapping.within", policy = overlapWithinSet)
-
-    #-------------------------------#
-    # Correct across the sets       #
-    #-------------------------------#
-    if ("camera" %in% method) {
-      resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
-    }
-    if ("fry" %in% method) {
-      resultTable$fry.FDR <- stats::p.adjust(resultTable$fry.p, method = adjustMethod)
-
-      if (!all(is.na(resultTable$fry.mixed.p))) {
-        resultTable$fry.mixed.FDR <- stats::p.adjust(resultTable$fry.mixed.p, method = adjustMethod)
-      }
-    }
-    if ("sample.delta.p" %in% colnames(resultTable)) {
-      resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
-    }
-
-    resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
-    rownames(resultTable) <- NULL
-
-    #-------------------------------#
-    # Assemble the object           #
-    #-------------------------------#
-    setResults <- new(Class = "RegionSetDE.setResults",
-                      counts = if (isTRUE(carryCounts)) {fit@counts} else {new(Class = "RegionSetDE.counts")},
-                      results = resultTable,
-                      regionStats = regionStats,
-                      contrast = contrastObject$label,
-                      contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
-                      test = "set",
-                      methods = method,
-                      universe = universe,
-                      engine = fit@engine,
-                      thresholds = list(FDR = FDR, adjust.method = adjustMethod),
-                      blacklist = fit@blacklist,
-                      greylist = fit@greylist,
-                      whitelist = fit@whitelist,
-                      genome.assembly = fit@genome.assembly,
-                      seqlevels.style = fit@seqlevels.style,
-                      filtering.log = fit@filtering.log,
-                      parameters = c(fit@parameters,
-                                     list(testRegionSets = list(contrast = contrastObject$label,
-                                                                method = method,
-                                                                universe = universe@type,
-                                                                effectMethod = effectMethod,
-                                                                interRegionCor = interRegionCor,
-                                                                tileHandling = tileHandling,
-                                                                overlapPolicy = overlapPolicy,
-                                                                overlapWithinSet = overlapWithinSet,
-                                                                fryInput = if (is.null(fryList)) {NA_character_} else {fryList$input},
-                                                                useRanks = useRanks,
-                                                                adjustMethod = adjustMethod,
-                                                                carryCounts = carryCounts))))
-
-    if (isTRUE(verbose)) {
-      if (effectMethod == "sample") {
-        message("Done. 'CI.lower' and 'CI.upper' come from the samples through the design; the region-to-region ",
-                "spread is in the 'heterogeneity' columns beside them.")
-      } else {
-        message("Done. 'CI.lower' and 'CI.upper' describe how the effect varies between loci, not between ",
-                "biological samples. Use effectMethod = 'sample' for the biological interval.")
-      }
-    }
-
-    return(setResults)
-  } # END function
+        return(setResults)
+    } # END function
 
 
+#' @title .checkTestRegionSetsArguments
+#'
+#' @description Checks the arguments of \code{\link{testRegionSets}} and brings them to the form the rest of the function works with.
+#'
+#' @param fit See \code{\link{testRegionSets}}.
+#' @param effectMethod See \code{\link{testRegionSets}}.
+#' @param tileHandling See \code{\link{testRegionSets}}.
+#' @param overlapPolicy See \code{\link{testRegionSets}}.
+#' @param overlapWithinSet See \code{\link{testRegionSets}}.
+#' @param fryInput See \code{\link{testRegionSets}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{effectMethod}, \code{fryInput}, \code{overlapPolicy}, \code{overlapWithinSet}, \code{tileHandling}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkTestRegionSetsArguments <-
+    function(fit,
+             effectMethod,
+             tileHandling,
+             overlapPolicy,
+             overlapWithinSet,
+             fryInput) {
+        if (!methods::is(fit, "RegionSetDE.fit")) {
+            stop("The 'fit' parameter must be a RegionSetDE.fit object.", call. = FALSE)
+        }
+
+        effectMethod <- tolower(as.character(effectMethod[1]))
+        if (!(effectMethod %in% c("sample", "region"))) {
+            stop("The 'effectMethod' parameter must be either 'sample' or 'region'.", call. = FALSE)
+        }
+
+        tileHandling <- tolower(as.character(tileHandling[1]))
+        if (!(tileHandling %in% c("collapse", "keep"))) {
+            stop("The 'tileHandling' parameter must be either 'collapse' or 'keep'.", call. = FALSE)
+        }
+
+        overlapPolicy <- tolower(as.character(overlapPolicy[1]))
+        if (!(overlapPolicy %in% c("allow", "drop", "stop"))) {
+            stop("The 'overlapPolicy' parameter must be one among 'allow', 'drop' or 'stop'.", call. = FALSE)
+        }
+
+        overlapWithinSet <- .checkWithinSetPolicy(overlapWithinSet)
+
+        fryInput <- tolower(as.character(fryInput[1]))
+        if (!(fryInput %in% c("auto", "logcpm"))) {
+            stop("The 'fryInput' parameter must be either 'auto' or 'logCPM'.", call. = FALSE)
+        }
+
+        return(list(
+            effectMethod = effectMethod,
+            fryInput = fryInput,
+            overlapPolicy = overlapPolicy,
+            overlapWithinSet = overlapWithinSet,
+            tileHandling = tileHandling
+        ))
+    } # END function
 
 
 #' @title testSetContrast
@@ -579,11 +712,18 @@ testRegionSets <-
 #'
 #' Overlaps within one side of the pair are a separate matter, measured after the shared regions are removed and handled by \code{overlapWithinSet} as \code{\link{testRegionSets}} handles them.
 #'
+#' @references
+#' Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting for inter-gene correlation. \emph{Nucleic Acids Research} 40(17):e133.
+#'
+#' Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. \emph{Nucleic Acids Research} 43(7):e47.
+#'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
 #'
-#' setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
-#'                                set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE)
+#' setContrast <- testSetContrast(fit,
+#'     contrast = c("condition", "SHR", "BN"),
+#'     set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE
+#' )
 #' resultsTable(setContrast)
 #'
 #' # Every pair at once
@@ -604,276 +744,346 @@ testRegionSets <-
 #' @export testSetContrast
 
 testSetContrast <-
-  function(fit,
-           contrast,
-           set1 = NULL,
-           set2 = NULL,
-           effectMethod = "sample",
-           interRegionCor = NULL,
-           useRanks = FALSE,
-           sharedRegions = "drop",
-           overlapWithinSet = "warn",
-           FDR = 0.05,
-           adjustMethod = "BH",
-           carryCounts = TRUE,
-           verbose = TRUE) {
+    function(fit,
+             contrast,
+             set1 = NULL,
+             set2 = NULL,
+             effectMethod = "sample",
+             interRegionCor = NULL,
+             useRanks = FALSE,
+             sharedRegions = "drop",
+             overlapWithinSet = "warn",
+             FDR = 0.05,
+             adjustMethod = "BH",
+             carryCounts = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(fit, "RegionSetDE.fit")) {
+            stop("The 'fit' parameter must be a RegionSetDE.fit object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(fit, "RegionSetDE.fit")) {
-      stop("The 'fit' parameter must be a RegionSetDE.fit object.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Several contrasts at once     #
+        #-------------------------------#
+        if (is.list(contrast) & !is.data.frame(contrast)) {
+            if (is.null(names(contrast)) | any(names(contrast) == "")) {
+                names(contrast) <- paste0("contrast", seq_along(contrast))
+            }
 
-    #-------------------------------#
-    # Several contrasts at once     #
-    #-------------------------------#
-    if (is.list(contrast) & !is.data.frame(contrast)) {
-      if (is.null(names(contrast)) | any(names(contrast) == "")) {
-        names(contrast) <- paste0("contrast", seq_along(contrast))
-      }
+            resultsList <-
+                lapply(
+                    names(contrast),
+                    function(contrastName) {
+                        if (isTRUE(verbose)) {
+                            message("--- ", contrastName, " ---")
+                        }
+                        return(testSetContrast(
+                            fit = fit, contrast = contrast[[contrastName]], set1 = set1, set2 = set2,
+                            effectMethod = effectMethod, interRegionCor = interRegionCor, useRanks = useRanks,
+                            sharedRegions = sharedRegions, overlapWithinSet = overlapWithinSet,
+                            FDR = FDR, adjustMethod = adjustMethod,
+                            carryCounts = carryCounts, verbose = verbose
+                        ))
+                    }
+                )
 
-      resultsList <-
-        lapply(names(contrast),
-               function(contrastName) {
-                 if (isTRUE(verbose)) {
-                   message("--- ", contrastName, " ---")
-                 }
-                 return(testSetContrast(fit = fit, contrast = contrast[[contrastName]], set1 = set1, set2 = set2,
-                                        effectMethod = effectMethod, interRegionCor = interRegionCor, useRanks = useRanks,
-                                        sharedRegions = sharedRegions, overlapWithinSet = overlapWithinSet,
-                                        FDR = FDR, adjustMethod = adjustMethod,
-                                        carryCounts = carryCounts, verbose = verbose))
-               })
+            names(resultsList) <- names(contrast)
 
-      names(resultsList) <- names(contrast)
+            return(.newObject(
+                Class = "RegionSetDE.setResultsList",
+                results = resultsList,
+                contrasts = names(contrast)
+            ))
+        }
 
-      return(new(Class = "RegionSetDE.setResultsList",
-                 results = resultsList,
-                 contrasts = names(contrast)))
-    }
+        if (!(sharedRegions %in% c("drop", "stop"))) {
+            stop("The 'sharedRegions' parameter must be either 'drop' or 'stop'.", call. = FALSE)
+        }
 
-    if (!(sharedRegions %in% c("drop", "stop"))) {
-      stop("The 'sharedRegions' parameter must be either 'drop' or 'stop'.", call. = FALSE)
-    }
+        overlapWithinSet <- .checkWithinSetPolicy(overlapWithinSet)
 
-    overlapWithinSet <- .checkWithinSetPolicy(overlapWithinSet)
+        effectMethod <- tolower(as.character(effectMethod[1]))
+        if (!(effectMethod %in% c("sample", "region"))) {
+            stop("The 'effectMethod' parameter must be either 'sample' or 'region'.", call. = FALSE)
+        }
 
-    effectMethod <- tolower(as.character(effectMethod[1]))
-    if (!(effectMethod %in% c("sample", "region"))) {
-      stop("The 'effectMethod' parameter must be either 'sample' or 'region'.", call. = FALSE)
-    }
+        if (effectMethod == "sample" & (nrow(designMatrix(fit)) - ncol(designMatrix(fit))) < 1) {
+            effectMethod <- "region"
+            warning("The design leaves no residual degree of freedom, so no interval can be built on the samples. ",
+                "The reported interval is the region-heterogeneity one.",
+                call. = FALSE
+            )
+        }
 
-    if (effectMethod == "sample" & (nrow(fit@design) - ncol(fit@design)) < 1) {
-      effectMethod <- "region"
-      warning("The design leaves no residual degree of freedom, so no interval can be built on the samples. ",
-              "The reported interval is the region-heterogeneity one.", call. = FALSE)
-    }
+        if (is.null(interRegionCor) & (nrow(designMatrix(fit)) - ncol(designMatrix(fit))) < 2) {
+            interRegionCor <- 0.01
+            warning("The correlation between regions cannot be estimated from this design, and is held at 0.01. ",
+                "Every confidence interval and p-value below rests on that number.",
+                call. = FALSE
+            )
+        }
 
-    if (is.null(interRegionCor) & (nrow(fit@design) - ncol(fit@design)) < 2) {
-      interRegionCor <- 0.01
-      warning("The correlation between regions cannot be estimated from this design, and is held at 0.01. ",
-              "Every confidence interval and p-value below rests on that number.", call. = FALSE)
-    }
+        contrastObject <- .resolveContrast(
+            contrast = contrast,
+            design = designMatrix(fit),
+            colData = SummarizedExperiment::colData(fitCounts(fit))
+        )
+        regionStats <- .setStatistics(fit = fit, contrastObject = contrastObject)
+        setNames <- unique(as.character(regionStats$region.set))
 
-    contrastObject <- .resolveContrast(contrast = contrast,
-                                       design = fit@design,
-                                       colData = SummarizedExperiment::colData(fit@counts))
-    regionStats <- .setStatistics(fit = fit, contrastObject = contrastObject)
-    setNames <- unique(as.character(regionStats$region.set))
+        #-------------------------------#
+        # Pairs to test                 #
+        #-------------------------------#
+        if (is.null(set1) & is.null(set2)) {
+            if (length(setNames) < 2) {
+                stop("At least two region sets are needed to contrast them.", call. = FALSE)
+            }
+            pairTable <- as.data.frame(t(utils::combn(setNames, 2)), stringsAsFactors = FALSE)
+            colnames(pairTable) <- c("set.1", "set.2")
+        } else {
+            if (is.null(set1) | is.null(set2)) {
+                stop("Both 'set1' and 'set2' must be given, or neither of them.", call. = FALSE)
+            }
+            absentSets <- setdiff(c(set1, set2), setNames)
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            pairTable <- data.frame(
+                set.1 = paste(set1, collapse = "+"),
+                set.2 = paste(set2, collapse = "+"),
+                stringsAsFactors = FALSE
+            )
+        }
 
-    #-------------------------------#
-    # Pairs to test                 #
-    #-------------------------------#
-    if (is.null(set1) & is.null(set2)) {
-      if (length(setNames) < 2) {
-        stop("At least two region sets are needed to contrast them.", call. = FALSE)
-      }
-      pairTable <- as.data.frame(t(utils::combn(setNames, 2)), stringsAsFactors = FALSE)
-      colnames(pairTable) <- c("set.1", "set.2")
+        expressionMatrix <- if (is.null(interRegionCor) | effectMethod == "sample") {
+            .expressionMatrix(fit = fit)
+        } else {
+            NULL
+        }
 
-    } else {
-      if (is.null(set1) | is.null(set2)) {
-        stop("Both 'set1' and 'set2' must be given, or neither of them.", call. = FALSE)
-      }
-      absentSets <- setdiff(c(set1, set2), setNames)
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      pairTable <- data.frame(set.1 = paste(set1, collapse = "+"),
-                              set.2 = paste(set2, collapse = "+"),
-                              stringsAsFactors = FALSE)
-    }
+        #-------------------------------#
+        # One pair at a time            #
+        #-------------------------------#
+        resultList <-
+            lapply(
+                seq_len(nrow(pairTable)),
+                function(i) {
+                    firstNames <- if (is.null(set1)) {
+                        pairTable$set.1[i]
+                    } else {
+                        set1
+                    }
+                    secondNames <- if (is.null(set2)) {
+                        pairTable$set.2[i]
+                    } else {
+                        set2
+                    }
 
-    expressionMatrix <- if (is.null(interRegionCor) | effectMethod == "sample") {.expressionMatrix(fit = fit)} else {NULL}
+                    firstIndex <- which(regionStats$region.set %in% firstNames)
+                    secondIndex <- which(regionStats$region.set %in% secondNames)
 
-    #-------------------------------#
-    # One pair at a time            #
-    #-------------------------------#
-    resultList <-
-      lapply(seq_len(nrow(pairTable)),
-             function(i) {
-               firstNames <- if (is.null(set1)) {pairTable$set.1[i]} else {set1}
-               secondNames <- if (is.null(set2)) {pairTable$set.2[i]} else {set2}
+                    #-------------------------------#
+                    # Regions sitting in both sets  #
+                    #-------------------------------#
+                    # The same reads on both sides of the comparison drag the difference towards zero, and reads
+                    # are shared through the coordinates whatever the identifiers happen to say
+                    sharedFirst <- .overlappingRows(
+                        regionStats = regionStats,
+                        setIndex = secondIndex,
+                        comparisonIndex = firstIndex
+                    )
+                    sharedSecond <- .overlappingRows(
+                        regionStats = regionStats,
+                        setIndex = firstIndex,
+                        comparisonIndex = secondIndex
+                    )
 
-               firstIndex <- which(regionStats$region.set %in% firstNames)
-               secondIndex <- which(regionStats$region.set %in% secondNames)
+                    sharedNumber <- length(sharedFirst) + length(sharedSecond)
 
-               #-------------------------------#
-               # Regions sitting in both sets  #
-               #-------------------------------#
-               # The same reads on both sides of the comparison drag the difference towards zero, and reads
-               # are shared through the coordinates whatever the identifiers happen to say
-               sharedFirst <- .overlappingRows(regionStats = regionStats,
-                                               setIndex = secondIndex,
-                                               comparisonIndex = firstIndex)
-               sharedSecond <- .overlappingRows(regionStats = regionStats,
-                                                setIndex = firstIndex,
-                                                comparisonIndex = secondIndex)
+                    if (sharedNumber > 0) {
+                        if (sharedRegions == "stop") {
+                            stop(sharedNumber, " regions of '", pairTable$set.1[i], "' and '", pairTable$set.2[i],
+                                "' overlap each other in the genome.",
+                                call. = FALSE
+                            )
+                        }
+                        firstIndex <- setdiff(firstIndex, sharedFirst)
+                        secondIndex <- setdiff(secondIndex, sharedSecond)
+                    }
 
-               sharedNumber <- length(sharedFirst) + length(sharedSecond)
+                    if (length(firstIndex) < 2 | length(secondIndex) < 2) {
+                        stop("Fewer than 2 regions are left in one side of the pair '", pairTable$set.1[i],
+                            "' versus '", pairTable$set.2[i], "'.",
+                            call. = FALSE
+                        )
+                    }
 
-               if (sharedNumber > 0) {
-                 if (sharedRegions == "stop") {
-                   stop(sharedNumber, " regions of '", pairTable$set.1[i], "' and '", pairTable$set.2[i],
-                        "' overlap each other in the genome.", call. = FALSE)
-                 }
-                 firstIndex <- setdiff(firstIndex, sharedFirst)
-                 secondIndex <- setdiff(secondIndex, sharedSecond)
-               }
+                    # Overlaps inside each side, once the regions shared by the two sides are gone
+                    firstWithin <- .withinSetOverlap(regionStats = regionStats, index = firstIndex)
+                    secondWithin <- .withinSetOverlap(regionStats = regionStats, index = secondIndex)
 
-               if (length(firstIndex) < 2 | length(secondIndex) < 2) {
-                 stop("Fewer than 2 regions are left in one side of the pair '", pairTable$set.1[i],
-                      "' versus '", pairTable$set.2[i], "'.", call. = FALSE)
-               }
+                    if ((firstWithin + secondWithin) > 0 & overlapWithinSet == "stop") {
+                        stop(firstWithin + secondWithin, " regions of the pair '", pairTable$set.1[i], "' versus '", pairTable$set.2[i],
+                            "' overlap another region on their own side. Merge them with loadRegions(reduceRegions = TRUE), ",
+                            "or set 'overlapWithinSet' to 'warn' or 'allow'.",
+                            call. = FALSE
+                        )
+                    }
 
-               # Overlaps inside each side, once the regions shared by the two sides are gone
-               firstWithin <- .withinSetOverlap(regionStats = regionStats, index = firstIndex)
-               secondWithin <- .withinSetOverlap(regionStats = regionStats, index = secondIndex)
+                    #-------------------------------#
+                    # Correlation and effect size   #
+                    #-------------------------------#
+                    firstCorrelation <- if (is.null(interRegionCor)) {
+                        .interRegionCor(
+                            expressionMatrix = expressionMatrix, design = designMatrix(fit),
+                            index = firstIndex, label = pairTable$set.1[i]
+                        )
+                    } else {
+                        interRegionCor
+                    }
 
-               if ((firstWithin + secondWithin) > 0 & overlapWithinSet == "stop") {
-                 stop(firstWithin + secondWithin, " regions of the pair '", pairTable$set.1[i], "' versus '", pairTable$set.2[i],
-                      "' overlap another region on their own side. Merge them with loadRegions(reduceRegions = TRUE), ",
-                      "or set 'overlapWithinSet' to 'warn' or 'allow'.", call. = FALSE)
-               }
+                    secondCorrelation <- if (is.null(interRegionCor)) {
+                        .interRegionCor(
+                            expressionMatrix = expressionMatrix, design = designMatrix(fit),
+                            index = secondIndex, label = pairTable$set.2[i]
+                        )
+                    } else {
+                        interRegionCor
+                    }
 
-               #-------------------------------#
-               # Correlation and effect size   #
-               #-------------------------------#
-               firstCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
-                                 index = firstIndex, label = pairTable$set.1[i])
-               } else {interRegionCor}
+                    heterogeneity <- .setEffectSize(
+                        logFC = regionStats$log2FC,
+                        setIndex = firstIndex,
+                        backgroundIndex = secondIndex,
+                        correlation = firstCorrelation,
+                        backgroundCorrelation = secondCorrelation
+                    )
 
-               secondCorrelation <- if (is.null(interRegionCor)) {
-                 .interRegionCor(expressionMatrix = expressionMatrix, design = fit@design,
-                                 index = secondIndex, label = pairTable$set.2[i])
-               } else {interRegionCor}
+                    sampleEffect <- if (effectMethod == "sample") {
+                        .sampleSetEffect(
+                            expressionMatrix = expressionMatrix,
+                            setIndex = firstIndex,
+                            backgroundIndex = secondIndex,
+                            design = designMatrix(fit),
+                            contrastVector = contrastObject$vector
+                        )
+                    } else {
+                        NULL
+                    }
 
-               heterogeneity <- .setEffectSize(logFC = regionStats$log2FC,
-                                               setIndex = firstIndex,
-                                               backgroundIndex = secondIndex,
-                                               correlation = firstCorrelation,
-                                               backgroundCorrelation = secondCorrelation)
+                    #-------------------------------#
+                    # Competitive test on the pair  #
+                    #-------------------------------#
+                    universeIndex <- c(firstIndex, secondIndex)
+                    cameraTable <- limma::cameraPR(
+                        statistic = regionStats$stat[universeIndex],
+                        index = list(set = seq_along(firstIndex)),
+                        use.ranks = useRanks,
+                        inter.gene.cor = firstCorrelation,
+                        sort = FALSE
+                    )
 
-               sampleEffect <- if (effectMethod == "sample") {
-                 .sampleSetEffect(expressionMatrix = expressionMatrix,
-                                  setIndex = firstIndex,
-                                  backgroundIndex = secondIndex,
-                                  design = fit@design,
-                                  contrastVector = contrastObject$vector)
-               } else {
-                 NULL
-               }
+                    pairRow <- data.frame(
+                        set.1 = pairTable$set.1[i],
+                        set.2 = pairTable$set.2[i],
+                        n.regions.1 = length(firstIndex),
+                        n.regions.2 = length(secondIndex),
+                        n.shared.dropped = sharedNumber,
+                        n.overlapping.within.1 = firstWithin,
+                        n.overlapping.within.2 = secondWithin,
+                        mean.log2FC.1 = heterogeneity$mean.set,
+                        mean.log2FC.2 = heterogeneity$mean.background,
+                        delta.log2FC = heterogeneity$delta,
+                        CI.lower = if (is.null(sampleEffect)) {
+                            heterogeneity$ci.lower
+                        } else {
+                            sampleEffect$ci.lower
+                        },
+                        CI.upper = if (is.null(sampleEffect)) {
+                            heterogeneity$ci.upper
+                        } else {
+                            sampleEffect$ci.upper
+                        },
+                        CI.type = effectMethod,
+                        heterogeneity.CI.lower = heterogeneity$ci.lower,
+                        heterogeneity.CI.upper = heterogeneity$ci.upper,
+                        inter.region.cor.1 = firstCorrelation,
+                        inter.region.cor.2 = secondCorrelation,
+                        camera.direction = as.character(cameraTable$Direction[1]),
+                        camera.p = cameraTable$PValue[1],
+                        stringsAsFactors = FALSE
+                    )
 
-               #-------------------------------#
-               # Competitive test on the pair  #
-               #-------------------------------#
-               universeIndex <- c(firstIndex, secondIndex)
-               cameraTable <- limma::cameraPR(statistic = regionStats$stat[universeIndex],
-                                              index = list(set = seq_along(firstIndex)),
-                                              use.ranks = useRanks,
-                                              inter.gene.cor = firstCorrelation,
-                                              sort = FALSE)
+                    if (!is.null(sampleEffect)) {
+                        pairRow$sample.delta.log2FC <- sampleEffect$delta
+                        pairRow$sample.delta.SE <- sampleEffect$standard.error
+                        pairRow$sample.delta.df <- sampleEffect$df
+                        pairRow$sample.delta.p <- sampleEffect$p.value
+                    }
 
-               pairRow <- data.frame(set.1 = pairTable$set.1[i],
-                                     set.2 = pairTable$set.2[i],
-                                     n.regions.1 = length(firstIndex),
-                                     n.regions.2 = length(secondIndex),
-                                     n.shared.dropped = sharedNumber,
-                                     n.overlapping.within.1 = firstWithin,
-                                     n.overlapping.within.2 = secondWithin,
-                                     mean.log2FC.1 = heterogeneity$mean.set,
-                                     mean.log2FC.2 = heterogeneity$mean.background,
-                                     delta.log2FC = heterogeneity$delta,
-                                     CI.lower = if (is.null(sampleEffect)) {heterogeneity$ci.lower} else {sampleEffect$ci.lower},
-                                     CI.upper = if (is.null(sampleEffect)) {heterogeneity$ci.upper} else {sampleEffect$ci.upper},
-                                     CI.type = effectMethod,
-                                     heterogeneity.CI.lower = heterogeneity$ci.lower,
-                                     heterogeneity.CI.upper = heterogeneity$ci.upper,
-                                     inter.region.cor.1 = firstCorrelation,
-                                     inter.region.cor.2 = secondCorrelation,
-                                     camera.direction = as.character(cameraTable$Direction[1]),
-                                     camera.p = cameraTable$PValue[1],
-                                     stringsAsFactors = FALSE)
+                    return(pairRow)
+                }
+            )
 
-               if (!is.null(sampleEffect)) {
-                 pairRow$sample.delta.log2FC <- sampleEffect$delta
-                 pairRow$sample.delta.SE <- sampleEffect$standard.error
-                 pairRow$sample.delta.df <- sampleEffect$df
-                 pairRow$sample.delta.p <- sampleEffect$p.value
-               }
+        resultTable <- do.call(what = rbind, args = resultList)
 
-               return(pairRow)
-             })
+        .warnWithinSetOverlap(
+            setTable = resultTable, setColumns = c("set.1", "set.2"),
+            countColumns = c("n.overlapping.within.1", "n.overlapping.within.2"),
+            policy = overlapWithinSet
+        )
 
-    resultTable <- do.call(what = rbind, args = resultList)
+        resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
+        if ("sample.delta.p" %in% colnames(resultTable)) {
+            resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
+        }
+        resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
+        rownames(resultTable) <- NULL
 
-    .warnWithinSetOverlap(setTable = resultTable, setColumns = c("set.1", "set.2"),
-                          countColumns = c("n.overlapping.within.1", "n.overlapping.within.2"),
-                          policy = overlapWithinSet)
+        if (isTRUE(verbose)) {
+            message("Done. ", nrow(resultTable), " pairs tested for '", contrastObject$label, "'.")
+        }
 
-    resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
-    if ("sample.delta.p" %in% colnames(resultTable)) {
-      resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
-    }
-    resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
-    rownames(resultTable) <- NULL
-
-    if (isTRUE(verbose)) {
-      message("Done. ", nrow(resultTable), " pairs tested for '", contrastObject$label, "'.")
-    }
-
-    return(new(Class = "RegionSetDE.setResults",
-               counts = if (isTRUE(carryCounts)) {fit@counts} else {new(Class = "RegionSetDE.counts")},
-               results = resultTable,
-               regionStats = regionStats,
-               contrast = contrastObject$label,
-               contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
-               test = "setContrast",
-               methods = "camera",
-               universe = new(Class = "RegionSetDE.universe", type = "pairedSet", n.rows = nrow(fit@counts)),
-               engine = fit@engine,
-               thresholds = list(FDR = FDR, adjust.method = adjustMethod),
-               blacklist = fit@blacklist,
-               greylist = fit@greylist,
-               whitelist = fit@whitelist,
-               genome.assembly = fit@genome.assembly,
-               seqlevels.style = fit@seqlevels.style,
-               filtering.log = fit@filtering.log,
-               parameters = c(fit@parameters,
-                              list(testSetContrast = list(contrast = contrastObject$label,
-                                                          set1 = set1,
-                                                          set2 = set2,
-                                                          effectMethod = effectMethod,
-                                                          sharedRegions = sharedRegions,
-                                                          overlapWithinSet = overlapWithinSet,
-                                                          useRanks = useRanks,
-                                                          adjustMethod = adjustMethod,
-                                                          carryCounts = carryCounts)))))
-  } # END function
-
-
+        return(.newObject(
+            Class = "RegionSetDE.setResults",
+            counts = if (isTRUE(carryCounts)) {
+                fitCounts(fit)
+            } else {
+                .newObject(Class = "RegionSetDE.counts")
+            },
+            results = resultTable,
+            regionStats = regionStats,
+            contrast = contrastObject$label,
+            contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
+            test = "setContrast",
+            methods = "camera",
+            universe = .newObject(Class = "RegionSetDE.universe", type = "pairedSet", n.rows = nrow(fitCounts(fit))),
+            engine = fitEngine(fit),
+            thresholds = list(FDR = FDR, adjust.method = adjustMethod),
+            blacklist = blacklistRanges(fit),
+            greylist = greylistRanges(fit),
+            whitelist = whitelistRanges(fit),
+            genome.assembly = genomeAssembly(fit),
+            seqlevels.style = chromosomeStyle(fit),
+            filtering.log = filteringLog(fit),
+            parameters = c(
+                parameterLog(fit),
+                list(testSetContrast = list(
+                    contrast = contrastObject$label,
+                    set1 = set1,
+                    set2 = set2,
+                    effectMethod = effectMethod,
+                    sharedRegions = sharedRegions,
+                    overlapWithinSet = overlapWithinSet,
+                    useRanks = useRanks,
+                    adjustMethod = adjustMethod,
+                    carryCounts = carryCounts
+                ))
+            )
+        ))
+    } # END function
 
 
 #' @title .setStatistics
@@ -896,38 +1106,37 @@ testSetContrast <-
 #' @keywords internal
 
 .setStatistics <-
-  function(fit,
-           contrastObject) {
+    function(fit,
+             contrastObject) {
+        rawTable <- switch(fitEngine(fit),
+            "edgeR" = .testEdgeR(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0),
+            "voom" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0),
+            "limma" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0, trend = TRUE),
+            "dream" = .testDream(fit = fit, contrastObject = contrastObject, lfcThreshold = 0, verbose = FALSE),
+            "deseq2" = .testDESeq2(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0)
+        )
 
-    rawTable <- switch(fit@engine,
-                       "edgeR" = .testEdgeR(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0),
-                       "voom" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0),
-                       "limma" = .testVoom(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0, trend = TRUE),
-                       "dream" = .testDream(fit = fit, contrastObject = contrastObject, lfcThreshold = 0, verbose = FALSE),
-                       "deseq2" = .testDESeq2(fit = fit, contrastVector = contrastObject$vector, lfcThreshold = 0))
+        # The quasi-likelihood F carries no sign, so a signed statistic has to be rebuilt for the competitive test
+        if (fitEngine(fit) == "edgeR") {
+            rawTable$stat <- sign(rawTable$log2FC) * sqrt(pmax(rawTable$stat, 0))
+        }
 
-    # The quasi-likelihood F carries no sign, so a signed statistic has to be rebuilt for the competitive test
-    if (fit@engine == "edgeR") {
-      rawTable$stat <- sign(rawTable$log2FC) * sqrt(pmax(rawTable$stat, 0))
-    }
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(fitCounts(fit)))
 
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(fit@counts))
+        rowRangesObject <- SummarizedExperiment::rowRanges(fitCounts(fit))
 
-    rowRangesObject <- SummarizedExperiment::rowRanges(fit@counts)
-
-    # The coordinates travel along so that the overlap between a set and its comparison can be measured
-    # on the genome rather than on the identifiers
-    return(dplyr::mutate(rawTable,
-                         region.set = as.character(rowTable$region.set),
-                         region.id = as.character(rowTable$region.id),
-                         region.key.plain = as.character(rowTable$region.id),
-                         seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
-                         start = BiocGenerics::start(rowRangesObject),
-                         end = BiocGenerics::end(rowRangesObject),
-                         width = BiocGenerics::width(rowRangesObject)))
-  } # END function
-
-
+        # The coordinates travel along so that the overlap between a set and its comparison can be measured
+        # on the genome rather than on the identifiers
+        return(dplyr::mutate(rawTable,
+            region.set = as.character(rowTable$region.set),
+            region.id = as.character(rowTable$region.id),
+            region.key.plain = as.character(rowTable$region.id),
+            seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
+            start = BiocGenerics::start(rowRangesObject),
+            end = BiocGenerics::end(rowRangesObject),
+            width = BiocGenerics::width(rowRangesObject)
+        ))
+    } # END function
 
 
 #' @title .expressionMatrix
@@ -947,37 +1156,36 @@ testSetContrast <-
 #' @keywords internal
 
 .expressionMatrix <-
-  function(fit,
-           priorCount = 2) {
+    function(fit,
+             priorCount = 2) {
+        # voom, dream and limma already hold the values the model saw, nothing has to be rebuilt
+        if (fitEngine(fit) %in% c("voom", "dream", "limma")) {
+            return(as.matrix(fitComponents(fit)$voom$E))
+        }
 
-    # voom, dream and limma already hold the values the model saw, nothing has to be rebuilt
-    if (fit@engine %in% c("voom", "dream", "limma")) {
-      return(as.matrix(fit@fit$voom$E))
-    }
+        countMatrix <- as.matrix(SummarizedExperiment::assay(fitCounts(fit), 1))
 
-    countMatrix <- as.matrix(SummarizedExperiment::assay(fit@counts, 1))
+        offsetMatrix <- .fitOffsets(counts = fitCounts(fit), useOffsets = TRUE, verbose = FALSE)
 
-    offsetMatrix <- .fitOffsets(counts = fit@counts, useOffsets = TRUE, verbose = FALSE)
+        if (is.null(offsetMatrix)) {
+            librarySizes <- SummarizedExperiment::colData(fitCounts(fit))$library.size
+            if (is.null(librarySizes) | any(is.na(librarySizes))) {
+                librarySizes <- colSums(countMatrix)
+            }
+            offsetMatrix <- matrix(
+                data = rep(log(librarySizes), each = nrow(countMatrix)),
+                nrow = nrow(countMatrix), ncol = ncol(countMatrix)
+            )
+        } else {
+            # The offsets are centred on the library sizes so that the values come out on a CPM scale
+            offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(colSums(countMatrix)))
+        }
 
-    if (is.null(offsetMatrix)) {
-      librarySizes <- SummarizedExperiment::colData(fit@counts)$library.size
-      if (is.null(librarySizes) | any(is.na(librarySizes))) {
-        librarySizes <- colSums(countMatrix)
-      }
-      offsetMatrix <- matrix(data = rep(log(librarySizes), each = nrow(countMatrix)),
-                             nrow = nrow(countMatrix), ncol = ncol(countMatrix))
-    } else {
-      # The offsets are centred on the library sizes so that the values come out on a CPM scale
-      offsetMatrix <- offsetMatrix - rowMeans(offsetMatrix) + mean(log(colSums(countMatrix)))
-    }
+        logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
+        dimnames(logMatrix) <- dimnames(countMatrix)
 
-    logMatrix <- log2(countMatrix + priorCount) - offsetMatrix / log(2) + log2(1e6)
-    dimnames(logMatrix) <- dimnames(countMatrix)
-
-    return(logMatrix)
-  } # END function
-
-
+        return(logMatrix)
+    } # END function
 
 
 #' @title .fryValues
@@ -1001,67 +1209,80 @@ testSetContrast <-
 #' @keywords internal
 
 .fryValues <-
-  function(fit,
-           contrastVector,
-           fryInput = "auto") {
+    function(fit,
+             contrastVector,
+             fryInput = "auto") {
+        # The linear engines were fitted on log values, fry reads them as they are
+        if (fryInput == "logcpm" | !(fitEngine(fit) %in% c("edgeR", "deseq2"))) {
+            return(list(
+                values = .expressionMatrix(fit = fit),
+                standardize = "posterior.sd",
+                input = if (fitEngine(fit) %in% c("edgeR", "deseq2")) {
+                    "logCPM"
+                } else {
+                    "model log values"
+                }
+            ))
+        }
 
-    # The linear engines were fitted on log values, fry reads them as they are
-    if (fryInput == "logcpm" | !(fit@engine %in% c("edgeR", "deseq2"))) {
-      return(list(values = .expressionMatrix(fit = fit),
-                  standardize = "posterior.sd",
-                  input = if (fit@engine %in% c("edgeR", "deseq2")) {"logCPM"} else {"model log values"}))
-    }
+        #-------------------------------#
+        # Counts, offsets, dispersions  #
+        #-------------------------------#
+        if (fitEngine(fit) == "edgeR") {
+            dgeList <- fitComponents(fit)$dge
+            countMatrix <- as.matrix(dgeList$counts)
+            offsetValues <- edgeR::getOffset(dgeList)
+            dispersionValues <- edgeR::getDispersion(dgeList)
+        } else {
+            if (!requireNamespace("DESeq2", quietly = TRUE)) {
+                stop("The 'DESeq2' package is needed to read the dispersions of this fit.", call. = FALSE)
+            }
+            ddsObject <- fitComponents(fit)$object
+            countMatrix <- as.matrix(DESeq2::counts(ddsObject, normalized = FALSE))
+            normFactors <- DESeq2::normalizationFactors(ddsObject)
+            offsetValues <- if (is.null(normFactors)) {
+                log(DESeq2::sizeFactors(ddsObject))
+            } else {
+                log(as.matrix(normFactors))
+            }
+            dispersionValues <- DESeq2::dispersions(ddsObject)
+        }
 
-    #-------------------------------#
-    # Counts, offsets, dispersions  #
-    #-------------------------------#
-    if (fit@engine == "edgeR") {
-      dgeList <- fit@fit$dge
-      countMatrix <- as.matrix(dgeList$counts)
-      offsetValues <- edgeR::getOffset(dgeList)
-      dispersionValues <- edgeR::getDispersion(dgeList)
-    } else {
-      if (!requireNamespace("DESeq2", quietly = TRUE)) {
-        stop("The 'DESeq2' package is needed to read the dispersions of this fit.", call. = FALSE)
-      }
-      ddsObject <- fit@fit$object
-      countMatrix <- as.matrix(DESeq2::counts(ddsObject, normalized = FALSE))
-      normFactors <- DESeq2::normalizationFactors(ddsObject)
-      offsetValues <- if (is.null(normFactors)) {log(DESeq2::sizeFactors(ddsObject))} else {log(as.matrix(normFactors))}
-      dispersionValues <- DESeq2::dispersions(ddsObject)
-    }
+        if (is.null(dispersionValues)) {
+            stop("No dispersion is stored in the fit, the z-scores for fry cannot be computed. Use fryInput = 'logCPM'.", call. = FALSE)
+        }
 
-    if (is.null(dispersionValues)) {
-      stop("No dispersion is stored in the fit, the z-scores for fry cannot be computed. Use fryInput = 'logCPM'.", call. = FALSE)
-    }
+        # A region DESeq2 left without dispersion (all counts zero) takes the typical one
+        dispersionValues[!is.finite(dispersionValues)] <- stats::median(dispersionValues, na.rm = TRUE)
 
-    # A region DESeq2 left without dispersion (all counts zero) takes the typical one
-    dispersionValues[!is.finite(dispersionValues)] <- stats::median(dispersionValues, na.rm = TRUE)
+        #-------------------------------#
+        # Null model of the contrast    #
+        #-------------------------------#
+        # The contrast becomes the last coefficient, and dropping it leaves the model without the effect tested
+        contrastDesign <- limma::contrastAsCoef(design = designMatrix(fit), contrast = contrastVector, first = FALSE)$design
+        nullDesign <- contrastDesign[, -ncol(contrastDesign), drop = FALSE]
 
-    #-------------------------------#
-    # Null model of the contrast    #
-    #-------------------------------#
-    # The contrast becomes the last coefficient, and dropping it leaves the model without the effect tested
-    contrastDesign <- limma::contrastAsCoef(design = fit@design, contrast = contrastVector, first = FALSE)$design
-    nullDesign <- contrastDesign[, -ncol(contrastDesign), drop = FALSE]
+        nullFit <- edgeR::glmFit(
+            y = countMatrix,
+            design = nullDesign,
+            offset = offsetValues,
+            dispersion = dispersionValues,
+            prior.count = 0
+        )
 
-    nullFit <- edgeR::glmFit(y = countMatrix,
-                             design = nullDesign,
-                             offset = offsetValues,
-                             dispersion = dispersionValues,
-                             prior.count = 0)
+        zMatrix <- edgeR::zscoreNBinom(
+            q = countMatrix,
+            size = 1 / dispersionValues,
+            mu = pmax(nullFit$fitted.values, 1e-17)
+        )
+        dimnames(zMatrix) <- dimnames(countMatrix)
 
-    zMatrix <- edgeR::zscoreNBinom(q = countMatrix,
-                                   size = 1 / dispersionValues,
-                                   mu = pmax(nullFit$fitted.values, 1e-17))
-    dimnames(zMatrix) <- dimnames(countMatrix)
-
-    return(list(values = zMatrix,
-                standardize = "none",
-                input = "NB z-scores"))
-  } # END function
-
-
+        return(list(
+            values = zMatrix,
+            standardize = "none",
+            input = "NB z-scores"
+        ))
+    } # END function
 
 
 #' @title .checkWithinSetPolicy
@@ -1077,17 +1298,14 @@ testSetContrast <-
 #' @keywords internal
 
 .checkWithinSetPolicy <-
-  function(overlapWithinSet) {
+    function(overlapWithinSet) {
+        overlapWithinSet <- tolower(as.character(overlapWithinSet[1]))
+        if (!(overlapWithinSet %in% c("allow", "warn", "stop"))) {
+            stop("The 'overlapWithinSet' parameter must be one among 'allow', 'warn' or 'stop'.", call. = FALSE)
+        }
 
-    overlapWithinSet <- tolower(as.character(overlapWithinSet[1]))
-    if (!(overlapWithinSet %in% c("allow", "warn", "stop"))) {
-      stop("The 'overlapWithinSet' parameter must be one among 'allow', 'warn' or 'stop'.", call. = FALSE)
-    }
-
-    return(overlapWithinSet)
-  } # END function
-
-
+        return(overlapWithinSet)
+    } # END function
 
 
 #' @title .withinSetOverlap
@@ -1108,22 +1326,19 @@ testSetContrast <-
 #' @keywords internal
 
 .withinSetOverlap <-
-  function(regionStats,
-           index) {
+    function(regionStats,
+             index) {
+        if (length(index) < 2 | is.null(regionStats$seqnames)) {
+            return(0L)
+        }
 
-    if (length(index) < 2 | is.null(regionStats$seqnames)) {
-      return(0L)
-    }
+        setRanges <- .statsRanges(regionStats = regionStats, index = index)
 
-    setRanges <- .statsRanges(regionStats = regionStats, index = index)
+        # Every row overlaps itself, so a count above one means another row shares bases with it
+        overlapCounts <- IRanges::countOverlaps(query = setRanges, subject = setRanges, ignore.strand = TRUE)
 
-    # Every row overlaps itself, so a count above one means another row shares bases with it
-    overlapCounts <- IRanges::countOverlaps(query = setRanges, subject = setRanges, ignore.strand = TRUE)
-
-    return(as.integer(sum(overlapCounts > 1)))
-  } # END function
-
-
+        return(as.integer(sum(overlapCounts > 1)))
+    } # END function
 
 
 #' @title .warnWithinSetOverlap
@@ -1145,36 +1360,38 @@ testSetContrast <-
 #' @keywords internal
 
 .warnWithinSetOverlap <-
-  function(setTable,
-           setColumns,
-           countColumns,
-           policy) {
+    function(setTable,
+             setColumns,
+             countColumns,
+             policy) {
+        # Only the 'warn' policy reports anything, 'allow' says nothing and 'stop' was dealt with earlier
+        if (policy == "warn") {
+            # The same set shows up in several pairs, it is listed once
+            overlapTable <- do.call(
+                what = rbind,
+                args = lapply(
+                    seq_along(setColumns),
+                    function(i) {
+                        data.frame(
+                            set = as.character(setTable[[setColumns[i]]]),
+                            n = as.integer(setTable[[countColumns[i]]]),
+                            stringsAsFactors = FALSE
+                        )
+                    }
+                )
+            )
+            overlapTable <- dplyr::distinct(dplyr::filter(overlapTable, .data$n > 0))
 
-    if (policy != "warn") {
-      return(invisible(NULL))
-    }
-
-    # The same set shows up in several pairs, it is listed once
-    overlapTable <- do.call(what = rbind,
-                            args = lapply(seq_along(setColumns),
-                                          function(i) {
-                                            data.frame(set = as.character(setTable[[setColumns[i]]]),
-                                                       n = as.integer(setTable[[countColumns[i]]]),
-                                                       stringsAsFactors = FALSE)
-                                          }))
-    overlapTable <- dplyr::distinct(dplyr::filter(overlapTable, .data$n > 0))
-
-    if (nrow(overlapTable) > 0) {
-      warning("Regions of the same set overlap each other, so the bases they share count twice in the set: ",
-              paste(sprintf("%s (%d)", overlapTable$set, overlapTable$n), collapse = ", "),
-              ". Merge them with loadRegions(reduceRegions = TRUE), or set overlapWithinSet = 'allow' if the ",
-              "average per region is what is meant.", call. = FALSE)
-    }
-
-    return(invisible(NULL))
-  } # END function
-
-
+            if (nrow(overlapTable) > 0) {
+                warning("Regions of the same set overlap each other, so the bases they share count twice in the set: ",
+                    paste(sprintf("%s (%d)", overlapTable$set, overlapTable$n), collapse = ", "),
+                    ". Merge them with loadRegions(reduceRegions = TRUE), or set overlapWithinSet = 'allow' if the ",
+                    "average per region is what is meant.",
+                    call. = FALSE
+                )
+            }
+        }
+    } # END function
 
 
 #' @title .interRegionCor
@@ -1198,51 +1415,54 @@ testSetContrast <-
 #' @keywords internal
 
 .interRegionCor <-
-  function(expressionMatrix,
-           design,
-           index,
-           label = "the set") {
+    function(expressionMatrix,
+             design,
+             index,
+             label = "the set") {
+        residualDegrees <- nrow(design) - ncol(design)
 
-    residualDegrees <- nrow(design) - ncol(design)
+        # Below two residual degrees of freedom limma cannot separate the shared variation from the noise
+        if (residualDegrees < 2) {
+            warning("The correlation between regions cannot be estimated with ", residualDegrees,
+                " residual degrees of freedom, and is held at 0.01.",
+                call. = FALSE
+            )
+            return(0.01)
+        }
 
-    # Below two residual degrees of freedom limma cannot separate the shared variation from the noise
-    if (residualDegrees < 2) {
-      warning("The correlation between regions cannot be estimated with ", residualDegrees,
-              " residual degrees of freedom, and is held at 0.01.", call. = FALSE)
-      return(0.01)
-    }
+        if (length(index) < 3) {
+            warning("Fewer than 3 rows in ", label, ", the correlation between regions is held at 0.01, ",
+                "which leaves that set effectively uninflated.",
+                call. = FALSE
+            )
+            return(0.01)
+        }
 
-    if (length(index) < 3) {
-      warning("Fewer than 3 rows in ", label, ", the correlation between regions is held at 0.01, ",
-              "which leaves that set effectively uninflated.", call. = FALSE)
-      return(0.01)
-    }
+        setMatrix <- expressionMatrix[index, , drop = FALSE]
 
-    setMatrix <- expressionMatrix[index, , drop = FALSE]
+        # A row with no variation gives no residual to correlate and turns the estimate into NaN
+        rowVariance <- apply(setMatrix, MARGIN = 1, FUN = stats::var)
+        setMatrix <- setMatrix[is.finite(rowVariance) & rowVariance > 0, , drop = FALSE]
 
-    # A row with no variation gives no residual to correlate and turns the estimate into NaN
-    rowVariance <- apply(setMatrix, MARGIN = 1, FUN = stats::var)
-    setMatrix <- setMatrix[is.finite(rowVariance) & rowVariance > 0, , drop = FALSE]
+        if (nrow(setMatrix) < 3) {
+            warning("Fewer than 3 rows of ", label, " vary at all, the correlation between regions is held at 0.01.",
+                call. = FALSE
+            )
+            return(0.01)
+        }
 
-    if (nrow(setMatrix) < 3) {
-      warning("Fewer than 3 rows of ", label, " vary at all, the correlation between regions is held at 0.01.",
-              call. = FALSE)
-      return(0.01)
-    }
+        correlationValue <- try(limma::interGeneCorrelation(y = setMatrix, design = design)$correlation, silent = TRUE)
 
-    correlationValue <- try(limma::interGeneCorrelation(y = setMatrix, design = design)$correlation, silent = TRUE)
+        if (inherits(correlationValue, "try-error") | !is.finite(correlationValue)) {
+            warning("The correlation between the regions of ", label, " could not be computed, and is held at 0.01.",
+                call. = FALSE
+            )
+            return(0.01)
+        }
 
-    if (inherits(correlationValue, "try-error") | !is.finite(correlationValue)) {
-      warning("The correlation between the regions of ", label, " could not be computed, and is held at 0.01.",
-              call. = FALSE)
-      return(0.01)
-    }
-
-    # A negative estimate would deflate the variance instead of inflating it, which is not a claim worth making
-    return(max(correlationValue, 0))
-  } # END function
-
-
+        # A negative estimate would deflate the variance instead of inflating it, which is not a claim worth making
+        return(max(correlationValue, 0))
+    } # END function
 
 
 #' @title .setEffectSize
@@ -1269,43 +1489,42 @@ testSetContrast <-
 #' @keywords internal
 
 .setEffectSize <-
-  function(logFC,
-           setIndex,
-           backgroundIndex,
-           correlation,
-           backgroundCorrelation = NULL,
-           level = 0.95) {
+    function(logFC,
+             setIndex,
+             backgroundIndex,
+             correlation,
+             backgroundCorrelation = NULL,
+             level = 0.95) {
+        # Zero here would say the comparison mean is known exactly, which it never is
+        if (is.null(backgroundCorrelation)) {
+            backgroundCorrelation <- correlation
+        }
 
-    # Zero here would say the comparison mean is known exactly, which it never is
-    if (is.null(backgroundCorrelation)) {
-      backgroundCorrelation <- correlation
-    }
+        setValues <- logFC[setIndex]
+        backgroundValues <- logFC[backgroundIndex]
 
-    setValues <- logFC[setIndex]
-    backgroundValues <- logFC[backgroundIndex]
+        setNumber <- length(setValues)
+        backgroundNumber <- length(backgroundValues)
 
-    setNumber <- length(setValues)
-    backgroundNumber <- length(backgroundValues)
+        # Neighbouring regions move together, so the mean of n of them carries the information of far fewer than n
+        setVIF <- 1 + (setNumber - 1) * correlation
+        backgroundVIF <- 1 + (backgroundNumber - 1) * backgroundCorrelation
 
-    # Neighbouring regions move together, so the mean of n of them carries the information of far fewer than n
-    setVIF <- 1 + (setNumber - 1) * correlation
-    backgroundVIF <- 1 + (backgroundNumber - 1) * backgroundCorrelation
+        setVariance <- (stats::sd(setValues)^2 / setNumber) * setVIF
+        backgroundVariance <- (stats::sd(backgroundValues)^2 / backgroundNumber) * backgroundVIF
 
-    setVariance <- (stats::sd(setValues)^2 / setNumber) * setVIF
-    backgroundVariance <- (stats::sd(backgroundValues)^2 / backgroundNumber) * backgroundVIF
+        deltaValue <- mean(setValues) - mean(backgroundValues)
+        deltaError <- sqrt(setVariance + backgroundVariance)
+        criticalValue <- stats::qnorm(1 - (1 - level) / 2)
 
-    deltaValue <- mean(setValues) - mean(backgroundValues)
-    deltaError <- sqrt(setVariance + backgroundVariance)
-    criticalValue <- stats::qnorm(1 - (1 - level) / 2)
-
-    return(list(mean.set = mean(setValues),
-                mean.background = mean(backgroundValues),
-                delta = deltaValue,
-                ci.lower = deltaValue - criticalValue * deltaError,
-                ci.upper = deltaValue + criticalValue * deltaError))
-  } # END function
-
-
+        return(list(
+            mean.set = mean(setValues),
+            mean.background = mean(backgroundValues),
+            delta = deltaValue,
+            ci.lower = deltaValue - criticalValue * deltaError,
+            ci.upper = deltaValue + criticalValue * deltaError
+        ))
+    } # END function
 
 
 #' @title .setUniverseOf
@@ -1329,41 +1548,40 @@ testSetContrast <-
 #' @keywords internal
 
 .setUniverseOf <-
-  function(fit,
-           universe = NULL,
-           matchOn = c("width", "abundance"),
-           universeRatio = 5,
-           regionSets = NULL,
-           universeSets = NULL,
-           verbose = TRUE) {
+    function(fit,
+             universe = NULL,
+             matchOn = c("width", "abundance"),
+             universeRatio = 5,
+             regionSets = NULL,
+             universeSets = NULL,
+             verbose = TRUE) {
+        if (methods::is(universe, "RegionSetDE.universe")) {
+            return(.resolveUniverse(object = fit, universe = universe, verbose = verbose))
+        }
 
-    if (methods::is(universe, "RegionSetDE.universe")) {
-      return(.resolveUniverse(object = fit, universe = universe, verbose = verbose))
-    }
+        #-------------------------------#
+        # Nothing asked for             #
+        #-------------------------------#
+        if (is.null(universe)) {
+            # fitRegions already built one on these very rows, rebuilding it would give the same answer twice,
+            # unless the comparison pool is being narrowed here and the stored one was built on all of them
+            if (length(universeIndex(setUniverse(fit))) > 0 & is.null(universeSets)) {
+                return(setUniverse(fit))
+            }
+            universe <- "matched"
+        }
 
-    #-------------------------------#
-    # Nothing asked for             #
-    #-------------------------------#
-    if (is.null(universe)) {
-      # fitRegions already built one on these very rows, rebuilding it would give the same answer twice,
-      # unless the comparison pool is being narrowed here and the stored one was built on all of them
-      if (length(fit@universe@index) > 0 & is.null(universeSets)) {
-        return(fit@universe)
-      }
-      universe <- "matched"
-    }
-
-    return(.resolveUniverse(object = fit,
-                            universe = universe,
-                            matchOn = matchOn,
-                            universeRatio = universeRatio,
-                            regionSets = regionSets,
-                            universeSets = universeSets,
-                            soft = FALSE,
-                            verbose = verbose))
-  } # END function
-
-
+        return(.resolveUniverse(
+            object = fit,
+            universe = universe,
+            matchOn = matchOn,
+            universeRatio = universeRatio,
+            regionSets = regionSets,
+            universeSets = universeSets,
+            soft = FALSE,
+            verbose = verbose
+        ))
+    } # END function
 
 
 #' @title .statsRanges
@@ -1383,19 +1601,20 @@ testSetContrast <-
 #' @keywords internal
 
 .statsRanges <-
-  function(regionStats,
-           index = NULL) {
+    function(regionStats,
+             index = NULL) {
+        if (is.null(index)) {
+            index <- seq_len(nrow(regionStats))
+        }
 
-    if (is.null(index)) {
-      index <- seq_len(nrow(regionStats))
-    }
-
-    return(GenomicRanges::GRanges(seqnames = regionStats$seqnames[index],
-                                  ranges = IRanges::IRanges(start = regionStats$start[index],
-                                                            end = regionStats$end[index])))
-  } # END function
-
-
+        return(GenomicRanges::GRanges(
+            seqnames = regionStats$seqnames[index],
+            ranges = IRanges::IRanges(
+                start = regionStats$start[index],
+                end = regionStats$end[index]
+            )
+        ))
+    } # END function
 
 
 #' @title .overlappingRows
@@ -1417,22 +1636,21 @@ testSetContrast <-
 #' @keywords internal
 
 .overlappingRows <-
-  function(regionStats,
-           setIndex,
-           comparisonIndex) {
+    function(regionStats,
+             setIndex,
+             comparisonIndex) {
+        if (length(comparisonIndex) == 0 | is.null(regionStats$seqnames)) {
+            return(integer(0))
+        }
 
-    if (length(comparisonIndex) == 0 | is.null(regionStats$seqnames)) {
-      return(integer(0))
-    }
+        overlapFlag <- IRanges::overlapsAny(
+            query = .statsRanges(regionStats = regionStats, index = comparisonIndex),
+            subject = .statsRanges(regionStats = regionStats, index = setIndex),
+            ignore.strand = TRUE
+        )
 
-    overlapFlag <- IRanges::overlapsAny(query = .statsRanges(regionStats = regionStats, index = comparisonIndex),
-                                        subject = .statsRanges(regionStats = regionStats, index = setIndex),
-                                        ignore.strand = TRUE)
-
-    return(comparisonIndex[overlapFlag])
-  } # END function
-
-
+        return(comparisonIndex[overlapFlag])
+    } # END function
 
 
 #' @title .collapseTileStats
@@ -1454,35 +1672,35 @@ testSetContrast <-
 #' @keywords internal
 
 .collapseTileStats <-
-  function(regionStats) {
+    function(regionStats) {
+        collapsedTable <-
+            dplyr::summarise(dplyr::group_by(regionStats, .data$region.set, .data$region.id),
+                log2FC = mean(.data$log2FC, na.rm = TRUE),
+                average.signal = mean(.data$average.signal, na.rm = TRUE),
+                stat = mean(.data$stat, na.rm = TRUE),
+                p.value = stats::median(.data$p.value, na.rm = TRUE),
+                region.key.plain = dplyr::first(.data$region.key.plain),
+                seqnames = dplyr::first(.data$seqnames),
+                start = min(.data$start, na.rm = TRUE),
+                end = max(.data$end, na.rm = TRUE),
+                n.tiles = dplyr::n(),
+                .groups = "drop"
+            )
 
-    collapsedTable <-
-      dplyr::summarise(dplyr::group_by(regionStats, .data$region.set, .data$region.id),
-                       log2FC = mean(.data$log2FC, na.rm = TRUE),
-                       average.signal = mean(.data$average.signal, na.rm = TRUE),
-                       stat = mean(.data$stat, na.rm = TRUE),
-                       p.value = stats::median(.data$p.value, na.rm = TRUE),
-                       region.key.plain = dplyr::first(.data$region.key.plain),
-                       seqnames = dplyr::first(.data$seqnames),
-                       start = min(.data$start, na.rm = TRUE),
-                       end = max(.data$end, na.rm = TRUE),
-                       n.tiles = dplyr::n(),
-                       .groups = "drop")
+        collapsedTable <- as.data.frame(collapsedTable, stringsAsFactors = FALSE)
 
-    collapsedTable <- as.data.frame(collapsedTable, stringsAsFactors = FALSE)
+        # The region spans its tiles, so the width follows the collapsed coordinates rather than being summed
+        collapsedTable$width <- collapsedTable$end - collapsedTable$start + 1
 
-    # The region spans its tiles, so the width follows the collapsed coordinates rather than being summed
-    collapsedTable$width <- collapsedTable$end - collapsedTable$start + 1
+        # dplyr orders the output on the grouping columns, so the map is built by matching rather than assumed
+        tileKey <- paste(regionStats$region.set, regionStats$region.id, sep = "\r")
+        collapsedKey <- paste(collapsedTable$region.set, collapsedTable$region.id, sep = "\r")
 
-    # dplyr orders the output on the grouping columns, so the map is built by matching rather than assumed
-    tileKey <- paste(regionStats$region.set, regionStats$region.id, sep = "\r")
-    collapsedKey <- paste(collapsedTable$region.set, collapsedTable$region.id, sep = "\r")
-
-    return(list(stats = collapsedTable,
-                map = match(tileKey, collapsedKey)))
-  } # END function
-
-
+        return(list(
+            stats = collapsedTable,
+            map = match(tileKey, collapsedKey)
+        ))
+    } # END function
 
 
 #' @title .collapseTileMatrix
@@ -1500,22 +1718,19 @@ testSetContrast <-
 #' @keywords internal
 
 .collapseTileMatrix <-
-  function(expressionMatrix,
-           tileMap,
-           pooling = "mean") {
+    function(expressionMatrix,
+             tileMap,
+             pooling = "mean") {
+        summedMatrix <- rowsum(x = expressionMatrix, group = tileMap, reorder = TRUE)
+        tileNumber <- as.numeric(table(tileMap))
 
-    summedMatrix <- rowsum(x = expressionMatrix, group = tileMap, reorder = TRUE)
-    tileNumber <- as.numeric(table(tileMap))
+        # An average of k z-scores has a variance of 1/k, which fry would read as a quieter region
+        if (pooling == "stouffer") {
+            return(summedMatrix / sqrt(tileNumber))
+        }
 
-    # An average of k z-scores has a variance of 1/k, which fry would read as a quieter region
-    if (pooling == "stouffer") {
-      return(summedMatrix / sqrt(tileNumber))
-    }
-
-    return(summedMatrix / tileNumber)
-  } # END function
-
-
+        return(summedMatrix / tileNumber)
+    } # END function
 
 
 #' @title .sampleSetEffect
@@ -1543,59 +1758,68 @@ testSetContrast <-
 #' @keywords internal
 
 .sampleSetEffect <-
-  function(expressionMatrix,
-           setIndex,
-           backgroundIndex,
-           design,
-           contrastVector,
-           level = 0.95) {
+    function(expressionMatrix,
+             setIndex,
+             backgroundIndex,
+             design,
+             contrastVector,
+             level = 0.95) {
+        # One number per library: the set against its comparison, both read inside the same sample
+        sampleDelta <- colMeans(expressionMatrix[setIndex, , drop = FALSE]) -
+            colMeans(expressionMatrix[backgroundIndex, , drop = FALSE])
 
-    # One number per library: the set against its comparison, both read inside the same sample
-    sampleDelta <- colMeans(expressionMatrix[setIndex, , drop = FALSE]) -
-      colMeans(expressionMatrix[backgroundIndex, , drop = FALSE])
+        emptyResult <- list(
+            sample.delta = sampleDelta,
+            delta = mean(sampleDelta),
+            standard.error = NA_real_,
+            df = NA_real_,
+            p.value = NA_real_,
+            ci.lower = NA_real_,
+            ci.upper = NA_real_
+        )
 
-    emptyResult <- list(sample.delta = sampleDelta,
-                        delta = mean(sampleDelta),
-                        standard.error = NA_real_,
-                        df = NA_real_,
-                        p.value = NA_real_,
-                        ci.lower = NA_real_,
-                        ci.upper = NA_real_)
+        if ((nrow(design) - ncol(design)) < 1) {
+            return(emptyResult)
+        }
 
-    if ((nrow(design) - ncol(design)) < 1) {
-      return(emptyResult)
-    }
+        # lmFit on a one-row matrix takes care of the pivoting and of contrasts on a rank-deficient design
+        deltaMatrix <- matrix(
+            data = sampleDelta, nrow = 1,
+            dimnames = list("setScore", names(sampleDelta))
+        )
 
-    # lmFit on a one-row matrix takes care of the pivoting and of contrasts on a rank-deficient design
-    deltaMatrix <- matrix(data = sampleDelta, nrow = 1,
-                          dimnames = list("setScore", names(sampleDelta)))
+        linearFit <- try(
+            limma::contrasts.fit(
+                fit = limma::lmFit(object = deltaMatrix, design = design),
+                contrasts = contrastVector
+            ),
+            silent = TRUE
+        )
 
-    linearFit <- try(limma::contrasts.fit(fit = limma::lmFit(object = deltaMatrix, design = design),
-                                          contrasts = contrastVector),
-                     silent = TRUE)
+        if (inherits(linearFit, "try-error")) {
+            warning("The set score could not be fitted on the design, no sample level interval is reported.", call. = FALSE)
+            return(emptyResult)
+        }
 
-    if (inherits(linearFit, "try-error")) {
-      warning("The set score could not be fitted on the design, no sample level interval is reported.", call. = FALSE)
-      return(emptyResult)
-    }
+        estimateValue <- as.numeric(linearFit$coefficients[1])
+        standardError <- as.numeric(linearFit$stdev.unscaled[1]) * as.numeric(linearFit$sigma[1])
+        degreesFreedom <- as.numeric(linearFit$df.residual[1])
 
-    estimateValue <- as.numeric(linearFit$coefficients[1])
-    standardError <- as.numeric(linearFit$stdev.unscaled[1]) * as.numeric(linearFit$sigma[1])
-    degreesFreedom <- as.numeric(linearFit$df.residual[1])
+        # A design that fits the scores exactly leaves no spread to build an interval from
+        if (!is.finite(standardError) | standardError <= 0) {
+            emptyResult$delta <- estimateValue
+            return(emptyResult)
+        }
 
-    # A design that fits the scores exactly leaves no spread to build an interval from
-    if (!is.finite(standardError) | standardError <= 0) {
-      emptyResult$delta <- estimateValue
-      return(emptyResult)
-    }
+        criticalValue <- stats::qt(1 - (1 - level) / 2, df = degreesFreedom)
 
-    criticalValue <- stats::qt(1 - (1 - level) / 2, df = degreesFreedom)
-
-    return(list(sample.delta = sampleDelta,
-                delta = estimateValue,
-                standard.error = standardError,
-                df = degreesFreedom,
-                p.value = 2 * stats::pt(-abs(estimateValue / standardError), df = degreesFreedom),
-                ci.lower = estimateValue - criticalValue * standardError,
-                ci.upper = estimateValue + criticalValue * standardError))
-  } # END function
+        return(list(
+            sample.delta = sampleDelta,
+            delta = estimateValue,
+            standard.error = standardError,
+            df = degreesFreedom,
+            p.value = 2 * stats::pt(-abs(estimateValue / standardError), df = degreesFreedom),
+            ci.lower = estimateValue - criticalValue * standardError,
+            ci.upper = estimateValue + criticalValue * standardError
+        ))
+    } # END function

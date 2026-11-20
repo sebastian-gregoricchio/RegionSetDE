@@ -10,12 +10,14 @@
 #' @return The input data.frame with the first columns renamed.
 #'
 #' @examples
-#' bedTable <- data.frame(V1 = "chr12",
-#'                        V2 = c(1000, 5000),
-#'                        V3 = c(2000, 6000),
-#'                        V4 = c("peak_1", "peak_2"),
-#'                        V5 = c(120, 340),
-#'                        V6 = c("+", "-"))
+#' bedTable <- data.frame(
+#'     V1 = "chr12",
+#'     V2 = c(1000, 5000),
+#'     V3 = c(2000, 6000),
+#'     V4 = c("peak_1", "peak_2"),
+#'     V5 = c(120, 340),
+#'     V6 = c("+", "-")
+#' )
 #'
 #' renameBedColumns(bedTable, bedFormat = 6)
 #'
@@ -27,40 +29,41 @@
 #' @export renameBedColumns
 
 renameBedColumns <-
-  function(table,
-           bedFormat = 3) {
+    function(table,
+             bedFormat = 3) {
+        ### Check of the arguments
+        if (!is.data.frame(table)) {
+            stop("The 'table' parameter must be a data.frame.", call. = FALSE)
+        }
 
-    ### Check of the arguments
-    if (!is.data.frame(table)) {
-      stop("The 'table' parameter must be a data.frame.", call. = FALSE)
-    }
+        bedFormat <- bedFormat[1]
+        if (!(bedFormat %in% c(3, 6, 9, 12))) {
+            stop("The 'bedFormat' parameter must be one among 3, 6, 9 or 12.", call. = FALSE)
+        }
 
-    bedFormat <- bedFormat[1]
-    if (!(bedFormat %in% c(3, 6, 9, 12))) {
-      stop("The 'bedFormat' parameter must be one among 3, 6, 9 or 12.", call. = FALSE)
-    }
+        if (ncol(table) < bedFormat) {
+            stop("The table contains ", ncol(table), " columns, less than the ", bedFormat, " required by the requested BED format.", call. = FALSE)
+        }
 
-    if (ncol(table) < bedFormat) {
-      stop("The table contains ", ncol(table), " columns, less than the ", bedFormat, " required by the requested BED format.", call. = FALSE)
-    }
+        ### Renaming of the coordinate columns, the extra ones keep their original names
+        bedColumns <- c(
+            "seqnames", "start", "end", "name", "score", "strand",
+            "thickStart", "thickEnd", "itemRgb",
+            "blockCount", "blockSizes", "blockStarts"
+        )
 
-    ### Renaming of the coordinate columns, the extra ones keep their original names
-    bedColumns <- c("seqnames", "start", "end", "name", "score", "strand",
-                    "thickStart", "thickEnd", "itemRgb",
-                    "blockCount", "blockSizes", "blockStarts")
+        colnames(table)[seq_len(bedFormat)] <- bedColumns[seq_len(bedFormat)]
 
-    colnames(table)[seq_len(bedFormat)] <- bedColumns[seq_len(bedFormat)]
+        # Renaming a column onto a name already used further right would break any subsequent selection
+        if (any(duplicated(colnames(table)))) {
+            stop("The renaming produces duplicated column names: ",
+                paste(unique(colnames(table)[duplicated(colnames(table))]), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    # Renaming a column onto a name already used further right would break any subsequent selection
-    if (any(duplicated(colnames(table)))) {
-      stop("The renaming produces duplicated column names: ",
-           paste(unique(colnames(table)[duplicated(colnames(table))]), collapse = ", "), ".", call. = FALSE)
-    }
-
-    return(table)
-  } # END function
-
-
+        return(table)
+    } # END function
 
 
 #' @title .readRegionFile
@@ -83,49 +86,52 @@ renameBedColumns <-
 #' @noRd
 
 .readRegionFile <-
-  function(filePath,
-           header = FALSE,
-           asGRanges = TRUE) {
+    function(filePath,
+             header = FALSE,
+             asGRanges = TRUE) {
+        if (!file.exists(filePath)) {
+            stop("The file '", filePath, "' does not exist.", call. = FALSE)
+        }
 
-    if (!file.exists(filePath)) {
-      stop("The file '", filePath, "' does not exist.", call. = FALSE)
-    }
+        bed <- utils::read.delim(filePath, header = header, comment.char = "#", stringsAsFactors = FALSE, quote = "")
 
-    bed <- utils::read.delim(filePath, header = header, comment.char = "#", stringsAsFactors = FALSE, quote = "")
+        if (ncol(bed) < 3) {
+            stop("The file '", filePath, "' contains less than 3 columns.", call. = FALSE)
+        }
 
-    if (ncol(bed) < 3) {
-      stop("The file '", filePath, "' contains less than 3 columns.", call. = FALSE)
-    }
+        ### Headerless files follow the BED specification, only the first 6 columns have a defined meaning
+        if (header == FALSE) {
+            bed <- renameBedColumns(bed, bedFormat = ifelse(ncol(bed) >= 6, 6, 3))
 
-    ### Headerless files follow the BED specification, only the first 6 columns have a defined meaning
-    if (header == FALSE) {
-      bed <- renameBedColumns(bed, bedFormat = ifelse(ncol(bed) >= 6, 6, 3))
+            # BED4 and BED5 carry the name, and the score, without a strand
+            if (ncol(bed) %in% c(4, 5)) {
+                colnames(bed)[4:ncol(bed)] <- c("name", "score")[seq_len(ncol(bed) - 3)]
+            }
 
-      # BED4 and BED5 carry the name, and the score, without a strand
-      if (ncol(bed) %in% c(4, 5)) {
-        colnames(bed)[4:ncol(bed)] <- c("name", "score")[seq_len(ncol(bed) - 3)]
-      }
+            # Drop the track/browser headers and any row without usable coordinates
+            bed <-
+                bed %>%
+                dplyr::filter(!grepl("^(track|browser|#)", seqnames)) %>%
+                dplyr::filter(grepl("^[0-9]+$", trimws(start)), grepl("^[0-9]+$", trimws(end))) %>%
+                dplyr::mutate(
+                    seqnames = as.character(seqnames),
+                    start = as.numeric(start) + 1, # BED files are 0-based, GRanges are 1-based
+                    end = as.numeric(end)
+                )
 
-      # Drop the track/browser headers and any row without usable coordinates
-      bed <-
-        bed %>%
-        dplyr::filter(!grepl("^(track|browser|#)", seqnames)) %>%
-        dplyr::filter(grepl("^[0-9]+$", trimws(start)), grepl("^[0-9]+$", trimws(end))) %>%
-        dplyr::mutate(seqnames = as.character(seqnames),
-                      start = as.numeric(start) + 1, # BED files are 0-based, GRanges are 1-based
-                      end = as.numeric(end))
+            # narrowPeak/broadPeak often store a dot in the strand column
+            if ("strand" %in% colnames(bed)) {
+                bed <- dplyr::mutate(bed, strand = ifelse(strand %in% c("+", "-", "*"), strand, "*"))
+            }
+        }
 
-      # narrowPeak/broadPeak often store a dot in the strand column
-      if ("strand" %in% colnames(bed)) {
-        bed <- dplyr::mutate(bed, strand = ifelse(strand %in% c("+", "-", "*"), strand, "*"))
-      }
-    }
+        if (nrow(bed) == 0) {
+            stop("No valid region found in '", filePath, "'.", call. = FALSE)
+        }
 
-    if (nrow(bed) == 0) {
-      stop("No valid region found in '", filePath, "'.", call. = FALSE)
-    }
+        if (asGRanges == FALSE) {
+            return(bed)
+        }
 
-    if (asGRanges == FALSE) {return(bed)}
-
-    return(GenomicRanges::makeGRangesFromDataFrame(bed, keep.extra.columns = TRUE))
-  } # END function
+        return(GenomicRanges::makeGRangesFromDataFrame(bed, keep.extra.columns = TRUE))
+    } # END function

@@ -42,8 +42,10 @@
 #' # example dataset needs to fill a heatmap
 #' plotTopHeatmap(results, n = 25, FDR = 1)
 #'
-#' plotTopHeatmap(results, n = 15, set = "promoterCpG", FDR = 1,
-#'                annotationColumns = "condition")
+#' plotTopHeatmap(results,
+#'     n = 15, set = "promoterCpG", FDR = 1,
+#'     annotationColumns = "condition"
+#' )
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -58,194 +60,229 @@
 #' @export plotTopHeatmap
 
 plotTopHeatmap <-
-  function(results,
-           n = 25,
-           counts = NULL,
-           contrast = NULL,
-           set = NULL,
-           sortBy = "log2FC",
-           direction = "both",
-           FDR = NULL,
-           log2FC = NULL,
-           assay = NULL,
-           scaleRows = TRUE,
-           annotationColumns = NULL,
-           showLog2FC = TRUE,
-           border = TRUE,
-           showRegionNames = FALSE,
-           clusterColumns = FALSE,
-           clusterRowsWithinSet = TRUE,
-           colours = NULL,
-           limits = NULL,
-           title = NULL,
-           ...) {
+    function(results,
+             n = 25,
+             counts = NULL,
+             contrast = NULL,
+             set = NULL,
+             sortBy = "log2FC",
+             direction = "both",
+             FDR = NULL,
+             log2FC = NULL,
+             assay = NULL,
+             scaleRows = TRUE,
+             annotationColumns = NULL,
+             showLog2FC = TRUE,
+             border = TRUE,
+             showRegionNames = FALSE,
+             clusterColumns = FALSE,
+             clusterRowsWithinSet = TRUE,
+             colours = NULL,
+             limits = NULL,
+             title = NULL,
+             ...) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
+            stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the heatmap.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
-      stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the heatmap.", call. = FALSE)
-    }
+        if (!(sortBy %in% c("log2FC", "FDR", "stat"))) {
+            stop("The 'sortBy' parameter must be one of 'log2FC', 'FDR', 'stat'.", call. = FALSE)
+        }
 
-    if (!(sortBy %in% c("log2FC", "FDR", "stat"))) {
-      stop("The 'sortBy' parameter must be one of 'log2FC', 'FDR', 'stat'.", call. = FALSE)
-    }
+        resolvedObject <- .resolveCounts(object = results, counts = counts, contrast = contrast)
+        counts <- resolvedObject$counts
+        results <- resolvedObject$results
 
-    resolvedObject <- .resolveCounts(object = results, counts = counts, contrast = contrast)
-    counts <- resolvedObject$counts
-    results <- resolvedObject$results
+        #-------------------------------#
+        # Pick the regions              #
+        #-------------------------------#
+        setNames <- if (is.null(set)) {
+            unique(as.character(resultsTable(results)$region.set))
+        } else {
+            set
+        }
 
-    #-------------------------------#
-    # Pick the regions              #
-    #-------------------------------#
-    setNames <- if (is.null(set)) {unique(as.character(results@results$region.set))} else {set}
+        topTable <-
+            do.call(
+                what = rbind,
+                args = lapply(
+                    setNames,
+                    function(setName) {
+                        setTop <- try(
+                            topRegions(
+                                results = results, n = n, set = setName,
+                                sortBy = sortBy, direction = direction,
+                                FDR = FDR, log2FC = log2FC
+                            ),
+                            silent = TRUE
+                        )
 
-    topTable <-
-      do.call(what = rbind,
-              args = lapply(setNames,
-                            function(setName) {
-                              setTop <- try(topRegions(results = results, n = n, set = setName,
-                                                       sortBy = sortBy, direction = direction,
-                                                       FDR = FDR, log2FC = log2FC),
-                                            silent = TRUE)
+                        # A set with nothing passing the thresholds drops out rather than stopping the figure
+                        if (inherits(setTop, "try-error") | nrow(setTop) == 0) {
+                            return(NULL)
+                        }
+                        return(setTop)
+                    }
+                )
+            )
 
-                              # A set with nothing passing the thresholds drops out rather than stopping the figure
-                              if (inherits(setTop, "try-error") | nrow(setTop) == 0) {
-                                return(NULL)
-                              }
-                              return(setTop)
-                            }))
+        # rbind over an empty list returns NULL, which has no nrow to compare
+        if (is.null(topTable)) {
+            stop("No region passes the thresholds in any of the sets.", call. = FALSE)
+        }
 
-    # rbind over an empty list returns NULL, which has no nrow to compare
-    if (is.null(topTable)) {
-      stop("No region passes the thresholds in any of the sets.", call. = FALSE)
-    }
+        if (nrow(topTable) == 0) {
+            stop("No region passes the thresholds in any of the sets.", call. = FALSE)
+        }
 
-    if (nrow(topTable) == 0) {
-      stop("No region passes the thresholds in any of the sets.", call. = FALSE)
-    }
+        topTable$region.key <- paste(topTable$region.set, topTable$region.id, sep = "|")
 
-    topTable$region.key <- paste(topTable$region.set, topTable$region.id, sep = "|")
+        #-------------------------------#
+        # Rows of the counts to draw    #
+        #-------------------------------#
+        rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
+        rowTable$row.index <- seq_len(nrow(counts))
+        rowTable$region.key <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
 
-    #-------------------------------#
-    # Rows of the counts to draw    #
-    #-------------------------------#
-    rowTable <- as.data.frame(SummarizedExperiment::rowData(counts))
-    rowTable$row.index <- seq_len(nrow(counts))
-    rowTable$region.key <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
+        matrixIndex <- .representativeRow(rowTable = rowTable, topTable = topTable, results = results)
 
-    matrixIndex <- .representativeRow(rowTable = rowTable, topTable = topTable, results = results)
+        absentRegions <- sum(is.na(matrixIndex))
+        if (absentRegions > 0) {
+            warning(absentRegions, " regions of the result are absent from the counts and have been dropped.", call. = FALSE)
+            topTable <- topTable[!is.na(matrixIndex), , drop = FALSE]
+            matrixIndex <- matrixIndex[!is.na(matrixIndex)]
+        }
 
-    absentRegions <- sum(is.na(matrixIndex))
-    if (absentRegions > 0) {
-      warning(absentRegions, " regions of the result are absent from the counts and have been dropped.", call. = FALSE)
-      topTable <- topTable[!is.na(matrixIndex), , drop = FALSE]
-      matrixIndex <- matrixIndex[!is.na(matrixIndex)]
-    }
+        #-------------------------------#
+        # Values                        #
+        #-------------------------------#
+        assay <- .defaultAssay(counts = counts, assay = assay)
+        valueMatrix <- log2(as.matrix(SummarizedExperiment::assay(counts, assay))[matrixIndex, , drop = FALSE] + 1)
+        rownames(valueMatrix) <- topTable$region.id
+        colnames(valueMatrix) <- colnames(counts)
 
-    #-------------------------------#
-    # Values                        #
-    #-------------------------------#
-    assay <- .defaultAssay(counts = counts, assay = assay)
-    valueMatrix <- log2(as.matrix(SummarizedExperiment::assay(counts, assay))[matrixIndex, , drop = FALSE] + 1)
-    rownames(valueMatrix) <- topTable$region.id
-    colnames(valueMatrix) <- colnames(counts)
+        legendName <- paste0("log2 ", assay)
+        legendTitle <- bquote(log[2] ~ .(assay))
 
-    legendName <- paste0("log2 ", assay)
-    legendTitle <- bquote(log[2] ~ .(assay))
+        if (isTRUE(scaleRows)) {
+            # A row with the same value everywhere has no scale, dividing by it would fill the heatmap with NaN
+            rowCentres <- rowMeans(valueMatrix)
+            rowScales <- apply(valueMatrix, MARGIN = 1, FUN = stats::sd)
+            rowScales[!is.finite(rowScales) | rowScales == 0] <- 1
 
-    if (isTRUE(scaleRows)) {
-      # A row with the same value everywhere has no scale, dividing by it would fill the heatmap with NaN
-      rowCentres <- rowMeans(valueMatrix)
-      rowScales <- apply(valueMatrix, MARGIN = 1, FUN = stats::sd)
-      rowScales[!is.finite(rowScales) | rowScales == 0] <- 1
+            valueMatrix <- (valueMatrix - rowCentres) / rowScales
+            legendName <- "z-score"
+            legendTitle <- "z-score"
+        }
 
-      valueMatrix <- (valueMatrix - rowCentres) / rowScales
-      legendName <- "z-score"
-      legendTitle <- "z-score"
-    }
+        #-------------------------------#
+        # Colours                       #
+        #-------------------------------#
+        paletteColours <- if (is.null(colours)) {
+            c("#2166AC", "white", "#B2182B")
+        } else {
+            colours
+        }
+        if (length(paletteColours) != 3) {
+            stop("The 'colours' parameter must hold three values, for the low, middle and high ends of the scale.", call. = FALSE)
+        }
 
-    #-------------------------------#
-    # Colours                       #
-    #-------------------------------#
-    paletteColours <- if (is.null(colours)) {c("#2166AC", "white", "#B2182B")} else {colours}
-    if (length(paletteColours) != 3) {
-      stop("The 'colours' parameter must hold three values, for the low, middle and high ends of the scale.", call. = FALSE)
-    }
+        defaultLimits <- if (isTRUE(scaleRows)) {
+            c(-2, 2)
+        } else {
+            as.numeric(stats::quantile(valueMatrix, probs = c(0.01, 0.99), na.rm = TRUE))
+        }
 
-    defaultLimits <- if (isTRUE(scaleRows)) {
-      c(-2, 2)
-    } else {
-      as.numeric(stats::quantile(valueMatrix, probs = c(0.01, 0.99), na.rm = TRUE))
-    }
+        scaleLimits <- .resolveScaleLimits(
+            values = defaultLimits,
+            limits = limits,
+            drawnValues = as.numeric(valueMatrix),
+            label = if (isTRUE(scaleRows)) {
+                "z-score"
+            } else {
+                "value"
+            }
+        )
 
-    scaleLimits <- .resolveScaleLimits(values = defaultLimits,
-                                       limits = limits,
-                                       drawnValues = as.numeric(valueMatrix),
-                                       label = if (isTRUE(scaleRows)) {"z-score"} else {"value"})
+        # colorRamp2 already draws anything past the ends at the end colour, which is the behaviour wanted here
+        colourFunction <- circlize::colorRamp2(
+            breaks = c(scaleLimits[1], mean(scaleLimits), scaleLimits[2]),
+            colors = paletteColours
+        )
 
-    # colorRamp2 already draws anything past the ends at the end colour, which is the behaviour wanted here
-    colourFunction <- circlize::colorRamp2(breaks = c(scaleLimits[1], mean(scaleLimits), scaleLimits[2]),
-                                           colors = paletteColours)
+        #-------------------------------#
+        # Annotations                   #
+        #-------------------------------#
+        topAnnotation <- NULL
+        if (!is.null(annotationColumns)) {
+            colTable <- as.data.frame(SummarizedExperiment::colData(counts))
+            absentColumns <- setdiff(annotationColumns, colnames(colTable))
+            if (length(absentColumns) > 0) {
+                stop("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # Annotations                   #
-    #-------------------------------#
-    topAnnotation <- NULL
-    if (!is.null(annotationColumns)) {
-      colTable <- as.data.frame(SummarizedExperiment::colData(counts))
-      absentColumns <- setdiff(annotationColumns, colnames(colTable))
-      if (length(absentColumns) > 0) {
-        stop("The following columns are absent from the colData: ", paste(absentColumns, collapse = ", "), ".", call. = FALSE)
-      }
+            topAnnotation <- ComplexHeatmap::HeatmapAnnotation(
+                df = colTable[, annotationColumns, drop = FALSE],
+                annotation_name_side = "left"
+            )
+        }
 
-      topAnnotation <- ComplexHeatmap::HeatmapAnnotation(df = colTable[, annotationColumns, drop = FALSE],
-                                                         annotation_name_side = "left")
-    }
+        rightAnnotation <- NULL
+        if (isTRUE(showLog2FC)) {
+            statusColours <- .diffStatusColours(colours = NULL)
 
-    rightAnnotation <- NULL
-    if (isTRUE(showLog2FC)) {
-      statusColours <- .diffStatusColours(colours = NULL)
+            # col = NA drops the outline of every bar, the frame around the panel comes from 'border' instead
+            barGraphics <- grid::gpar(
+                fill = ifelse(topTable$log2FC > 0, statusColours[["up"]], statusColours[["down"]]),
+                col = NA
+            )
 
-      # col = NA drops the outline of every bar, the frame around the panel comes from 'border' instead
-      barGraphics <- grid::gpar(fill = ifelse(topTable$log2FC > 0, statusColours[["up"]], statusColours[["down"]]),
-                                col = NA)
+            rightAnnotation <- ComplexHeatmap::rowAnnotation(
+                log2FC = ComplexHeatmap::anno_barplot(
+                    x = topTable$log2FC,
+                    baseline = 0,
+                    gp = barGraphics,
+                    border = border,
+                    bar_width = 1,
+                    axis_param = list(gp = grid::gpar(fontsize = 7))
+                ),
+                annotation_label = list(log2FC = expression(log[2] * "FC")),
+                annotation_name_rot = 0,
+                annotation_name_gp = grid::gpar(fontsize = 9)
+            )
+        }
 
-      rightAnnotation <- ComplexHeatmap::rowAnnotation(log2FC = ComplexHeatmap::anno_barplot(x = topTable$log2FC,
-                                                                                             baseline = 0,
-                                                                                             gp = barGraphics,
-                                                                                             border = border,
-                                                                                             bar_width = 1,
-                                                                                             axis_param = list(gp = grid::gpar(fontsize = 7))),
-                                                       annotation_label = list(log2FC = expression(log[2] * "FC")),
-                                                       annotation_name_rot = 0,
-                                                       annotation_name_gp = grid::gpar(fontsize = 9))
-    }
+        #-------------------------------#
+        # Build the heatmap             #
+        #-------------------------------#
+        heatmapObject <- ComplexHeatmap::Heatmap(
+            matrix = valueMatrix,
+            name = legendName,
+            col = colourFunction,
+            heatmap_legend_param = list(title = legendTitle),
+            column_title = if (is.null(title)) {
+                contrastName(results)
+            } else {
+                title
+            },
+            row_split = factor(topTable$region.set, levels = setNames),
+            row_title_rot = 0,
+            cluster_rows = clusterRowsWithinSet,
+            cluster_columns = clusterColumns,
+            show_row_names = showRegionNames,
+            row_names_gp = grid::gpar(fontsize = 7),
+            column_names_gp = grid::gpar(fontsize = 9),
+            top_annotation = topAnnotation,
+            right_annotation = rightAnnotation,
+            border = border,
+            ...
+        )
 
-    #-------------------------------#
-    # Build the heatmap             #
-    #-------------------------------#
-    heatmapObject <- ComplexHeatmap::Heatmap(matrix = valueMatrix,
-                                             name = legendName,
-                                             col = colourFunction,
-                                             heatmap_legend_param = list(title = legendTitle),
-                                             column_title = if (is.null(title)) {results@contrast} else {title},
-                                             row_split = factor(topTable$region.set, levels = setNames),
-                                             row_title_rot = 0,
-                                             cluster_rows = clusterRowsWithinSet,
-                                             cluster_columns = clusterColumns,
-                                             show_row_names = showRegionNames,
-                                             row_names_gp = grid::gpar(fontsize = 7),
-                                             column_names_gp = grid::gpar(fontsize = 9),
-                                             top_annotation = topAnnotation,
-                                             right_annotation = rightAnnotation,
-                                             border = border,
-                                             ...)
-
-    return(heatmapObject)
-  } # END function
-
-
+        return(heatmapObject)
+    } # END function
 
 
 #' @title .representativeRow
@@ -266,42 +303,44 @@ plotTopHeatmap <-
 #' @keywords internal
 
 .representativeRow <-
-  function(rowTable,
-           topTable,
-           results) {
+    function(rowTable,
+             topTable,
+             results) {
+        isCombined <- isTRUE(tileCombination(results)$applied)
 
-    isCombined <- isTRUE(results@combination$applied)
+        # A region counted as a single row is its own representative, nothing has to be chosen
+        if (!isCombined) {
+            return(match(topTable$region.key, rowTable$region.key))
+        }
 
-    # A region counted as a single row is its own representative, nothing has to be chosen
-    if (!isCombined) {
-      return(match(topTable$region.key, rowTable$region.key))
-    }
+        tileTable <- .storedTiles(results)
+        tileTable$region.key <- paste(tileTable$region.set, tileTable$region.id, sep = "|")
 
-    tileTable <- results@tiles
-    tileTable$region.key <- paste(tileTable$region.set, tileTable$region.id, sep = "|")
+        matchedIndex <-
+            vapply(
+                seq_len(nrow(topTable)),
+                function(i) {
+                    candidateRows <- rowTable[rowTable$region.key == topTable$region.key[i], , drop = FALSE]
 
-    matchedIndex <-
-      vapply(seq_len(nrow(topTable)),
-             function(i) {
-               candidateRows <- rowTable[rowTable$region.key == topTable$region.key[i], , drop = FALSE]
+                    if (nrow(candidateRows) == 0) {
+                        return(NA_integer_)
+                    }
 
-               if (nrow(candidateRows) == 0) {
-                 return(NA_integer_)
-               }
+                    # rep.tile.start comes from the tile the Simes combination reported, so the row matches the statistic
+                    if ("rep.tile.start" %in% colnames(topTable)) {
+                        representativeRow <- candidateRows$row.index[
+                            BiocGenerics::start(SummarizedExperiment::rowRanges(.storedCounts(results)))[candidateRows$row.index] == topTable$rep.tile.start[i]
+                        ]
 
-               # rep.tile.start comes from the tile the Simes combination reported, so the row matches the statistic
-               if ("rep.tile.start" %in% colnames(topTable)) {
-                 representativeRow <- candidateRows$row.index[
-                   BiocGenerics::start(SummarizedExperiment::rowRanges(results@counts))[candidateRows$row.index] == topTable$rep.tile.start[i]]
+                        if (length(representativeRow) == 1) {
+                            return(as.integer(representativeRow))
+                        }
+                    }
 
-                 if (length(representativeRow) == 1) {
-                   return(as.integer(representativeRow))
-                 }
-               }
+                    return(as.integer(candidateRows$row.index[1]))
+                },
+                integer(1)
+            )
 
-               return(as.integer(candidateRows$row.index[1]))
-             },
-             integer(1))
-
-    return(matchedIndex)
-  } # END function
+        return(matchedIndex)
+    } # END function

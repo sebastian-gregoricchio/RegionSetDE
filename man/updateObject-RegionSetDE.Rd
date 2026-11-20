@@ -7,8 +7,10 @@
 \alias{updateObject,RegionSetDE.results-method}
 \alias{updateObject,RegionSetDE.setResults-method}
 \alias{updateObject,RegionSetDE.setScores-method}
+\alias{updateObject,RegionSetDE.universe-method}
 \alias{updateObject,RegionSetDE.resultsList-method}
 \alias{updateObject,RegionSetDE.setResultsList-method}
+\alias{updateObject,RegionSetDE.geneResults-method}
 \title{updateObject methods for the RegionSetDE classes}
 \usage{
 \S4method{updateObject}{RegionSetDE}(object, ..., verbose = FALSE)
@@ -23,9 +25,13 @@
 
 \S4method{updateObject}{RegionSetDE.setScores}(object, ..., verbose = FALSE)
 
+\S4method{updateObject}{RegionSetDE.universe}(object, ..., verbose = FALSE)
+
 \S4method{updateObject}{RegionSetDE.resultsList}(object, ..., verbose = FALSE)
 
 \S4method{updateObject}{RegionSetDE.setResultsList}(object, ..., verbose = FALSE)
+
+\S4method{updateObject}{RegionSetDE.geneResults}(object, ..., verbose = FALSE)
 }
 \arguments{
 \item{object}{An object of one of the RegionSetDE classes.}
@@ -38,7 +44,7 @@
 The object, updated to the current definition of its class. An object already up to date comes back as it was.
 }
 \description{
-Bring an object saved by an earlier version of RegionSetDE to the current definition of its class, as \code{BiocGenerics::updateObject} does for the Bioconductor classes. An object saved before the \code{greylist} slot existed gets it, filled with the greylist of the consensus when the regions were built by \code{\link{loadConsensusPeaks}}, and empty otherwise. A fit or a result updates the counts it carries as well, and a list of results every result in it.
+Bring an object saved by an earlier version of RegionSetDE to the current definition of its class, as \code{BiocGenerics::updateObject} does for the Bioconductor classes. An object saved before the \code{greylist} slot existed gets it, filled with the greylist of the consensus when the regions were built by \code{\link{loadConsensusPeaks}}, and empty otherwise. Tables saved as data.frames become the \code{S4Vectors::DataFrame} their slots hold now. A fit or a result updates the counts it carries as well, and a list of results every result in it.
 }
 \details{
 A greylist applied with \code{\link{applyGreylist}} before the slot existed left only its size in the object, so the update cannot recover it: apply it again, or pass it to the \code{greylist} argument of \code{\link{countReads}}.

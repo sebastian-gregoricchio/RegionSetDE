@@ -85,6 +85,13 @@ manualCounts <- normalizeCounts(counts, method = "manual", scalingFactors = spik
 SummarizedExperiment::colData(manualCounts)$scaling.factor
 
 }
+\references{
+Robinson M.D., Oshlack A. (2010). A scaling normalization method for differential expression analysis of RNA-seq data. \emph{Genome Biology} 11:R25.
+
+Lun A.T.L., Smyth G.K. (2016). csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows. \emph{Nucleic Acids Research} 44(5):e45.
+
+de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. \emph{Briefings in Bioinformatics} 25(2):bbad538.
+}
 \seealso{
 \code{\link{countReads}}, \code{\link{countBackground}}, \code{\link{countGreenlist}}
 }

@@ -27,7 +27,6 @@ fitCounts(fit)
 # The underlying engine object, here an edgeR fit
 class(fitObject(fit))
 
-
 }
 \author{
 Sebastian Gregoricchio

@@ -51,155 +51,176 @@
 #' @export plotSetMA
 
 plotSetMA <-
-  function(counts,
-           set = NULL,
-           groupBy = NULL,
-           contrast = NULL,
-           assayName = NULL,
-           priorCount = 1,
-           minCount = 1,
-           showTrend = TRUE,
-           showMedian = TRUE,
-           highlightColor = "#B22222",
-           backgroundColor = "gray75",
-           pointSize = 1.2,
-           maxPoints = 10000,
-           facetScales = "fixed",
-           title = NULL,
-           returnData = FALSE) {
+    function(counts,
+             set = NULL,
+             groupBy = NULL,
+             contrast = NULL,
+             assayName = NULL,
+             priorCount = 1,
+             minCount = 1,
+             showTrend = TRUE,
+             showMedian = TRUE,
+             highlightColor = "#B22222",
+             backgroundColor = "gray75",
+             pointSize = 1.2,
+             maxPoints = 10000,
+             facetScales = "fixed",
+             title = NULL,
+             returnData = FALSE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!methods::is(counts, "RegionSetDE.counts")) {
+            stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!methods::is(counts, "RegionSetDE.counts")) {
-      stop("The 'counts' parameter must be a RegionSetDE.counts object.", call. = FALSE)
-    }
+        facetScales <- tolower(facetScales[1])
+        if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
+            stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
+        }
 
-    facetScales <- tolower(facetScales[1])
-    if (!(facetScales %in% c("fixed", "free", "free_x", "free_y"))) {
-      stop("The 'facetScales' parameter must be one among 'fixed', 'free', 'free_x' or 'free_y'.", call. = FALSE)
-    }
+        # The normalised values are the ones the plot is meant to judge, the raw counts are only a fallback
+        if (is.null(assayName)) {
+            assayName <- S4Vectors::metadata(counts)$normalization$normalized.assay
+            if (is.null(assayName)) {
+                assayName <- "counts"
+            }
+        }
 
-    # The normalised values are the ones the plot is meant to judge, the raw counts are only a fallback
-    if (is.null(assayName)) {
-      assayName <- S4Vectors::metadata(counts)$normalization$normalized.assay
-      if (is.null(assayName)) {assayName <- "counts"}
-    }
+        if (!(assayName %in% SummarizedExperiment::assayNames(counts))) {
+            stop("The assay '", assayName, "' is absent from the object.", call. = FALSE)
+        }
 
-    if (!(assayName %in% SummarizedExperiment::assayNames(counts))) {
-      stop("The assay '", assayName, "' is absent from the object.", call. = FALSE)
-    }
+        valueMatrix <- SummarizedExperiment::assay(counts, assayName)
 
-    valueMatrix <- SummarizedExperiment::assay(counts, assayName)
+        #---------------------------#
+        # Groups to be compared     #
+        #---------------------------#
+        if (is.null(groupBy)) {
+            if (ncol(counts) != 2) {
+                stop("The 'groupBy' parameter is required whenever the object holds more than two samples.", call. = FALSE)
+            }
+            groupVector <- colnames(counts)
+            contrast <- if (is.null(contrast)) {
+                colnames(counts)
+            } else {
+                contrast
+            }
+        } else {
+            if (!(groupBy %in% colnames(SummarizedExperiment::colData(counts)))) {
+                stop("The column '", groupBy, "' is absent from the sample metadata.", call. = FALSE)
+            }
+            groupVector <- as.character(SummarizedExperiment::colData(counts)[[groupBy]])
+            if (is.null(contrast)) {
+                contrast <- sort(unique(groupVector))
+            }
+        }
 
-    #---------------------------#
-    # Groups to be compared     #
-    #---------------------------#
-    if (is.null(groupBy)) {
-      if (ncol(counts) != 2) {
-        stop("The 'groupBy' parameter is required whenever the object holds more than two samples.", call. = FALSE)
-      }
-      groupVector <- colnames(counts)
-      contrast <- if (is.null(contrast)) {colnames(counts)} else {contrast}
-    } else {
-      if (!(groupBy %in% colnames(SummarizedExperiment::colData(counts)))) {
-        stop("The column '", groupBy, "' is absent from the sample metadata.", call. = FALSE)
-      }
-      groupVector <- as.character(SummarizedExperiment::colData(counts)[[groupBy]])
-      if (is.null(contrast)) {contrast <- sort(unique(groupVector))}
-    }
+        if (length(contrast) != 2) {
+            stop("The 'contrast' parameter must name exactly two groups, as c(numerator, denominator).", call. = FALSE)
+        }
 
-    if (length(contrast) != 2) {
-      stop("The 'contrast' parameter must name exactly two groups, as c(numerator, denominator).", call. = FALSE)
-    }
+        absentGroups <- setdiff(contrast, groupVector)
+        if (length(absentGroups) > 0) {
+            stop("The following groups are absent from the samples: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
+        }
 
-    absentGroups <- setdiff(contrast, groupVector)
-    if (length(absentGroups) > 0) {
-      stop("The following groups are absent from the samples: ", paste(absentGroups, collapse = ", "), ".", call. = FALSE)
-    }
+        numeratorColumns <- which(groupVector == contrast[1])
+        denominatorColumns <- which(groupVector == contrast[2])
 
-    numeratorColumns <- which(groupVector == contrast[1])
-    denominatorColumns <- which(groupVector == contrast[2])
+        #---------------------------#
+        # Ratio and abundance       #
+        #---------------------------#
+        numeratorMean <- rowMeans(valueMatrix[, numeratorColumns, drop = FALSE])
+        denominatorMean <- rowMeans(valueMatrix[, denominatorColumns, drop = FALSE])
 
-    #---------------------------#
-    # Ratio and abundance       #
-    #---------------------------#
-    numeratorMean <- rowMeans(valueMatrix[, numeratorColumns, drop = FALSE])
-    denominatorMean <- rowMeans(valueMatrix[, denominatorColumns, drop = FALSE])
+        maTable <- data.frame(
+            region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
+            region.id = as.character(SummarizedExperiment::rowData(counts)$region.id),
+            total.count = as.numeric(rowSums(SummarizedExperiment::assay(counts, "counts"))),
+            A = (log2(numeratorMean + priorCount) + log2(denominatorMean + priorCount)) / 2,
+            M = log2(numeratorMean + priorCount) - log2(denominatorMean + priorCount),
+            stringsAsFactors = FALSE
+        )
 
-    maTable <- data.frame(region.set = as.character(SummarizedExperiment::rowData(counts)$region.set),
-                          region.id = as.character(SummarizedExperiment::rowData(counts)$region.id),
-                          total.count = as.numeric(rowSums(SummarizedExperiment::assay(counts, "counts"))),
-                          A = (log2(numeratorMean + priorCount) + log2(denominatorMean + priorCount)) / 2,
-                          M = log2(numeratorMean + priorCount) - log2(denominatorMean + priorCount),
-                          stringsAsFactors = FALSE)
+        maTable <- dplyr::filter(maTable, .data$total.count >= minCount)
 
-    maTable <- dplyr::filter(maTable, .data$total.count >= minCount)
+        if (nrow(maTable) == 0) {
+            stop("No region passes 'minCount', there is nothing to draw.", call. = FALSE)
+        }
 
-    if (nrow(maTable) == 0) {
-      stop("No region passes 'minCount', there is nothing to draw.", call. = FALSE)
-    }
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(maTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+        }
 
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(maTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-    }
+        #---------------------------#
+        # Highlight and panels      #
+        #---------------------------#
+        # With no set named every set gets its own panel, with the whole object greyed underneath as a reference
+        if (is.null(set)) {
+            highlightTable <- dplyr::mutate(maTable, panel = .data$region.set)
+            backdropTable <- dplyr::select(maTable, "A", "M")
+        } else {
+            highlightTable <- dplyr::mutate(dplyr::filter(maTable, .data$region.set %in% set), panel = paste(set, collapse = ", "))
+            backdropTable <- dplyr::select(dplyr::filter(maTable, !(.data$region.set %in% set)), "A", "M")
+        }
 
-    #---------------------------#
-    # Highlight and panels      #
-    #---------------------------#
-    # With no set named every set gets its own panel, with the whole object greyed underneath as a reference
-    if (is.null(set)) {
-      highlightTable <- dplyr::mutate(maTable, panel = .data$region.set)
-      backdropTable <- dplyr::select(maTable, "A", "M")
-    } else {
-      highlightTable <- dplyr::mutate(dplyr::filter(maTable, .data$region.set %in% set), panel = paste(set, collapse = ", "))
-      backdropTable <- dplyr::select(dplyr::filter(maTable, !(.data$region.set %in% set)), "A", "M")
-    }
+        # The backdrop carries no panel column, so it is redrawn in every facet: thinning it keeps that cost flat
+        backdropTable <- backdropTable[.thinIndex(n = nrow(backdropTable), maxPoints = maxPoints), , drop = FALSE]
 
-    # The backdrop carries no panel column, so it is redrawn in every facet: thinning it keeps that cost flat
-    backdropTable <- backdropTable[.thinIndex(n = nrow(backdropTable), maxPoints = maxPoints), , drop = FALSE]
+        if (isTRUE(returnData)) {
+            return(dplyr::mutate(maTable, highlighted = .data$region.set %in% if (is.null(set)) {
+                unique(maTable$region.set)
+            } else {
+                set
+            }))
+        }
 
-    if (isTRUE(returnData)) {
-      return(dplyr::mutate(maTable, highlighted = .data$region.set %in% if (is.null(set)) {unique(maTable$region.set)} else {set}))
-    }
+        medianTable <- dplyr::summarise(dplyr::group_by(highlightTable, .data$panel), median.M = stats::median(.data$M), .groups = "drop")
 
-    medianTable <- dplyr::summarise(dplyr::group_by(highlightTable, .data$panel), median.M = stats::median(.data$M), .groups = "drop")
+        #---------------------------#
+        # Assemble the plot         #
+        #---------------------------#
+        setPlot <-
+            ggplot2::ggplot(mapping = ggplot2::aes(x = .data$A, y = .data$M)) +
+            ggplot2::geom_point(data = backdropTable, color = backgroundColor, size = pointSize, alpha = 0.4, stroke = NA) +
+            ggplot2::geom_point(data = highlightTable, color = highlightColor, size = pointSize, alpha = 0.6, stroke = NA) +
+            ggplot2::geom_hline(yintercept = 0, color = "gray30")
 
-    #---------------------------#
-    # Assemble the plot         #
-    #---------------------------#
-    setPlot <-
-      ggplot2::ggplot(mapping = ggplot2::aes(x = .data$A, y = .data$M)) +
-      ggplot2::geom_point(data = backdropTable, color = backgroundColor, size = pointSize, alpha = 0.4, stroke = NA) +
-      ggplot2::geom_point(data = highlightTable, color = highlightColor, size = pointSize, alpha = 0.6, stroke = NA) +
-      ggplot2::geom_hline(yintercept = 0, color = "gray30")
+        if (isTRUE(showMedian)) {
+            setPlot <- setPlot + ggplot2::geom_hline(
+                data = medianTable,
+                mapping = ggplot2::aes(yintercept = .data$median.M),
+                color = highlightColor, linetype = "dashed"
+            )
+        }
 
-    if (isTRUE(showMedian)) {
-      setPlot <- setPlot + ggplot2::geom_hline(data = medianTable,
-                                               mapping = ggplot2::aes(yintercept = .data$median.M),
-                                               color = highlightColor, linetype = "dashed")
-    }
+        if (isTRUE(showTrend)) {
+            # The loess cost grows with the square of the points and one fit is run per panel, a thinned sample draws the same line
+            trendTable <- dplyr::slice(
+                dplyr::group_by(highlightTable, .data$panel),
+                .thinIndex(n = dplyr::n(), maxPoints = maxPoints)
+            )
 
-    if (isTRUE(showTrend)) {
-      # The loess cost grows with the square of the points and one fit is run per panel, a thinned sample draws the same line
-      trendTable <- dplyr::slice(dplyr::group_by(highlightTable, .data$panel),
-                                 .thinIndex(n = dplyr::n(), maxPoints = maxPoints))
+            setPlot <- setPlot + ggplot2::geom_smooth(
+                data = trendTable, method = "loess", formula = y ~ x,
+                se = FALSE, color = "black", linewidth = 0.6
+            )
+        }
 
-      setPlot <- setPlot + ggplot2::geom_smooth(data = trendTable, method = "loess", formula = y ~ x,
-                                                se = FALSE, color = "black", linewidth = 0.6)
-    }
+        setPlot <-
+            setPlot +
+            ggplot2::facet_wrap(facets = ~panel, scales = facetScales) +
+            ggplot2::labs(
+                title = title,
+                x = paste0("Average log<sub>2</sub> signal (", assayName, ")"),
+                y = paste0("log<sub>2</sub> ", contrast[1], " / ", contrast[2]),
+                caption = "Dashed line: median of the highlighted regions"
+            ) +
+            .regionSetTheme(legendPosition = "none")
 
-    setPlot <-
-      setPlot +
-      ggplot2::facet_wrap(facets = ~ panel, scales = facetScales) +
-      ggplot2::labs(title = title,
-                    x = paste0("Average log<sub>2</sub> signal (", assayName, ")"),
-                    y = paste0("log<sub>2</sub> ", contrast[1], " / ", contrast[2]),
-                    caption = "Dashed line: median of the highlighted regions") +
-      .regionSetTheme(legendPosition = "none")
-
-    return(setPlot)
-  } # END function
+        return(setPlot)
+    } # END function

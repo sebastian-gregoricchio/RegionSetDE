@@ -113,10 +113,10 @@ plotSampleCorrelation(counts, set = "promoterCpG", method = "pearson", compareOf
 
 # Occupancy of the peak calls, as the Jaccard index
 if (requireNamespace("consensusRegions", quietly = TRUE)) {
-  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+    sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+    consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 
-  plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
+    plotSampleCorrelation(consensus, method = "jaccard", groupBy = "condition")
 }
 
 }

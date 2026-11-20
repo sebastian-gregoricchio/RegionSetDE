@@ -65,13 +65,20 @@ Overlaps within one side of the pair are a separate matter, measured after the s
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)
 
-setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
-                               set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE)
+setContrast <- testSetContrast(fit,
+    contrast = c("condition", "SHR", "BN"),
+    set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE
+)
 resultsTable(setContrast)
 
 # Every pair at once
 allPairs <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
+}
+\references{
+Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting for inter-gene correlation. \emph{Nucleic Acids Research} 40(17):e133.
+
+Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. \emph{Nucleic Acids Research} 43(7):e47.
 }
 \seealso{
 \code{\link{testRegionSets}}, \code{\link{plotSetEffect}}

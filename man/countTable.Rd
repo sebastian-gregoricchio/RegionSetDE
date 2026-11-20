@@ -10,7 +10,17 @@
 \alias{countTable,RegionSetDE.setResultsList-method}
 \title{countTable}
 \usage{
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
 \S4method{countTable}{RegionSetDE.counts}(
   object,
@@ -24,20 +34,68 @@ countTable(object, ...)
   verbose = TRUE
 )
 
-\S4method{countTable}{RegionSetDE.fit}(object, ...)
+\S4method{countTable}{RegionSetDE.fit}(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
-\S4method{countTable}{RegionSetDE.results}(object, ...)
+\S4method{countTable}{RegionSetDE.results}(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
-\S4method{countTable}{RegionSetDE.setResults}(object, ...)
+\S4method{countTable}{RegionSetDE.setResults}(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
-\S4method{countTable}{RegionSetDE.resultsList}(object, ...)
+\S4method{countTable}{RegionSetDE.resultsList}(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
-\S4method{countTable}{RegionSetDE.setResultsList}(object, ...)
+\S4method{countTable}{RegionSetDE.setResultsList}(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{object}{\code{RegionSetDE.counts}, \code{RegionSetDE.fit}, \code{RegionSetDE.results} or \code{RegionSetDE.setResults} object, or either of the two list classes holding several contrasts. For the results the counts are the ones carried inside them, which requires the test to have been run with \code{carryCounts = TRUE}.}
-
-\item{...}{Arguments passed on to the method for \code{RegionSetDE.counts} objects.}
 
 \item{level}{String indicating whether the table must have one row per region (\code{"region"}) or one row per tile (\code{"tile"}). On a tiled object \code{"region"} combines the tiles of each region into a single row. Default: \code{"region"}.}
 
@@ -91,17 +149,22 @@ dim(countMatrix)
 bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
 
 exampleRegions <- GenomicRanges::GRanges(
-  seqnames = rep(c("seq1", "seq2"), each = 2),
-  ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400))
+    seqnames = rep(c("seq1", "seq2"), each = 2),
+    ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400)
+)
 
 exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 2)
 
-exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                seqlevelsStyle = NULL, verbose = FALSE)
+exampleSets <- splitLoadRegions(exampleRegions,
+    splitBy = "setName",
+    seqlevelsStyle = NULL, verbose = FALSE
+)
 
-tiledCounts <- countReads(exampleSets, bamFiles = bamFile,
-                          sampleNames = "example", tileWidth = 100,
-                          verbose = FALSE)
+tiledCounts <- countReads(exampleSets,
+    bamFiles = bamFile,
+    sampleNames = "example", tileWidth = 100,
+    verbose = FALSE
+)
 
 countTable(tiledCounts, level = "tile")
 countTable(tiledCounts, level = "region")

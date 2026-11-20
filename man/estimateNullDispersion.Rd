@@ -58,15 +58,18 @@ counts <- loadExampleData("counts", verbose = FALSE)
 counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 
 # The background bins cover the genome and carry no strain effect
-nullDispersion <- estimateNullDispersion(counts, source = "background",
-                                         verbose = FALSE)
+nullDispersion <- estimateNullDispersion(counts,
+    source = "background",
+    verbose = FALSE
+)
 nullDispersion
 
 # Any set believed to be invariant works the same way, as long as it has signal
 fromRegions <- estimateNullDispersion(counts,
-                                      source = "regionSet",
-                                      regionSets = "geneBody",
-                                      verbose = FALSE)
+    source = "regionSet",
+    regionSets = "geneBody",
+    verbose = FALSE
+)
 fromRegions
 
 }

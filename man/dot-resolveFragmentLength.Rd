@@ -13,7 +13,7 @@
   minMapq,
   removeDuplicates,
   discardRegions,
-  nThreads,
+  BPPARAM,
   verbose
 )
 }
@@ -34,7 +34,7 @@
 
 \item{discardRegions}{\code{GRanges} with the regions whose reads must be ignored, or \code{NULL}.}
 
-\item{nThreads}{Number of threads.}
+\item{BPPARAM}{\code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed.}
 }

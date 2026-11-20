@@ -59,7 +59,7 @@ The reason this function exists alongside \code{\link{geneSetsToRegionSets}}, an
 
 \code{score} is the ranked gene-level statistic a GSEA takes, so \code{fgsea::fgseaMultilevel(pathways = geneSets, stats = setNames(score, gene.id))} is the whole of that route; ranking on \code{score.magnitude} asks which sets were remodelled rather than which shifted, and \code{sign(score) * -log10(p.value)} ranks on significance rather than on effect. No wrapper for it is provided, since the call is one line and wrapping it would add a dependency without adding a decision. What does need stating in the methods is that the genes of the table are not independent, so the permutation behind any such test is anti-conservative.
 
-The weights come from the links. A weight measured or predicted for the link itself is used as it is, whatever it measures, which is what \code{weightSource} in \code{\link{annotateRegions}} records. Failing that, the distance to the start site is turned into \code{exp(-d / decay)}, which is a guess about contact rather than a measure of it. Failing both, every region of a gene counts the same. Which of the three applied is in the \code{weighting} slot and is printed by \code{show}.
+The weights come from the links. A weight measured or predicted for the link itself is used as it is, whatever it measures, which is what \code{weightSource} in \code{\link{annotateRegions}} records. Failing that, the distance to the start site is turned into \code{exp(-d / decay)}, which is a guess about contact rather than a measure of it. Failing both, every region of a gene counts the same. Which of the three applied is in the \code{weighting} slot (read with \code{\link{geneWeighting}}) and is printed by \code{show}.
 
 Two things this does not fix, both worth a line in the methods. Genes are not independent here: a region linked to three genes contributes to all three, so the rows of the table share data and any test run on them afterwards is anti-conservative to an unquantified degree. And the number of regions a gene carries depends on the length of its regulatory locus, so a gene set rich in long-locus genes is easier to hit; a count-based method built for that bias, \code{chipenrich} or \code{polyenrich}, is the comparison to run when it matters.
 
@@ -70,14 +70,17 @@ counts <- loadExampleData("counts", verbose = FALSE)
 fit <- loadExampleData("fit", verbose = FALSE)
 
 # Links of your own, four regions per gene
-regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fit@counts))[, 1:3]
+regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fitCounts(fit)))[, 1:3]
 geneNumber <- ceiling(nrow(regionTable) / 4)
 
 annotatedFit <- annotateRegions(fit,
-                                linkTable = data.frame(regionTable,
-                                                       gene.id = rep(paste0("gene", seq_len(geneNumber)),
-                                                                     each = 4)[seq_len(nrow(regionTable))]),
-                                verbose = FALSE)
+    linkTable = data.frame(regionTable,
+        gene.id = rep(paste0("gene", seq_len(geneNumber)),
+            each = 4
+        )[seq_len(nrow(regionTable))]
+    ),
+    verbose = FALSE
+)
 
 results <- testRegions(annotatedFit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 
@@ -87,6 +90,9 @@ geneResults
 geneTable <- resultsTable(geneResults)
 table(geneTable$direction)
 
+}
+\references{
+Simes R.J. (1986). An improved Bonferroni procedure for multiple tests of significance. \emph{Biometrika} 73(3):751-754.
 }
 \seealso{
 \code{\link{annotateRegions}}, \code{\link{geneSetsToRegionSets}}, \code{\link{testRegionSets}}, \code{\link{updateThresholds}}

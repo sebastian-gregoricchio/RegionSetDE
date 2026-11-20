@@ -13,7 +13,6 @@
 #' @param tileSummary String indicating how the tiles are combined into their region when \code{level = "region"}, one among \code{"sum"}, \code{"mean"}, \code{"max"} and \code{"min"}. Default: \code{NULL}, read from the way the object was counted.
 #' @param extraColumns Annotation carried by the regions that must be added to the table, after the coordinates. Either \code{TRUE} for every column of the \code{rowData} beyond the ones the package writes itself, \code{FALSE} for none, or a character vector naming the ones wanted. Ignored when \code{format = "matrix"}. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
-#' @param ... Arguments passed on to the method for \code{RegionSetDE.counts} objects.
 #'
 #' @return With \code{format = "wide"}, a data.frame with one row per region, or per tile, described by the \code{region.set}, \code{region.id}, \code{tile.id} (tiles only), \code{seqnames}, \code{start}, \code{end} and \code{width} columns, followed by the annotation of the regions and by one column per sample. When the tiles have been combined, \code{n.tiles} reports how many of them each region was built from. With \code{format = "long"}, a data.frame with the same description repeated for every sample, a \code{sample} column, the values in a column named after the assay they were read from (\code{counts}, \code{norm.counts} for the normalised ones, or \code{input}), and the \code{colData} of the samples. With \code{format = "matrix"}, a numeric matrix with one column per sample and the rows named \code{"set|id"}, or \code{"set|id|tileN"} for the tiles.
 #'
@@ -46,17 +45,22 @@
 #' bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
 #'
 #' exampleRegions <- GenomicRanges::GRanges(
-#'   seqnames = rep(c("seq1", "seq2"), each = 2),
-#'   ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400))
+#'     seqnames = rep(c("seq1", "seq2"), each = 2),
+#'     ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400)
+#' )
 #'
 #' exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 2)
 #'
-#' exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-#'                                 seqlevelsStyle = NULL, verbose = FALSE)
+#' exampleSets <- splitLoadRegions(exampleRegions,
+#'     splitBy = "setName",
+#'     seqlevelsStyle = NULL, verbose = FALSE
+#' )
 #'
-#' tiledCounts <- countReads(exampleSets, bamFiles = bamFile,
-#'                           sampleNames = "example", tileWidth = 100,
-#'                           verbose = FALSE)
+#' tiledCounts <- countReads(exampleSets,
+#'     bamFiles = bamFile,
+#'     sampleNames = "example", tileWidth = 100,
+#'     verbose = FALSE
+#' )
 #'
 #' countTable(tiledCounts, level = "tile")
 #' countTable(tiledCounts, level = "region")
@@ -69,87 +73,197 @@
 #'
 #' @export
 
-setGeneric(name = "countTable", def = function(object, ...) {standardGeneric("countTable")})
+setGeneric(
+    name = "countTable",
+    def = function(object,
+                   level = "region",
+                   normalized = FALSE,
+                   input = FALSE,
+                   format = "wide",
+                   set = NULL,
+                   tileSummary = NULL,
+                   extraColumns = TRUE,
+                   verbose = TRUE) {
+        standardGeneric("countTable")
+    }
+)
 
 
 #' @rdname countTable
 #' @export
 
-setMethod(f = "countTable",
-          signature = "RegionSetDE.counts",
-          definition = function(object,
-                                level = "region",
-                                normalized = FALSE,
-                                input = FALSE,
-                                format = "wide",
-                                set = NULL,
-                                tileSummary = NULL,
-                                extraColumns = TRUE,
-                                verbose = TRUE) {
-            return(.buildCountTable(counts = object,
-                                    level = level,
-                                    normalized = normalized,
-                                    input = input,
-                                    format = format,
-                                    set = set,
-                                    tileSummary = tileSummary,
-                                    extraColumns = extraColumns,
-                                    verbose = verbose))
-          })
+setMethod(
+    f = "countTable",
+    signature = "RegionSetDE.counts",
+    definition = function(object,
+                          level = "region",
+                          normalized = FALSE,
+                          input = FALSE,
+                          format = "wide",
+                          set = NULL,
+                          tileSummary = NULL,
+                          extraColumns = TRUE,
+                          verbose = TRUE) {
+        return(.buildCountTable(
+            counts = object,
+            level = level,
+            normalized = normalized,
+            input = input,
+            format = format,
+            set = set,
+            tileSummary = tileSummary,
+            extraColumns = extraColumns,
+            verbose = verbose
+        ))
+    }
+)
 
 
 #' @rdname countTable
 #' @export
 
-setMethod(f = "countTable",
-          signature = "RegionSetDE.fit",
-          definition = function(object, ...) {
-            # The counts the model was fitted on, filtered and restricted to the samples used
-            return(countTable(fitCounts(object), ...))
-          })
+setMethod(
+    f = "countTable",
+    signature = "RegionSetDE.fit",
+    definition = function(object,
+                          level = "region",
+                          normalized = FALSE,
+                          input = FALSE,
+                          format = "wide",
+                          set = NULL,
+                          tileSummary = NULL,
+                          extraColumns = TRUE,
+                          verbose = TRUE) {
+        # The counts the model was fitted on, filtered and restricted to the samples used
+        return(countTable(fitCounts(object),
+            level = level,
+            normalized = normalized,
+            input = input,
+            format = format,
+            set = set,
+            tileSummary = tileSummary,
+            extraColumns = extraColumns,
+            verbose = verbose
+        ))
+    }
+)
 
 
 #' @rdname countTable
 #' @export
 
-setMethod(f = "countTable",
-          signature = "RegionSetDE.results",
-          definition = function(object, ...) {
-            return(countTable(.carriedCounts(object), ...))
-          })
+setMethod(
+    f = "countTable",
+    signature = "RegionSetDE.results",
+    definition = function(object,
+                          level = "region",
+                          normalized = FALSE,
+                          input = FALSE,
+                          format = "wide",
+                          set = NULL,
+                          tileSummary = NULL,
+                          extraColumns = TRUE,
+                          verbose = TRUE) {
+        return(countTable(.carriedCounts(object),
+            level = level,
+            normalized = normalized,
+            input = input,
+            format = format,
+            set = set,
+            tileSummary = tileSummary,
+            extraColumns = extraColumns,
+            verbose = verbose
+        ))
+    }
+)
 
 
 #' @rdname countTable
 #' @export
 
-setMethod(f = "countTable",
-          signature = "RegionSetDE.setResults",
-          definition = function(object, ...) {
-            return(countTable(.carriedCounts(object), ...))
-          })
+setMethod(
+    f = "countTable",
+    signature = "RegionSetDE.setResults",
+    definition = function(object,
+                          level = "region",
+                          normalized = FALSE,
+                          input = FALSE,
+                          format = "wide",
+                          set = NULL,
+                          tileSummary = NULL,
+                          extraColumns = TRUE,
+                          verbose = TRUE) {
+        return(countTable(.carriedCounts(object),
+            level = level,
+            normalized = normalized,
+            input = input,
+            format = format,
+            set = set,
+            tileSummary = tileSummary,
+            extraColumns = extraColumns,
+            verbose = verbose
+        ))
+    }
+)
 
 
 #' @rdname countTable
 #' @export
 
-setMethod(f = "countTable",
-          signature = "RegionSetDE.resultsList",
-          definition = function(object, ...) {
-            # Every contrast comes from the same fit, so any of them holds the same counts
-            return(countTable(.carriedCounts(object), ...))
-          })
+setMethod(
+    f = "countTable",
+    signature = "RegionSetDE.resultsList",
+    definition = function(object,
+                          level = "region",
+                          normalized = FALSE,
+                          input = FALSE,
+                          format = "wide",
+                          set = NULL,
+                          tileSummary = NULL,
+                          extraColumns = TRUE,
+                          verbose = TRUE) {
+        # Every contrast comes from the same fit, so any of them holds the same counts
+        return(countTable(.carriedCounts(object),
+            level = level,
+            normalized = normalized,
+            input = input,
+            format = format,
+            set = set,
+            tileSummary = tileSummary,
+            extraColumns = extraColumns,
+            verbose = verbose
+        ))
+    }
+)
 
 
 #' @rdname countTable
 #' @export
 
-setMethod(f = "countTable",
-          signature = "RegionSetDE.setResultsList",
-          definition = function(object, ...) {
-            return(countTable(.carriedCounts(object), ...))
-          })
-
-
+setMethod(
+    f = "countTable",
+    signature = "RegionSetDE.setResultsList",
+    definition = function(object,
+                          level = "region",
+                          normalized = FALSE,
+                          input = FALSE,
+                          format = "wide",
+                          set = NULL,
+                          tileSummary = NULL,
+                          extraColumns = TRUE,
+                          verbose = TRUE) {
+        return(countTable(.carriedCounts(object),
+            level = level,
+            normalized = normalized,
+            input = input,
+            format = format,
+            set = set,
+            tileSummary = tileSummary,
+            extraColumns = extraColumns,
+            verbose = verbose
+        ))
+    }
+)
 
 
 #' @title .buildCountTable
@@ -180,236 +294,251 @@ setMethod(f = "countTable",
 #' @keywords internal
 
 .buildCountTable <-
-  function(counts,
-           level = "region",
-           normalized = FALSE,
-           input = FALSE,
-           format = "wide",
-           set = NULL,
-           tileSummary = NULL,
-           extraColumns = TRUE,
-           verbose = TRUE) {
-
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!(level[1] %in% c("region", "tile"))) {
-      stop("The 'level' parameter must be either 'region' or 'tile'.", call. = FALSE)
-    }
-    level <- level[1]
-
-    if (!(format[1] %in% c("wide", "long", "matrix"))) {
-      stop("The 'format' parameter must be one of 'wide', 'long', 'matrix'.", call. = FALSE)
-    }
-    format <- format[1]
-
-    if (!is.logical(normalized) | length(normalized) != 1 | anyNA(normalized)) {
-      stop("The 'normalized' parameter must be a single logical value.", call. = FALSE)
-    }
-
-    if (!is.logical(input) | length(input) != 1 | anyNA(input)) {
-      stop("The 'input' parameter must be a single logical value.", call. = FALSE)
-    }
-
-    if (isTRUE(input) & isTRUE(normalized)) {
-      stop("The inputs are not normalised: use either 'input = TRUE' or 'normalized = TRUE'.", call. = FALSE)
-    }
-
-    isTiled <- identical(counts@counting.level, "tile")
-
-    if (level == "tile" & !isTiled) {
-      stop("The counts were not tiled, no tile level table is available.", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Assay to read                 #
-    #-------------------------------#
-    assayName <- "counts"
-
-    if (isTRUE(input)) {
-      if (!("input" %in% SummarizedExperiment::assayNames(counts))) {
-        stop("The object carries no input counts: count the inputs with countReads(), through the sample sheet or 'inputFiles'.", call. = FALSE)
-      }
-      assayName <- "input"
-    }
-
-    if (isTRUE(normalized)) {
-      normalizationInfo <- S4Vectors::metadata(counts)$normalization
-
-      if (is.null(normalizationInfo)) {
-        stop("The object carries no normalisation, run normalizeCounts() first.", call. = FALSE)
-      }
-
-      assayName <- normalizationInfo$normalized.assay
-
-      if (!(assayName %in% SummarizedExperiment::assayNames(counts))) {
-        stop("The normalised assay '", assayName, "' is absent from the object.", call. = FALSE)
-      }
-    }
-
-    #-------------------------------#
-    # Rows of the requested sets    #
-    #-------------------------------#
-    rowRangesObject <- SummarizedExperiment::rowRanges(counts)
-
-    # The counting functions name every row, the fallback only covers objects assembled by hand
-    rowKeys <- rownames(counts)
-    if (is.null(rowKeys)) {
-      rowKeys <- paste(S4Vectors::mcols(rowRangesObject)$region.set, S4Vectors::mcols(rowRangesObject)$region.id, sep = "|")
-      if (isTiled) {
-        rowKeys <- paste(rowKeys, paste0("tile", S4Vectors::mcols(rowRangesObject)$tile.id), sep = "|")
-      }
-    }
-
-    rowTable <- data.frame(row.index = seq_along(rowRangesObject),
-                           row.key = rowKeys,
-                           region.set = as.character(S4Vectors::mcols(rowRangesObject)$region.set),
-                           region.id = as.character(S4Vectors::mcols(rowRangesObject)$region.id),
-                           tile.id = S4Vectors::mcols(rowRangesObject)$tile.id,
-                           seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
-                           start = BiocGenerics::start(rowRangesObject),
-                           end = BiocGenerics::end(rowRangesObject),
-                           width = BiocGenerics::width(rowRangesObject),
-                           stringsAsFactors = FALSE)
-
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(rowTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      rowTable <- dplyr::filter(rowTable, .data$region.set %in% set)
-    }
-
-    valueMatrix <- as.matrix(SummarizedExperiment::assay(counts, assayName))[rowTable$row.index, , drop = FALSE]
-
-    # A sample named like a coordinate would give the wide table two columns with the same name
-    identifierColumns <- c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width", "n.tiles")
-    sampleNames <- colnames(valueMatrix)
-
-    if (format == "wide" & any(sampleNames %in% identifierColumns)) {
-      stop("The following sample names are also the names of identifier columns, use format = 'long': ",
-           paste(intersect(sampleNames, identifierColumns), collapse = ", "), ".", call. = FALSE)
-    }
-
-    #-------------------------------#
-    # Annotation of the rows        #
-    #-------------------------------#
-    sampleTable <- as.data.frame(SummarizedExperiment::colData(counts))
-    sampleTable$sample <- sampleNames
-    sampleTable <- dplyr::relocate(sampleTable, "sample")
-
-    annotationTable <- data.frame(row.names = seq_len(nrow(rowTable)))
-
-    if (format != "matrix") {
-      reservedColumns <- if (format == "wide") {c(identifierColumns, sampleNames)} else {c(identifierColumns, assayName, colnames(sampleTable))}
-
-      annotationTable <- .extraRowColumns(rowTable = as.data.frame(SummarizedExperiment::rowData(counts))[rowTable$row.index, , drop = FALSE],
-                                          extraColumns = extraColumns,
-                                          reserved = reservedColumns,
-                                          verbose = verbose)
-    }
-
-    #-------------------------------#
-    # Tiles back into their region  #
-    #-------------------------------#
-    if (level == "region" & isTiled) {
-      summaryRule <- .tileSummaryRule(counts = counts, tileSummary = tileSummary)
-
-      # Matching the keys rather than relying on the row order keeps the tiles together whatever the sorting
-      regionKey <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
-      rowTable <- dplyr::mutate(rowTable,
-                                table.row = dplyr::row_number(),
-                                region.index = match(regionKey, unique(regionKey)))
-
-      valueMatrix <- .combineTileValues(valueMatrix = valueMatrix,
-                                        regionIndex = rowTable$region.index,
-                                        tileWidths = rowTable$width,
-                                        summaryRule = summaryRule)
-
-      rowTable <- dplyr::summarise(dplyr::group_by(rowTable, .data$region.index),
-                                   first.row = dplyr::first(.data$table.row),
-                                   region.set = dplyr::first(.data$region.set),
-                                   region.id = dplyr::first(.data$region.id),
-                                   seqnames = dplyr::first(.data$seqnames),
-                                   start = min(.data$start),
-                                   end = max(.data$end),
-                                   n.tiles = dplyr::n(),
-                                   .groups = "drop")
-
-      rowTable <- as.data.frame(rowTable, stringsAsFactors = FALSE)
-      rowTable$width <- rowTable$end - rowTable$start + 1
-      rowTable$row.key <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
-
-      # The tiles inherit the annotation of their region, so the first one speaks for all of them
-      annotationTable <- annotationTable[rowTable$first.row, , drop = FALSE]
-
-      if (isTRUE(verbose)) {
-        signalType <- S4Vectors::metadata(counts)$signal.type
-        if (summaryRule == "sum" & (is.null(signalType) || signalType == "reads")) {
-          message("The tiles have been summed into their regions. A fragment overlapping two tiles is counted in both, ",
-                  "so these values are higher than the counts of the same regions taken whole.")
-        } else if (identical(signalType, "external") & is.null(tileSummary)) {
-          message("The imported tiles have been summed into their regions, set 'tileSummary' if they hold a mean signal rather than counts.")
+    function(counts,
+             level = "region",
+             normalized = FALSE,
+             input = FALSE,
+             format = "wide",
+             set = NULL,
+             tileSummary = NULL,
+             extraColumns = TRUE,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        if (!(level[1] %in% c("region", "tile"))) {
+            stop("The 'level' parameter must be either 'region' or 'tile'.", call. = FALSE)
         }
-      }
-    }
+        level <- level[1]
 
-    rownames(valueMatrix) <- rowTable$row.key
-    colnames(valueMatrix) <- sampleNames
+        if (!(format[1] %in% c("wide", "long", "matrix"))) {
+            stop("The 'format' parameter must be one of 'wide', 'long', 'matrix'.", call. = FALSE)
+        }
+        format <- format[1]
 
-    #-------------------------------#
-    # Shape of the output           #
-    #-------------------------------#
-    if (format == "matrix") {
-      return(valueMatrix)
-    }
+        if (!is.logical(normalized) | length(normalized) != 1 | anyNA(normalized)) {
+            stop("The 'normalized' parameter must be a single logical value.", call. = FALSE)
+        }
 
-    # tile.id means nothing once the tiles are combined, and n.tiles nothing before
-    descriptionColumns <- if (level == "tile") {
-      c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width")
-    } else if (isTiled) {
-      c("region.set", "region.id", "seqnames", "start", "end", "width", "n.tiles")
-    } else {
-      c("region.set", "region.id", "seqnames", "start", "end", "width")
-    }
+        if (!is.logical(input) | length(input) != 1 | anyNA(input)) {
+            stop("The 'input' parameter must be a single logical value.", call. = FALSE)
+        }
 
-    descriptionTable <- rowTable[, descriptionColumns, drop = FALSE]
-    rownames(annotationTable) <- NULL
+        if (isTRUE(input) & isTRUE(normalized)) {
+            stop("The inputs are not normalised: use either 'input = TRUE' or 'normalized = TRUE'.", call. = FALSE)
+        }
 
-    if (ncol(annotationTable) > 0) {
-      descriptionTable <- cbind(descriptionTable, annotationTable)
-    }
+        isTiled <- identical(countingLevel(counts), "tile")
 
-    if (format == "wide") {
-      wideTable <- cbind(descriptionTable, as.data.frame(valueMatrix, optional = TRUE))
-      colnames(wideTable) <- c(colnames(descriptionTable), sampleNames)
-      rownames(wideTable) <- rowTable$row.key
-      return(wideTable)
-    }
+        if (level == "tile" & !isTiled) {
+            stop("The counts were not tiled, no tile level table is available.", call. = FALSE)
+        }
 
-    # One row per row and sample, the samples in the order of the object
-    longTable <- descriptionTable[rep(seq_len(nrow(descriptionTable)), times = ncol(valueMatrix)), , drop = FALSE]
-    longTable$sample <- rep(sampleNames, each = nrow(valueMatrix))
-    longTable[[assayName]] <- as.vector(valueMatrix)
-    rownames(longTable) <- NULL
+        #-------------------------------#
+        # Assay to read                 #
+        #-------------------------------#
+        assayName <- "counts"
 
-    # A colData column named like a row column would otherwise be duplicated by the join
-    collidingColumns <- setdiff(intersect(colnames(sampleTable), colnames(longTable)), "sample")
-    if (length(collidingColumns) > 0) {
-      colnames(sampleTable)[colnames(sampleTable) %in% collidingColumns] <- paste0(collidingColumns, ".sample")
+        if (isTRUE(input)) {
+            if (!("input" %in% SummarizedExperiment::assayNames(counts))) {
+                stop("The object carries no input counts: count the inputs with countReads(), through the sample sheet or 'inputFiles'.", call. = FALSE)
+            }
+            assayName <- "input"
+        }
 
-      if (isTRUE(verbose)) {
-        message("The following colData columns share a name with a row column and carry the suffix '.sample': ",
-                paste(collidingColumns, collapse = ", "), ".")
-      }
-    }
+        if (isTRUE(normalized)) {
+            normalizationInfo <- S4Vectors::metadata(counts)$normalization
 
-    longTable <- dplyr::left_join(longTable, sampleTable, by = "sample")
+            if (is.null(normalizationInfo)) {
+                stop("The object carries no normalisation, run normalizeCounts() first.", call. = FALSE)
+            }
 
-    return(longTable)
-  } # END function
+            assayName <- normalizationInfo$normalized.assay
 
+            if (!(assayName %in% SummarizedExperiment::assayNames(counts))) {
+                stop("The normalised assay '", assayName, "' is absent from the object.", call. = FALSE)
+            }
+        }
 
+        #-------------------------------#
+        # Rows of the requested sets    #
+        #-------------------------------#
+        rowRangesObject <- SummarizedExperiment::rowRanges(counts)
+
+        # The counting functions name every row, the fallback only covers objects assembled by hand
+        rowKeys <- rownames(counts)
+        if (is.null(rowKeys)) {
+            rowKeys <- paste(S4Vectors::mcols(rowRangesObject)$region.set, S4Vectors::mcols(rowRangesObject)$region.id, sep = "|")
+            if (isTiled) {
+                rowKeys <- paste(rowKeys, paste0("tile", S4Vectors::mcols(rowRangesObject)$tile.id), sep = "|")
+            }
+        }
+
+        rowTable <- data.frame(
+            row.index = seq_along(rowRangesObject),
+            row.key = rowKeys,
+            region.set = as.character(S4Vectors::mcols(rowRangesObject)$region.set),
+            region.id = as.character(S4Vectors::mcols(rowRangesObject)$region.id),
+            tile.id = S4Vectors::mcols(rowRangesObject)$tile.id,
+            seqnames = as.character(GenomeInfoDb::seqnames(rowRangesObject)),
+            start = BiocGenerics::start(rowRangesObject),
+            end = BiocGenerics::end(rowRangesObject),
+            width = BiocGenerics::width(rowRangesObject),
+            stringsAsFactors = FALSE
+        )
+
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(rowTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            rowTable <- dplyr::filter(rowTable, .data$region.set %in% set)
+        }
+
+        valueMatrix <- as.matrix(SummarizedExperiment::assay(counts, assayName))[rowTable$row.index, , drop = FALSE]
+
+        # A sample named like a coordinate would give the wide table two columns with the same name
+        identifierColumns <- c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width", "n.tiles")
+        sampleNames <- colnames(valueMatrix)
+
+        if (format == "wide" & any(sampleNames %in% identifierColumns)) {
+            stop("The following sample names are also the names of identifier columns, use format = 'long': ",
+                paste(intersect(sampleNames, identifierColumns), collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
+
+        #-------------------------------#
+        # Annotation of the rows        #
+        #-------------------------------#
+        sampleTable <- as.data.frame(SummarizedExperiment::colData(counts))
+        sampleTable$sample <- sampleNames
+        sampleTable <- dplyr::relocate(sampleTable, "sample")
+
+        annotationTable <- data.frame(row.names = seq_len(nrow(rowTable)))
+
+        if (format != "matrix") {
+            reservedColumns <- if (format == "wide") {
+                c(identifierColumns, sampleNames)
+            } else {
+                c(identifierColumns, assayName, colnames(sampleTable))
+            }
+
+            annotationTable <- .extraRowColumns(
+                rowTable = as.data.frame(SummarizedExperiment::rowData(counts))[rowTable$row.index, , drop = FALSE],
+                extraColumns = extraColumns,
+                reserved = reservedColumns,
+                verbose = verbose
+            )
+        }
+
+        #-------------------------------#
+        # Tiles back into their region  #
+        #-------------------------------#
+        if (level == "region" & isTiled) {
+            summaryRule <- .tileSummaryRule(counts = counts, tileSummary = tileSummary)
+
+            # Matching the keys rather than relying on the row order keeps the tiles together whatever the sorting
+            regionKey <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
+            rowTable <- dplyr::mutate(rowTable,
+                table.row = dplyr::row_number(),
+                region.index = match(regionKey, unique(regionKey))
+            )
+
+            valueMatrix <- .combineTileValues(
+                valueMatrix = valueMatrix,
+                regionIndex = rowTable$region.index,
+                tileWidths = rowTable$width,
+                summaryRule = summaryRule
+            )
+
+            rowTable <- dplyr::summarise(dplyr::group_by(rowTable, .data$region.index),
+                first.row = dplyr::first(.data$table.row),
+                region.set = dplyr::first(.data$region.set),
+                region.id = dplyr::first(.data$region.id),
+                seqnames = dplyr::first(.data$seqnames),
+                start = min(.data$start),
+                end = max(.data$end),
+                n.tiles = dplyr::n(),
+                .groups = "drop"
+            )
+
+            rowTable <- as.data.frame(rowTable, stringsAsFactors = FALSE)
+            rowTable$width <- rowTable$end - rowTable$start + 1
+            rowTable$row.key <- paste(rowTable$region.set, rowTable$region.id, sep = "|")
+
+            # The tiles inherit the annotation of their region, so the first one speaks for all of them
+            annotationTable <- annotationTable[rowTable$first.row, , drop = FALSE]
+
+            if (isTRUE(verbose)) {
+                signalType <- S4Vectors::metadata(counts)$signal.type
+                if (summaryRule == "sum" & (is.null(signalType) || signalType == "reads")) {
+                    message(
+                        "The tiles have been summed into their regions. A fragment overlapping two tiles is counted in both, ",
+                        "so these values are higher than the counts of the same regions taken whole."
+                    )
+                } else if (identical(signalType, "external") & is.null(tileSummary)) {
+                    message("The imported tiles have been summed into their regions, set 'tileSummary' if they hold a mean signal rather than counts.")
+                }
+            }
+        }
+
+        rownames(valueMatrix) <- rowTable$row.key
+        colnames(valueMatrix) <- sampleNames
+
+        #-------------------------------#
+        # Shape of the output           #
+        #-------------------------------#
+        if (format == "matrix") {
+            return(valueMatrix)
+        }
+
+        # tile.id means nothing once the tiles are combined, and n.tiles nothing before
+        descriptionColumns <- if (level == "tile") {
+            c("region.set", "region.id", "tile.id", "seqnames", "start", "end", "width")
+        } else if (isTiled) {
+            c("region.set", "region.id", "seqnames", "start", "end", "width", "n.tiles")
+        } else {
+            c("region.set", "region.id", "seqnames", "start", "end", "width")
+        }
+
+        descriptionTable <- rowTable[, descriptionColumns, drop = FALSE]
+        rownames(annotationTable) <- NULL
+
+        if (ncol(annotationTable) > 0) {
+            descriptionTable <- cbind(descriptionTable, annotationTable)
+        }
+
+        if (format == "wide") {
+            wideTable <- cbind(descriptionTable, as.data.frame(valueMatrix, optional = TRUE))
+            colnames(wideTable) <- c(colnames(descriptionTable), sampleNames)
+            rownames(wideTable) <- rowTable$row.key
+            return(wideTable)
+        }
+
+        # One row per row and sample, the samples in the order of the object
+        longTable <- descriptionTable[rep(seq_len(nrow(descriptionTable)), times = ncol(valueMatrix)), , drop = FALSE]
+        longTable$sample <- rep(sampleNames, each = nrow(valueMatrix))
+        longTable[[assayName]] <- as.vector(valueMatrix)
+        rownames(longTable) <- NULL
+
+        # A colData column named like a row column would otherwise be duplicated by the join
+        collidingColumns <- setdiff(intersect(colnames(sampleTable), colnames(longTable)), "sample")
+        if (length(collidingColumns) > 0) {
+            colnames(sampleTable)[colnames(sampleTable) %in% collidingColumns] <- paste0(collidingColumns, ".sample")
+
+            if (isTRUE(verbose)) {
+                message(
+                    "The following colData columns share a name with a row column and carry the suffix '.sample': ",
+                    paste(collidingColumns, collapse = ", "), "."
+                )
+            }
+        }
+
+        longTable <- dplyr::left_join(longTable, sampleTable, by = "sample")
+
+        return(longTable)
+    } # END function
 
 
 #' @title .tileSummaryRule
@@ -428,28 +557,25 @@ setMethod(f = "countTable",
 #' @keywords internal
 
 .tileSummaryRule <-
-  function(counts,
-           tileSummary = NULL) {
+    function(counts,
+             tileSummary = NULL) {
+        if (!is.null(tileSummary)) {
+            if (!(tileSummary[1] %in% c("sum", "mean", "max", "min"))) {
+                stop("The 'tileSummary' parameter must be one of 'sum', 'mean', 'max', 'min'.", call. = FALSE)
+            }
+            return(tileSummary[1])
+        }
 
-    if (!is.null(tileSummary)) {
-      if (!(tileSummary[1] %in% c("sum", "mean", "max", "min"))) {
-        stop("The 'tileSummary' parameter must be one of 'sum', 'mean', 'max', 'min'.", call. = FALSE)
-      }
-      return(tileSummary[1])
-    }
+        # bigWig signal was summarised per tile, and the region needs the same summary
+        if (identical(S4Vectors::metadata(counts)$signal.type, "bigwig")) {
+            bigwigSummary <- parameterLog(counts)$countBigwig$summaryFunction
+            if (!is.null(bigwigSummary)) {
+                return(bigwigSummary)
+            }
+        }
 
-    # bigWig signal was summarised per tile, and the region needs the same summary
-    if (identical(S4Vectors::metadata(counts)$signal.type, "bigwig")) {
-      bigwigSummary <- counts@parameters$countBigwig$summaryFunction
-      if (!is.null(bigwigSummary)) {
-        return(bigwigSummary)
-      }
-    }
-
-    return("sum")
-  } # END function
-
-
+        return("sum")
+    } # END function
 
 
 #' @title .combineTileValues
@@ -468,32 +594,37 @@ setMethod(f = "countTable",
 #' @keywords internal
 
 .combineTileValues <-
-  function(valueMatrix,
-           regionIndex,
-           tileWidths,
-           summaryRule = "sum") {
+    function(valueMatrix,
+             regionIndex,
+             tileWidths,
+             summaryRule = "sum") {
+        if (summaryRule == "sum") {
+            return(rowsum(x = valueMatrix, group = regionIndex, reorder = TRUE))
+        }
 
-    if (summaryRule == "sum") {
-      return(rowsum(x = valueMatrix, group = regionIndex, reorder = TRUE))
-    }
+        # Weighting by width lets the shorter trailing tile count for the bases it covers, not for a whole tile
+        if (summaryRule == "mean") {
+            weightedSums <- rowsum(x = valueMatrix * tileWidths, group = regionIndex, reorder = TRUE)
+            return(weightedSums / as.numeric(rowsum(x = tileWidths, group = regionIndex, reorder = TRUE)))
+        }
 
-    # Weighting by width lets the shorter trailing tile count for the bases it covers, not for a whole tile
-    if (summaryRule == "mean") {
-      weightedSums <- rowsum(x = valueMatrix * tileWidths, group = regionIndex, reorder = TRUE)
-      return(weightedSums / as.numeric(rowsum(x = tileWidths, group = regionIndex, reorder = TRUE)))
-    }
+        # Maxima and minima have no rowsum counterpart, so they are taken one sample at a time
+        summaryFunction <- if (summaryRule == "max") {
+            max
+        } else {
+            min
+        }
+        regionFactor <- factor(regionIndex, levels = sort(unique(regionIndex)))
 
-    # Maxima and minima have no rowsum counterpart, so they are taken one sample at a time
-    summaryFunction <- if (summaryRule == "max") {max} else {min}
-    regionFactor <- factor(regionIndex, levels = sort(unique(regionIndex)))
+        combinedList <- lapply(
+            seq_len(ncol(valueMatrix)),
+            function(j) {
+                as.numeric(tapply(valueMatrix[, j], regionFactor, summaryFunction))
+            }
+        )
 
-    combinedList <- lapply(seq_len(ncol(valueMatrix)),
-                           function(j) {as.numeric(tapply(valueMatrix[, j], regionFactor, summaryFunction))})
-
-    return(matrix(unlist(combinedList), nrow = nlevels(regionFactor), ncol = ncol(valueMatrix)))
-  } # END function
-
-
+        return(matrix(unlist(combinedList), nrow = nlevels(regionFactor), ncol = ncol(valueMatrix)))
+    } # END function
 
 
 #' @title .carriedCounts
@@ -509,13 +640,12 @@ setMethod(f = "countTable",
 #' @keywords internal
 
 .carriedCounts <-
-  function(results) {
+    function(results) {
+        carriedCounts <- resultCounts(results)
 
-    carriedCounts <- resultCounts(results)
+        if (ncol(carriedCounts) == 0) {
+            stop("The result carries no counts, run the test with carryCounts = TRUE or call countTable() on the fit.", call. = FALSE)
+        }
 
-    if (ncol(carriedCounts) == 0) {
-      stop("The result carries no counts, run the test with carryCounts = TRUE or call countTable() on the fit.", call. = FALSE)
-    }
-
-    return(carriedCounts)
-  } # END function
+        return(carriedCounts)
+    } # END function

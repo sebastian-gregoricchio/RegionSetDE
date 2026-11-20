@@ -26,44 +26,49 @@
 #' @export sampleInfo
 
 sampleInfo <-
-  function(object,
-           columns = NULL) {
+    function(object,
+             columns = NULL) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        # The results reach their samples through the counts they carry
+        if (methods::is(object, "RegionSetDE.fit")) {
+            object <- fitCounts(object)
+        } else if (any(vapply(
+            c("RegionSetDE.results", "RegionSetDE.resultsList", "RegionSetDE.setResults", "RegionSetDE.setResultsList"),
+            function(className) {
+                methods::is(object, className)
+            }, logical(1)
+        ))) {
+            object <- .carriedCounts(object)
+        }
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    # The results reach their samples through the counts they carry
-    if (methods::is(object, "RegionSetDE.fit")) {
-      object <- fitCounts(object)
-    } else if (any(vapply(c("RegionSetDE.results", "RegionSetDE.resultsList", "RegionSetDE.setResults", "RegionSetDE.setResultsList"),
-                          function(className) {methods::is(object, className)}, logical(1)))) {
-      object <- .carriedCounts(object)
-    }
+        if (!methods::is(object, "RegionSetDE.counts")) {
+            stop("The 'object' parameter must be a RegionSetDE.counts, a RegionSetDE.fit or a results object.", call. = FALSE)
+        }
 
-    if (!methods::is(object, "RegionSetDE.counts")) {
-      stop("The 'object' parameter must be a RegionSetDE.counts, a RegionSetDE.fit or a results object.", call. = FALSE)
-    }
+        sampleTable <- as.data.frame(SummarizedExperiment::colData(object), optional = TRUE)
 
-    sampleTable <- as.data.frame(SummarizedExperiment::colData(object), optional = TRUE)
+        #------------------------#
+        # Columns to keep        #
+        #------------------------#
+        if (!is.null(columns)) {
+            missingColumns <- setdiff(columns, colnames(sampleTable))
 
-    #------------------------#
-    # Columns to keep        #
-    #------------------------#
-    if (!is.null(columns)) {
-      missingColumns <- setdiff(columns, colnames(sampleTable))
+            if (length(missingColumns) > 0) {
+                stop("The following columns are not in the sample table: ", paste(missingColumns, collapse = ", "),
+                    ". Available: ", paste(colnames(sampleTable), collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
 
-      if (length(missingColumns) > 0) {
-        stop("The following columns are not in the sample table: ", paste(missingColumns, collapse = ", "),
-             ". Available: ", paste(colnames(sampleTable), collapse = ", "), ".", call. = FALSE)
-      }
+            sampleTable <- sampleTable[, columns, drop = FALSE]
+        }
 
-      sampleTable <- sampleTable[, columns, drop = FALSE]
-    }
+        # The sample names are a column already, as row names they would only be dropped by dplyr
+        if ("sample" %in% colnames(SummarizedExperiment::colData(object))) {
+            rownames(sampleTable) <- NULL
+        }
 
-    # The sample names are a column already, as row names they would only be dropped by dplyr
-    if ("sample" %in% colnames(SummarizedExperiment::colData(object))) {
-      rownames(sampleTable) <- NULL
-    }
-
-    return(sampleTable)
-  } # END function
+        return(sampleTable)
+    } # END function

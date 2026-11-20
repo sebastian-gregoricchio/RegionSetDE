@@ -14,8 +14,26 @@ loadConsensusPeaks(
   unassignedSet = "other",
   seqlevelsStyle = "UCSC",
   genomeAssembly = NULL,
-  nThreads = 1,
+  BPPARAM = NULL,
   seed = NULL,
+  weightMethod = "equal",
+  calibrate = FALSE,
+  nPermutations = 50L,
+  targetFDR = 0.05,
+  recentre = FALSE,
+  width = 400L,
+  combinationMethod = "stouffer",
+  replicateType = "biological",
+  stringencyThreshold = 1e-08,
+  weakThreshold = 1e-04,
+  combinedThreshold = NULL,
+  alpha = 0.05,
+  minSupport = NULL,
+  minReplicates = NULL,
+  minOverlap = 1L,
+  minOverlapFraction = NULL,
+  mergeMethod = "reduce",
+  maxConsensusWidth = NULL,
   verbose = TRUE,
   ...
 )
@@ -25,7 +43,7 @@ loadConsensusPeaks(
 
 \item{groupBy}{String with the column of the sample sheet defining the groups, for instance \code{"condition"}. Default: \code{NULL}, all the samples form a single group.}
 
-\item{blacklist}{Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.}
+\item{blacklist}{Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot (read with \code{\link{blacklistRanges}}) of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.}
 
 \item{greylist}{Regions of this experiment whose peaks must be dropped before any consensus is built, typically the list built from the inputs by \code{\link{makeGreylist}}. Accepts the same forms as \code{blacklist}. Default: \code{NULL}.}
 
@@ -39,16 +57,52 @@ loadConsensusPeaks(
 
 \item{genomeAssembly}{String indicating the genome assembly to store with the regions, e.g. \code{"hg38"}. Default: \code{NULL}.}
 
-\item{nThreads}{Number of threads. The groups with more than one sample are built side by side, one worker per group, and the threads left over go to the calibration of the threshold inside each group when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. Default: \code{1}.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. A number of cores is shared out: the groups with more than one sample are built side by side, one worker per group, and with \code{calibrate = TRUE} the cores left over go to the calibration inside each group. A \code{BiocParallelParam} object goes to the calibration of every group when \code{calibrate = TRUE}, the groups being built one after the other, and runs the groups side by side otherwise, so that two levels of workers are never stacked. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
-\item{seed}{Number seeding the random numbers of the calibration, when \code{calibrate = TRUE} is passed on to \code{consensusRegions::runConsensus}. It goes to \code{runConsensus} for every group, which hands it to the \code{BiocParallel} back end of the permutations as its \code{RNGseed}, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of threads. Needs consensusRegions 0.99.2 or later. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.}
+\item{seed}{Number seeding the random numbers of the calibration, when \code{calibrate = TRUE}. It goes to \code{runConsensus} for every group, which hands it to the \code{BiocParallel} back end of the permutations as its \code{RNGseed}, and it is stored in \code{parameters$loadConsensusPeaks$seed}, so that the consensus can be built again identically, on any number of cores. Needs consensusRegions 0.99.2 or later. Default: \code{NULL}, no seed, and a calibrated consensus may change from one call to the next.}
+
+\item{weightMethod}{String with the weights of the replicates within a group, passed to \code{consensusRegions::computeReplicateWeights}: \code{"equal"}, \code{"frip"}, \code{"librarySize"} or \code{"intrinsic"}. \code{"equal"} counts every replicate the same and is the reproducible choice. With \code{"frip"} or \code{"librarySize"} the BAM files of the sample sheet are used. Default: \code{"equal"}.}
+
+\item{calibrate}{Logical value to indicate whether the threshold on the combined p-value must be estimated within each group by \code{consensusRegions::calibrateThreshold}, against shuffled peaks, instead of being fixed by \code{combinedThreshold}. Default: \code{FALSE}.}
+
+\item{nPermutations}{Number of shuffles of the calibration. Ignored when \code{calibrate = FALSE}. Default: \code{50}.}
+
+\item{targetFDR}{Numeric value with the empirical false discovery rate the calibration aims for. Ignored when \code{calibrate = FALSE}. Default: \code{0.05}.}
+
+\item{recentre}{Logical value to indicate whether the consensus of each group must be reduced to windows of fixed width around the summits, as \code{consensusRegions::recentrePeaks} does. It suits transcription factors and ATAC-seq, not broad domains, and with several groups the union merges overlapping windows back into wider regions. Default: \code{FALSE}.}
+
+\item{width}{Width in base pairs of the recentred windows. Ignored when \code{recentre = FALSE}. Default: \code{400}.}
+
+\item{combinationMethod}{String with the way the p-values of overlapping peaks are combined, one among \code{"stouffer"}, \code{"fisher"}, \code{"lancaster"} and \code{"rankProduct"}. Default: \code{"stouffer"}.}
+
+\item{replicateType}{String with the kind of replicates in a group: \code{"biological"} asks for \code{minSupport} supporting replicates, \code{"technical"} for all of them. Default: \code{"biological"}.}
+
+\item{stringencyThreshold}{Numeric value with the p-value below which a peak is stringent. Default: \code{1e-8}.}
+
+\item{weakThreshold}{Numeric value with the p-value above which a peak is taken as background and plays no further part. Default: \code{1e-4}.}
+
+\item{combinedThreshold}{Numeric value with the threshold on the combined p-value. Its scale depends on \code{combinationMethod}, so a value chosen for one scheme does not mean the same under another. Default: \code{NULL}, \code{stringencyThreshold} is used.}
+
+\item{alpha}{Numeric value with the level of the Benjamini-Hochberg step within each replicate. Default: \code{0.05}.}
+
+\item{minSupport}{Number of other replicates of the group that must hold an overlapping peak. Give this or \code{minReplicates}, not both. Default: \code{NULL}, one supporting replicate is enough.}
+
+\item{minReplicates}{Number of replicates of the group that must hold the peak, counting the one it came from, as a count (\code{2}), a proportion (\code{0.66}) or a percentage (\code{"66\%"}), the last two rounded up. \code{minReplicates = 2} is the same requirement as \code{minSupport = 1}. Default: \code{NULL}.}
+
+\item{minOverlap}{Minimum overlap in base pairs between two peaks for one to support the other. Default: \code{1}.}
+
+\item{minOverlapFraction}{Minimum overlap as a fraction of the shorter of the two peaks, required on top of \code{minOverlap}. Default: \code{NULL}, no such requirement.}
+
+\item{mergeMethod}{String with the way the confirmed peaks are merged: \code{"reduce"} merges anything that touches, \code{"iterative"} keeps the most significant peak, removes what overlaps it and repeats. Default: \code{"reduce"}.}
+
+\item{maxConsensusWidth}{Maximum width in base pairs of a merged region. Wider regions are rebuilt with the iterative rule. Default: \code{NULL}, no limit.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 
-\item{...}{Further arguments passed to \code{consensusRegions::runConsensus}, for instance \code{minReplicates}, \code{combinedThreshold}, \code{calibrate} or \code{weightMethod}.}
+\item{...}{Any other argument of \code{consensusRegions::runConsensus} or \code{consensusRegions::buildConsensus}, for instance \code{adjustmentFamily} or \code{minSupportWeight}. \code{peaks} and \code{sampleNames} come from the sample sheet and cannot be given.}
 }
 \value{
-A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot, read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot, the greylist to the \code{greylist} slot with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
+A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot (read with \code{\link{consensusData}}), read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot (read with \code{\link{blacklistRanges}}), the greylist to the \code{greylist} slot (read with \code{\link{greylistRanges}}) with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
 }
 \description{
 Builds the regions of an analysis from the peaks called on each sample. The peaks are combined into a consensus within each group of samples through \code{consensusRegions}, and the group consensus are pooled into a total one, which becomes the region set counted downstream. Regions supplied by the user can split the total consensus into sets, or take its place.
@@ -64,34 +118,39 @@ With \code{regionMode = "split"} the consensus regions are assigned to the sets 
 
 The occupancy columns describe where the peaks were called, and they are a poor basis for a set of regions to test. A set of the regions found in one group only was selected on the signal of that group, so a test of its change between the groups answers a question already settled by the selection.
 
-The consensus of a group does not depend on the other groups, so with \code{nThreads} above one the groups run in parallel. \code{consensusRegions} builds a consensus on a single thread and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more threads save time: three groups on three threads take about as long as the largest of them. With \code{calibrate = TRUE} the threads are shared, \code{nThreads} divided by the number of groups for the permutations of each group. A \code{BPPARAM} passed in \code{...} is handed to every group as it is and the groups then run one after the other, so that two levels of workers are never stacked on each other by accident.
+The consensus of a group does not depend on the other groups, so with more than one core the groups run in parallel. \code{consensusRegions} builds a consensus on a single core and only parallelises the permutations of the calibration, so without \code{calibrate} the groups are the one place where more cores save time: three groups on three cores take about as long as the largest of them. With \code{calibrate = TRUE} a number of cores is shared, divided by the number of groups for the permutations of each group. A \code{BiocParallelParam} object is never split: with \code{calibrate = TRUE} it is handed to every group as it is and the groups run one after the other, without calibration it runs the groups.
 
-The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} is passed on to \code{consensusRegions::runConsensus} in every group, which gives it to the back end of the permutations as its \code{RNGseed}: the same seed returns the same consensus whatever the number of threads, and the random numbers of the session are left as they were. Neither package calls \code{set.seed()}. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BPPARAM} passed in \code{...} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BPPARAM} passed in \code{...} is used as it is, so \code{seed} is ignored with it, with a warning.
+The calibration is the only step drawing random numbers: it places the peaks at random to see how often they overlap by chance. The draws come from \code{BiocParallel}, and without a seed of its own a \code{BiocParallel} back end takes them from a stream it keeps for the whole session, which a \code{set.seed()} before the call does not reset: the calibrated threshold, and with it the consensus, can then change from one call to the next. \code{seed} is passed on to \code{consensusRegions::runConsensus} in every group, which gives it to the back end of the permutations as its \code{RNGseed}: the same seed returns the same consensus whatever the number of cores, and the random numbers of the session are left as they were. Neither package calls \code{set.seed()}. \code{parameters$loadConsensusPeaks} keeps the \code{seed} and its \code{seed.source}: \code{"seed"}, \code{"BPPARAM"} when a \code{BiocParallelParam} object given as \code{BPPARAM} carries its own \code{RNGseed}, which is then the one recorded, \code{"unseeded"} when the calibration ran without a seed, or \code{"none"} without calibration. A \code{BiocParallelParam} object is used as it is, so \code{seed} is ignored with it, with a warning.
 }
 \examples{
 if (requireNamespace("consensusRegions", quietly = TRUE)) {
-  peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
-                          pattern = "rep[0-9]\\\\.narrowPeak$", full.names = TRUE)
+    peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
+        pattern = "rep[0-9]\\\\.narrowPeak$", full.names = TRUE
+    )
 
-  # Three replicates of one condition and two of another, peaks only
-  sampleSheet <- data.frame(sample = c("A_1", "A_2", "A_3", "B_1", "B_2"),
-                            bam = c("A_1.bam", "A_2.bam", "A_3.bam", "B_1.bam", "B_2.bam"),
-                            peaks = peakFiles[c(1, 2, 3, 1, 2)],
-                            condition = c("A", "A", "A", "B", "B"))
+    # Three replicates of one condition and two of another, peaks only
+    sampleSheet <- data.frame(
+        sample = c("A_1", "A_2", "A_3", "B_1", "B_2"),
+        bam = c("A_1.bam", "A_2.bam", "A_3.bam", "B_1.bam", "B_2.bam"),
+        peaks = peakFiles[c(1, 2, 3, 1, 2)],
+        condition = c("A", "A", "A", "B", "B")
+    )
 
-  sampleSheet <- loadSampleSheet(sampleSheet, checkFiles = FALSE, verbose = FALSE)
+    sampleSheet <- loadSampleSheet(sampleSheet, checkFiles = FALSE, verbose = FALSE)
 
-  regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition")
-  regions
+    regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition")
+    regions
 
-  head(regionRanges(regions)$consensus, 3)
+    head(regionRanges(regions)$consensus, 3)
 
-  # The same peaks split by regions of interest of the user
-  firstHalf <- GenomicRanges::GRanges("chr1", IRanges::IRanges(1, 5e5))
-  splitRegions <- loadConsensusPeaks(sampleSheet, groupBy = "condition",
-                                     regionSets = list(firstHalf = firstHalf),
-                                     verbose = FALSE)
-  lengths(regionRanges(splitRegions))
+    # The same peaks split by regions of interest of the user
+    firstHalf <- GenomicRanges::GRanges("chr1", IRanges::IRanges(1, 5e5))
+    splitRegions <- loadConsensusPeaks(sampleSheet,
+        groupBy = "condition",
+        regionSets = list(firstHalf = firstHalf),
+        verbose = FALSE
+    )
+    lengths(regionRanges(splitRegions))
 }
 
 }

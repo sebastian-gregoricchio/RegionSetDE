@@ -47,9 +47,10 @@ The quantile plot says the same thing with more resolution in the tail, which is
 fit <- loadExampleData("fit", verbose = FALSE)
 
 calibration <- checkNullCalibration(fit,
-                                    contrast = c("condition", "SHR", "BN"),
-                                    source = "background",
-                                    verbose = FALSE)
+    contrast = c("condition", "SHR", "BN"),
+    source = "background",
+    verbose = FALSE
+)
 
 # A flat histogram is what a well calibrated test looks like
 plotNullCalibration(calibration)

@@ -33,15 +33,15 @@ The list goes as it is to the functions of \code{ChIPseeker} that take several p
 }
 \examples{
 if (requireNamespace("consensusRegions", quietly = TRUE)) {
-  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+    sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+    consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 
-  groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
-  lengths(groupList)
-  groupList$R1881_24h
+    groupList <- consensusGroupList(consensus, seqlevelsStyle = "UCSC")
+    lengths(groupList)
+    groupList$R1881_24h
 
-  # Two groups only, in the order given
-  names(consensusGroupList(consensus, groups = c("R1881_24h", "DMSO")))
+    # Two groups only, in the order given
+    names(consensusGroupList(consensus, groups = c("R1881_24h", "DMSO")))
 }
 
 }

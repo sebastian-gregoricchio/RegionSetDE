@@ -3,26 +3,30 @@
 \name{regionRanges}
 \alias{regionRanges}
 \alias{regionRanges,RegionSetDE-method}
+\alias{regionRanges,RegionSetDE.results-method}
 \title{regionRanges}
 \usage{
 regionRanges(object)
 
 \S4method{regionRanges}{RegionSetDE}(object)
+
+\S4method{regionRanges}{RegionSetDE.results}(object)
 }
 \arguments{
-\item{object}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, \code{\link{splitLoadRegions}} or \code{\link{loadConsensusPeaks}}.}
+\item{object}{\code{RegionSetDE} object returned by \code{\link{loadRegions}}, \code{\link{splitLoadRegions}} or \code{\link{loadConsensusPeaks}}, or a \code{RegionSetDE.results} object.}
 }
 \value{
-A named \code{GRangesList} with the regions of every set, together with their metadata columns.
+For a \code{RegionSetDE} object, a named \code{GRangesList} with the regions of every set, together with their metadata columns. For a \code{RegionSetDE.results} object, a \code{GRanges} with the coordinates of the rows of the results table, in the same order and without the statistics, which \code{\link{resultRanges}} attaches.
 }
 \description{
-Returns the region sets of a \code{RegionSetDE} object as a named \code{GRangesList}, one element per set.
+Returns the region sets of a \code{RegionSetDE} object as a named \code{GRangesList}, one element per set, or the tested coordinates of a per-region result.
 }
 \examples{
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
 regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-                            splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 lengths(regionRanges(regions))
 head(regionRanges(regions)$promoterCpG, 3)

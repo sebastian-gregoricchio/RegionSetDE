@@ -10,11 +10,11 @@ S4 class storing the signal scores computed by \code{\link{scoreRegionSets}}, on
 \section{Slots}{
 
 \describe{
-\item{\code{scores}}{Data.frame with one row per library per set, carrying the summarised signal, the reference it was divided by and the \code{score} on a log2 scale.}
+\item{\code{scores}}{\code{DataFrame} with one row per library per set, carrying the summarised signal, the reference it was divided by and the \code{score} on a log2 scale.}
 
-\item{\code{comparisons}}{Data.frame with one row per pair of sets, carrying the mean paired difference between their scores, its confidence interval, the paired t-statistic and the adjusted p-value.}
+\item{\code{comparisons}}{\code{DataFrame} with one row per pair of sets, carrying the mean paired difference between their scores, its confidence interval, the paired t-statistic and the adjusted p-value.}
 
-\item{\code{sample.metadata}}{Data.frame with the \code{colData} of the counts object the scores came from, so that the libraries can be grouped and coloured downstream without handing that object over again.}
+\item{\code{sample.metadata}}{\code{DataFrame} with the \code{colData} of the counts object the scores came from, so that the libraries can be grouped and coloured downstream without handing that object over again.}
 
 \item{\code{reference}}{String naming what the signal of a set was divided by, one among \code{"background"}, \code{"regions"} and \code{"none"}.}
 

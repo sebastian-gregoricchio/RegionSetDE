@@ -13,7 +13,7 @@ filteringLog(object)
 \item{object}{Any object of the package: \code{RegionSetDE}, \code{RegionSetDE.counts}, \code{RegionSetDE.fit}, \code{RegionSetDE.results}, \code{RegionSetDE.setResults} or \code{RegionSetDE.setScores}.}
 }
 \value{
-A data.frame with one row per filtering step, empty when no filter has been applied.
+A data.frame with one row per filtering step, empty when no filter has been applied. The object stores it as a \code{DataFrame}.
 }
 \description{
 Returns the record of the filters applied to a RegionSetDE object, with the number of regions before and after each step. The record travels with the regions into the counts, the fit and the results.
@@ -23,7 +23,8 @@ regionTable <- loadExampleData("regions", verbose = FALSE)
 exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
 
 regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-                            splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 regions <- applyBlacklist(regions, blacklist = exclusionRegions, verbose = FALSE)
 
 filteringLog(regions)

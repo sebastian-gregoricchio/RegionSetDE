@@ -45,86 +45,98 @@
 #' @export topRegions
 
 topRegions <-
-  function(results,
-           n = Inf,
-           set = NULL,
-           contrast = NULL,
-           sortBy = "FDR",
-           direction = "both",
-           FDR = NULL,
-           log2FC = NULL,
-           level = "region") {
+    function(results,
+             n = Inf,
+             set = NULL,
+             contrast = NULL,
+             sortBy = "FDR",
+             direction = "both",
+             FDR = NULL,
+             log2FC = NULL,
+             level = "region") {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        results <- .pickResults(results = results, contrast = contrast)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    results <- .pickResults(results = results, contrast = contrast)
+        if (!(sortBy %in% c("FDR", "p.value", "log2FC", "stat"))) {
+            stop("The 'sortBy' parameter must be one of 'FDR', 'p.value', 'log2FC', 'stat'.", call. = FALSE)
+        }
 
-    if (!(sortBy %in% c("FDR", "p.value", "log2FC", "stat"))) {
-      stop("The 'sortBy' parameter must be one of 'FDR', 'p.value', 'log2FC', 'stat'.", call. = FALSE)
-    }
+        if (!(direction %in% c("both", "up", "down"))) {
+            stop("The 'direction' parameter must be one of 'both', 'up', 'down'.", call. = FALSE)
+        }
 
-    if (!(direction %in% c("both", "up", "down"))) {
-      stop("The 'direction' parameter must be one of 'both', 'up', 'down'.", call. = FALSE)
-    }
+        resultTable <- if (level == "tile") {
+            tileTable(results)
+        } else {
+            resultsTable(results)
+        }
 
-    resultTable <- if (level == "tile") {tileTable(results)} else {resultsTable(results)}
+        if (nrow(resultTable) == 0) {
+            stop("The object holds no row at the requested level.", call. = FALSE)
+        }
 
-    if (nrow(resultTable) == 0) {
-      stop("The object holds no row at the requested level.", call. = FALSE)
-    }
+        #-------------------------------#
+        # Filter                        #
+        #-------------------------------#
+        FDRthreshold <- if (is.null(FDR)) {
+            thresholdInfo(results)$FDR
+        } else {
+            FDR
+        }
+        log2FCthreshold <- if (is.null(log2FC)) {
+            thresholdInfo(results)$log2FC
+        } else {
+            log2FC
+        }
 
-    #-------------------------------#
-    # Filter                        #
-    #-------------------------------#
-    FDRthreshold <- if (is.null(FDR)) {results@thresholds$FDR} else {FDR}
-    log2FCthreshold <- if (is.null(log2FC)) {results@thresholds$log2FC} else {log2FC}
+        if (!is.null(set)) {
+            absentSets <- setdiff(set, unique(resultTable$region.set))
+            if (length(absentSets) > 0) {
+                stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
+            }
+            resultTable <- dplyr::filter(resultTable, .data$region.set %in% set)
+        }
 
-    if (!is.null(set)) {
-      absentSets <- setdiff(set, unique(resultTable$region.set))
-      if (length(absentSets) > 0) {
-        stop("The following region sets are absent from the object: ", paste(absentSets, collapse = ", "), ".", call. = FALSE)
-      }
-      resultTable <- dplyr::filter(resultTable, .data$region.set %in% set)
-    }
+        resultTable <- dplyr::filter(
+            resultTable,
+            .data$FDR < FDRthreshold,
+            abs(.data$log2FC) > log2FCthreshold
+        )
 
-    resultTable <- dplyr::filter(resultTable,
-                                 .data$FDR < FDRthreshold,
-                                 abs(.data$log2FC) > log2FCthreshold)
+        if (direction == "up") {
+            resultTable <- dplyr::filter(resultTable, .data$log2FC > 0)
+        } else if (direction == "down") {
+            resultTable <- dplyr::filter(resultTable, .data$log2FC < 0)
+        }
 
-    if (direction == "up") {
-      resultTable <- dplyr::filter(resultTable, .data$log2FC > 0)
-    } else if (direction == "down") {
-      resultTable <- dplyr::filter(resultTable, .data$log2FC < 0)
-    }
+        if (nrow(resultTable) == 0) {
+            warning("No region passes the thresholds.", call. = FALSE)
+            return(resultTable)
+        }
 
-    if (nrow(resultTable) == 0) {
-      warning("No region passes the thresholds.", call. = FALSE)
-      return(resultTable)
-    }
+        #-------------------------------#
+        # Rank                          #
+        #-------------------------------#
+        resultTable <- switch(sortBy,
+            "FDR" = dplyr::arrange(resultTable, .data$FDR, .data$p.value),
+            "p.value" = dplyr::arrange(resultTable, .data$p.value),
+            "log2FC" = dplyr::arrange(resultTable, dplyr::desc(abs(.data$log2FC))),
+            "stat" = dplyr::arrange(resultTable, dplyr::desc(abs(.data$stat)))
+        )
 
-    #-------------------------------#
-    # Rank                          #
-    #-------------------------------#
-    resultTable <- switch(sortBy,
-                          "FDR" = dplyr::arrange(resultTable, .data$FDR, .data$p.value),
-                          "p.value" = dplyr::arrange(resultTable, .data$p.value),
-                          "log2FC" = dplyr::arrange(resultTable, dplyr::desc(abs(.data$log2FC))),
-                          "stat" = dplyr::arrange(resultTable, dplyr::desc(abs(.data$stat))))
+        # With several sets asked for, the top of each one is wanted, not the top of the pool
+        if (is.finite(n)) {
+            if (length(set) > 1) {
+                resultTable <- dplyr::ungroup(dplyr::slice_head(dplyr::group_by(resultTable, .data$region.set), n = n))
+            } else {
+                resultTable <- dplyr::slice_head(resultTable, n = n)
+            }
+        }
 
-    # With several sets asked for, the top of each one is wanted, not the top of the pool
-    if (is.finite(n)) {
-      if (length(set) > 1) {
-        resultTable <- dplyr::ungroup(dplyr::slice_head(dplyr::group_by(resultTable, .data$region.set), n = n))
-      } else {
-        resultTable <- dplyr::slice_head(resultTable, n = n)
-      }
-    }
-
-    return(as.data.frame(resultTable))
-  } # END function
-
-
+        return(as.data.frame(resultTable))
+    } # END function
 
 
 #' @title resultsTable
@@ -144,23 +156,24 @@ topRegions <-
 #'
 #' table(resultTable$region.set, resultTable$diff.status)
 #'
-#'
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom methods setGeneric setMethod
 #'
 #' @export
-setGeneric(name = "resultsTable", def = function(results) {standardGeneric("resultsTable")})
+setGeneric(name = "resultsTable", def = function(results) {
+    standardGeneric("resultsTable")
+})
 
 #' @rdname resultsTable
 #' @export
-setMethod(f = "resultsTable",
-          signature = "RegionSetDE.results",
-          definition = function(results) {
-            return(results@results)
-          })
-
-
+setMethod(
+    f = "resultsTable",
+    signature = "RegionSetDE.results",
+    definition = function(results) {
+        return(.asTable(results@results))
+    }
+)
 
 
 #' @title tileTable
@@ -178,7 +191,7 @@ setMethod(f = "resultsTable",
 #'
 #' tiledCounts <- countReads(peakRegions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)
 #' tiledCounts <- normalizeCounts(tiledCounts, method = "TMM", verbose = FALSE)
-#' tiledFit <- fitRegions(tiledCounts, design = ~ condition, verbose = FALSE)
+#' tiledFit <- fitRegions(tiledCounts, design = ~condition, verbose = FALSE)
 #'
 #' # The tiles are combined into regions, and their own statistics sit behind the combined ones
 #' tiledResults <- testRegions(tiledFit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
@@ -189,20 +202,22 @@ setMethod(f = "resultsTable",
 #' @importFrom methods setGeneric setMethod
 #'
 #' @export
-setGeneric(name = "tileTable", def = function(results) {standardGeneric("tileTable")})
+setGeneric(name = "tileTable", def = function(results) {
+    standardGeneric("tileTable")
+})
 
 #' @rdname tileTable
 #' @export
-setMethod(f = "tileTable",
-          signature = "RegionSetDE.results",
-          definition = function(results) {
-            if (nrow(results@tiles) == 0) {
-              stop("The counts were not tiled, no tile level table is available.", call. = FALSE)
-            }
-            return(results@tiles)
-          })
-
-
+setMethod(
+    f = "tileTable",
+    signature = "RegionSetDE.results",
+    definition = function(results) {
+        if (nrow(results@tiles) == 0) {
+            stop("The counts were not tiled, no tile level table is available.", call. = FALSE)
+        }
+        return(.asTable(results@tiles))
+    }
+)
 
 
 #' @title resultRanges
@@ -225,23 +240,25 @@ setMethod(f = "tileTable",
 #' @importFrom S4Vectors mcols<- DataFrame
 #'
 #' @export
-setGeneric(name = "resultRanges", def = function(results) {standardGeneric("resultRanges")})
+setGeneric(name = "resultRanges", def = function(results) {
+    standardGeneric("resultRanges")
+})
 
 #' @rdname resultRanges
 #' @export
-setMethod(f = "resultRanges",
-          signature = "RegionSetDE.results",
-          definition = function(results) {
-            regionRanges <- results@regions
+setMethod(
+    f = "resultRanges",
+    signature = "RegionSetDE.results",
+    definition = function(results) {
+        regionRanges <- results@regions
 
-            # The coordinates are already in the ranges, repeating them in the metadata only makes the export noisy
-            metadataColumns <- setdiff(colnames(results@results), c("seqnames", "start", "end", "width"))
-            S4Vectors::mcols(regionRanges) <- S4Vectors::DataFrame(results@results[, metadataColumns, drop = FALSE])
+        # The coordinates are already in the ranges, repeating them in the metadata only makes the export noisy
+        metadataColumns <- setdiff(colnames(results@results), c("seqnames", "start", "end", "width"))
+        S4Vectors::mcols(regionRanges) <- results@results[, metadataColumns, drop = FALSE]
 
-            return(regionRanges)
-          })
-
-
+        return(regionRanges)
+    }
+)
 
 
 #' @title regionSetNames
@@ -262,18 +279,24 @@ setMethod(f = "resultRanges",
 #'
 #' @export
 
-setGeneric(name = "regionSetNames",
-           def = function(object) {standardGeneric("regionSetNames")})
+setGeneric(
+    name = "regionSetNames",
+    def = function(object) {
+        standardGeneric("regionSetNames")
+    }
+)
 
 
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE",
-          definition = function(object) {
-            return(names(object@regions))
-          })
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE",
+    definition = function(object) {
+        return(names(object@regions))
+    }
+)
 
 
 #' @rdname regionSetNames
@@ -282,43 +305,47 @@ setMethod(f = "regionSetNames",
 #'
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.counts",
-          definition = function(object) {
-            # After counting the membership lives in the rowData, one label per row
-            return(unique(as.character(SummarizedExperiment::rowData(object)$region.set)))
-          })
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.counts",
+    definition = function(object) {
+        # After counting the membership lives in the rowData, one label per row
+        return(unique(as.character(SummarizedExperiment::rowData(object)$region.set)))
+    }
+)
 
 
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.fit",
-          definition = function(object) {
-            return(regionSetNames(fitCounts(object)))
-          })
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.fit",
+    definition = function(object) {
+        return(regionSetNames(fitCounts(object)))
+    }
+)
 
 
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.results",
-          definition = function(object) {
-            return(regionSetNames(resultCounts(object)))
-          })
-
-
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.results",
+    definition = function(object) {
+        return(regionSetNames(resultCounts(object)))
+    }
+)
 
 
 #' @title contrastName
 #'
-#' @description Returns the contrast that produced a \code{RegionSetDE.results} object.
+#' @description Returns the contrast that produced a result.
 #'
-#' @param results \code{RegionSetDE.results} object.
+#' @param results \code{RegionSetDE.results}, \code{RegionSetDE.setResults} or \code{RegionSetDE.geneResults} object, or one of the two list classes holding several contrasts.
 #'
-#' @return A string.
+#' @return A string, or one string per contrast for a list of results.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -331,17 +358,19 @@ setMethod(f = "regionSetNames",
 #' @importFrom methods setGeneric setMethod
 #'
 #' @export
-setGeneric(name = "contrastName", def = function(results) {standardGeneric("contrastName")})
+setGeneric(name = "contrastName", def = function(results) {
+    standardGeneric("contrastName")
+})
 
 #' @rdname contrastName
 #' @export
-setMethod(f = "contrastName",
-          signature = "RegionSetDE.results",
-          definition = function(results) {
-            return(results@contrast)
-          })
-
-
+setMethod(
+    f = "contrastName",
+    signature = "RegionSetDE.results",
+    definition = function(results) {
+        return(results@contrast)
+    }
+)
 
 
 #' @title fitCounts
@@ -361,23 +390,24 @@ setMethod(f = "contrastName",
 #' # The underlying engine object, here an edgeR fit
 #' class(fitObject(fit))
 #'
-#'
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom methods setGeneric setMethod
 #'
 #' @export
-setGeneric(name = "fitCounts", def = function(fit) {standardGeneric("fitCounts")})
+setGeneric(name = "fitCounts", def = function(fit) {
+    standardGeneric("fitCounts")
+})
 
 #' @rdname fitCounts
 #' @export
-setMethod(f = "fitCounts",
-          signature = "RegionSetDE.fit",
-          definition = function(fit) {
-            return(fit@counts)
-          })
-
-
+setMethod(
+    f = "fitCounts",
+    signature = "RegionSetDE.fit",
+    definition = function(fit) {
+        return(fit@counts)
+    }
+)
 
 
 #' @title fitObject
@@ -400,17 +430,19 @@ setMethod(f = "fitCounts",
 #' @importFrom methods setGeneric setMethod
 #'
 #' @export
-setGeneric(name = "fitObject", def = function(fit) {standardGeneric("fitObject")})
+setGeneric(name = "fitObject", def = function(fit) {
+    standardGeneric("fitObject")
+})
 
 #' @rdname fitObject
 #' @export
-setMethod(f = "fitObject",
-          signature = "RegionSetDE.fit",
-          definition = function(fit) {
-            return(fit@fit$object)
-          })
-
-
+setMethod(
+    f = "fitObject",
+    signature = "RegionSetDE.fit",
+    definition = function(fit) {
+        return(fit@fit$object)
+    }
+)
 
 
 #' @title resultCounts
@@ -432,24 +464,22 @@ setMethod(f = "fitObject",
 #' @importFrom methods setGeneric setMethod
 #'
 #' @export
-setGeneric(name = "resultCounts", def = function(results) {standardGeneric("resultCounts")})
+setGeneric(name = "resultCounts", def = function(results) {
+    standardGeneric("resultCounts")
+})
 
 #' @rdname resultCounts
 #' @export
-setMethod(f = "resultCounts",
-          signature = "RegionSetDE.results",
-          definition = function(results) {
-            if (ncol(results@counts) == 0) {
-              stop("The result carries no counts, run testRegions with carryCounts = TRUE.", call. = FALSE)
-            }
-            return(results@counts)
-          })
-
-
-
-
-
-
+setMethod(
+    f = "resultCounts",
+    signature = "RegionSetDE.results",
+    definition = function(results) {
+        if (ncol(results@counts) == 0) {
+            stop("The result carries no counts, run testRegions with carryCounts = TRUE.", call. = FALSE)
+        }
+        return(results@counts)
+    }
+)
 
 
 ## ---------------------------------------------------------------------------
@@ -467,12 +497,14 @@ setMethod(f = "resultCounts",
 #' @rdname resultsTable
 #' @export
 
-setMethod(f = "resultsTable",
-          signature = "RegionSetDE.setResults",
-          definition = function(results) {
-            # One row per region set rather than per region
-            return(results@results)
-          })
+setMethod(
+    f = "resultsTable",
+    signature = "RegionSetDE.setResults",
+    definition = function(results) {
+        # One row per region set rather than per region
+        return(.asTable(results@results))
+    }
+)
 
 
 #' @rdname resultsTable
@@ -481,19 +513,24 @@ setMethod(f = "resultsTable",
 #'
 #' @export
 
-setMethod(f = "resultsTable",
-          signature = "RegionSetDE.resultsList",
-          definition = function(results) {
-            # The tables of every contrast, stacked and labelled with the name every other function takes
-            tableList <- lapply(names(results@results),
-                                function(contrastKey) {
-                                  .labelContrastTable(resultsTable(results@results[[contrastKey]]),
-                                                      contrastKey = contrastKey,
-                                                      singleResult = results@results[[contrastKey]])
-                                })
+setMethod(
+    f = "resultsTable",
+    signature = "RegionSetDE.resultsList",
+    definition = function(results) {
+        # The tables of every contrast, stacked and labelled with the name every other function takes
+        tableList <- lapply(
+            names(results),
+            function(contrastKey) {
+                .labelContrastTable(resultsTable(results[[contrastKey]]),
+                    contrastKey = contrastKey,
+                    singleResult = results[[contrastKey]]
+                )
+            }
+        )
 
-            return(dplyr::bind_rows(tableList))
-          })
+        return(dplyr::bind_rows(tableList))
+    }
+)
 
 
 #' @rdname resultsTable
@@ -502,18 +539,23 @@ setMethod(f = "resultsTable",
 #'
 #' @export
 
-setMethod(f = "resultsTable",
-          signature = "RegionSetDE.setResultsList",
-          definition = function(results) {
-            tableList <- lapply(names(results@results),
-                                function(contrastKey) {
-                                  .labelContrastTable(resultsTable(results@results[[contrastKey]]),
-                                                      contrastKey = contrastKey,
-                                                      singleResult = results@results[[contrastKey]])
-                                })
+setMethod(
+    f = "resultsTable",
+    signature = "RegionSetDE.setResultsList",
+    definition = function(results) {
+        tableList <- lapply(
+            names(results),
+            function(contrastKey) {
+                .labelContrastTable(resultsTable(results[[contrastKey]]),
+                    contrastKey = contrastKey,
+                    singleResult = results[[contrastKey]]
+                )
+            }
+        )
 
-            return(dplyr::bind_rows(tableList))
-          })
+        return(dplyr::bind_rows(tableList))
+    }
+)
 
 
 ## === resultCounts ==========================================================
@@ -521,40 +563,46 @@ setMethod(f = "resultsTable",
 #' @rdname resultCounts
 #' @export
 
-setMethod(f = "resultCounts",
-          signature = "RegionSetDE.setResults",
-          definition = function(results) {
-            return(results@counts)
-          })
+setMethod(
+    f = "resultCounts",
+    signature = "RegionSetDE.setResults",
+    definition = function(results) {
+        return(results@counts)
+    }
+)
 
 
 #' @rdname resultCounts
 #' @export
 
-setMethod(f = "resultCounts",
-          signature = "RegionSetDE.resultsList",
-          definition = function(results) {
-            # Every contrast comes from the same fit, so the counts are returned once
-            if (length(results@results) == 0) {
-              stop("The results list is empty, there are no counts to return.", call. = FALSE)
-            }
+setMethod(
+    f = "resultCounts",
+    signature = "RegionSetDE.resultsList",
+    definition = function(results) {
+        # Every contrast comes from the same fit, so the counts are returned once
+        if (length(results) == 0) {
+            stop("The results list is empty, there are no counts to return.", call. = FALSE)
+        }
 
-            return(resultCounts(results@results[[1]]))
-          })
+        return(resultCounts(results[[1]]))
+    }
+)
 
 
 #' @rdname resultCounts
 #' @export
 
-setMethod(f = "resultCounts",
-          signature = "RegionSetDE.setResultsList",
-          definition = function(results) {
-            if (length(results@results) == 0) {
-              stop("The results list is empty, there are no counts to return.", call. = FALSE)
-            }
+setMethod(
+    f = "resultCounts",
+    signature = "RegionSetDE.setResultsList",
+    definition = function(results) {
+        if (length(results) == 0) {
+            stop("The results list is empty, there are no counts to return.", call. = FALSE)
+        }
 
-            return(resultCounts(results@results[[1]]))
-          })
+        return(resultCounts(results[[1]]))
+    }
+)
 
 
 ## === resultRanges ==========================================================
@@ -564,15 +612,17 @@ setMethod(f = "resultCounts",
 #' @rdname resultRanges
 #' @export
 
-setMethod(f = "resultRanges",
-          signature = "RegionSetDE.resultsList",
-          definition = function(results) {
-            # One GRanges per contrast, kept separate rather than stacked
-            rangesList <- lapply(results@results, resultRanges)
-            names(rangesList) <- vapply(results@results, contrastName, character(1))
+setMethod(
+    f = "resultRanges",
+    signature = "RegionSetDE.resultsList",
+    definition = function(results) {
+        # One GRanges per contrast, kept separate rather than stacked
+        rangesList <- lapply(as.list(results), resultRanges)
+        names(rangesList) <- vapply(as.list(results), contrastName, character(1))
 
-            return(GenomicRanges::GRangesList(rangesList))
-          })
+        return(GenomicRanges::GRangesList(rangesList))
+    }
+)
 
 
 ## === tileTable =============================================================
@@ -584,24 +634,29 @@ setMethod(f = "resultRanges",
 #'
 #' @export
 
-setMethod(f = "tileTable",
-          signature = "RegionSetDE.resultsList",
-          definition = function(results) {
-            tableList <- lapply(names(results@results),
-                                function(contrastKey) {
-                                  singleTable <- tileTable(results@results[[contrastKey]])
+setMethod(
+    f = "tileTable",
+    signature = "RegionSetDE.resultsList",
+    definition = function(results) {
+        tableList <- lapply(
+            names(results),
+            function(contrastKey) {
+                singleTable <- tileTable(results[[contrastKey]])
 
-                                  if (is.null(singleTable) || nrow(singleTable) == 0) {
-                                    return(NULL)
-                                  }
+                if (is.null(singleTable) || nrow(singleTable) == 0) {
+                    return(NULL)
+                }
 
-                                  .labelContrastTable(singleTable,
-                                                      contrastKey = contrastKey,
-                                                      singleResult = results@results[[contrastKey]])
-                                })
+                .labelContrastTable(singleTable,
+                    contrastKey = contrastKey,
+                    singleResult = results[[contrastKey]]
+                )
+            }
+        )
 
-            return(dplyr::bind_rows(tableList))
-          })
+        return(dplyr::bind_rows(tableList))
+    }
+)
 
 
 ## === contrastName ==========================================================
@@ -609,32 +664,50 @@ setMethod(f = "tileTable",
 #' @rdname contrastName
 #' @export
 
-setMethod(f = "contrastName",
-          signature = "RegionSetDE.setResults",
-          definition = function(results) {
-            return(results@contrast)
-          })
+setMethod(
+    f = "contrastName",
+    signature = "RegionSetDE.setResults",
+    definition = function(results) {
+        return(results@contrast)
+    }
+)
 
 
 #' @rdname contrastName
 #' @export
 
-setMethod(f = "contrastName",
-          signature = "RegionSetDE.resultsList",
-          definition = function(results) {
-            # A vector, one entry per contrast held in the list
-            return(results@contrasts)
-          })
+setMethod(
+    f = "contrastName",
+    signature = "RegionSetDE.geneResults",
+    definition = function(results) {
+        return(results@contrast)
+    }
+)
 
 
 #' @rdname contrastName
 #' @export
 
-setMethod(f = "contrastName",
-          signature = "RegionSetDE.setResultsList",
-          definition = function(results) {
-            return(results@contrasts)
-          })
+setMethod(
+    f = "contrastName",
+    signature = "RegionSetDE.resultsList",
+    definition = function(results) {
+        # A vector, one entry per contrast held in the list
+        return(results@contrasts)
+    }
+)
+
+
+#' @rdname contrastName
+#' @export
+
+setMethod(
+    f = "contrastName",
+    signature = "RegionSetDE.setResultsList",
+    definition = function(results) {
+        return(results@contrasts)
+    }
+)
 
 
 ## === regionSetNames ========================================================
@@ -642,55 +715,60 @@ setMethod(f = "contrastName",
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.setResults",
-          definition = function(object) {
-            # Here the sets are the rows of the results table
-            return(unique(as.character(object@results$region.set)))
-          })
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.setResults",
+    definition = function(object) {
+        # Here the sets are the rows of the results table
+        return(unique(as.character(object@results$region.set)))
+    }
+)
 
 
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.resultsList",
-          definition = function(object) {
-            if (length(object@results) == 0) {
-              stop("The results list is empty, there are no region sets to return.", call. = FALSE)
-            }
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.resultsList",
+    definition = function(object) {
+        if (length(object) == 0) {
+            stop("The results list is empty, there are no region sets to return.", call. = FALSE)
+        }
 
-            return(regionSetNames(object@results[[1]]))
-          })
+        return(regionSetNames(object[[1]]))
+    }
+)
 
 
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.setResultsList",
-          definition = function(object) {
-            if (length(object@results) == 0) {
-              stop("The results list is empty, there are no region sets to return.", call. = FALSE)
-            }
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.setResultsList",
+    definition = function(object) {
+        if (length(object) == 0) {
+            stop("The results list is empty, there are no region sets to return.", call. = FALSE)
+        }
 
-            return(regionSetNames(object@results[[1]]))
-          })
-
+        return(regionSetNames(object[[1]]))
+    }
+)
 
 
 #' @rdname resultsTable
 #'
 #' @export
 
-setMethod(f = "resultsTable",
-          signature = "RegionSetDE.setScores",
-          definition = function(results) {
-            # The comparison between the sets is the result here, the per-library scores sit behind scoreTable()
-            return(results@comparisons)
-          })
-
-
+setMethod(
+    f = "resultsTable",
+    signature = "RegionSetDE.setScores",
+    definition = function(results) {
+        # The comparison between the sets is the result here, the per-library scores sit behind scoreTable()
+        return(.asTable(results@comparisons))
+    }
+)
 
 
 #' @title scoreTable
@@ -718,29 +796,33 @@ setMethod(f = "resultsTable",
 #'
 #' @export
 
-setGeneric(name = "scoreTable", def = function(object) {standardGeneric("scoreTable")})
+setGeneric(name = "scoreTable", def = function(object) {
+    standardGeneric("scoreTable")
+})
 
 
 #' @rdname scoreTable
 #' @export
 
-setMethod(f = "scoreTable",
-          signature = "RegionSetDE.setScores",
-          definition = function(object) {
-            return(object@scores)
-          })
-
-
+setMethod(
+    f = "scoreTable",
+    signature = "RegionSetDE.setScores",
+    definition = function(object) {
+        return(.asTable(object@scores))
+    }
+)
 
 
 #' @rdname regionSetNames
 #' @export
 
-setMethod(f = "regionSetNames",
-          signature = "RegionSetDE.setScores",
-          definition = function(object) {
-            return(sort(unique(object@scores$region.set)))
-          })
+setMethod(
+    f = "regionSetNames",
+    signature = "RegionSetDE.setScores",
+    definition = function(object) {
+        return(sort(unique(object@scores$region.set)))
+    }
+)
 
 
 #' @title .labelContrastTable
@@ -760,27 +842,29 @@ setMethod(f = "regionSetNames",
 #' @keywords internal
 
 .labelContrastTable <-
-  function(resultTable,
-           contrastKey,
-           singleResult) {
+    function(resultTable,
+             contrastKey,
+             singleResult) {
+        resultTable <- dplyr::mutate(resultTable,
+            contrast = contrastKey,
+            contrast.description = contrastName(singleResult)
+        )
 
-    resultTable <- dplyr::mutate(resultTable,
-                                 contrast = contrastKey,
-                                 contrast.description = contrastName(singleResult))
-
-    return(dplyr::relocate(resultTable, "contrast", "contrast.description"))
-  } # END function
+        return(dplyr::relocate(resultTable, "contrast", "contrast.description"))
+    } # END function
 
 
 #' @rdname resultsTable
 #' @export
 
-setMethod(f = "resultsTable",
-          signature = "RegionSetDE.geneResults",
-          definition = function(results) {
-            # One row per gene rather than per region
-            return(results@results)
-          })
+setMethod(
+    f = "resultsTable",
+    signature = "RegionSetDE.geneResults",
+    definition = function(results) {
+        # One row per gene rather than per region
+        return(.asTable(results@results))
+    }
+)
 
 
 #' @rdname regionLinks
@@ -789,9 +873,11 @@ setMethod(f = "resultsTable",
 #'
 #' @export
 
-setMethod(f = "regionLinks",
-          signature = "RegionSetDE.geneResults",
-          definition = function(object) {
-            # The gene table carries the links it was built from, there being no counts slot under it
-            return(object@links)
-          })
+setMethod(
+    f = "regionLinks",
+    signature = "RegionSetDE.geneResults",
+    definition = function(object) {
+        # The gene table carries the links it was built from, there being no counts slot under it
+        return(.asTable(object@links))
+    }
+)

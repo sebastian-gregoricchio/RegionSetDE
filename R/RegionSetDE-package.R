@@ -75,7 +75,19 @@
 #' unlock linear model analysis tools for RNA-seq read counts.
 #' \emph{Genome Biology} 15:R29.
 #'
-#' @keywords internal
+#' Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold change
+#' and dispersion for RNA-seq data with DESeq2. \emph{Genome Biology} 15:550.
+#'
+#' Ross-Innes C.S., Stark R., Teschendorff A.E., et al. (2012). Differential
+#' oestrogen receptor binding is associated with clinical outcome in breast
+#' cancer. \emph{Nature} 481:389-393.
+#'
+#' @seealso
+#' The two vignettes walk through the package on an example dataset:
+#' \code{vignette("RegionSetDE.vignette", package = "RegionSetDE")} starts
+#' from regions defined by the user, and
+#' \code{vignette("RegionSetDE.peaks.vignette", package = "RegionSetDE")}
+#' from the peak calls of every sample.
 "_PACKAGE"
 
 
@@ -93,6 +105,4 @@
 #' @author Sebastian Gregoricchio
 #'
 #' @seealso \code{\link{loadExampleData}}
-#'
-#' @keywords internal
 NULL

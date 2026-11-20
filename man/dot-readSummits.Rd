@@ -14,7 +14,7 @@
   removeDuplicates,
   discardRegions,
   progressBar = FALSE,
-  nThreads
+  BPPARAM
 )
 }
 \arguments{
@@ -36,7 +36,7 @@
 
 \item{progressBar}{Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: \code{FALSE}.}
 
-\item{nThreads}{Number of threads.}
+\item{BPPARAM}{\code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.}
 }
 \value{
 An integer vector with the summit of every region, \code{NA} where no sample has a fragment.

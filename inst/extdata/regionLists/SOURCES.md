@@ -24,7 +24,8 @@ T2T assembly: the high signal and low mappability regions, labelled as in the EN
 * Source: the `T2T.excluderanges` record of the excluderanges package, exported from AnnotationHub as
   BED on 2026-09-22.
 * Licence: MIT, the licence of that package.
-* Reference: Dozmorov MG et al. (2023). excluderanges: exclusion sets for T2T-CHM13, GRCm39, and
+* Reference: Ogata JD, Mu W, Davis ES, Xue B, Harrell JC, Sheffield NC, Phanstiel DH, Love MI,
+  Dozmorov MG (2023). excluderanges: exclusion sets for T2T-CHM13, GRCm39, and
   other genome assemblies. *Bioinformatics* 39(4):btad198. doi:10.1093/bioinformatics/btad198
 * The file covers chr1 to chr22 and chrX. CHM13 comes from a hydatidiform mole and carries no Y
   chromosome of its own, so the chrY added to v2.0 from HG002 has no exclusion regions here.

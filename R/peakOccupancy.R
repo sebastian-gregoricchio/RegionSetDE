@@ -20,23 +20,23 @@
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   # AR binding without ligand and after 24 hours of R1881
-#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-#'   sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
+#'     # AR binding without ligand and after 24 hours of R1881
+#'     sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'     sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
 #'
-#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+#'     consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 #'
-#'   counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
-#'   counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
-#'   counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#'     counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+#'     counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+#'     counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#'   fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
-#'   results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+#'     fit <- fitRegions(counts, design = ~condition, verbose = FALSE)
+#'     results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
 #'
-#'   peakOccupancyTable(results)
+#'     peakOccupancyTable(results)
 #'
-#'   # By number of samples calling a peak, whatever the group
-#'   peakOccupancyTable(results, by = "samples")
+#'     # By number of samples calling a peak, whatever the group
+#'     peakOccupancyTable(results, by = "samples")
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -49,52 +49,52 @@
 #' @export peakOccupancyTable
 
 peakOccupancyTable <-
-  function(results,
-           contrast = NULL,
-           groups = NULL,
-           by = "group",
-           set = NULL,
-           FDR = NULL,
-           log2FC = NULL) {
+    function(results,
+             contrast = NULL,
+             groups = NULL,
+             by = "group",
+             set = NULL,
+             FDR = NULL,
+             log2FC = NULL) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        results <- .pickResults(results = results, contrast = contrast)
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    results <- .pickResults(results = results, contrast = contrast)
+        by <- tolower(by[1])
+        if (!(by %in% c("group", "samples"))) {
+            stop("The 'by' parameter must be either 'group' or 'samples'.", call. = FALSE)
+        }
 
-    by <- tolower(by[1])
-    if (!(by %in% c("group", "samples"))) {
-      stop("The 'by' parameter must be either 'group' or 'samples'.", call. = FALSE)
-    }
+        resultTable <- .prepareResultTable(results = results, set = set, FDR = FDR, log2FC = log2FC)
 
-    resultTable <- .prepareResultTable(results = results, set = set, FDR = FDR, log2FC = log2FC)
+        #-------------------------------#
+        # Class of every region         #
+        #-------------------------------#
+        resultTable$occupancy <- .peakOccupancyClass(
+            resultTable = resultTable,
+            groups = groups,
+            by = by,
+            contrastGroups = contrastGroups(results)
+        )
 
-    #-------------------------------#
-    # Class of every region         #
-    #-------------------------------#
-    resultTable$occupancy <- .peakOccupancyClass(resultTable = resultTable,
-                                                 groups = groups,
-                                                 by = by,
-                                                 contrastGroups = results@contrast.groups)
+        #-------------------------------#
+        # Count the directions          #
+        #-------------------------------#
+        occupancyCounts <-
+            dplyr::summarise(dplyr::group_by(resultTable, .data$occupancy),
+                n.regions = dplyr::n(),
+                down = sum(.data$diff.status == "down"),
+                null = sum(.data$diff.status == "null"),
+                up = sum(.data$diff.status == "up"),
+                .groups = "drop"
+            )
 
-    #-------------------------------#
-    # Count the directions          #
-    #-------------------------------#
-    occupancyCounts <-
-      dplyr::summarise(dplyr::group_by(resultTable, .data$occupancy),
-                       n.regions = dplyr::n(),
-                       down = sum(.data$diff.status == "down"),
-                       null = sum(.data$diff.status == "null"),
-                       up = sum(.data$diff.status == "up"),
-                       .groups = "drop")
+        occupancyCounts <- dplyr::arrange(occupancyCounts, .data$occupancy)
+        occupancyCounts$percent.changed <- round(100 * (occupancyCounts$down + occupancyCounts$up) / occupancyCounts$n.regions, 1)
 
-    occupancyCounts <- dplyr::arrange(occupancyCounts, .data$occupancy)
-    occupancyCounts$percent.changed <- round(100 * (occupancyCounts$down + occupancyCounts$up) / occupancyCounts$n.regions, 1)
-
-    return(as.data.frame(occupancyCounts, stringsAsFactors = FALSE))
-  } # END function
-
-
+        return(as.data.frame(occupancyCounts, stringsAsFactors = FALSE))
+    } # END function
 
 
 #' @title plotPeakOccupancy
@@ -123,21 +123,21 @@ peakOccupancyTable <-
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {
-#'   # AR binding without ligand and after 24 hours of R1881
-#'   sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-#'   sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
+#'     # AR binding without ligand and after 24 hours of R1881
+#'     sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#'     sampleSheet <- dplyr::filter(sampleSheet, condition %in% c("DMSO", "R1881_24h"))
 #'
-#'   consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
+#'     consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 #'
-#'   counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
-#'   counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
-#'   counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#'     counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
+#'     counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
+#'     counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #'
-#'   fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
-#'   results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
+#'     fit <- fitRegions(counts, design = ~condition, verbose = FALSE)
+#'     results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
 #'
-#'   plotPeakOccupancy(results)
-#'   plotPeakOccupancy(results, proportion = TRUE)
+#'     plotPeakOccupancy(results)
+#'     plotPeakOccupancy(results, proportion = TRUE)
 #' }
 #'
 #' @author Sebastian Gregoricchio
@@ -151,87 +151,117 @@ peakOccupancyTable <-
 #' @export plotPeakOccupancy
 
 plotPeakOccupancy <-
-  function(results,
-           contrast = NULL,
-           groups = NULL,
-           by = "group",
-           set = NULL,
-           FDR = NULL,
-           log2FC = NULL,
-           proportion = FALSE,
-           showCounts = TRUE,
-           colours = NULL,
-           title = NULL,
-           subtitle = NULL,
-           legendPosition = "right",
-           baseSize = 12,
-           returnData = FALSE) {
+    function(results,
+             contrast = NULL,
+             groups = NULL,
+             by = "group",
+             set = NULL,
+             FDR = NULL,
+             log2FC = NULL,
+             proportion = FALSE,
+             showCounts = TRUE,
+             colours = NULL,
+             title = NULL,
+             subtitle = NULL,
+             legendPosition = "right",
+             baseSize = 12,
+             returnData = FALSE) {
+        #------------------------#
+        # Table behind the plot  #
+        #------------------------#
+        results <- .pickResults(results = results, contrast = contrast)
 
-    #------------------------#
-    # Table behind the plot  #
-    #------------------------#
-    results <- .pickResults(results = results, contrast = contrast)
+        occupancyCounts <- peakOccupancyTable(
+            results = results, groups = groups, by = by,
+            set = set, FDR = FDR, log2FC = log2FC
+        )
 
-    occupancyCounts <- peakOccupancyTable(results = results, groups = groups, by = by,
-                                          set = set, FDR = FDR, log2FC = log2FC)
+        if (isTRUE(returnData)) {
+            return(occupancyCounts)
+        }
 
-    if (isTRUE(returnData)) {
-      return(occupancyCounts)
-    }
+        # One row per class and direction, which is the shape the stacked bars need
+        plotTable <- data.frame(
+            occupancy = rep(occupancyCounts$occupancy, times = 3),
+            diff.status = factor(rep(c("down", "null", "up"), each = nrow(occupancyCounts)),
+                levels = c("down", "null", "up")
+            ),
+            n.regions = c(occupancyCounts$down, occupancyCounts$null, occupancyCounts$up),
+            stringsAsFactors = FALSE
+        )
 
-    # One row per class and direction, which is the shape the stacked bars need
-    plotTable <- data.frame(occupancy = rep(occupancyCounts$occupancy, times = 3),
-                            diff.status = factor(rep(c("down", "null", "up"), each = nrow(occupancyCounts)),
-                                                 levels = c("down", "null", "up")),
-                            n.regions = c(occupancyCounts$down, occupancyCounts$null, occupancyCounts$up),
-                            stringsAsFactors = FALSE)
+        plotTable$occupancy <- factor(plotTable$occupancy, levels = occupancyCounts$occupancy)
 
-    plotTable$occupancy <- factor(plotTable$occupancy, levels = occupancyCounts$occupancy)
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        statusColours <- .diffStatusColours(colours = colours)
+        barPosition <- if (isTRUE(proportion)) {
+            "fill"
+        } else {
+            "stack"
+        }
 
-    #-------------------------------#
-    # Build the plot                #
-    #-------------------------------#
-    statusColours <- .diffStatusColours(colours = colours)
-    barPosition <- if (isTRUE(proportion)) {"fill"} else {"stack"}
+        occupancyPlot <-
+            ggplot2::ggplot(
+                data = plotTable,
+                mapping = ggplot2::aes(x = .data$occupancy, y = .data$n.regions, fill = .data$diff.status)
+            ) +
+            ggplot2::geom_col(position = barPosition, width = 0.7) +
+            ggplot2::scale_fill_manual(values = statusColours, drop = FALSE) +
+            ggplot2::labs(
+                x = if (by == "group") {
+                    "consensus"
+                } else {
+                    "samples with a peak"
+                },
+                y = if (isTRUE(proportion)) {
+                    "share of the regions"
+                } else {
+                    "regions"
+                },
+                fill = "",
+                title = title,
+                subtitle = if (is.null(subtitle)) {
+                    contrastName(results)
+                } else {
+                    subtitle
+                }
+            ) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
 
-    occupancyPlot <-
-      ggplot2::ggplot(data = plotTable,
-                      mapping = ggplot2::aes(x = .data$occupancy, y = .data$n.regions, fill = .data$diff.status)) +
-      ggplot2::geom_col(position = barPosition, width = 0.7) +
-      ggplot2::scale_fill_manual(values = statusColours, drop = FALSE) +
-      ggplot2::labs(x = if (by == "group") {"consensus"} else {"samples with a peak"},
-                    y = if (isTRUE(proportion)) {"share of the regions"} else {"regions"},
-                    fill = "",
-                    title = title,
-                    subtitle = if (is.null(subtitle)) {results@contrast} else {subtitle}) +
-      .resultsTheme(legendPosition = legendPosition, baseSize = baseSize)
+        if (isTRUE(proportion)) {
+            occupancyPlot <- occupancyPlot + ggplot2::scale_y_continuous(labels = scales::percent)
+        } else {
+            # A count of regions has no halves, so neither do the breaks
+            occupancyPlot <- occupancyPlot +
+                ggplot2::scale_y_continuous(
+                    breaks = function(axisLimits) {
+                        unique(floor(pretty(axisLimits)))
+                    },
+                    labels = function(breakValues) {
+                        format(breakValues, big.mark = ",", trim = TRUE)
+                    }
+                )
+        }
 
-    if (isTRUE(proportion)) {
-      occupancyPlot <- occupancyPlot + ggplot2::scale_y_continuous(labels = scales::percent)
-    } else {
-      # A count of regions has no halves, so neither do the breaks
-      occupancyPlot <- occupancyPlot +
-        ggplot2::scale_y_continuous(breaks = function(axisLimits) {unique(floor(pretty(axisLimits)))},
-                                    labels = function(breakValues) {format(breakValues, big.mark = ",", trim = TRUE)})
-    }
+        # The counts are written on the pieces they belong to, in whichever of black and white reads on them
+        if (isTRUE(showCounts)) {
+            plotTable$label.colour <- .contrastColour(colour = statusColours[as.character(plotTable$diff.status)])
 
-    # The counts are written on the pieces they belong to, in whichever of black and white reads on them
-    if (isTRUE(showCounts)) {
-      plotTable$label.colour <- .contrastColour(colour = statusColours[as.character(plotTable$diff.status)])
+            occupancyPlot <- occupancyPlot +
+                ggplot2::geom_text(
+                    data = plotTable,
+                    mapping = ggplot2::aes(label = ifelse(.data$n.regions > 0, format(.data$n.regions, big.mark = ",", trim = TRUE), "")),
+                    position = ggplot2::position_stack(vjust = 0.5),
+                    colour = plotTable$label.colour,
+                    size = baseSize / 4, show.legend = FALSE
+                ) +
+                ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
+        }
 
-      occupancyPlot <- occupancyPlot +
-        ggplot2::geom_text(data = plotTable,
-                           mapping = ggplot2::aes(label = ifelse(.data$n.regions > 0, format(.data$n.regions, big.mark = ",", trim = TRUE), "")),
-                           position = ggplot2::position_stack(vjust = 0.5),
-                           colour = plotTable$label.colour,
-                           size = baseSize / 4, show.legend = FALSE) +
-        ggplot2::theme(axis.ticks.x = ggplot2::element_blank())
-    }
-
-    return(occupancyPlot)
-  } # END function
-
-
+        return(occupancyPlot)
+    } # END function
 
 
 #' @title .peakOccupancyClass
@@ -250,68 +280,85 @@ plotPeakOccupancy <-
 #' @keywords internal
 
 .peakOccupancyClass <-
-  function(resultTable,
-           groups = NULL,
-           by = "group",
-           contrastGroups = list()) {
+    function(resultTable,
+             groups = NULL,
+             by = "group",
+             contrastGroups = list()) {
+        #-------------------------------#
+        # Number of samples             #
+        #-------------------------------#
+        if (by == "samples") {
+            if (!("peak.samples" %in% colnames(resultTable))) {
+                stop("The results carry no 'peak.samples' column, the regions were not built by loadConsensusPeaks().", call. = FALSE)
+            }
 
-    #-------------------------------#
-    # Number of samples             #
-    #-------------------------------#
-    if (by == "samples") {
-      if (!("peak.samples" %in% colnames(resultTable))) {
-        stop("The results carry no 'peak.samples' column, the regions were not built by loadConsensusPeaks().", call. = FALSE)
-      }
+            sampleCounts <- as.integer(resultTable$peak.samples)
+            return(factor(sampleCounts, levels = sort(unique(sampleCounts))))
+        }
 
-      sampleCounts <- as.integer(resultTable$peak.samples)
-      return(factor(sampleCounts, levels = sort(unique(sampleCounts))))
-    }
+        #-------------------------------#
+        # Groups of the consensus       #
+        #-------------------------------#
+        occupancyColumns <- setdiff(grep("^peak\\.", colnames(resultTable), value = TRUE), c("peak.groups", "peak.samples"))
 
-    #-------------------------------#
-    # Groups of the consensus       #
-    #-------------------------------#
-    occupancyColumns <- setdiff(grep("^peak\\.", colnames(resultTable), value = TRUE), c("peak.groups", "peak.samples"))
+        if (length(occupancyColumns) == 0) {
+            stop("The results carry no occupancy column, the regions were not built by loadConsensusPeaks().", call. = FALSE)
+        }
 
-    if (length(occupancyColumns) == 0) {
-      stop("The results carry no occupancy column, the regions were not built by loadConsensusPeaks().", call. = FALSE)
-    }
+        availableGroups <- sub("^peak\\.", "", occupancyColumns)
 
-    availableGroups <- sub("^peak\\.", "", occupancyColumns)
+        # The two groups being contrasted are the ones the question is about, when the consensus knows them
+        if (is.null(groups) && length(contrastGroups$groups) == 2 && all(make.names(contrastGroups$groups) %in% availableGroups)) {
+            groups <- make.names(contrastGroups$groups)
+        }
 
-    # The two groups being contrasted are the ones the question is about, when the consensus knows them
-    if (is.null(groups) && length(contrastGroups$groups) == 2 && all(make.names(contrastGroups$groups) %in% availableGroups)) {
-      groups <- make.names(contrastGroups$groups)
-    }
+        if (is.null(groups)) {
+            groups <- availableGroups
+        }
 
-    if (is.null(groups)) {
-      groups <- availableGroups
-    }
+        groups <- make.names(groups)
+        absentGroups <- setdiff(groups, availableGroups)
 
-    groups <- make.names(groups)
-    absentGroups <- setdiff(groups, availableGroups)
+        if (length(absentGroups) > 0) {
+            stop("The following groups have no occupancy column in the results: ", paste(absentGroups, collapse = ", "),
+                ". Available: ", paste(availableGroups, collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
 
-    if (length(absentGroups) > 0) {
-      stop("The following groups have no occupancy column in the results: ", paste(absentGroups, collapse = ", "),
-           ". Available: ", paste(availableGroups, collapse = ", "), ".", call. = FALSE)
-    }
+        occupancyMatrix <- as.matrix(resultTable[, paste0("peak.", groups), drop = FALSE])
+        mode(occupancyMatrix) <- "logical"
 
-    occupancyMatrix <- as.matrix(resultTable[, paste0("peak.", groups), drop = FALSE])
-    mode(occupancyMatrix) <- "logical"
+        # Shared and group specific are the two readings people want, the combinations in between are named as they are
+        classLabels <- apply(occupancyMatrix,
+            MARGIN = 1,
+            FUN = function(occupied) {
+                if (all(occupied)) {
+                    return(if (length(groups) > 1) {
+                        "shared"
+                    } else {
+                        groups[1]
+                    })
+                }
+                if (!any(occupied)) {
+                    return("none")
+                }
+                if (sum(occupied) == 1) {
+                    return(paste(groups[occupied], "only"))
+                }
+                return(paste(groups[occupied], collapse = " + "))
+            }
+        )
 
-    # Shared and group specific are the two readings people want, the combinations in between are named as they are
-    classLabels <- apply(occupancyMatrix, MARGIN = 1,
-                         FUN = function(occupied) {
-                           if (all(occupied)) {return(if (length(groups) > 1) {"shared"} else {groups[1]})}
-                           if (!any(occupied)) {return("none")}
-                           if (sum(occupied) == 1) {return(paste(groups[occupied], "only"))}
-                           return(paste(groups[occupied], collapse = " + "))
-                         })
+        # Shared first, then the single groups in the order they were given, then the mixtures, then the regions without a peak
+        sharedLabel <- if (length(groups) > 1) {
+            "shared"
+        } else {
+            groups[1]
+        }
+        singleLabels <- paste(groups, "only")
+        mixedLabels <- setdiff(unique(classLabels), c(sharedLabel, singleLabels, "none"))
+        classLevels <- intersect(c(sharedLabel, singleLabels, sort(mixedLabels), "none"), unique(classLabels))
 
-    # Shared first, then the single groups in the order they were given, then the mixtures, then the regions without a peak
-    sharedLabel <- if (length(groups) > 1) {"shared"} else {groups[1]}
-    singleLabels <- paste(groups, "only")
-    mixedLabels <- setdiff(unique(classLabels), c(sharedLabel, singleLabels, "none"))
-    classLevels <- intersect(c(sharedLabel, singleLabels, sort(mixedLabels), "none"), unique(classLabels))
-
-    return(factor(classLabels, levels = classLevels))
-  } # END function
+        return(factor(classLabels, levels = classLevels))
+    } # END function

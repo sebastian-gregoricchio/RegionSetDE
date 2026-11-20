@@ -4,7 +4,7 @@
 \alias{.binnedSignal}
 \title{.binnedSignal}
 \usage{
-.binnedSignal(files, type, windows, binWidth, counts, nThreads = 1)
+.binnedSignal(files, type, windows, binWidth, counts, BPPARAM = NULL)
 }
 \arguments{
 \item{files}{Character vector with the BAM or bigWig files, one per sample.}
@@ -17,7 +17,7 @@
 
 \item{counts}{\code{RegionSetDE.counts} object, whose counting parameters are used for BAM files.}
 
-\item{nThreads}{Number of threads, one file per thread.}
+\item{BPPARAM}{\code{BiocParallelParam} object, number of cores or \code{NULL}, as taken by \code{.resolveBPPARAM}.}
 }
 \value{
 A list with \code{matrices}, one matrix per file with one row per window and one column per bin, and \code{kept}, a logical vector telling which windows lie within their chromosome.

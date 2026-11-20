@@ -10,13 +10,13 @@ S4 class holding the per-gene table built by \code{\link{aggregateToGenes}} from
 \section{Slots}{
 
 \describe{
-\item{\code{results}}{Data.frame with one row per gene. Read it with \code{\link{resultsTable}}.}
+\item{\code{results}}{\code{DataFrame} with one row per gene. Read it with \code{\link{resultsTable}}.}
 
 \item{\code{contrast}}{String with the contrast the regions were tested on.}
 
 \item{\code{method}}{String with the aggregation used, \code{"simes"} or \code{"potential"}.}
 
-\item{\code{links}}{Data.frame with the region to gene links the aggregation was built on, one row per link.}
+\item{\code{links}}{\code{DataFrame} with the region to gene links the aggregation was built on, one row per link.}
 
 \item{\code{weighting}}{String saying what weighted the regions of a gene, one among \code{"link.weight"}, \code{"distance"} and \code{"none"}.}
 

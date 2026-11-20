@@ -14,7 +14,7 @@
   removeDuplicates,
   discardRegions = NULL,
   progressBar = FALSE,
-  nThreads = 1
+  BPPARAM = NULL
 )
 }
 \arguments{
@@ -36,7 +36,7 @@
 
 \item{progressBar}{Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: \code{FALSE}.}
 
-\item{nThreads}{Number of threads, one file per thread. Default: \code{1}.}
+\item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. One file goes to each worker. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 }
 \value{
 A list with \code{position} and \code{height}, two matrices with one row per region and one column per file, and \code{fragments}, the number of fragments read in each file.

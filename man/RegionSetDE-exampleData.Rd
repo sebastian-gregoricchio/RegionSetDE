@@ -14,4 +14,3 @@ which is where the individual formats are documented.
 \author{
 Sebastian Gregoricchio
 }
-\keyword{internal}

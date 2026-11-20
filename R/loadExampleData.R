@@ -47,107 +47,114 @@
 #' @export loadExampleData
 
 loadExampleData <-
-  function(dataset = "counts",
-           verbose = TRUE) {
+    function(dataset = "counts",
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        dataset <- unname(c(
+            "counts" = "counts",
+            "fit" = "fit",
+            "regions" = "regions",
+            "exclusionregions" = "exclusionRegions",
+            "blacklist" = "exclusionRegions",
+            "samplesheet" = "sampleSheet",
+            "peaksheet" = "peakSheet",
+            "peaks" = "peakSheet",
+            "buildmetadata" = "buildMetadata"
+        )[tolower(dataset[1])])
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    dataset <- unname(c("counts" = "counts",
-                        "fit" = "fit",
-                        "regions" = "regions",
-                        "exclusionregions" = "exclusionRegions",
-                        "blacklist" = "exclusionRegions",
-                        "samplesheet" = "sampleSheet",
-                        "peaksheet" = "peakSheet",
-                        "peaks" = "peakSheet",
-                        "buildmetadata" = "buildMetadata")[tolower(dataset[1])])
+        if (is.na(dataset)) {
+            stop("The 'dataset' parameter must be one among 'counts', 'fit', 'regions', 'exclusionRegions', 'sampleSheet', 'peakSheet' or 'buildMetadata'.", call. = FALSE)
+        }
 
-    if (is.na(dataset)) {
-      stop("The 'dataset' parameter must be one among 'counts', 'fit', 'regions', 'exclusionRegions', 'sampleSheet', 'peakSheet' or 'buildMetadata'.", call. = FALSE)
-    }
+        #-------------------------------------#
+        # The sheet pointing at the peak files #
+        #-------------------------------------#
+        # Read rather than deserialised, so that the paths resolve where the package is installed
+        if (dataset == "peakSheet") {
+            sheetPath <- system.file("extdata", "lncapAR", "lncapAR_sampleSheet.tsv", package = "RegionSetDE")
 
-    #-------------------------------------#
-    # The sheet pointing at the peak files #
-    #-------------------------------------#
-    # Read rather than deserialised, so that the paths resolve where the package is installed
-    if (dataset == "peakSheet") {
-      sheetPath <- system.file("extdata", "lncapAR", "lncapAR_sampleSheet.tsv", package = "RegionSetDE")
+            if (sheetPath == "" | !file.exists(sheetPath)) {
+                stop("The example peak files are not installed with RegionSetDE, please reinstall the package.", call. = FALSE)
+            }
 
-      if (sheetPath == "" | !file.exists(sheetPath)) {
-        stop("The example peak files are not installed with RegionSetDE, please reinstall the package.", call. = FALSE)
-      }
+            return(loadSampleSheet(sampleSheet = sheetPath, verbose = verbose))
+        }
 
-      return(loadSampleSheet(sampleSheet = sheetPath, verbose = verbose))
-    }
+        #------------------------------------#
+        # Objects read straight from the disk #
+        #------------------------------------#
+        readStoredObject <- function(objectName) {
+            filePath <- system.file("extdata", paste0("euratrans_", objectName, ".rds"), package = "RegionSetDE")
 
-    #------------------------------------#
-    # Objects read straight from the disk #
-    #------------------------------------#
-    readStoredObject <- function(objectName) {
-      filePath <- system.file("extdata", paste0("euratrans_", objectName, ".rds"), package = "RegionSetDE")
+            if (filePath == "" | !file.exists(filePath)) {
+                stop("The example object '", objectName, "' is not installed with RegionSetDE, please reinstall the package.", call. = FALSE)
+            }
 
-      if (filePath == "" | !file.exists(filePath)) {
-        stop("The example object '", objectName, "' is not installed with RegionSetDE, please reinstall the package.", call. = FALSE)
-      }
+            # Objects saved by an earlier version of the package are brought to the current definition of their class
+            storedObject <- readRDS(filePath)
 
-      # Objects saved by an earlier version of the package are brought to the current definition of their class
-      storedObject <- readRDS(filePath)
+            if (methods::is(storedObject, "RegionSetDE.provenance")) {
+                storedObject <- BiocGenerics::updateObject(storedObject)
+            }
 
-      if (methods::is(storedObject, "RegionSetDE.provenance")) {
-        storedObject <- BiocGenerics::updateObject(storedObject)
-      }
+            return(storedObject)
+        }
 
-      return(storedObject)
-    }
+        if (dataset != "fit") {
+            exampleObject <- readStoredObject(dataset)
 
-    if (dataset != "fit") {
-      exampleObject <- readStoredObject(dataset)
+            if (isTRUE(verbose)) {
+                message("Loaded the '", dataset, "' example object (", class(exampleObject)[1], ").")
+            }
 
-      if (isTRUE(verbose)) {
-        message("Loaded the '", dataset, "' example object (", class(exampleObject)[1], ").")
-      }
+            return(exampleObject)
+        }
 
-      return(exampleObject)
-    }
+        #---------------------------------------------------#
+        # The fit is derived, not stored: engine internals   #
+        # change between releases and a serialised one ages  #
+        #---------------------------------------------------#
+        if (!is.null(.exampleCache$fit)) {
+            if (isTRUE(verbose)) {
+                message("Loaded the 'fit' example object from the session cache.")
+            }
 
-    #---------------------------------------------------#
-    # The fit is derived, not stored: engine internals   #
-    # change between releases and a serialised one ages  #
-    #---------------------------------------------------#
-    if (!is.null(.exampleCache$fit)) {
-      if (isTRUE(verbose)) {
-        message("Loaded the 'fit' example object from the session cache.")
-      }
+            return(.exampleCache$fit)
+        }
 
-      return(.exampleCache$fit)
-    }
+        buildMetadata <- readStoredObject("buildMetadata")
+        exampleCounts <- readStoredObject("counts")
 
-    buildMetadata <- readStoredObject("buildMetadata")
-    exampleCounts <- readStoredObject("counts")
+        if (isTRUE(verbose)) {
+            message("Building the 'fit' example object from the packaged counts.")
+        }
 
-    if (isTRUE(verbose)) {
-      message("Building the 'fit' example object from the packaged counts.")
-    }
+        exampleCounts <- normalizeCounts(
+            counts = exampleCounts,
+            method = buildMetadata$normalizationMethod,
+            verbose = FALSE
+        )
 
-    exampleCounts <- normalizeCounts(counts = exampleCounts,
-                                     method = buildMetadata$normalizationMethod,
-                                     verbose = FALSE)
+        exampleCounts <- filterRegions(
+            counts = exampleCounts,
+            method = buildMetadata$filterMethod,
+            foldChange = buildMetadata$filterFoldChange,
+            verbose = FALSE
+        )
 
-    exampleCounts <- filterRegions(counts = exampleCounts,
-                                   method = buildMetadata$filterMethod,
-                                   foldChange = buildMetadata$filterFoldChange,
-                                   verbose = FALSE)
+        # Built against baseenv() so that the formula does not drag this frame along
+        designFormula <- stats::as.formula(buildMetadata$fitDesign, env = baseenv())
 
-    # Built against baseenv() so that the formula does not drag this frame along
-    designFormula <- stats::as.formula(buildMetadata$fitDesign, env = baseenv())
+        exampleFit <- fitRegions(
+            counts = exampleCounts,
+            design = designFormula,
+            engine = buildMetadata$fitEngine,
+            verbose = FALSE
+        )
 
-    exampleFit <- fitRegions(counts = exampleCounts,
-                             design = designFormula,
-                             engine = buildMetadata$fitEngine,
-                             verbose = FALSE)
+        .exampleCache$fit <- exampleFit
 
-    .exampleCache$fit <- exampleFit
-
-    return(exampleFit)
-  } # END function
+        return(exampleFit)
+    } # END function

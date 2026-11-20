@@ -14,7 +14,7 @@
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
 #' @param discardRegions \code{GRanges} with regions whose reads must be ignored, for instance a blacklist. Default: \code{NULL}.
 #' @param maxReads Numeric value with the maximum number of forward reads per sample entering the cross-correlation. Beyond it the reads are thinned evenly along the genome. Default: \code{1e5}.
-#' @param nThreads Number of threads, one file per thread. Default: \code{1}.
+#' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. One file goes to each worker. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A list with three elements. \code{table} is a data.frame with one row per sample: \code{sample}, \code{paired.end}, \code{read.length}, \code{fragment.length}, \code{method} (\code{"cross-correlation"} or \code{"insert size"}) and \code{n.reads}, the number of reads or pairs the estimate rests on. \code{profile} holds the cross-correlation of the single-end samples, as the number of read pairs found at each distance and the same number relative to its mean. \code{plot} draws that profile, with the estimate marked on each sample.
@@ -30,13 +30,17 @@
 #' @examples
 #' # A single-end library of 200 bp fragments piled on a few sites
 #' set.seed(1)
-#' fragmentStarts <- sort(unlist(lapply(seq(20000, 180000, by = 20000), function(site) {site + round(rnorm(400, 0, 60))})))
+#' fragmentStarts <- sort(unlist(lapply(seq(20000, 180000, by = 20000), function(site) {
+#'     site + round(rnorm(400, 0, 60))
+#' })))
 #' readStrand <- sample(c("+", "-"), length(fragmentStarts), replace = TRUE)
 #' readStart <- ifelse(readStrand == "+", fragmentStarts, fragmentStarts + 200 - 50)
 #' readOrder <- order(readStart)
 #'
 #' samRecords <- paste(paste0("read", seq_along(readOrder)), ifelse(readStrand[readOrder] == "+", 0, 16), "chrT",
-#'                     as.integer(readStart[readOrder]), 60, "50M", "*", 0, 0, "*", "*", sep = "\t")
+#'     as.integer(readStart[readOrder]), 60, "50M", "*", 0, 0, "*", "*",
+#'     sep = "\t"
+#' )
 #' samFile <- file.path(tempdir(), "fragments.sam")
 #' writeLines(c("@HD\tVN:1.6\tSO:coordinate", "@SQ\tSN:chrT\tLN:200000", samRecords), samFile)
 #' bamFile <- Rsamtools::asBam(samFile, destination = file.path(tempdir(), "fragments"), overwrite = TRUE, indexDestination = TRUE)
@@ -61,215 +65,293 @@
 #' @export estimateFragmentLength
 
 estimateFragmentLength <-
-  function(bamFiles = NULL,
-           regions = NULL,
-           sampleSheet = NULL,
-           sampleNames = NULL,
-           pairedEnd = "auto",
-           maxDistance = 600,
-           minMapq = 20,
-           removeDuplicates = TRUE,
-           discardRegions = NULL,
-           maxReads = 1e5,
-           nThreads = 1,
-           verbose = TRUE) {
+    function(bamFiles = NULL,
+             regions = NULL,
+             sampleSheet = NULL,
+             sampleNames = NULL,
+             pairedEnd = "auto",
+             maxDistance = 600,
+             minMapq = 20,
+             removeDuplicates = TRUE,
+             discardRegions = NULL,
+             maxReads = 1e5,
+             BPPARAM = NULL,
+             verbose = TRUE) {
+        #------------------------#
+        # Check of the arguments #
+        #------------------------#
+        checkedArguments <- .checkEstimateFragmentLengthArguments(
+            bamFiles = bamFiles,
+            sampleSheet = sampleSheet,
+            sampleNames = sampleNames,
+            pairedEnd = pairedEnd,
+            maxDistance = maxDistance,
+            discardRegions = discardRegions,
+            maxReads = maxReads,
+            verbose = verbose
+        )
+        bamFiles <- checkedArguments$bamFiles
+        maxDistance <- checkedArguments$maxDistance
+        pairedEnd <- checkedArguments$pairedEnd
+        sampleNames <- checkedArguments$sampleNames
 
-    #------------------------#
-    # Check of the arguments #
-    #------------------------#
-    if (!is.null(sampleSheet)) {
-      if (!is.null(bamFiles)) {
-        stop("Give the BAM files either directly or through 'sampleSheet', not both.", call. = FALSE)
-      }
-      if (is.character(sampleSheet) & length(sampleSheet) == 1) {
-        sampleSheet <- loadSampleSheet(sampleSheet, verbose = verbose)
-      }
-      if (!is.data.frame(sampleSheet) || !all(c("sample", "bam") %in% colnames(sampleSheet))) {
-        stop("The sample sheet needs the 'sample' and 'bam' columns.", call. = FALSE)
-      }
-      bamFiles <- as.character(sampleSheet$bam)
-      sampleNames <- as.character(sampleSheet$sample)
-    }
+        #------------------------#
+        # Regions to read        #
+        #------------------------#
+        # The files may name the chromosomes in different styles, those of the first file stand for all of them
+        bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles)
+        chromosomeLengths <- bamChromosomes$lengths
+        bamSeqlevels <- names(chromosomeLengths)
 
-    if (!is.character(bamFiles) | length(bamFiles) == 0) {
-      stop("The 'bamFiles' parameter must be a character vector with at least one BAM file.", call. = FALSE)
-    }
+        if (is.null(regions)) {
+            # Without regions the longest chromosomes stand for the genome, among those every file has
+            sharedLengths <- chromosomeLengths[bamChromosomes$shared]
+            longestChromosomes <- names(sort(sharedLengths, decreasing = TRUE))[seq_len(min(3, length(sharedLengths)))]
+            readRegions <- GenomicRanges::GRanges(
+                seqnames = longestChromosomes,
+                ranges = IRanges::IRanges(start = 1L, end = as.integer(chromosomeLengths[longestChromosomes]))
+            )
+        } else {
+            readRegions <- .regionsAsGRanges(regions)
+            readRegions <- .matchSeqlevels(x = readRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
+        }
 
-    missingFiles <- bamFiles[!file.exists(bamFiles)]
-    if (length(missingFiles) > 0) {
-      stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
-    }
+        readRegions <- readRegions[as.character(GenomeInfoDb::seqnames(readRegions)) %in% bamSeqlevels]
 
-    hasIndex <- .hasBamIndex(bamFiles)
-    if (any(!hasIndex)) {
-      stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
-    }
+        if (length(readRegions) == 0) {
+            stop("No region lies on a chromosome of the BAM files.", call. = FALSE)
+        }
 
-    if (is.null(sampleNames)) {
-      sampleNames <- sub("\\.bam$", "", basename(bamFiles), ignore.case = TRUE)
-    }
+        readRegions <- IRanges::reduce(readRegions, ignore.strand = TRUE)
 
-    if (length(sampleNames) != length(bamFiles) | any(duplicated(sampleNames))) {
-      stop("The 'sampleNames' parameter must hold one unique name per BAM file.", call. = FALSE)
-    }
+        if (!is.null(discardRegions)) {
+            discardRegions <- .matchSeqlevels(x = discardRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
+        }
 
-    if (!is.numeric(maxDistance) | length(maxDistance) != 1 || maxDistance < 50) {
-      stop("The 'maxDistance' parameter must be a number of at least 50.", call. = FALSE)
-    }
-    maxDistance <- as.integer(maxDistance)
+        if (isTRUE(verbose) & any(!pairedEnd)) {
+            message("Estimating the fragment length of ", sum(!pairedEnd), " single-end sample(s) from their strand cross-correlation...")
+        }
 
-    if (!is.numeric(maxReads) | length(maxReads) != 1 || maxReads < 100) {
-      stop("The 'maxReads' parameter must be a number of at least 100.", call. = FALSE)
-    }
+        if (isTRUE(verbose) & any(pairedEnd)) {
+            message("Reading the insert size of ", sum(pairedEnd), " paired-end sample(s)...")
+        }
 
-    if (!is.null(discardRegions) & !methods::is(discardRegions, "GRanges")) {
-      stop("The 'discardRegions' parameter must be a GRanges object.", call. = FALSE)
-    }
+        #------------------------#
+        # One file per worker    #
+        #------------------------#
+        estimateList <-
+            BiocParallel::bplapply(seq_along(bamFiles),
+                function(fileIndex) {
+                    if (pairedEnd[fileIndex]) {
+                        .insertSizeEstimate(
+                            bamFile = bamFiles[fileIndex],
+                            regions = readRegions,
+                            chromosomeLengths = chromosomeLengths,
+                            minMapq = minMapq,
+                            removeDuplicates = removeDuplicates,
+                            discardRegions = discardRegions
+                        )
+                    } else {
+                        .crossCorrelationEstimate(
+                            bamFile = bamFiles[fileIndex],
+                            regions = readRegions,
+                            chromosomeLengths = chromosomeLengths,
+                            maxDistance = maxDistance,
+                            minMapq = minMapq,
+                            removeDuplicates = removeDuplicates,
+                            discardRegions = discardRegions,
+                            maxReads = maxReads
+                        )
+                    }
+                },
+                BPPARAM = .resolveBPPARAM(BPPARAM = BPPARAM, tasks = length(bamFiles))
+            )
 
-    if (identical(pairedEnd, "auto")) {
-      pairedEnd <- .bamIsPairedEnd(bamFiles = bamFiles)
-    }
-    if (length(pairedEnd) == 1) {pairedEnd <- rep(pairedEnd, length(bamFiles))}
+        #------------------------#
+        # Assemble the output    #
+        #------------------------#
+        estimateTable <- data.frame(
+            sample = sampleNames,
+            paired.end = pairedEnd,
+            read.length = vapply(estimateList, function(x) {
+                as.numeric(x$read.length)
+            }, numeric(1)),
+            fragment.length = vapply(estimateList, function(x) {
+                as.numeric(x$fragment.length)
+            }, numeric(1)),
+            method = ifelse(pairedEnd, "insert size", "cross-correlation"),
+            n.reads = vapply(estimateList, function(x) {
+                as.numeric(x$n.reads)
+            }, numeric(1)),
+            stringsAsFactors = FALSE
+        )
 
-    if (!is.logical(pairedEnd) | length(pairedEnd) != length(bamFiles) | any(is.na(pairedEnd))) {
-      stop("The 'pairedEnd' parameter must be 'auto', a single logical value, or one logical value per BAM file.", call. = FALSE)
-    }
+        profileTable <- dplyr::bind_rows(lapply(
+            which(!pairedEnd),
+            function(fileIndex) {
+                profile <- estimateList[[fileIndex]]$profile
+                if (is.null(profile)) {
+                    return(NULL)
+                }
+                profile$sample <- sampleNames[fileIndex]
+                return(profile[, c("sample", "distance", "pairs", "relative.pairs")])
+            }
+        ))
 
-    #------------------------#
-    # Regions to read        #
-    #------------------------#
-    # The files may name the chromosomes in different styles, those of the first file stand for all of them
-    bamChromosomes <- .bamChromosomeMap(bamFiles = bamFiles)
-    chromosomeLengths <- bamChromosomes$lengths
-    bamSeqlevels <- names(chromosomeLengths)
+        # Problems are gathered and reported once, a warning per sample would bury the table
+        noReads <- estimateTable$sample[is.na(estimateTable$fragment.length)]
+        if (length(noReads) > 0) {
+            warning("No usable read was found for: ", paste(noReads, collapse = ", "), ". Their fragment length is NA.", call. = FALSE)
+        }
 
-    if (is.null(regions)) {
-      # Without regions the longest chromosomes stand for the genome, among those every file has
-      sharedLengths <- chromosomeLengths[bamChromosomes$shared]
-      longestChromosomes <- names(sort(sharedLengths, decreasing = TRUE))[seq_len(min(3, length(sharedLengths)))]
-      readRegions <- GenomicRanges::GRanges(seqnames = longestChromosomes,
-                                            ranges = IRanges::IRanges(start = 1L, end = as.integer(chromosomeLengths[longestChromosomes])))
-    } else {
-      readRegions <- .regionsAsGRanges(regions)
-      readRegions <- .matchSeqlevels(x = readRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
-    }
+        atBoundary <- estimateTable$sample[!estimateTable$paired.end & !is.na(estimateTable$fragment.length) & estimateTable$fragment.length >= maxDistance - 5]
+        if (length(atBoundary) > 0) {
+            warning("The cross-correlation of ", paste(atBoundary, collapse = ", "),
+                " peaks at the end of the search window: raise 'maxDistance', or give the fragment length directly.",
+                call. = FALSE
+            )
+        }
 
-    readRegions <- readRegions[as.character(GenomeInfoDb::seqnames(readRegions)) %in% bamSeqlevels]
+        fewReads <- estimateTable$sample[!estimateTable$paired.end & !is.na(estimateTable$fragment.length) & estimateTable$n.reads < 1000]
+        if (length(fewReads) > 0) {
+            warning("Fewer than 1,000 forward reads entered the estimate of: ", paste(fewReads, collapse = ", "),
+                ". The value is unreliable, widen 'regions' or give the fragment length directly.",
+                call. = FALSE
+            )
+        }
 
-    if (length(readRegions) == 0) {
-      stop("No region lies on a chromosome of the BAM files.", call. = FALSE)
-    }
+        if (isTRUE(verbose)) {
+            message("Fragment lengths: ", paste(estimateTable$sample, round(estimateTable$fragment.length), sep = " ", collapse = ", "), ".")
+        }
 
-    readRegions <- IRanges::reduce(readRegions, ignore.strand = TRUE)
+        #------------------------#
+        # Profile plot           #
+        #------------------------#
+        profilePlot <- NULL
+        if (nrow(profileTable) > 0) {
+            # The panels follow the order of the samples rather than the alphabet
+            profileTable$sample <- factor(profileTable$sample, levels = sampleNames)
 
-    if (!is.null(discardRegions)) {
-      discardRegions <- .matchSeqlevels(x = discardRegions, targetSeqlevels = bamSeqlevels, fileName = bamFiles[1], verbose = FALSE)
-    }
+            markTable <- dplyr::filter(estimateTable, !.data$paired.end, !is.na(.data$fragment.length))
 
-    if (isTRUE(verbose) & any(!pairedEnd)) {
-      message("Estimating the fragment length of ", sum(!pairedEnd), " single-end sample(s) from their strand cross-correlation...")
-    }
+            profilePlot <-
+                ggplot2::ggplot(data = profileTable, mapping = ggplot2::aes(x = .data$distance, y = .data$relative.pairs)) +
+                ggplot2::geom_line(colour = "grey30", linewidth = 0.4) +
+                ggplot2::geom_vline(data = markTable, mapping = ggplot2::aes(xintercept = .data$fragment.length), colour = "#D1495B", linetype = 2) +
+                ggplot2::geom_vline(data = markTable, mapping = ggplot2::aes(xintercept = .data$read.length), colour = "grey60", linetype = 3) +
+                ggplot2::facet_wrap(~sample, scales = "free_y") +
+                ggplot2::labs(
+                    x = "Distance between the ends of forward and reverse reads (bp)",
+                    y = "Read pairs, relative to the mean",
+                    title = "Strand cross-correlation",
+                    subtitle = "Dashed: fragment length estimate; dotted: read length"
+                ) +
+                .regionSetTheme()
+        }
 
-    if (isTRUE(verbose) & any(pairedEnd)) {
-      message("Reading the insert size of ", sum(pairedEnd), " paired-end sample(s)...")
-    }
-
-    #------------------------#
-    # One file per thread    #
-    #------------------------#
-    estimateList <-
-      BiocParallel::bplapply(seq_along(bamFiles),
-                             function(fileIndex) {
-                               if (pairedEnd[fileIndex]) {
-                                 .insertSizeEstimate(bamFile = bamFiles[fileIndex],
-                                                     regions = readRegions,
-                                                     chromosomeLengths = chromosomeLengths,
-                                                     minMapq = minMapq,
-                                                     removeDuplicates = removeDuplicates,
-                                                     discardRegions = discardRegions)
-                               } else {
-                                 .crossCorrelationEstimate(bamFile = bamFiles[fileIndex],
-                                                           regions = readRegions,
-                                                           chromosomeLengths = chromosomeLengths,
-                                                           maxDistance = maxDistance,
-                                                           minMapq = minMapq,
-                                                           removeDuplicates = removeDuplicates,
-                                                           discardRegions = discardRegions,
-                                                           maxReads = maxReads)
-                               }
-                             },
-                             BPPARAM = .makeParallelParam(nThreads = nThreads, tasks = length(bamFiles)))
-
-    #------------------------#
-    # Assemble the output    #
-    #------------------------#
-    estimateTable <- data.frame(sample = sampleNames,
-                                paired.end = pairedEnd,
-                                read.length = vapply(estimateList, function(x) {as.numeric(x$read.length)}, numeric(1)),
-                                fragment.length = vapply(estimateList, function(x) {as.numeric(x$fragment.length)}, numeric(1)),
-                                method = ifelse(pairedEnd, "insert size", "cross-correlation"),
-                                n.reads = vapply(estimateList, function(x) {as.numeric(x$n.reads)}, numeric(1)),
-                                stringsAsFactors = FALSE)
-
-    profileTable <- dplyr::bind_rows(lapply(which(!pairedEnd),
-                                            function(fileIndex) {
-                                              profile <- estimateList[[fileIndex]]$profile
-                                              if (is.null(profile)) {return(NULL)}
-                                              profile$sample <- sampleNames[fileIndex]
-                                              return(profile[, c("sample", "distance", "pairs", "relative.pairs")])
-                                            }))
-
-    # Problems are gathered and reported once, a warning per sample would bury the table
-    noReads <- estimateTable$sample[is.na(estimateTable$fragment.length)]
-    if (length(noReads) > 0) {
-      warning("No usable read was found for: ", paste(noReads, collapse = ", "), ". Their fragment length is NA.", call. = FALSE)
-    }
-
-    atBoundary <- estimateTable$sample[!estimateTable$paired.end & !is.na(estimateTable$fragment.length) & estimateTable$fragment.length >= maxDistance - 5]
-    if (length(atBoundary) > 0) {
-      warning("The cross-correlation of ", paste(atBoundary, collapse = ", "),
-              " peaks at the end of the search window: raise 'maxDistance', or give the fragment length directly.", call. = FALSE)
-    }
-
-    fewReads <- estimateTable$sample[!estimateTable$paired.end & !is.na(estimateTable$fragment.length) & estimateTable$n.reads < 1000]
-    if (length(fewReads) > 0) {
-      warning("Fewer than 1,000 forward reads entered the estimate of: ", paste(fewReads, collapse = ", "),
-              ". The value is unreliable, widen 'regions' or give the fragment length directly.", call. = FALSE)
-    }
-
-    if (isTRUE(verbose)) {
-      message("Fragment lengths: ", paste(estimateTable$sample, round(estimateTable$fragment.length), sep = " ", collapse = ", "), ".")
-    }
-
-    #------------------------#
-    # Profile plot           #
-    #------------------------#
-    profilePlot <- NULL
-    if (nrow(profileTable) > 0) {
-      # The panels follow the order of the samples rather than the alphabet
-      profileTable$sample <- factor(profileTable$sample, levels = sampleNames)
-
-      markTable <- dplyr::filter(estimateTable, !.data$paired.end, !is.na(.data$fragment.length))
-
-      profilePlot <-
-        ggplot2::ggplot(data = profileTable, mapping = ggplot2::aes(x = .data$distance, y = .data$relative.pairs)) +
-        ggplot2::geom_line(colour = "grey30", linewidth = 0.4) +
-        ggplot2::geom_vline(data = markTable, mapping = ggplot2::aes(xintercept = .data$fragment.length), colour = "#D1495B", linetype = 2) +
-        ggplot2::geom_vline(data = markTable, mapping = ggplot2::aes(xintercept = .data$read.length), colour = "grey60", linetype = 3) +
-        ggplot2::facet_wrap(~ sample, scales = "free_y") +
-        ggplot2::labs(x = "Distance between the ends of forward and reverse reads (bp)",
-                      y = "Read pairs, relative to the mean",
-                      title = "Strand cross-correlation",
-                      subtitle = "Dashed: fragment length estimate; dotted: read length") +
-        .regionSetTheme()
-    }
-
-    return(list(table = estimateTable,
-                profile = profileTable,
-                plot = profilePlot))
-  } # END function
+        return(list(
+            table = estimateTable,
+            profile = profileTable,
+            plot = profilePlot
+        ))
+    } # END function
 
 
+#' @title .checkEstimateFragmentLengthArguments
+#'
+#' @description Checks the arguments of \code{\link{estimateFragmentLength}} and brings them to the form the rest of the function works with.
+#'
+#' @param bamFiles See \code{\link{estimateFragmentLength}}.
+#' @param sampleSheet See \code{\link{estimateFragmentLength}}.
+#' @param sampleNames See \code{\link{estimateFragmentLength}}.
+#' @param pairedEnd See \code{\link{estimateFragmentLength}}.
+#' @param maxDistance See \code{\link{estimateFragmentLength}}.
+#' @param discardRegions See \code{\link{estimateFragmentLength}}.
+#' @param maxReads See \code{\link{estimateFragmentLength}}.
+#' @param verbose See \code{\link{estimateFragmentLength}}.
+#'
+#' @return A list with the arguments as checked and completed: \code{bamFiles}, \code{maxDistance}, \code{pairedEnd}, \code{sampleNames}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @keywords internal
+
+.checkEstimateFragmentLengthArguments <-
+    function(bamFiles,
+             sampleSheet,
+             sampleNames,
+             pairedEnd,
+             maxDistance,
+             discardRegions,
+             maxReads,
+             verbose) {
+        if (!is.null(sampleSheet)) {
+            if (!is.null(bamFiles)) {
+                stop("Give the BAM files either directly or through 'sampleSheet', not both.", call. = FALSE)
+            }
+            if (is.character(sampleSheet) & length(sampleSheet) == 1) {
+                sampleSheet <- loadSampleSheet(sampleSheet, verbose = verbose)
+            }
+            if (!is.data.frame(sampleSheet) || !all(c("sample", "bam") %in% colnames(sampleSheet))) {
+                stop("The sample sheet needs the 'sample' and 'bam' columns.", call. = FALSE)
+            }
+            bamFiles <- as.character(sampleSheet$bam)
+            sampleNames <- as.character(sampleSheet$sample)
+        }
+
+        if (!is.character(bamFiles) | length(bamFiles) == 0) {
+            stop("The 'bamFiles' parameter must be a character vector with at least one BAM file.", call. = FALSE)
+        }
+
+        missingFiles <- bamFiles[!file.exists(bamFiles)]
+        if (length(missingFiles) > 0) {
+            stop("The following BAM files do not exist: ", paste(missingFiles, collapse = ", "), ".", call. = FALSE)
+        }
+
+        hasIndex <- .hasBamIndex(bamFiles)
+        if (any(!hasIndex)) {
+            stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
+        }
+
+        if (is.null(sampleNames)) {
+            sampleNames <- sub("\\.bam$", "", basename(bamFiles), ignore.case = TRUE)
+        }
+
+        if (length(sampleNames) != length(bamFiles) | any(duplicated(sampleNames))) {
+            stop("The 'sampleNames' parameter must hold one unique name per BAM file.", call. = FALSE)
+        }
+
+        if (!is.numeric(maxDistance) | length(maxDistance) != 1 || maxDistance < 50) {
+            stop("The 'maxDistance' parameter must be a number of at least 50.", call. = FALSE)
+        }
+        maxDistance <- as.integer(maxDistance)
+
+        if (!is.numeric(maxReads) | length(maxReads) != 1 || maxReads < 100) {
+            stop("The 'maxReads' parameter must be a number of at least 100.", call. = FALSE)
+        }
+
+        if (!is.null(discardRegions) & !methods::is(discardRegions, "GRanges")) {
+            stop("The 'discardRegions' parameter must be a GRanges object.", call. = FALSE)
+        }
+
+        if (identical(pairedEnd, "auto")) {
+            pairedEnd <- .bamIsPairedEnd(bamFiles = bamFiles)
+        }
+        if (length(pairedEnd) == 1) {
+            pairedEnd <- rep(pairedEnd, length(bamFiles))
+        }
+
+        if (!is.logical(pairedEnd) | length(pairedEnd) != length(bamFiles) | any(is.na(pairedEnd))) {
+            stop("The 'pairedEnd' parameter must be 'auto', a single logical value, or one logical value per BAM file.", call. = FALSE)
+        }
+
+        return(list(
+            bamFiles = bamFiles,
+            maxDistance = maxDistance,
+            pairedEnd = pairedEnd,
+            sampleNames = sampleNames
+        ))
+    } # END function
 
 
 #' @title .crossCorrelationEstimate
@@ -299,94 +381,111 @@ estimateFragmentLength <-
 #' @keywords internal
 
 .crossCorrelationEstimate <-
-  function(bamFile,
-           regions,
-           chromosomeLengths,
-           maxDistance,
-           minMapq,
-           removeDuplicates,
-           discardRegions,
-           maxReads) {
+    function(bamFile,
+             regions,
+             chromosomeLengths,
+             maxDistance,
+             minMapq,
+             removeDuplicates,
+             discardRegions,
+             maxReads) {
+        emptyEstimate <- list(read.length = NA_real_, fragment.length = NA_real_, n.reads = 0, profile = NULL)
 
-    emptyEstimate <- list(read.length = NA_real_, fragment.length = NA_real_, n.reads = 0, profile = NULL)
+        # Reverse reads are needed up to maxDistance past the regions, the forward ones only inside them
+        reads <- .windowFragments(
+            bamFile = bamFile,
+            windows = regions,
+            isPairedEnd = FALSE,
+            fragmentLength = 1L,
+            maxFragmentLength = maxDistance,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            chromosomeLengths = chromosomeLengths,
+            discardRegions = discardRegions,
+            padding = maxDistance,
+            readsOnly = TRUE
+        )
 
-    # Reverse reads are needed up to maxDistance past the regions, the forward ones only inside them
-    reads <- .windowFragments(bamFile = bamFile,
-                              windows = regions,
-                              isPairedEnd = FALSE,
-                              fragmentLength = 1L,
-                              maxFragmentLength = maxDistance,
-                              minMapq = minMapq,
-                              removeDuplicates = removeDuplicates,
-                              chromosomeLengths = chromosomeLengths,
-                              discardRegions = discardRegions,
-                              padding = maxDistance,
-                              readsOnly = TRUE)
+        if (length(reads) == 0) {
+            return(emptyEstimate)
+        }
 
-    if (length(reads) == 0) {return(emptyEstimate)}
+        readLength <- stats::median(BiocGenerics::width(reads))
+        readStrand <- as.character(BiocGenerics::strand(reads))
+        fivePrime <- S4Vectors::mcols(reads)$five.prime
 
-    readLength <- stats::median(BiocGenerics::width(reads))
-    readStrand <- as.character(BiocGenerics::strand(reads))
-    fivePrime <- S4Vectors::mcols(reads)$five.prime
+        forwardReads <- reads[readStrand == "+" & IRanges::overlapsAny(GenomicRanges::GRanges(GenomeInfoDb::seqnames(reads), IRanges::IRanges(fivePrime, width = 1)),
+            regions,
+            ignore.strand = TRUE
+        )]
+        reverseReads <- reads[readStrand == "-"]
 
-    forwardReads <- reads[readStrand == "+" & IRanges::overlapsAny(GenomicRanges::GRanges(GenomeInfoDb::seqnames(reads), IRanges::IRanges(fivePrime, width = 1)),
-                                                                     regions, ignore.strand = TRUE)]
-    reverseReads <- reads[readStrand == "-"]
+        if (length(forwardReads) == 0 | length(reverseReads) == 0) {
+            return(emptyEstimate)
+        }
 
-    if (length(forwardReads) == 0 | length(reverseReads) == 0) {return(emptyEstimate)}
+        #--------------------------#
+        # Thin the forward reads   #
+        #--------------------------#
+        # Every k-th read along the genome, which keeps the estimate reproducible without touching the random seed
+        forwardReads <- forwardReads[order(as.character(GenomeInfoDb::seqnames(forwardReads)), S4Vectors::mcols(forwardReads)$five.prime)]
+        if (length(forwardReads) > maxReads) {
+            forwardReads <- forwardReads[seq(1, length(forwardReads), by = ceiling(length(forwardReads) / maxReads))]
+        }
 
-    #--------------------------#
-    # Thin the forward reads   #
-    #--------------------------#
-    # Every k-th read along the genome, which keeps the estimate reproducible without touching the random seed
-    forwardReads <- forwardReads[order(as.character(GenomeInfoDb::seqnames(forwardReads)), S4Vectors::mcols(forwardReads)$five.prime)]
-    if (length(forwardReads) > maxReads) {
-      forwardReads <- forwardReads[seq(1, length(forwardReads), by = ceiling(length(forwardReads) / maxReads))]
-    }
+        #--------------------------#
+        # Pairs at every distance  #
+        #--------------------------#
+        # A fragment of length d leaves its reverse 5' end at d - 1 bases from the forward one
+        pairCounts <- numeric(maxDistance)
+        forwardChromosomes <- as.character(GenomeInfoDb::seqnames(forwardReads))
+        reverseChromosomes <- as.character(GenomeInfoDb::seqnames(reverseReads))
 
-    #--------------------------#
-    # Pairs at every distance  #
-    #--------------------------#
-    # A fragment of length d leaves its reverse 5' end at d - 1 bases from the forward one
-    pairCounts <- numeric(maxDistance)
-    forwardChromosomes <- as.character(GenomeInfoDb::seqnames(forwardReads))
-    reverseChromosomes <- as.character(GenomeInfoDb::seqnames(reverseReads))
+        for (chromosome in unique(forwardChromosomes)) {
+            forwardEnds <- S4Vectors::mcols(forwardReads)$five.prime[forwardChromosomes == chromosome]
+            reverseEnds <- IRanges::IRanges(start = S4Vectors::mcols(reverseReads)$five.prime[reverseChromosomes == chromosome], width = 1)
+            if (length(reverseEnds) == 0) {
+                next
+            }
 
-    for (chromosome in unique(forwardChromosomes)) {
-      forwardEnds <- S4Vectors::mcols(forwardReads)$five.prime[forwardChromosomes == chromosome]
-      reverseEnds <- IRanges::IRanges(start = S4Vectors::mcols(reverseReads)$five.prime[reverseChromosomes == chromosome], width = 1)
-      if (length(reverseEnds) == 0) {next}
+            # In chunks, so that dense peaks cannot blow up the number of hits held at once
+            for (chunk in split(seq_along(forwardEnds), ceiling(seq_along(forwardEnds) / 20000))) {
+                pairHits <- IRanges::findOverlaps(IRanges::IRanges(start = forwardEnds[chunk], width = maxDistance), reverseEnds)
+                pairDistance <- BiocGenerics::start(reverseEnds)[S4Vectors::subjectHits(pairHits)] - forwardEnds[chunk][S4Vectors::queryHits(pairHits)] + 1L
+                pairCounts <- pairCounts + tabulate(pairDistance, nbins = maxDistance)
+            }
+        }
 
-      # In chunks, so that dense peaks cannot blow up the number of hits held at once
-      for (chunk in split(seq_along(forwardEnds), ceiling(seq_along(forwardEnds) / 20000))) {
-        pairHits <- IRanges::findOverlaps(IRanges::IRanges(start = forwardEnds[chunk], width = maxDistance), reverseEnds)
-        pairDistance <- BiocGenerics::start(reverseEnds)[S4Vectors::subjectHits(pairHits)] - forwardEnds[chunk][S4Vectors::queryHits(pairHits)] + 1L
-        pairCounts <- pairCounts + tabulate(pairDistance, nbins = maxDistance)
-      }
-    }
+        if (sum(pairCounts) == 0) {
+            return(utils::modifyList(emptyEstimate, list(read.length = readLength)))
+        }
 
-    if (sum(pairCounts) == 0) {return(utils::modifyList(emptyEstimate, list(read.length = readLength)))}
+        #--------------------------#
+        # Peak past the read length#
+        #--------------------------#
+        # A running mean over 11 bp keeps a single noisy distance from winning, and the phantom peak is left behind
+        smoothedCounts <- as.numeric(stats::filter(pairCounts, rep(1 / 11, 11), sides = 2))
+        searchStart <- min(as.integer(readLength + 16), maxDistance)
+        searchRange <- seq(searchStart, maxDistance)
+        searchValues <- smoothedCounts[searchRange]
 
-    #--------------------------#
-    # Peak past the read length#
-    #--------------------------#
-    # A running mean over 11 bp keeps a single noisy distance from winning, and the phantom peak is left behind
-    smoothedCounts <- as.numeric(stats::filter(pairCounts, rep(1 / 11, 11), sides = 2))
-    searchStart <- min(as.integer(readLength + 16), maxDistance)
-    searchRange <- seq(searchStart, maxDistance)
-    searchValues <- smoothedCounts[searchRange]
+        fragmentLength <- if (all(is.na(searchValues))) {
+            searchStart
+        } else {
+            searchRange[which.max(searchValues)]
+        }
 
-    fragmentLength <- if (all(is.na(searchValues))) {searchStart} else {searchRange[which.max(searchValues)]}
-
-    return(list(read.length = readLength,
-                fragment.length = fragmentLength,
-                n.reads = length(forwardReads),
-                profile = data.frame(distance = seq_len(maxDistance),
-                                     pairs = pairCounts,
-                                     relative.pairs = pairCounts / mean(pairCounts))))
-  } # END function
-
-
+        return(list(
+            read.length = readLength,
+            fragment.length = fragmentLength,
+            n.reads = length(forwardReads),
+            profile = data.frame(
+                distance = seq_len(maxDistance),
+                pairs = pairCounts,
+                relative.pairs = pairCounts / mean(pairCounts)
+            )
+        ))
+    } # END function
 
 
 #' @title .insertSizeEstimate
@@ -410,33 +509,34 @@ estimateFragmentLength <-
 #' @keywords internal
 
 .insertSizeEstimate <-
-  function(bamFile,
-           regions,
-           chromosomeLengths,
-           minMapq,
-           removeDuplicates,
-           discardRegions) {
+    function(bamFile,
+             regions,
+             chromosomeLengths,
+             minMapq,
+             removeDuplicates,
+             discardRegions) {
+        fragments <- .windowFragments(
+            bamFile = bamFile,
+            windows = regions,
+            isPairedEnd = TRUE,
+            fragmentLength = NA_integer_,
+            maxFragmentLength = 2000L,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            chromosomeLengths = chromosomeLengths,
+            discardRegions = discardRegions
+        )
 
-    fragments <- .windowFragments(bamFile = bamFile,
-                                  windows = regions,
-                                  isPairedEnd = TRUE,
-                                  fragmentLength = NA_integer_,
-                                  maxFragmentLength = 2000L,
-                                  minMapq = minMapq,
-                                  removeDuplicates = removeDuplicates,
-                                  chromosomeLengths = chromosomeLengths,
-                                  discardRegions = discardRegions)
+        if (length(fragments) == 0) {
+            return(list(read.length = NA_real_, fragment.length = NA_real_, n.reads = 0))
+        }
 
-    if (length(fragments) == 0) {
-      return(list(read.length = NA_real_, fragment.length = NA_real_, n.reads = 0))
-    }
-
-    return(list(read.length = NA_real_,
-                fragment.length = stats::median(BiocGenerics::width(fragments)),
-                n.reads = length(fragments)))
-  } # END function
-
-
+        return(list(
+            read.length = NA_real_,
+            fragment.length = stats::median(BiocGenerics::width(fragments)),
+            n.reads = length(fragments)
+        ))
+    } # END function
 
 
 #' @title .regionsAsGRanges
@@ -455,26 +555,27 @@ estimateFragmentLength <-
 #' @keywords internal
 
 .regionsAsGRanges <-
-  function(regions) {
+    function(regions) {
+        if (methods::is(regions, "RegionSetDE")) {
+            regions <- regionRanges(regions)
+        }
 
-    if (methods::is(regions, "RegionSetDE")) {
-      regions <- regions@regions
-    }
+        if (methods::is(regions, "GRanges")) {
+            return(GenomicRanges::granges(regions))
+        }
 
-    if (methods::is(regions, "GRanges")) {
-      return(GenomicRanges::granges(regions))
-    }
+        if (is.list(regions) & !methods::is(regions, "GRangesList")) {
+            if (!all(vapply(regions, function(x) {
+                methods::is(x, "GRanges")
+            }, logical(1)))) {
+                stop("The regions must be a RegionSetDE object, a GRangesList, a list of GRanges or a GRanges.", call. = FALSE)
+            }
+            regions <- GenomicRanges::GRangesList(lapply(regions, GenomicRanges::granges))
+        }
 
-    if (is.list(regions) & !methods::is(regions, "GRangesList")) {
-      if (!all(vapply(regions, function(x) {methods::is(x, "GRanges")}, logical(1)))) {
-        stop("The regions must be a RegionSetDE object, a GRangesList, a list of GRanges or a GRanges.", call. = FALSE)
-      }
-      regions <- GenomicRanges::GRangesList(lapply(regions, GenomicRanges::granges))
-    }
+        if (!methods::is(regions, "GRangesList")) {
+            stop("The regions must be a RegionSetDE object, a GRangesList, a list of GRanges or a GRanges.", call. = FALSE)
+        }
 
-    if (!methods::is(regions, "GRangesList")) {
-      stop("The regions must be a RegionSetDE object, a GRangesList, a list of GRanges or a GRanges.", call. = FALSE)
-    }
-
-    return(GenomicRanges::granges(unlist(regions, use.names = FALSE)))
-  } # END function
+        return(GenomicRanges::granges(unlist(regions, use.names = FALSE)))
+    } # END function

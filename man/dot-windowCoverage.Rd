@@ -4,7 +4,17 @@
 \alias{.windowCoverage}
 \title{.windowCoverage}
 \usage{
-.windowCoverage(bamFile, windows, chromosomeLengths, ...)
+.windowCoverage(
+  bamFile,
+  windows,
+  chromosomeLengths,
+  isPairedEnd,
+  fragmentLength,
+  maxFragmentLength,
+  minMapq,
+  removeDuplicates,
+  discardRegions = NULL
+)
 }
 \arguments{
 \item{bamFile}{String with the path of the BAM file.}
@@ -13,7 +23,17 @@
 
 \item{chromosomeLengths}{Named numeric vector with the length of every chromosome, as returned by \code{.bamChromosomeMap}.}
 
-\item{...}{Read filters passed to \code{.windowFragments}.}
+\item{isPairedEnd}{Logical value indicating whether the file holds paired-end reads.}
+
+\item{fragmentLength}{Numeric value with the length single-end reads are extended to.}
+
+\item{maxFragmentLength}{Numeric value with the maximum length of a paired-end fragment.}
+
+\item{minMapq}{Numeric value with the minimum mapping quality of a read.}
+
+\item{removeDuplicates}{Logical value indicating whether the reads flagged as duplicates must be discarded.}
+
+\item{discardRegions}{\code{GRanges} with the regions whose reads must be ignored, named as in \code{chromosomeLengths}. Default: \code{NULL}.}
 }
 \value{
 A list with \code{coverage}, an \code{RleList} with one element per chromosome of \code{chromosomeLengths}, and \code{fragments}, the number of fragments read.

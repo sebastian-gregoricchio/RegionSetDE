@@ -56,13 +56,18 @@ counts <- loadExampleData("counts", verbose = FALSE)
 
 regionTable <- as.data.frame(SummarizedExperiment::rowRanges(counts))[1:8, 1:3]
 linkTable <- data.frame(regionTable,
-                        gene.id = c("geneA", "geneA", "geneB", "geneB",
-                                    "geneC", "geneC", "geneD", "geneD"))
+    gene.id = c(
+        "geneA", "geneA", "geneB", "geneB",
+        "geneC", "geneC", "geneD", "geneD"
+    )
+)
 
 counts <- annotateRegions(counts, linkTable = linkTable, verbose = FALSE)
 
-geneSets <- list(pathwayOne = c("geneA", "geneB"),
-                 pathwayTwo = c("geneC", "geneD", "geneE"))
+geneSets <- list(
+    pathwayOne = c("geneA", "geneB"),
+    pathwayTwo = c("geneC", "geneD", "geneE")
+)
 
 regionSets <- geneSetsToRegionSets(counts, geneSets = geneSets, verbose = FALSE)
 lengths(regionSets)

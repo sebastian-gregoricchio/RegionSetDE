@@ -61,11 +61,11 @@ round(computeSampleCorrelation(counts, samples = brownNorway, method = "pearson"
 
 # Occupancy: the Jaccard index of the peak sets of the AR example
 if (requireNamespace("consensusRegions", quietly = TRUE)) {
-  sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
-  consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+    sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+    consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 
-  peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
-  round(peakJaccard$correlation, 2)
+    peakJaccard <- computeSampleCorrelation(consensus, method = "jaccard")
+    round(peakJaccard$correlation, 2)
 }
 
 }

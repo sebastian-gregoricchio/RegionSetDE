@@ -476,8 +476,8 @@ regions <- RegionSetDE::applyBlacklist(
 )
 
 setSizes <- data.frame(
-  setName = names(regions@regions),
-  nRegions = lengths(regions@regions),
+  setName = names(RegionSetDE::regionRanges(regions)),
+  nRegions = lengths(RegionSetDE::regionRanges(regions)),
   stringsAsFactors = FALSE
 )
 
@@ -515,7 +515,7 @@ counts <- RegionSetDE::countReads(
   minMapq = minimumMappingQuality,
   removeDuplicates = FALSE,
   excludeChromosomes = setdiff(names(bamTargets), targetChromosomes),
-  nThreads = 1,
+  BPPARAM = 1,
   verbose = TRUE
 )
 
@@ -524,7 +524,7 @@ counts <- RegionSetDE::countBackground(
   counts = counts,
   binSize = backgroundBinSize,
   excludeRegions = TRUE,
-  nThreads = 1,
+  BPPARAM = 1,
   verbose = TRUE
 )
 

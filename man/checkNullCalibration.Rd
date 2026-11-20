@@ -64,9 +64,10 @@ fit <- loadExampleData("fit", verbose = FALSE)
 
 # The background bins carry no strain effect, so the p-values should be flat
 calibration <- checkNullCalibration(fit,
-                                    contrast = c("condition", "SHR", "BN"),
-                                    source = "background",
-                                    verbose = FALSE)
+    contrast = c("condition", "SHR", "BN"),
+    source = "background",
+    verbose = FALSE
+)
 calibration
 
 }

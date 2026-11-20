@@ -40,25 +40,32 @@ The table goes straight into the counting, as the source of the files, of the sa
 }
 \examples{
 # Two samples sharing an input and a third one without any, paths relative to a project folder
-sheetTable <- data.frame(sample = c("treated_1", "control_1", "control_2"),
-                         bam = c("reads/treated_1.bam", "reads/control_1.bam", "reads/control_2.bam"),
-                         peaks = c("peaks/treated_1.narrowPeak", "peaks/control_1.narrowPeak", NA),
-                         input = c("reads/input_A.bam", "reads/input_A.bam", NA),
-                         condition = c("treated", "control", "control"))
+sheetTable <- data.frame(
+    sample = c("treated_1", "control_1", "control_2"),
+    bam = c("reads/treated_1.bam", "reads/control_1.bam", "reads/control_2.bam"),
+    peaks = c("peaks/treated_1.narrowPeak", "peaks/control_1.narrowPeak", NA),
+    input = c("reads/input_A.bam", "reads/input_A.bam", NA),
+    condition = c("treated", "control", "control")
+)
 
 sampleSheet <- loadSampleSheet(sheetTable, basePath = "/data/project", checkFiles = FALSE)
 sampleSheet
 
 # A DiffBind sample sheet is read as it is
-diffbindTable <- data.frame(SampleID = c("MCF7_1", "MCF7_2"),
-                            Condition = c("resistant", "responsive"),
-                            Replicate = c(1, 1),
-                            bamReads = c("reads/MCF7_1.bam", "reads/MCF7_2.bam"),
-                            ControlID = c("MCF7_input", "MCF7_input"),
-                            bamControl = c("reads/MCF7_input.bam", "reads/MCF7_input.bam"))
+diffbindTable <- data.frame(
+    SampleID = c("MCF7_1", "MCF7_2"),
+    Condition = c("resistant", "responsive"),
+    Replicate = c(1, 1),
+    bamReads = c("reads/MCF7_1.bam", "reads/MCF7_2.bam"),
+    ControlID = c("MCF7_input", "MCF7_input"),
+    bamControl = c("reads/MCF7_input.bam", "reads/MCF7_input.bam")
+)
 
 loadSampleSheet(diffbindTable, basePath = "/data/project", checkFiles = FALSE)
 
+}
+\references{
+Ross-Innes C.S., Stark R., Teschendorff A.E., et al. (2012). Differential oestrogen receptor binding is associated with clinical outcome in breast cancer. \emph{Nature} 481:389-393.
 }
 \seealso{
 \code{\link{makeGreylist}}, \code{\link{countReads}}, \code{\link{countBigwig}}

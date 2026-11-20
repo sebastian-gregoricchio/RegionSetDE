@@ -87,13 +87,17 @@ Sets larger than \code{maxRegions} are thinned, deterministically, before the vi
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-                             verbose = FALSE)
+setResults <- testRegionSets(fit,
+    contrast = c("condition", "SHR", "BN"),
+    verbose = FALSE
+)
 
 plotSetSignal(setResults, groupBy = "condition")
 
-plotSetSignal(setResults, set = "promoterCpG", groupBy = "condition",
-              style = "boxplot")
+plotSetSignal(setResults,
+    set = "promoterCpG", groupBy = "condition",
+    style = "boxplot"
+)
 
 }
 \seealso{

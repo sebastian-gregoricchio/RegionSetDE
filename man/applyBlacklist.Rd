@@ -42,15 +42,16 @@ An object of the same class as the input, with the blacklisted regions removed. 
 Removes from every region set the regions overlapping a blacklist, such as the ENCODE blacklisted regions. The blacklist can be provided as a BED-like file, a \code{GRanges} or a data.frame.
 }
 \details{
-A blacklist applied to an object that already stores one adds to it. The \code{blacklist} slot then holds the two lists merged, and the \code{filtering.log} one step per call, so nothing is lost when an assay-specific list follows the ENCODE one. \code{\link{countReads}} reads the stored blacklist to leave its reads out of the counts and of the library sizes.
+A blacklist applied to an object that already stores one adds to it. The \code{blacklist} slot (read with \code{\link{blacklistRanges}}) then holds the two lists merged, and the \code{filtering.log} one step per call, so nothing is lost when an assay-specific list follows the ENCODE one. \code{\link{countReads}} reads the stored blacklist to leave its reads out of the counts and of the library sizes.
 }
 \examples{
 regionTable <- loadExampleData("regions", verbose = FALSE)
 exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
 
 regions <- splitLoadRegions(
-  GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-  splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 # The example regions are shipped before the filtering, so this removes rows
 regions <- applyBlacklist(regions, blacklist = exclusionRegions, verbose = FALSE)

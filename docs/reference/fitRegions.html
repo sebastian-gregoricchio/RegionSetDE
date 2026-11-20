@@ -140,7 +140,7 @@
 
 
 <dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
-<dd><p><code>BiocParallelParam</code> object passed to the <code>"dream"</code> engine. Default: <code>NULL</code>, sequential.</p></dd>
+<dd><p>A <code>BiocParallelParam</code> object, used as it is, or a number of cores as a shorthand for one. Only the <code>"dream"</code> engine uses it, to fit the mixed models of the regions side by side. Default: <code>NULL</code>, a <code><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">BiocParallel::SerialParam()</a></code>, so that nothing runs in parallel unasked.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -162,6 +162,14 @@ The comparison universe of the set level tests is built here rather than there, 
 Low-count rows are not removed here. Filter them with <code><a href="filterRegions.html">filterRegions</a></code> first, or the dispersion trend is fitted on rows that carry no information.</p>
     </div>
     <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Robinson M.D., McCarthy D.J., Smyth G.K. (2010). edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. <em>Bioinformatics</em> 26(1):139-140.</p>
+<p>Chen Y., Lun A.T.L., Smyth G.K. (2016). From reads to genes to pathways: differential expression analysis of RNA-Seq experiments using Rsubread and the edgeR quasi-likelihood pipeline. <em>F1000Research</em> 5:1438.</p>
+<p>Law C.W., Chen Y., Shi W., Smyth G.K. (2014). voom: precision weights unlock linear model analysis tools for RNA-seq read counts. <em>Genome Biology</em> 15:R29.</p>
+<p>Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. <em>Genome Biology</em> 15:550.</p>
+<p>Hoffman G.E., Roussos P. (2021). Dream: powerful differential expression analysis for repeated measures designs. <em>Bioinformatics</em> 37(2):192-201.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="testRegions.html">testRegions</a></code>, <code><a href="testRegionSets.html">testRegionSets</a></code>, <code><a href="makeSetUniverse.html">makeSetUniverse</a></code>, <code><a href="selectSamples.html">selectSamples</a></code></p></div>
     </div>
@@ -177,7 +185,7 @@ Low-count rows are not removed here. Filter them with <code><a href="filterRegio
 <span class="r-msg co"><span class="r-pr">#&gt;</span> calcNormFactors has been renamed to normLibSizes</span>
 <span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="filterRegions.html">filterRegions</a></span><span class="op">(</span><span class="va">counts</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">fitRegions</span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span> <span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"edgeR"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">fitRegions</span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span><span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"edgeR"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">fit</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.fit'</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
@@ -188,7 +196,7 @@ Low-count rows are not removed here. Filter them with <code><a href="filterRegio
 <span class="r-out co"><span class="r-pr">#&gt;</span>   common disp.    : 0.139 (BCV 0.373)  </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># limma-voom on the same design</span></span></span>
-<span class="r-in"><span><span class="va">voomFit</span> <span class="op">&lt;-</span> <span class="fu">fitRegions</span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span> <span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"voom"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">voomFit</span> <span class="op">&lt;-</span> <span class="fu">fitRegions</span><span class="op">(</span><span class="va">counts</span>, design <span class="op">=</span> <span class="op">~</span><span class="va">condition</span>, engine <span class="op">=</span> <span class="st">"voom"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Random effects need the dream engine and the formula given as such, for instance</span></span></span>
 <span class="r-in"><span><span class="co"># ~ condition + (1|donor) for repeated samples of the same donors. Four samples are</span></span></span>

@@ -21,7 +21,7 @@ countGreenlist(
   maxFragmentLength = NULL,
   minMapq = NULL,
   removeDuplicates = NULL,
-  nThreads = 1,
+  BPPARAM = NULL,
   progressBar = interactive(),
   verbose = TRUE
 )
@@ -86,18 +86,23 @@ countGreenlist(
   Logical value indicating whether the duplicated reads must be
   discarded. Default: `NULL`, the value used at the counting step.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads. The files are cut into pieces of at most 50 Mb,
-  shared among the threads. Default: `1`.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. The files are cut into pieces of at most 50 Mb,
+  shared among the workers. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 - progressBar:
 
   Logical value to indicate whether a progress bar must be drawn while
   the files are read. It advances with the pieces of the files as the
-  threads hand them back, and it is drawn only when `verbose = TRUE`.
-  Default: [`interactive()`](https://rdrr.io/r/base/interactive.html),
-  which keeps it out of scripts and rendered documents.
+  workers hand them back, and it is drawn only when `verbose = TRUE`. A
+  `BPPARAM` given as a `BiocParallelParam` object keeps its own
+  `progressbar` setting. Default:
+  [`interactive()`](https://rdrr.io/r/base/interactive.html), which
+  keeps it out of scripts and rendered documents.
 
 - verbose:
 
@@ -149,6 +154,13 @@ samples: what matters for the factors is how many regions carry reads in
 every library, which
 [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
 reports when it computes them.
+
+## References
+
+de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S.
+(2024). The CUT&RUN greenlist: genomic regions of consistent noise are
+effective normalizing factors for quantitative epigenome mapping.
+*Briefings in Bioinformatics* 25(2):bbad538.
 
 ## See also
 

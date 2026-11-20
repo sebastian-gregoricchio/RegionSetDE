@@ -156,8 +156,10 @@ counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 # The background bins cover the genome and carry no strain effect
-nullDispersion <- estimateNullDispersion(counts, source = "background",
-                                         verbose = FALSE)
+nullDispersion <- estimateNullDispersion(counts,
+    source = "background",
+    verbose = FALSE
+)
 nullDispersion
 #> $dispersion
 #> [1] 0.06820971
@@ -221,9 +223,10 @@ nullDispersion
 
 # Any set believed to be invariant works the same way, as long as it has signal
 fromRegions <- estimateNullDispersion(counts,
-                                      source = "regionSet",
-                                      regionSets = "geneBody",
-                                      verbose = FALSE)
+    source = "regionSet",
+    regionSets = "geneBody",
+    verbose = FALSE
+)
 fromRegions
 #> $dispersion
 #> [1] 0.09171431

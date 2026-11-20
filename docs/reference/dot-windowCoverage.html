@@ -44,7 +44,17 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.windowCoverage</span><span class="op">(</span><span class="va">bamFile</span>, <span class="va">windows</span>, <span class="va">chromosomeLengths</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.windowCoverage</span><span class="op">(</span></span>
+<span>  <span class="va">bamFile</span>,</span>
+<span>  <span class="va">windows</span>,</span>
+<span>  <span class="va">chromosomeLengths</span>,</span>
+<span>  <span class="va">isPairedEnd</span>,</span>
+<span>  <span class="va">fragmentLength</span>,</span>
+<span>  <span class="va">maxFragmentLength</span>,</span>
+<span>  <span class="va">minMapq</span>,</span>
+<span>  <span class="va">removeDuplicates</span>,</span>
+<span>  discardRegions <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -63,8 +73,28 @@
 <dd><p>Named numeric vector with the length of every chromosome, as returned by <code>.bamChromosomeMap</code>.</p></dd>
 
 
-<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Read filters passed to <code>.windowFragments</code>.</p></dd>
+<dt id="arg-ispairedend">isPairedEnd<a class="anchor" aria-label="anchor" href="#arg-ispairedend"></a></dt>
+<dd><p>Logical value indicating whether the file holds paired-end reads.</p></dd>
+
+
+<dt id="arg-fragmentlength">fragmentLength<a class="anchor" aria-label="anchor" href="#arg-fragmentlength"></a></dt>
+<dd><p>Numeric value with the length single-end reads are extended to.</p></dd>
+
+
+<dt id="arg-maxfragmentlength">maxFragmentLength<a class="anchor" aria-label="anchor" href="#arg-maxfragmentlength"></a></dt>
+<dd><p>Numeric value with the maximum length of a paired-end fragment.</p></dd>
+
+
+<dt id="arg-minmapq">minMapq<a class="anchor" aria-label="anchor" href="#arg-minmapq"></a></dt>
+<dd><p>Numeric value with the minimum mapping quality of a read.</p></dd>
+
+
+<dt id="arg-removeduplicates">removeDuplicates<a class="anchor" aria-label="anchor" href="#arg-removeduplicates"></a></dt>
+<dd><p>Logical value indicating whether the reads flagged as duplicates must be discarded.</p></dd>
+
+
+<dt id="arg-discardregions">discardRegions<a class="anchor" aria-label="anchor" href="#arg-discardregions"></a></dt>
+<dd><p><code>GRanges</code> with the regions whose reads must be ignored, named as in <code>chromosomeLengths</code>. Default: <code>NULL</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

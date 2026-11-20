@@ -24,7 +24,7 @@ countBigwig(
   blacklist = NULL,
   countLike = FALSE,
   roundValues = FALSE,
-  nThreads = 1,
+  BPPARAM = NULL,
   verbose = TRUE
 )
 ```
@@ -123,9 +123,13 @@ countBigwig(
   to integers. Rounding is a formatting step and does not turn coverage
   into counts. Default: `FALSE`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads used to process the files in parallel. Default: `1`.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. The files are processed side by side. Default:
+  `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 - verbose:
 
@@ -208,15 +212,16 @@ Sebastian Gregoricchio
 bigwigFile <- system.file("tests", "test.bw", package = "rtracklayer")
 
 if (file.exists(bigwigFile) & .Platform$OS.type != "windows") {
-  bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
-  regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
+    bigwigRanges <- GenomicRanges::reduce(rtracklayer::import(bigwigFile))
+    regions <- loadRegions(list(covered = bigwigRanges), seqlevelsStyle = NULL, verbose = FALSE)
 
-  signal <- countBigwig(regions,
-                        bigwigFiles = bigwigFile,
-                        sampleNames = "example",
-                        summaryFunction = "mean",
-                        verbose = FALSE)
-  SummarizedExperiment::assay(signal)
+    signal <- countBigwig(regions,
+        bigwigFiles = bigwigFile,
+        sampleNames = "example",
+        summaryFunction = "mean",
+        verbose = FALSE
+    )
+    SummarizedExperiment::assay(signal)
 }
 #>                         example
 #> covered|chr2:1-1500      -0.500

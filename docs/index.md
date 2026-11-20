@@ -164,9 +164,9 @@ counts <- countReads(regions,
                    bamFiles = bamPaths,
                    sampleMetadata = sampleTable,
                    pairedEnd = TRUE,
-                   nThreads = 4)
+                   BPPARAM = 4)
 
-counts <- countBackground(counts, binSize = 10000, nThreads = 4)
+counts <- countBackground(counts, binSize = 10000, BPPARAM = 4)
 
 # Normalisation and filtering
 counts <- normalizeCounts(counts, method = "background")

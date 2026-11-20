@@ -178,21 +178,26 @@ Sebastian Gregoricchio
 exampleCounts <- loadExampleData("counts", verbose = FALSE)
 regionRows <- SummarizedExperiment::rowRanges(exampleCounts)
 
-countMatrix <- data.frame(chr = as.character(GenomicRanges::seqnames(regionRows)),
-                          start = GenomicRanges::start(regionRows),
-                          end = GenomicRanges::end(regionRows),
-                          SummarizedExperiment::assay(exampleCounts, "counts"),
-                          check.names = FALSE)
+countMatrix <- data.frame(
+    chr = as.character(GenomicRanges::seqnames(regionRows)),
+    start = GenomicRanges::start(regionRows),
+    end = GenomicRanges::end(regionRows),
+    SummarizedExperiment::assay(exampleCounts, "counts"),
+    check.names = FALSE
+)
 
 regions <- splitLoadRegions(regionRows, splitBy = "region.set", genomeAssembly = "rn4", verbose = FALSE)
 
 # The real library sizes, the column sums of the table only cover the regions
 counts <- loadCounts(regions,
-                     counts = countMatrix,
-                     sampleMetadata = data.frame(sample = colnames(exampleCounts),
-                                                 condition = exampleCounts$condition),
-                     librarySizes = exampleCounts$library.size,
-                     verbose = FALSE)
+    counts = countMatrix,
+    sampleMetadata = data.frame(
+        sample = colnames(exampleCounts),
+        condition = exampleCounts$condition
+    ),
+    librarySizes = exampleCounts$library.size,
+    verbose = FALSE
+)
 counts
 #> class: RegionSetDE.counts 
 #> dim: 3224 4 

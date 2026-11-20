@@ -48,19 +48,24 @@ Sebastian Gregoricchio
 
 ``` r
 if (requireNamespace("consensusRegions", quietly = TRUE)) {
-  peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
-                          pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE)
+    peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
+        pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE
+    )
 
-  sampleSheet <- loadSampleSheet(data.frame(sample = c("A_1", "A_2", "B_1", "B_2"),
-                                            bam = c("A_1.bam", "A_2.bam", "B_1.bam", "B_2.bam"),
-                                            peaks = peakFiles[c(1, 2, 2, 3)],
-                                            condition = c("A", "A", "B", "B")),
-                                 checkFiles = FALSE, verbose = FALSE)
+    sampleSheet <- loadSampleSheet(
+        data.frame(
+            sample = c("A_1", "A_2", "B_1", "B_2"),
+            bam = c("A_1.bam", "A_2.bam", "B_1.bam", "B_2.bam"),
+            peaks = peakFiles[c(1, 2, 2, 3)],
+            condition = c("A", "A", "B", "B")
+        ),
+        checkFiles = FALSE, verbose = FALSE
+    )
 
-  regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+    regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 
-  consensusData(regions)$samples
-  lengths(consensusData(regions)$groups)
+    consensusData(regions)$samples
+    lengths(consensusData(regions)$groups)
 }
 #>   A   B 
 #> 287 262 

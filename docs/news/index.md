@@ -229,8 +229,8 @@ First version.
   and
   [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
   take `progressBar`, which draws a bar while the BAM files are read. It
-  advances with the pieces of the files as the threads hand them back,
-  on one thread or on many, and
+  advances with the pieces of the files as the workers hand them back,
+  on one core or on many, and
   [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   draws one for the summits and one for the inputs as well. The default
   is [`interactive()`](https://rdrr.io/r/base/interactive.html), so
@@ -275,7 +275,7 @@ First version.
   [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
   rebuild each paired-end fragment from the first mate of the pair and
   its template length, and read the BAM files in pieces shared among the
-  threads. `excludeChromosomes` keeps chromosomes such as chrM out of
+  workers. `excludeChromosomes` keeps chromosomes such as chrM out of
   the library sizes and of the background bins, while
   `fullLibrarySize = FALSE` reads only the chromosomes carrying regions,
   which is faster but gives library sizes that are not meant for
@@ -412,7 +412,7 @@ First version.
   in every group, which seeds the calibration of the threshold through
   the `RNGseed` of its `BiocParallel` back end. It is stored in
   `parameters$loadConsensusPeaks` with `seed.source`. The same seed
-  returns the same consensus on any number of threads, and the random
+  returns the same consensus on any number of cores, and the random
   numbers of the session are left as they were: neither package calls
   [`set.seed()`](https://rdrr.io/r/base/Random.html), which BiocCheck
   refuses in package code anyway. Without a seed the permutations draw
@@ -1102,3 +1102,132 @@ First version.
   `summaryFunction` for bigWig signal. A fragment crossing the border
   between two tiles is counted in both, so summed tiles come out higher
   than the same region counted whole, and a message says so.
+
+### Objects and accessors
+
+- Every slot of every class has an accessor, and the functions of the
+  package read the objects through them rather than through `@`, which
+  now appears only in the class definitions and in the accessor methods.
+  The new ones are
+  [`blacklistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md),
+  [`greylistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md),
+  [`whitelistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md),
+  [`chromosomeStyle()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  and
+  [`parameterLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  for the provenance of any object;
+  [`fitComponents()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md),
+  [`fitEngine()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md),
+  [`designMatrix()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md),
+  [`designFormula()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md),
+  [`blockingInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md),
+  [`fitSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  and
+  [`setUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  for a fit;
+  [`universeIndex()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md),
+  [`universeType()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md),
+  [`universeMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md),
+  [`comparisonSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md),
+  [`universeDiagnostics()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  and
+  [`universeRows()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  for a universe;
+  [`contrastVector()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md),
+  [`contrastGroups()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md),
+  [`thresholdInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)
+  and
+  [`tileCombination()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)
+  for a result;
+  [`regionStats()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md),
+  [`setTestType()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
+  and
+  [`setTestMethods()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
+  for a set level result;
+  [`scoreComparisons()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md),
+  [`scoreSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md),
+  [`scoreReference()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md),
+  [`scoreAssay()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md),
+  [`scoreSummary()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  and
+  [`scorePerBasepair()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  for set scores; and
+  [`geneMethod()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneResultsAccessors.md)
+  and
+  [`geneWeighting()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneResultsAccessors.md)
+  for a gene table.
+  [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md)
+  returns the tested coordinates of a per-region result,
+  [`contrastName()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastName.md)
+  the contrast of a gene table, and
+  [`as.list()`](https://rdrr.io/r/base/list.html) every result held by a
+  list of contrasts.
+- The objects answer the generics of BiocGenerics: `counts()` returns
+  the raw count matrix of a counts object, a fit or a result carrying
+  its counts, `design()` the design matrix of a fit, `plotMA()` calls
+  [`plotResultsMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotResultsMA.md)
+  on a result and
+  [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md)
+  on a counts object, and `plotPCA()` calls
+  [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md).
+- The tables kept inside the objects, the results, the tiles, the
+  per-region statistics of a set test, the scores and their comparisons,
+  the links, the sample annotation of the scores, the universe
+  diagnostics and the filtering log, are stored as
+  [`S4Vectors::DataFrame`](https://rdrr.io/pkg/S4Vectors/man/DataFrame-class.html).
+  The accessors still return them as data.frames, ready for dplyr.
+  `updateObject()` converts the tables of objects saved before, and now
+  has methods for `RegionSetDE.geneResults` and `RegionSetDE.universe`
+  too.
+- The validity methods check the list slots as well: the parameters, the
+  blocking and the dispersion must be named lists, a fit must keep the
+  model of its engine in `object`, the cut-offs of a result must be
+  named and include the FDR, and the groups of a contrast must name
+  their column and both groups.
+- [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
+  declares its arguments in the generic, `level`, `normalized`, `input`,
+  `format`, `set`, `tileSummary`, `extraColumns` and `verbose`, so that
+  they are documented and completed for every class rather than passed
+  through `...`.
+  [`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+  takes the arguments of
+  [`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
+  by name, and
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  the main arguments of
+  [`consensusRegions::runConsensus()`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html)
+  and
+  [`consensusRegions::buildConsensus()`](https://rdrr.io/pkg/consensusRegions/man/buildConsensus.html),
+  from `weightMethod` and `calibrate` to `minReplicates` and
+  `mergeMethod`, with the defaults of consensusRegions; any other
+  argument of consensusRegions still goes through `...`.
+- The argument checks of the longest functions moved into helpers of
+  their own, such as
+  [`.checkCountReadsArguments()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dot-checkCountReadsArguments.md),
+  which can be read and tested apart from the work of the function.
+
+### Parallel back ends
+
+- `BPPARAM` replaces `nThreads` in
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),
+  [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md),
+  [`estimateFragmentLength()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md),
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
+  [`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md),
+  [`plotProfile()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotProfile.md)
+  and
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  as in
+  [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
+  and in consensusRegions. It takes a `BiocParallelParam` object, used
+  as it is, or a number of cores as a shorthand. The default, `NULL`, is
+  a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so nothing runs in parallel unasked. In
+  [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  a number of cores is still shared between the groups and the
+  calibration inside them, while a `BiocParallelParam` object goes to
+  the calibration of every group when `calibrate = TRUE` and runs the
+  groups otherwise.

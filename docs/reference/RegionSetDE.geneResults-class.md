@@ -11,7 +11,7 @@ provenance slots.
 
 - `results`:
 
-  Data.frame with one row per gene. Read it with
+  `DataFrame` with one row per gene. Read it with
   [`resultsTable`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md).
 
 - `contrast`:
@@ -24,8 +24,8 @@ provenance slots.
 
 - `links`:
 
-  Data.frame with the region to gene links the aggregation was built on,
-  one row per link.
+  `DataFrame` with the region to gene links the aggregation was built
+  on, one row per link.
 
 - `weighting`:
 

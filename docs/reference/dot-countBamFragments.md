@@ -2,8 +2,8 @@
 
 Counts the fragments of a group of BAM files over a set of ranges. The
 chromosomes are cut into pieces of at most 50 Mb, and the pieces of all
-the files are shared among the threads, so that even a single file keeps
-every thread busy. Paired-end fragments are rebuilt from the first mate
+the files are shared among the workers, so that even a single file keeps
+every worker busy. Paired-end fragments are rebuilt from the first mate
 of each proper pair, whose position, mate position and template length
 (TLEN) give the start and the width of the fragment: the two reads never
 have to be matched. Single-end reads are extended to the fragment length
@@ -27,7 +27,7 @@ from their 5' end.
   pieceLength = 5e+07,
   referenceTargets = NULL,
   progressBar = FALSE,
-  nThreads = 1
+  BPPARAM = NULL
 )
 ```
 
@@ -112,9 +112,10 @@ from their 5' end.
   Logical value to indicate whether a progress bar must be drawn, one
   step for every job that comes back. Default: `FALSE`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads. Default: `1`.
+  `BiocParallelParam` object, number of cores or `NULL`, as taken by
+  `.resolveBPPARAM`.
 
 ## Value
 

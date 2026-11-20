@@ -80,8 +80,8 @@ counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 if (requireNamespace("DESeq2", quietly = TRUE)) {
-  deseqData <- asDESeqDataSet(counts, design = ~ condition, verbose = FALSE)
-  deseqData
+    deseqData <- asDESeqDataSet(counts, design = ~condition, verbose = FALSE)
+    deseqData
 }
 #> class: DESeqDataSet 
 #> dim: 3224 4 

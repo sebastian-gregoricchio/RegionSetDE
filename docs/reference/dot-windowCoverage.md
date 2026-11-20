@@ -6,7 +6,17 @@ their coverage, chromosome by chromosome.
 ## Usage
 
 ``` r
-.windowCoverage(bamFile, windows, chromosomeLengths, ...)
+.windowCoverage(
+  bamFile,
+  windows,
+  chromosomeLengths,
+  isPairedEnd,
+  fragmentLength,
+  maxFragmentLength,
+  minMapq,
+  removeDuplicates,
+  discardRegions = NULL
+)
 ```
 
 ## Arguments
@@ -24,9 +34,31 @@ their coverage, chromosome by chromosome.
   Named numeric vector with the length of every chromosome, as returned
   by `.bamChromosomeMap`.
 
-- ...:
+- isPairedEnd:
 
-  Read filters passed to `.windowFragments`.
+  Logical value indicating whether the file holds paired-end reads.
+
+- fragmentLength:
+
+  Numeric value with the length single-end reads are extended to.
+
+- maxFragmentLength:
+
+  Numeric value with the maximum length of a paired-end fragment.
+
+- minMapq:
+
+  Numeric value with the minimum mapping quality of a read.
+
+- removeDuplicates:
+
+  Logical value indicating whether the reads flagged as duplicates must
+  be discarded.
+
+- discardRegions:
+
+  `GRanges` with the regions whose reads must be ignored, named as in
+  `chromosomeLengths`. Default: `NULL`.
 
 ## Value
 

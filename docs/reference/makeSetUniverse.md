@@ -104,8 +104,9 @@ the biology. `universeSets` fixes the comparison pool explicitly, which
 is what to reach for when one of the loaded sets was included for a
 different reason than the others, or when a large neutral catalogue is
 available to compare everything against. The sets that ended up forming
-the pool are recorded in the `comparison.sets` slot of the result and
-printed by its `show` method.
+the pool are recorded in the `comparison.sets` slot (read with
+[`comparisonSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md))
+of the result and printed by its `show` method.
 
 Matching on width and abundance is what keeps the answer from being
 about the intervals rather than the biology. A set of 40 kb domains has

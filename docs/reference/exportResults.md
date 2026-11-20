@@ -99,12 +99,14 @@ Invisibly, a character vector with the paths written.
 ## Details
 
 The provenance file is the part worth keeping. It flattens everything
-the object carries in its `parameters` slot into one parameter per line:
-the counting level, the normalisation method and its factors, the filter
-and its threshold, the engine, the design, the contrast, the multiple
-testing correction, and on a fit with no replicates the dispersion and
-where it came from. Six months later that file is the difference between
-a result that can be reproduced and one that can only be repeated.
+the object carries in its `parameters` slot (read with
+[`parameterLog`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md))
+into one parameter per line: the counting level, the normalisation
+method and its factors, the filter and its threshold, the engine, the
+design, the contrast, the multiple testing correction, and on a fit with
+no replicates the dispersion and where it came from. Six months later
+that file is the difference between a result that can be reproduced and
+one that can only be repeated.
 
 The BED is written with zero-based starts, as the format requires, so
 its coordinates are one lower than the ones in the TSV. With
@@ -136,8 +138,10 @@ results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FA
 outputDirectory <- file.path(tempdir(), "regionSetDE-example")
 dir.create(outputDirectory, showWarnings = FALSE)
 
-exportResults(results, path = outputDirectory, prefix = "euratrans",
-              verbose = FALSE)
+exportResults(results,
+    path = outputDirectory, prefix = "euratrans",
+    verbose = FALSE
+)
 
 list.files(outputDirectory)
 #> [1] "euratrans_parameters.tsv" "euratrans_regions.bed"   

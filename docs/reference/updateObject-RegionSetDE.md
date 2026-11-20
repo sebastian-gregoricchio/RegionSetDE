@@ -7,7 +7,9 @@ does for the Bioconductor classes. An object saved before the `greylist`
 slot existed gets it, filled with the greylist of the consensus when the
 regions were built by
 [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
-and empty otherwise. A fit or a result updates the counts it carries as
+and empty otherwise. Tables saved as data.frames become the
+[`S4Vectors::DataFrame`](https://rdrr.io/pkg/S4Vectors/man/DataFrame-class.html)
+their slots hold now. A fit or a result updates the counts it carries as
 well, and a list of results every result in it.
 
 ## Usage
@@ -31,10 +33,16 @@ updateObject(object, ..., verbose = FALSE)
 # S4 method for class 'RegionSetDE.setScores'
 updateObject(object, ..., verbose = FALSE)
 
+# S4 method for class 'RegionSetDE.universe'
+updateObject(object, ..., verbose = FALSE)
+
 # S4 method for class 'RegionSetDE.resultsList'
 updateObject(object, ..., verbose = FALSE)
 
 # S4 method for class 'RegionSetDE.setResultsList'
+updateObject(object, ..., verbose = FALSE)
+
+# S4 method for class 'RegionSetDE.geneResults'
 updateObject(object, ..., verbose = FALSE)
 ```
 

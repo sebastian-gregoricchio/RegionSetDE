@@ -174,6 +174,12 @@
 The competitive test runs through <code><a href="https://rdrr.io/pkg/limma/man/camera.html" class="external-link">limma::cameraPR</a></code> on the per-region statistics, which is what makes it work identically for the five engines. The self-contained test needs the values themselves. For <code>voom</code>, <code>limma</code> and <code>dream</code> they are the log values the model was fitted on. For <code>edgeR</code> and <code>DESeq2</code> the counts are turned into z-scores under the null model of the fit, with its offsets and its dispersion of every region, which is what <code>edgeR</code> does for its own <code>fry</code> method, and <code>fry</code> runs on those without standardising them again. The test then rests on the negative binomial model the regions were tested with rather than on a log-CPM approximation of it. For <code>DESeq2</code> the null model is refitted by <code><a href="https://rdrr.io/pkg/edgeR/man/glmfit.html" class="external-link">edgeR::glmFit</a></code> with the dispersions and normalisation factors of <code>DESeq2</code>, the same model fitted by another routine. On a fit collapsed from tiles the z-scores of a region are pooled as <code>sum(z) / sqrt(n.tiles)</code>, which keeps them on the scale of a single z-score. <code>fryInput = "logCPM"</code> brings back the earlier behaviour, which is worth keeping for comparing results with an older analysis.</p>
     </div>
     <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting for inter-gene correlation. <em>Nucleic Acids Research</em> 40(17):e133.</p>
+<p>Wu D., Lim E., Vaillant F., Asselin-Labat M.L., Visvader J.E., Smyth G.K. (2010). ROAST: rotation gene set tests for complex microarray experiments. <em>Bioinformatics</em> 26(17):2176-2182.</p>
+<p>Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. <em>Nucleic Acids Research</em> 43(7):e47.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="testSetContrast.html">testSetContrast</a></code>, <code><a href="makeSetUniverse.html">makeSetUniverse</a></code>, <code><a href="testRegions.html">testRegions</a></code>, <code><a href="plotSetEffect.html">plotSetEffect</a></code></p></div>
     </div>

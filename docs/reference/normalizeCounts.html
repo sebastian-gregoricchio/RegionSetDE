@@ -131,6 +131,12 @@
 <p><code>"librarySize"</code> and <code>"readsInRegions"</code> are the two depth-based options, and they differ in what they call depth. The first takes the whole library, so a sample where the immunoprecipitation worked better keeps that advantage, which is what makes it the honest choice when the question is how much signal each sample carries. The second takes the reads collected in the regions, the quantity DiffBind calls reads in peaks, so the samples are put on the same total enrichment before anything is compared. That assumes the fraction of the library sitting in the regions is a property of the protocol rather than of the biology, and a treatment that genuinely redistributes a mark violates it in the direction that hides the effect.</p>
     </div>
     <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Robinson M.D., Oshlack A. (2010). A scaling normalization method for differential expression analysis of RNA-seq data. <em>Genome Biology</em> 11:R25.</p>
+<p>Lun A.T.L., Smyth G.K. (2016). csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows. <em>Nucleic Acids Research</em> 44(5):e45.</p>
+<p>de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&amp;RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. <em>Briefings in Bioinformatics</em> 25(2):bbad538.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="countReads.html">countReads</a></code>, <code><a href="countBackground.html">countBackground</a></code>, <code><a href="countGreenlist.html">countGreenlist</a></code></p></div>
     </div>

@@ -129,6 +129,11 @@
 <p>Overlaps within one side of the pair are a separate matter, measured after the shared regions are removed and handled by <code>overlapWithinSet</code> as <code><a href="testRegionSets.html">testRegionSets</a></code> handles them.</p>
     </div>
     <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting for inter-gene correlation. <em>Nucleic Acids Research</em> 40(17):e133.</p>
+<p>Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. <em>Nucleic Acids Research</em> 43(7):e47.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="testRegionSets.html">testRegionSets</a></code>, <code><a href="plotSetEffect.html">plotSetEffect</a></code></p></div>
     </div>
@@ -141,8 +146,10 @@
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">setContrast</span> <span class="op">&lt;-</span> <span class="fu">testSetContrast</span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                               set1 <span class="op">=</span> <span class="st">"promoterCpG"</span>, set2 <span class="op">=</span> <span class="st">"promoterNonCpG"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">setContrast</span> <span class="op">&lt;-</span> <span class="fu">testSetContrast</span><span class="op">(</span><span class="va">fit</span>,</span></span>
+<span class="r-in"><span>    contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    set1 <span class="op">=</span> <span class="st">"promoterCpG"</span>, set2 <span class="op">=</span> <span class="st">"promoterNonCpG"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">setContrast</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         set.1          set.2 n.regions.1 n.regions.2 n.shared.dropped</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 promoterCpG promoterNonCpG         269         277                0</span>

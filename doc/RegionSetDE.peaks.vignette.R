@@ -7,6 +7,13 @@ library(RegionSetDE)
 library(dplyr)
 library(ggplot2)
 
+## ----installation, eval = FALSE-----------------------------------------------
+# if (!requireNamespace("BiocManager", quietly = TRUE)) {
+#   install.packages("BiocManager")
+# }
+# 
+# BiocManager::install(c("RegionSetDE", "consensusRegions"))
+
 ## ----load_sheet---------------------------------------------------------------
 sampleSheet <- loadExampleData("peakSheet")
 
@@ -62,7 +69,7 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 blacklist = blacklist,
                                 greylist = greylist,
                                 seqlevelsStyle = "Ensembl",
-                                nThreads = 1)
+                                BPPARAM = 1)
 
 consensus
 
@@ -76,7 +83,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
-                                      nThreads = 1,
+                                      BPPARAM = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -311,29 +318,29 @@ peakOccupancyTable(results, contrast = "R1881_24h_vs_DMSO")
 ## ----occupancy_plot, fig.height = 4.5-----------------------------------------
 plotPeakOccupancy(results, contrast = "R1881_24h_vs_DMSO")
 
-## ----export, eval = FALSE-----------------------------------------------------
-# exportResults(results,
-#               path = "results",
-#               onlyChanging = TRUE,
-#               splitByDirection = TRUE)
+## ----export-------------------------------------------------------------------
+exportResults(results,
+              path = file.path(tempdir(), "results"),
+              onlyChanging = TRUE,
+              splitByDirection = TRUE)
 
-## ----tiles_count, eval = FALSE------------------------------------------------
-# tiledCounts <- countReads(consensus,
-#                           sampleSheet = sampleSheet,
-#                           tileWidth = 200)
+## ----tiles_count--------------------------------------------------------------
+tiledCounts <- countReads(consensus,
+                          sampleSheet = sampleSheet,
+                          tileWidth = 200)
 
-## ----tiles_test, eval = FALSE-------------------------------------------------
-# tiledCounts <- countBackground(tiledCounts, binSize = 10000)
-# tiledCounts <- normalizeCounts(tiledCounts, method = "background")
-# 
-# tiledFit <- fitRegions(tiledCounts, design = ~ condition, engine = "edgeR")
-# 
-# tiledResults <- testRegions(tiledFit,
-#                             contrast = c("condition", "R1881_24h", "DMSO"),
-#                             combineMethod = "simes")
-# 
-# resultsTable(tiledResults)     # one row per region
-# tileTable(tiledResults)        # one row per tile
+## ----tiles_test---------------------------------------------------------------
+tiledCounts <- countBackground(tiledCounts, binSize = 10000)
+tiledCounts <- normalizeCounts(tiledCounts, method = "background")
+
+tiledFit <- fitRegions(tiledCounts, design = ~ condition, engine = "edgeR")
+
+tiledResults <- testRegions(tiledFit,
+                            contrast = c("condition", "R1881_24h", "DMSO"),
+                            combineMethod = "simes")
+
+head(resultsTable(tiledResults), 3)     # one row per region
+head(tileTable(tiledResults), 3)        # one row per tile
 
 ## ----summits------------------------------------------------------------------
 summitCounts <- countReads(consensus,

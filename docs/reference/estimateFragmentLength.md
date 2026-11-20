@@ -19,7 +19,7 @@ estimateFragmentLength(
   removeDuplicates = TRUE,
   discardRegions = NULL,
   maxReads = 1e+05,
-  nThreads = 1,
+  BPPARAM = NULL,
   verbose = TRUE
 )
 ```
@@ -81,9 +81,12 @@ estimateFragmentLength(
   entering the cross-correlation. Beyond it the reads are thinned evenly
   along the genome. Default: `1e5`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads, one file per thread. Default: `1`.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. One file goes to each worker. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 - verbose:
 
@@ -145,13 +148,17 @@ Sebastian Gregoricchio
 ``` r
 # A single-end library of 200 bp fragments piled on a few sites
 set.seed(1)
-fragmentStarts <- sort(unlist(lapply(seq(20000, 180000, by = 20000), function(site) {site + round(rnorm(400, 0, 60))})))
+fragmentStarts <- sort(unlist(lapply(seq(20000, 180000, by = 20000), function(site) {
+    site + round(rnorm(400, 0, 60))
+})))
 readStrand <- sample(c("+", "-"), length(fragmentStarts), replace = TRUE)
 readStart <- ifelse(readStrand == "+", fragmentStarts, fragmentStarts + 200 - 50)
 readOrder <- order(readStart)
 
 samRecords <- paste(paste0("read", seq_along(readOrder)), ifelse(readStrand[readOrder] == "+", 0, 16), "chrT",
-                    as.integer(readStart[readOrder]), 60, "50M", "*", 0, 0, "*", "*", sep = "\t")
+    as.integer(readStart[readOrder]), 60, "50M", "*", 0, 0, "*", "*",
+    sep = "\t"
+)
 samFile <- file.path(tempdir(), "fragments.sam")
 writeLines(c("@HD\tVN:1.6\tSO:coordinate", "@SQ\tSN:chrT\tLN:200000", samRecords), samFile)
 bamFile <- Rsamtools::asBam(samFile, destination = file.path(tempdir(), "fragments"), overwrite = TRUE, indexDestination = TRUE)

@@ -16,7 +16,7 @@ region: the middle of the highest stretch of coverage, and its height.
   removeDuplicates,
   discardRegions = NULL,
   progressBar = FALSE,
-  nThreads = 1
+  BPPARAM = NULL
 )
 ```
 
@@ -62,9 +62,12 @@ region: the middle of the highest stretch of coverage, and its height.
   Logical value to indicate whether a progress bar must be drawn, one
   step for every file. Default: `FALSE`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads, one file per thread. Default: `1`.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. One file goes to each worker. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 ## Value
 

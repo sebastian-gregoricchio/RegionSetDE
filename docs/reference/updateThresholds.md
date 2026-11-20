@@ -55,9 +55,10 @@ updateThresholds(
 ## Value
 
 An object of the same class as `results`, with the new labels in
-`diff.status` and the new cut-offs in the `thresholds` slot and in the
-parameters recorded for the test. The previous cut-offs are kept in
-`parameters$updateThresholds`.
+`diff.status` and the new cut-offs in the `thresholds` slot (read with
+[`thresholdInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md))
+and in the parameters recorded for the test. The previous cut-offs are
+kept in `parameters$updateThresholds`.
 
 ## Details
 

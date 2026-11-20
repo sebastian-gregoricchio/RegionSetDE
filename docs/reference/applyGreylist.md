@@ -5,9 +5,10 @@ typically the one built from the input libraries by
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
 or one exported by another tool as a BED-like file. It works as
 [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
-does, but the list goes to the `greylist` slot and the step is recorded
-as a greylist, while the blacklist already stored in the object is left
-as it is.
+does, but the list goes to the `greylist` slot (read with
+[`greylistRanges`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md))
+and the step is recorded as a greylist, while the blacklist already
+stored in the object is left as it is.
 
 ## Usage
 
@@ -81,10 +82,11 @@ applyGreylist(
 ## Value
 
 An object of the same class as `regionSet`. For a `RegionSetDE` object
-the greylist is stored in the `greylist` slot, merged with the one
-already there, the step is added to the `filtering.log` as `"greylist"`,
-and the number of regions of the stored greylist and the bases they
-cover go to `parameters$greylist`.
+the greylist is stored in the `greylist` slot (read with
+[`greylistRanges`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)),
+merged with the one already there, the step is added to the
+`filtering.log` as `"greylist"`, and the number of regions of the stored
+greylist and the bases they cover go to `parameters$greylist`.
 
 ## Details
 
@@ -122,7 +124,8 @@ Sebastian Gregoricchio
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
 regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-                            splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 # The exclusion list shipped with the package stands in for a greylist
 greylist <- loadExampleData("exclusionRegions", verbose = FALSE)

@@ -87,5 +87,4 @@ table(resultTable$region.set, resultTable$diff.status)
 #>   intergenic        3  435   2
 #>   promoterCpG       1  268   0
 #>   promoterNonCpG    2  274   1
-
 ```

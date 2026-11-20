@@ -88,6 +88,12 @@ The table goes straight into the counting, as the source of the files,
 of the sample names and of the annotation:
 `countReads(regions, bamFiles = sampleSheet$bam, sampleNames = sampleSheet$sample, sampleMetadata = sampleSheet)`.
 
+## References
+
+Ross-Innes C.S., Stark R., Teschendorff A.E., et al. (2012).
+Differential oestrogen receptor binding is associated with clinical
+outcome in breast cancer. *Nature* 481:389-393.
+
 ## See also
 
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
@@ -102,11 +108,13 @@ Sebastian Gregoricchio
 
 ``` r
 # Two samples sharing an input and a third one without any, paths relative to a project folder
-sheetTable <- data.frame(sample = c("treated_1", "control_1", "control_2"),
-                         bam = c("reads/treated_1.bam", "reads/control_1.bam", "reads/control_2.bam"),
-                         peaks = c("peaks/treated_1.narrowPeak", "peaks/control_1.narrowPeak", NA),
-                         input = c("reads/input_A.bam", "reads/input_A.bam", NA),
-                         condition = c("treated", "control", "control"))
+sheetTable <- data.frame(
+    sample = c("treated_1", "control_1", "control_2"),
+    bam = c("reads/treated_1.bam", "reads/control_1.bam", "reads/control_2.bam"),
+    peaks = c("peaks/treated_1.narrowPeak", "peaks/control_1.narrowPeak", NA),
+    input = c("reads/input_A.bam", "reads/input_A.bam", NA),
+    condition = c("treated", "control", "control")
+)
 
 sampleSheet <- loadSampleSheet(sheetTable, basePath = "/data/project", checkFiles = FALSE)
 #> Sample sheet with 3 samples. Peaks: 2 of 3. Inputs: 1 distinct, none for 1 of 3 samples.
@@ -125,12 +133,14 @@ sampleSheet
 #> 3     <NA>   control
 
 # A DiffBind sample sheet is read as it is
-diffbindTable <- data.frame(SampleID = c("MCF7_1", "MCF7_2"),
-                            Condition = c("resistant", "responsive"),
-                            Replicate = c(1, 1),
-                            bamReads = c("reads/MCF7_1.bam", "reads/MCF7_2.bam"),
-                            ControlID = c("MCF7_input", "MCF7_input"),
-                            bamControl = c("reads/MCF7_input.bam", "reads/MCF7_input.bam"))
+diffbindTable <- data.frame(
+    SampleID = c("MCF7_1", "MCF7_2"),
+    Condition = c("resistant", "responsive"),
+    Replicate = c(1, 1),
+    bamReads = c("reads/MCF7_1.bam", "reads/MCF7_2.bam"),
+    ControlID = c("MCF7_input", "MCF7_input"),
+    bamControl = c("reads/MCF7_input.bam", "reads/MCF7_input.bam")
+)
 
 loadSampleSheet(diffbindTable, basePath = "/data/project", checkFiles = FALSE)
 #> Columns read as standard fields: SampleID as sample, bamReads as bam, bamControl as input, ControlID as input.id.

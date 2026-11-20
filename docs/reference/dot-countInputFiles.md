@@ -20,7 +20,7 @@ serve.
   excludeChromosomes,
   discardRegions,
   fullLibrarySize,
-  nThreads,
+  BPPARAM,
   progressBar = FALSE,
   verbose
 )
@@ -84,9 +84,10 @@ serve.
   Logical value indicating whether the library sizes cover every
   chromosome.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads.
+  `BiocParallelParam` object, number of cores or `NULL`, as taken by
+  `.resolveBPPARAM`.
 
 - progressBar:
 

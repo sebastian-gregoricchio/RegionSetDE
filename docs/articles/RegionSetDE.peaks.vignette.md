@@ -24,6 +24,22 @@ counting, the fit and the results table.
 
   
 
+### Installation
+
+The consensus of the peak calls is built by *consensusRegions*, which is
+installed next to *RegionSetDE*:
+
+``` r
+
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install(c("RegionSetDE", "consensusRegions"))
+```
+
+  
+
 ------------------------------------------------------------------------
 
 ## **The example dataset**
@@ -305,7 +321,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
 > 1      5353 0.09351198 0.1836287         2  114488             362     161
 >   greylisted.bp
@@ -329,7 +345,7 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments      mean      size threshold windows flagged.windows regions
 > 1      5353 0.9131696 0.1003771        15   11724               3       2
 >   greylisted.bp
@@ -388,7 +404,7 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 blacklist = blacklist,
                                 greylist = greylist,
                                 seqlevelsStyle = "Ensembl",
-                                nThreads = 1)
+                                BPPARAM = 1)
 
 consensus
 > ### RegionSetDE object ###
@@ -403,7 +419,7 @@ consensus
 > Whitelist:  not applied
 > 
 > Filtering steps: blacklist, greylist
-> (see the 'filtering.log' slot for the details)
+> (see filteringLog() for the details)
 > 
 > Consensus:  9 samples in 3 groups (consensus mode), 109 regions in the total consensus
 > (see consensusData() for the details)
@@ -468,7 +484,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
-                                      nThreads = 1,
+                                      BPPARAM = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -550,25 +566,25 @@ consensusInfo$samples
 > 8 AR_R1881_24h_r2 R1881_24h
 > 9 AR_R1881_24h_r3 R1881_24h
 >                                                                                                 peak.file
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+> 1      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
 >                                                                                          bam
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+> 1      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >   n.peaks n.blacklist n.greylist n.excluded
 > 1      13           0          0          0
 > 2      13           0          0          0
@@ -736,8 +752,8 @@ which can be changed through `removeDuplicates` and `minMapq`.
 `excludeChromosomes` leaves chromosomes out of the library sizes, the
 mitochondrial genome in ATAC-seq above all, and accepts the names in
 either style. The files are read one after the other here, the slices
-being small; on whole-genome BAMs `nThreads` spreads them over several
-workers.
+being small; on whole-genome BAMs `BPPARAM`, a number of cores or a
+`BiocParallelParam` object, spreads them over several workers.
 
   
 
@@ -814,20 +830,20 @@ countTable(counts, format = "long") %>%
 > 3          TRUE           TRUE           2            6 AR_DMSO_r1      0
 > 4          TRUE           TRUE           2            5 AR_DMSO_r1      2
 >                                                                                bam.file
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 1 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 3 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 4 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
 >                                                                                                peaks
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 1 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 3 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 4 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
 >                                                                              input
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r1       TRUE              NA
@@ -1175,35 +1191,35 @@ sampleInfo(counts)
 > 8 AR_R1881_24h_r2
 > 9 AR_R1881_24h_r3
 >                                                                                     bam.file
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+> 1      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >                                                                                                     peaks
-> 1      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+> 1      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
 >                                                                              input
-> 1 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 5 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 6 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 7 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 8 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
-> 9 /tmp/RtmpC4ltfM/temp_libpath275ef82f31cd83/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 5 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 6 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 7 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 8 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
+> 9 /tmp/Rtmp2f1FFd/temp_libpath2b981b493747eb/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r2       TRUE              NA
@@ -1803,7 +1819,7 @@ rather than intersecting.
 ``` r
 
 exportResults(results,
-              path = "results",
+              path = file.path(tempdir(), "results"),
               onlyChanging = TRUE,
               splitByDirection = TRUE)
 ```
@@ -1841,7 +1857,7 @@ same site than a narrow one.
 ### Tiles
 
 `tileWidth` cuts every region into tiles of that width, and each tile
-becomes a row of its own. The code of this part is shown, not run.
+becomes a row of its own.
 
 ``` r
 
@@ -1858,7 +1874,6 @@ p-values are then combined back into one per region, so the results keep
 one row per region and the region stays the unit of inference.
 
 ``` r
-
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
 tiledCounts <- normalizeCounts(tiledCounts, method = "background")
 
@@ -1868,8 +1883,72 @@ tiledResults <- testRegions(tiledFit,
                             contrast = c("condition", "R1881_24h", "DMSO"),
                             combineMethod = "simes")
 
-resultsTable(tiledResults)     # one row per region
-tileTable(tiledResults)        # one row per tile
+head(resultsTable(tiledResults), 3)     # one row per region
+>   region.set            region.id seqnames    start      end width   log2FC
+> 1  consensus 19:46089709-46090037       19 46089709 46090037   329 3.854852
+> 2  consensus 19:46182368-46182658       19 46182368 46182658   291 3.169605
+> 3  consensus 19:46300807-46301375       19 46300807 46301375   569 5.341291
+>   average.signal average.signal.DMSO average.signal.R1881_4h
+> 1       9.432795            8.830140                9.810565
+> 2       9.224647            8.830140                9.573591
+> 3      10.953454            9.047857               10.492002
+>   average.signal.R1881_24h      stat stat.distribution df1  df2      p.value
+> 1                 9.456241  5.858349                 f   1 1950 1.559417e-02
+> 2                 9.155047  3.515500                 f   1 1950 6.094667e-02
+> 3                11.895479 45.294650                 f   1 1950 6.664258e-11
+>            FDR diff.status n.tiles n.tiles.up n.tiles.down direction
+> 1 2.360783e-02          up       2          2            0        up
+> 2 7.322416e-02        null       2          0            0        up
+> 3 9.080051e-10          up       3          2            0        up
+>   rep.tile.start rep.tile.end mean.tile.log2FC peak.DMSO peak.R1881_4h
+> 1       46089909     46090037         4.006052     FALSE          TRUE
+> 2       46182368     46182567         3.287727     FALSE          TRUE
+> 3       46301007     46301206         4.152827     FALSE          TRUE
+>   peak.R1881_24h peak.groups peak.samples
+> 1           TRUE           2            5
+> 2          FALSE           1            2
+> 3           TRUE           2            6
+head(tileTable(tiledResults), 3)        # one row per tile
+>                                        log2FC average.signal     stat
+> consensus|19:46089709-46090037|tile1 4.103576       9.480226 7.007949
+> consensus|19:46089709-46090037|tile2 3.854852       9.432795 5.858349
+> consensus|19:46182368-46182658|tile1 3.169605       9.224647 3.515500
+>                                      stat.distribution df1  df2     p.value
+> consensus|19:46089709-46090037|tile1                 f   1 1950 0.008180197
+> consensus|19:46089709-46090037|tile2                 f   1 1950 0.015594165
+> consensus|19:46182368-46182658|tile1                 f   1 1950 0.060946667
+>                                      average.signal.DMSO
+> consensus|19:46089709-46090037|tile1             8.83014
+> consensus|19:46089709-46090037|tile2             8.83014
+> consensus|19:46182368-46182658|tile1             8.83014
+>                                      average.signal.R1881_4h
+> consensus|19:46089709-46090037|tile1                9.810565
+> consensus|19:46089709-46090037|tile2                9.810565
+> consensus|19:46182368-46182658|tile1                9.573591
+>                                      average.signal.R1881_24h region.set
+> consensus|19:46089709-46090037|tile1                 9.583511  consensus
+> consensus|19:46089709-46090037|tile2                 9.456241  consensus
+> consensus|19:46182368-46182658|tile1                 9.155047  consensus
+>                                                 region.id tile.id
+> consensus|19:46089709-46090037|tile1 19:46089709-46090037       1
+> consensus|19:46089709-46090037|tile2 19:46089709-46090037       2
+> consensus|19:46182368-46182658|tile1 19:46182368-46182658       1
+>                                                          region.key seqnames
+> consensus|19:46089709-46090037|tile1 consensus|19:46089709-46090037       19
+> consensus|19:46089709-46090037|tile2 consensus|19:46089709-46090037       19
+> consensus|19:46182368-46182658|tile1 consensus|19:46182368-46182658       19
+>                                         start      end width peak.DMSO
+> consensus|19:46089709-46090037|tile1 46089709 46089908   200     FALSE
+> consensus|19:46089709-46090037|tile2 46089909 46090037   129     FALSE
+> consensus|19:46182368-46182658|tile1 46182368 46182567   200     FALSE
+>                                      peak.R1881_4h peak.R1881_24h peak.groups
+> consensus|19:46089709-46090037|tile1          TRUE           TRUE           2
+> consensus|19:46089709-46090037|tile2          TRUE           TRUE           2
+> consensus|19:46182368-46182658|tile1          TRUE          FALSE           1
+>                                      peak.samples        FDR
+> consensus|19:46089709-46090037|tile1            5 0.01682635
+> consensus|19:46089709-46090037|tile2            5 0.02858277
+> consensus|19:46182368-46182658|tile1            2 0.08474474
 ```
 
 Tiles are worth it when the shape of a region matters and not only its
@@ -2540,7 +2619,7 @@ sessionInfo()
 >  [15] Rsamtools_2.28.0            RCurl_1.98-1.20            
 >  [17] htmltools_0.5.9             S4Arrays_1.12.1            
 >  [19] curl_8.0.0                  SparseArray_1.12.3         
->  [21] sass_0.4.10                 consensusRegions_0.99.2    
+>  [21] sass_0.4.10                 consensusRegions_0.99.3    
 >  [23] bslib_0.12.0                htmlwidgets_1.6.4          
 >  [25] desc_1.4.3                  cachem_1.1.0               
 >  [27] GenomicAlignments_1.48.0    commonmark_2.0.0           

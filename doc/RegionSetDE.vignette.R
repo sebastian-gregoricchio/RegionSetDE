@@ -76,7 +76,7 @@ loadBlacklist("hg38", verbose = FALSE)
 #              pairedEnd = FALSE,
 #              fragmentLength = 180,
 #              minMapq = 10,
-#              nThreads = 4)
+#              BPPARAM = 4)
 
 ## ----count_reads_exclude, eval = FALSE----------------------------------------
 # bamChromosomes <- names(Rsamtools::scanBamHeader(bamPaths[1])[[1]]$targets)
@@ -86,7 +86,7 @@ loadBlacklist("hg38", verbose = FALSE)
 #   countReads(regions,
 #              bamFiles = bamPaths,
 #              excludeChromosomes = c("chrM", "chrY", extraContigs),
-#              nThreads = 4)
+#              BPPARAM = 4)
 
 ## ----counts_structure---------------------------------------------------------
 counts <- loadExampleData("counts", verbose = FALSE)
@@ -108,7 +108,7 @@ countingLevel(counts)
 genomeAssembly(counts)
 
 ## ----count_background, eval = FALSE-------------------------------------------
-# counts <- countBackground(counts, binSize = 10000, nThreads = 4)
+# counts <- countBackground(counts, binSize = 10000, BPPARAM = 4)
 
 ## ----background_access--------------------------------------------------------
 backgroundBins <- S4Vectors::metadata(counts)$background
@@ -169,6 +169,8 @@ fit
 fitCounts(fit)
 
 class(fitObject(fit))
+
+fitEngine(fit)
 
 ## ----plot_universe, fig.height = 4--------------------------------------------
 setResults <- testRegionSets(fit = fit,
@@ -432,17 +434,20 @@ nullDispersion$dispersion
 
 nullDispersion$bcv
 
-## ----single_sample_supplied, eval = FALSE-------------------------------------
-# singleFit <- fitRegions(singleCounts,
-#                         design = ~ condition,
-#                         dispersion = nullDispersion)
-# 
-# # Or a bare number, when it comes from somewhere else entirely
-# singleFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04)
-# 
-# # Or a region set believed to be invariant, rather than the background bins
-# singleFit <- fitRegions(singleCounts, design = ~ condition,
-#                         dispersion = "regionSet", nullRegionSets = "intergenic")
+## ----single_sample_supplied---------------------------------------------------
+suppliedFit <- fitRegions(singleCounts,
+                          design = ~ condition,
+                          dispersion = nullDispersion,
+                          verbose = FALSE)
+
+# Or a bare number, when it comes from somewhere else entirely
+fixedFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04, verbose = FALSE)
+
+dispersionInfo(fixedFit)$common
+
+## ----single_sample_region_set, eval = FALSE-----------------------------------
+# invariantFit <- fitRegions(singleCounts, design = ~ condition,
+#                            dispersion = "regionSet", nullRegionSets = "intergenic")
 
 ## ----single_sample_calibration, fig.height = 4--------------------------------
 singleCalibration <-

@@ -103,7 +103,7 @@
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>A blacklist applied to an object that already stores one adds to it. The <code>blacklist</code> slot then holds the two lists merged, and the <code>filtering.log</code> one step per call, so nothing is lost when an assay-specific list follows the ENCODE one. <code><a href="countReads.html">countReads</a></code> reads the stored blacklist to leave its reads out of the counts and of the library sizes.</p>
+    <p>A blacklist applied to an object that already stores one adds to it. The <code>blacklist</code> slot (read with <code><a href="provenanceAccessors.html">blacklistRanges</a></code>) then holds the two lists merged, and the <code>filtering.log</code> one step per call, so nothing is lost when an assay-specific list follows the ENCODE one. <code><a href="countReads.html">countReads</a></code> reads the stored blacklist to leave its reads out of the counts and of the library sizes.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -120,8 +120,9 @@
 <span class="r-in"><span><span class="va">exclusionRegions</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"exclusionRegions"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="splitLoadRegions.html">splitLoadRegions</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu">GenomicRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/GenomicRanges/man/makeGRangesFromDataFrame.html" class="external-link">makeGRangesFromDataFrame</a></span><span class="op">(</span><span class="va">regionTable</span>, keep.extra.columns <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  splitBy <span class="op">=</span> <span class="st">"setName"</span>, genomeAssembly <span class="op">=</span> <span class="st">"rn4"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu">GenomicRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/GenomicRanges/man/makeGRangesFromDataFrame.html" class="external-link">makeGRangesFromDataFrame</a></span><span class="op">(</span><span class="va">regionTable</span>, keep.extra.columns <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    splitBy <span class="op">=</span> <span class="st">"setName"</span>, genomeAssembly <span class="op">=</span> <span class="st">"rn4"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The example regions are shipped before the filtering, so this removes rows</span></span></span>
 <span class="r-in"><span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu">applyBlacklist</span><span class="op">(</span><span class="va">regions</span>, blacklist <span class="op">=</span> <span class="va">exclusionRegions</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
@@ -141,7 +142,7 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> Whitelist:  not applied</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Filtering steps: blacklist</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> (see the 'filtering.log' slot for the details)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (see filteringLog() for the details)</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

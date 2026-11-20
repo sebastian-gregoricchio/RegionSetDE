@@ -44,7 +44,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.binnedSignal</span><span class="op">(</span><span class="va">files</span>, <span class="va">type</span>, <span class="va">windows</span>, <span class="va">binWidth</span>, <span class="va">counts</span>, nThreads <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.binnedSignal</span><span class="op">(</span><span class="va">files</span>, <span class="va">type</span>, <span class="va">windows</span>, <span class="va">binWidth</span>, <span class="va">counts</span>, BPPARAM <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -71,8 +71,8 @@
 <dd><p><code>RegionSetDE.counts</code> object, whose counting parameters are used for BAM files.</p></dd>
 
 
-<dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
-<dd><p>Number of threads, one file per thread.</p></dd>
+<dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
+<dd><p><code>BiocParallelParam</code> object, number of cores or <code>NULL</code>, as taken by <code>.resolveBPPARAM</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

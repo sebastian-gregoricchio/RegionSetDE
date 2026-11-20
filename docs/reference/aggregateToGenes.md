@@ -168,7 +168,9 @@ link itself is used as it is, whatever it measures, which is what
 records. Failing that, the distance to the start site is turned into
 `exp(-d / decay)`, which is a guess about contact rather than a measure
 of it. Failing both, every region of a gene counts the same. Which of
-the three applied is in the `weighting` slot and is printed by `show`.
+the three applied is in the `weighting` slot (read with
+[`geneWeighting`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneResultsAccessors.md))
+and is printed by `show`.
 
 Two things this does not fix, both worth a line in the methods. Genes
 are not independent here: a region linked to three genes contributes to
@@ -182,6 +184,11 @@ the comparison to run when it matters.
 A tiled result that was not combined back to regions is refused, since
 its rows are tiles and a gene would then be weighted by how finely its
 regions were cut. Test it with `combine = TRUE` first.
+
+## References
+
+Simes R.J. (1986). An improved Bonferroni procedure for multiple tests
+of significance. *Biometrika* 73(3):751-754.
 
 ## See also
 
@@ -202,14 +209,17 @@ fit <- loadExampleData("fit", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 # Links of your own, four regions per gene
-regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fit@counts))[, 1:3]
+regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fitCounts(fit)))[, 1:3]
 geneNumber <- ceiling(nrow(regionTable) / 4)
 
 annotatedFit <- annotateRegions(fit,
-                                linkTable = data.frame(regionTable,
-                                                       gene.id = rep(paste0("gene", seq_len(geneNumber)),
-                                                                     each = 4)[seq_len(nrow(regionTable))]),
-                                verbose = FALSE)
+    linkTable = data.frame(regionTable,
+        gene.id = rep(paste0("gene", seq_len(geneNumber)),
+            each = 4
+        )[seq_len(nrow(regionTable))]
+    ),
+    verbose = FALSE
+)
 
 results <- testRegions(annotatedFit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
 

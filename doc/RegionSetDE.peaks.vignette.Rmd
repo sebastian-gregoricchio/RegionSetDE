@@ -45,6 +45,20 @@ The two differ in what they take as given. When the regions come from an annotat
 
 <br>
 
+## Installation
+
+The consensus of the peak calls is built by *consensusRegions*, which is installed next to *RegionSetDE*:
+
+```{r installation, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install(c("RegionSetDE", "consensusRegions"))
+```
+
+<br>
+
 ----------------------------------------------------------
 
 # **The example dataset** {#dataset}
@@ -194,7 +208,7 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 blacklist = blacklist,
                                 greylist = greylist,
                                 seqlevelsStyle = "Ensembl",
-                                nThreads = 1)
+                                BPPARAM = 1)
 
 consensus
 ```
@@ -224,7 +238,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
-                                      nThreads = 1,
+                                      BPPARAM = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -344,7 +358,7 @@ The sheet names an input for every sample, so the input is counted as well, over
 countTable(counts, input = TRUE, format = "matrix")[1:3, 1:3]
 ```
 
-Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of which can be changed through `removeDuplicates` and `minMapq`. `excludeChromosomes` leaves chromosomes out of the library sizes, the mitochondrial genome in ATAC-seq above all, and accepts the names in either style. The files are read one after the other here, the slices being small; on whole-genome BAMs `nThreads` spreads them over several workers.
+Duplicates are dropped and reads below `MAPQ` 20 are ignored, both of which can be changed through `removeDuplicates` and `minMapq`. `excludeChromosomes` leaves chromosomes out of the library sizes, the mitochondrial genome in ATAC-seq above all, and accepts the names in either style. The files are read one after the other here, the slices being small; on whole-genome BAMs `BPPARAM`, a number of cores or a `BiocParallelParam` object, spreads them over several workers.
 
 <br>
 
@@ -791,9 +805,9 @@ The reverse case deserves its own look. A region called in both conditions and s
 
 ## Writing the results out
 
-```{r export, eval = FALSE}
+```{r export}
 exportResults(results,
-              path = "results",
+              path = file.path(tempdir(), "results"),
               onlyChanging = TRUE,
               splitByDirection = TRUE)
 ```
@@ -818,9 +832,9 @@ One row per region, one number per sample. The test asks whether the region as a
 
 ## Tiles
 
-`tileWidth` cuts every region into tiles of that width, and each tile becomes a row of its own. The code of this part is shown, not run.
+`tileWidth` cuts every region into tiles of that width, and each tile becomes a row of its own.
 
-```{r tiles_count, eval = FALSE}
+```{r tiles_count}
 tiledCounts <- countReads(consensus,
                           sampleSheet = sampleSheet,
                           tileWidth = 200)
@@ -828,7 +842,7 @@ tiledCounts <- countReads(consensus,
 
 From there the steps are the usual ones, background, normalisation and fit, and `testRegions()` recognises the tiled object. Every tile is tested on its own and the p-values are then combined back into one per region, so the results keep one row per region and the region stays the unit of inference.
 
-```{r tiles_test, eval = FALSE}
+```{r tiles_test}
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
 tiledCounts <- normalizeCounts(tiledCounts, method = "background")
 
@@ -838,8 +852,8 @@ tiledResults <- testRegions(tiledFit,
                             contrast = c("condition", "R1881_24h", "DMSO"),
                             combineMethod = "simes")
 
-resultsTable(tiledResults)     # one row per region
-tileTable(tiledResults)        # one row per tile
+head(resultsTable(tiledResults), 3)     # one row per region
+head(tileTable(tiledResults), 3)        # one row per tile
 ```
 
 Tiles are worth it when the shape of a region matters and not only its total:

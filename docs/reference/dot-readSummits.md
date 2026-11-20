@@ -17,7 +17,7 @@ to the height of its pileup over its depth.
   removeDuplicates,
   discardRegions,
   progressBar = FALSE,
-  nThreads
+  BPPARAM
 )
 ```
 
@@ -63,9 +63,10 @@ to the height of its pileup over its depth.
   Logical value to indicate whether a progress bar must be drawn, one
   step for every file. Default: `FALSE`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads.
+  `BiocParallelParam` object, number of cores or `NULL`, as taken by
+  `.resolveBPPARAM`.
 
 ## Value
 

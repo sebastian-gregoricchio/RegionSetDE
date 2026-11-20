@@ -80,8 +80,10 @@ counts are stored in the corresponding slots.
 ## Details
 
 A second whitelist restricts the first one: the regions left overlap
-both lists. The `whitelist` slot then holds the stretches the two lists
-have in common, and the `filtering.log` one step per call.
+both lists. The `whitelist` slot (read with
+[`whitelistRanges`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md))
+then holds the stretches the two lists have in common, and the
+`filtering.log` one step per call.
 
 ## See also
 
@@ -98,13 +100,15 @@ Sebastian Gregoricchio
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
 regions <- splitLoadRegions(
-  GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-  splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 # Restrict the analysis to the first half of the chromosome
 whitelist <- GenomicRanges::GRanges(
-  seqnames = "chr12",
-  ranges = IRanges::IRanges(start = 1, end = 25e6))
+    seqnames = "chr12",
+    ranges = IRanges::IRanges(start = 1, end = 25e6)
+)
 
 regions <- applyWhitelist(regions, whitelist = whitelist, verbose = FALSE)
 regions
@@ -123,5 +127,5 @@ regions
 #> Whitelist:  applied (1 regions)
 #> 
 #> Filtering steps: whitelist
-#> (see the 'filtering.log' slot for the details)
+#> (see filteringLog() for the details)
 ```

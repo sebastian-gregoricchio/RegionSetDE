@@ -69,7 +69,7 @@
 <span>  countInput <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  summits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  summitSource <span class="op">=</span> <span class="st">"reads"</span>,</span>
-<span>  nThreads <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  BPPARAM <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progressBar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -175,12 +175,12 @@
 <dd><p>String with where the summits are taken from: <code>"reads"</code>, the highest point of the fragment pileup of the samples, or <code>"peaks"</code>, the summits written by the peak caller in the narrowPeak files of a consensus built by <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>. Default: <code>"reads"</code>.</p></dd>
 
 
-<dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
-<dd><p>Number of threads. The files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file benefits from several of them. Default: <code>1</code>.</p></dd>
+<dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
+<dd><p>A <code>BiocParallelParam</code> object, used as it is, or a number of cores as a shorthand for one. The files are cut into pieces of at most 50 Mb, shared among the workers, so even a single file benefits from several of them. Default: <code>NULL</code>, a <code><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">BiocParallel::SerialParam()</a></code>, so that nothing runs in parallel unasked.</p></dd>
 
 
 <dt id="arg-progressbar">progressBar<a class="anchor" aria-label="anchor" href="#arg-progressbar"></a></dt>
-<dd><p>Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the threads hand them back, and it is drawn only when <code>verbose = TRUE</code>. Default: <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code>, which keeps it out of scripts and rendered documents.</p></dd>
+<dd><p>Logical value to indicate whether a progress bar must be drawn while the files are read. It advances with the pieces of the files as the workers hand them back, and it is drawn only when <code>verbose = TRUE</code>. A <code>BPPARAM</code> given as a <code>BiocParallelParam</code> object keeps its own <code>progressbar</code> setting. Default: <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code>, which keeps it out of scripts and rendered documents.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -189,7 +189,7 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>RegionSetDE.counts</code> object with one row per region, or per tile, and one column per sample. The library sizes are stored in the <code>library.size</code> column of the <code>colData</code>, the set membership in the <code>region.set</code> column of the <code>rowData</code>, and the length the single-end reads were extended to in <code>fragment.length</code> (<code>NA</code> for paired-end samples). With inputs, the <code>input</code> assay holds for every sample the counts of its input over the same rows (<code>NA</code> for a sample without one), and the <code>colData</code> gains <code>input.id</code> and <code>input.library.size</code>. With <code>summits</code>, the <code>rowData</code> gains <code>summit</code>, the position of the summit of every region. When reads were discarded, the <code>colData</code> gains <code>discarded.reads</code>, the fragments each sample lost to the discarded regions, and <code>metadata(x)$discard.regions</code> holds those regions, which <code><a href="countBackground.html">countBackground</a></code>, <code><a href="countGreenlist.html">countGreenlist</a></code> and <code><a href="computeProfiles.html">computeProfiles</a></code> read. A greylist built by this call is kept in <code>metadata(x)$greylist</code> as <code><a href="makeGreylist.html">makeGreylist</a></code> returned it. The lists applied, here or before, are in the <code>blacklist</code> and <code>greylist</code> slots.</p>
+    <p>A <code>RegionSetDE.counts</code> object with one row per region, or per tile, and one column per sample. The library sizes are stored in the <code>library.size</code> column of the <code>colData</code>, the set membership in the <code>region.set</code> column of the <code>rowData</code>, and the length the single-end reads were extended to in <code>fragment.length</code> (<code>NA</code> for paired-end samples). With inputs, the <code>input</code> assay holds for every sample the counts of its input over the same rows (<code>NA</code> for a sample without one), and the <code>colData</code> gains <code>input.id</code> and <code>input.library.size</code>. With <code>summits</code>, the <code>rowData</code> gains <code>summit</code>, the position of the summit of every region. When reads were discarded, the <code>colData</code> gains <code>discarded.reads</code>, the fragments each sample lost to the discarded regions, and <code>metadata(x)$discard.regions</code> holds those regions, which <code><a href="countBackground.html">countBackground</a></code>, <code><a href="countGreenlist.html">countGreenlist</a></code> and <code><a href="computeProfiles.html">computeProfiles</a></code> read. A greylist built by this call is kept in <code>metadata(x)$greylist</code> as <code><a href="makeGreylist.html">makeGreylist</a></code> returned it. The lists applied, here or before, are in the <code>blacklist</code> and <code>greylist</code> slots (read with <code><a href="provenanceAccessors.html">greylistRanges</a></code>).</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -249,10 +249,11 @@
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The same files given one by one, with the annotation as a table and no input</span></span></span>
 <span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">countReads</span><span class="op">(</span><span class="va">peakRegions</span>,</span></span>
-<span class="r-in"><span>                     bamFiles <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">bam</span>,</span></span>
-<span class="r-in"><span>                     sampleNames <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">sample</span>,</span></span>
-<span class="r-in"><span>                     sampleMetadata <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sample"</span>, <span class="st">"condition"</span><span class="op">)</span><span class="op">]</span>,</span></span>
-<span class="r-in"><span>                     verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    bamFiles <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">bam</span>,</span></span>
+<span class="r-in"><span>    sampleNames <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">$</span><span class="va">sample</span>,</span></span>
+<span class="r-in"><span>    sampleMetadata <span class="op">=</span> <span class="va">sampleSheet</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sample"</span>, <span class="st">"condition"</span><span class="op">)</span><span class="op">]</span>,</span></span>
+<span class="r-in"><span>    verbose <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The ENCODE blacklist on the way: its regions are removed and its reads ignored</span></span></span>
 <span class="r-in"><span><span class="va">blacklist</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadBlacklist.html">loadBlacklist</a></span><span class="op">(</span><span class="st">"hg38"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>

@@ -54,7 +54,7 @@
 <span>  <span class="va">removeDuplicates</span>,</span>
 <span>  discardRegions <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progressBar <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  nThreads <span class="op">=</span> <span class="fl">1</span></span>
+<span>  BPPARAM <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -98,8 +98,8 @@
 <dd><p>Logical value to indicate whether a progress bar must be drawn, one step for every file. Default: <code>FALSE</code>.</p></dd>
 
 
-<dt id="arg-nthreads">nThreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
-<dd><p>Number of threads, one file per thread. Default: <code>1</code>.</p></dd>
+<dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
+<dd><p>A <code>BiocParallelParam</code> object, used as it is, or a number of cores as a shorthand for one. One file goes to each worker. Default: <code>NULL</code>, a <code><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">BiocParallel::SerialParam()</a></code>, so that nothing runs in parallel unasked.</p></dd>
 
 </dl></div>
     <div class="section level2">

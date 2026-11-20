@@ -29,7 +29,7 @@ computeProfiles(
   binWidth = 50,
   centre = "summit",
   useOffsets = TRUE,
-  nThreads = 1,
+  BPPARAM = NULL,
   verbose = TRUE
 )
 ```
@@ -156,9 +156,12 @@ computeProfiles(
   `FALSE` scaling it by the library sizes alone. Ignored for bigWig
   files, whose signal is taken as it is. Default: `TRUE`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads, one file per thread. Default: `1`.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. One file goes to each worker. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 - verbose:
 

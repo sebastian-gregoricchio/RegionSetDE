@@ -80,9 +80,11 @@ counts are stored in the corresponding slots.
 ## Details
 
 A blacklist applied to an object that already stores one adds to it. The
-`blacklist` slot then holds the two lists merged, and the
-`filtering.log` one step per call, so nothing is lost when an
-assay-specific list follows the ENCODE one.
+`blacklist` slot (read with
+[`blacklistRanges`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md))
+then holds the two lists merged, and the `filtering.log` one step per
+call, so nothing is lost when an assay-specific list follows the ENCODE
+one.
 [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
 reads the stored blacklist to leave its reads out of the counts and of
 the library sizes.
@@ -106,8 +108,9 @@ regionTable <- loadExampleData("regions", verbose = FALSE)
 exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
 
 regions <- splitLoadRegions(
-  GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-  splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 # The example regions are shipped before the filtering, so this removes rows
 regions <- applyBlacklist(regions, blacklist = exclusionRegions, verbose = FALSE)
@@ -127,5 +130,5 @@ regions
 #> Whitelist:  not applied
 #> 
 #> Filtering steps: blacklist
-#> (see the 'filtering.log' slot for the details)
+#> (see filteringLog() for the details)
 ```

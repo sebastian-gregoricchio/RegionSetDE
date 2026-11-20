@@ -45,7 +45,8 @@ estimated under the same formula.
 
 - BPPARAM:
 
-  `BiocParallelParam` object, or `NULL`.
+  `BiocParallelParam` object, number of cores or `NULL`, as taken by
+  `.resolveBPPARAM`.
 
 ## Value
 

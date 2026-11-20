@@ -10,12 +10,13 @@ before the effect size does.
 
 - `results`:
 
-  Data.frame with one row per region set, or per pair of sets for a set
-  contrast.
+  `DataFrame` with one row per region set, or per pair of sets for a set
+  contrast. Read it with
+  [`resultsTable`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md).
 
 - `regionStats`:
 
-  Data.frame with the per-region statistics the set level test was
+  `DataFrame` with the per-region statistics the set level test was
   computed on.
 
 - `contrast`:

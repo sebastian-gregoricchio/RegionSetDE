@@ -45,6 +45,10 @@ The second level is the reason the package exists. A great deal of chromatin bio
 
 Because no peak calling happens anywhere in the pipeline, the region definitions come from you and stay fixed across conditions. Nothing is redefined when the signal moves, which is what makes a redistribution visible instead of being absorbed into a new set of peak boundaries.
 
+## Other Bioconductor packages
+
+Bioconductor already has several tools for differential binding, and they differ from this one in where the regions come from and in what is tested. *DiffBind* builds a consensus of the peak calls, counts the reads over every consensus peak and tests one peak at a time with *DESeq2* or *edgeR*. *csaw* counts in sliding windows, merges neighbouring windows into regions and combines their p-values, so that the FDR is controlled over regions rather than windows. In both, the regions are found in the data, and the unit of the test is a single region. *RegionSetDE* takes the regions as given and adds a test over a whole set, in the spirit of the `camera` and `fry` gene set tests of *limma*, from the same fit that gives the region-level results. When the regions do have to come from peak calls, *consensusRegions* builds them, and the [second vignette](RegionSetDE.peaks.vignette.html) shows how.
+
 <br>
 
 ## What this vignette covers
@@ -131,18 +135,18 @@ regions <- splitLoadRegions(regionRanges,
 regions
 ```
 
-The result is an S4 object of class `RegionSetDE`. The slots that matter in an analysis have an accessor:
+The result is an S4 object of class `RegionSetDE`. Every slot has an accessor, and the accessors are the way to read an object, since the slots may change between versions while the accessors stay:
 
 | Slot | Accessor | Description |
 | ---------------: | :---------- | :---------- |
 | *regions*         | `regionRanges()`   | `GRangesList` with one element per region set, named |
-| *blacklist*       |                    | the exclusion regions applied, `NULL` until `applyBlacklist()` runs |
-| *greylist*        |                    | the greylisted regions, `NULL` until `applyGreylist()` runs |
-| *whitelist*       |                    | the regions kept, `NULL` until `applyWhitelist()` runs |
+| *blacklist*       | `blacklistRanges()` | the exclusion regions applied, `NULL` until `applyBlacklist()` runs |
+| *greylist*        | `greylistRanges()` | the greylisted regions, `NULL` until `applyGreylist()` runs |
+| *whitelist*       | `whitelistRanges()` | the regions kept, `NULL` until `applyWhitelist()` runs |
 | *genome.assembly* | `genomeAssembly()` | assembly string, or `NULL` |
-| *seqlevels.style* |                    | naming style the sets were harmonised to |
+| *seqlevels.style* | `chromosomeStyle()` | naming style the sets were harmonised to |
 | *filtering.log*   | `filteringLog()`   | one row per filtering step, with how many regions each set lost |
-| *parameters*      |                    | the arguments of every call that touched the object |
+| *parameters*      | `parameterLog()`   | the arguments of every call that touched the object |
 | *consensus*       | `consensusData()`  | the consensus data when the regions come from peaks through `loadConsensusPeaks()`, empty otherwise |
 
 The set names come back from `regionSetNames()`, and the regions themselves from `regionRanges()`:
@@ -207,10 +211,10 @@ counts <-
              pairedEnd = FALSE,
              fragmentLength = 180,
              minMapq = 10,
-             nThreads = 4)
+             BPPARAM = 4)
 ```
 
-Paired-end libraries are counted as fragments: a fragment counts in every region it overlaps, the stretch between its two reads included. The BAM files are cut into pieces of at most 50 Mb, shared among the threads, so even a single file runs faster with a larger `nThreads`.
+Paired-end libraries are counted as fragments: a fragment counts in every region it overlaps, the stretch between its two reads included. The BAM files are cut into pieces of at most 50 Mb, shared among the workers, so even a single file runs faster on more cores. `BPPARAM` takes a number of cores, as here, or any `BiocParallelParam` object, `BiocParallel::MulticoreParam(4)` or a cluster back end for instance, which is used as it is. Left out, everything runs on one core.
 
 The counts and the library sizes are two separate things. Every region is counted, wherever it lies, and the counts only need the chromosomes carrying regions. The library sizes, instead, are meant to measure the whole library, so by default every chromosome is read, including those without any region. Some chromosomes are better left out of that total: the mitochondrial genome in ATAC-seq, whose share of the reads changes from sample to sample, chrY when the samples differ in sex, or the unplaced and alternative contigs. `excludeChromosomes` takes them out of the library sizes, and later out of the background bins, while the regions lying on them are still counted. The names follow the BAM files, and the contigs can be collected from their header:
 
@@ -222,7 +226,7 @@ counts <-
   countReads(regions,
              bamFiles = bamPaths,
              excludeChromosomes = c("chrM", "chrY", extraContigs),
-             nThreads = 4)
+             BPPARAM = 4)
 ```
 
 When only a few regions are needed, `fullLibrarySize = FALSE` limits the reading to the chromosomes carrying them. The counts stay the same and come back in seconds, but the library sizes cover those chromosomes only, and `normalizeCounts()` warns if the chosen method depends on them.
@@ -264,7 +268,7 @@ genomeAssembly(counts)
 `countBackground()` counts the same libraries over wide bins tiling the genome, by default 10 kb, excluding the regions under analysis and the chromosomes left out with `excludeChromosomes`. Those bins are the closest thing available to a set of rows known to carry no biological effect, and three separate steps use them: normalisation, filtering, and the calibration checks.
 
 ```{r count_background, eval = FALSE}
-counts <- countBackground(counts, binSize = 10000, nThreads = 4)
+counts <- countBackground(counts, binSize = 10000, BPPARAM = 4)
 ```
 
 They live in the metadata of the object and can be inspected like any matrix:
@@ -394,23 +398,24 @@ The engines are not interchangeable in the way a menu suggests. `"edgeR"` is the
 
 The `RegionSetDE.fit` object holds:
 
-| Slot | Description |
-| ---------------: | :---------- |
-| *fit*            | list with the engine's own fit object |
-| *engine*         | which engine produced it |
-| *design*         | the design matrix |
-| *design.formula* | the formula it came from |
-| *dispersion*     | the dispersion used, and where it came from |
-| *counts*         | the `RegionSetDE.counts` the model was fitted on, filtering included |
-| *universe*       | the comparison rows for the set-level test, built once here |
-| *samples*        | the samples that entered the fit |
-
-Two accessors avoid reaching into the slots:
+| Slot | Accessor | Description |
+| ---------------: | :---------- | :---------- |
+| *fit*            | `fitComponents()`, `fitObject()` | list with the engine's own fit object, which `fitObject()` returns alone |
+| *engine*         | `fitEngine()`      | which engine produced it |
+| *design*         | `designMatrix()`, `design()` | the design matrix |
+| *design.formula* | `designFormula()`  | the formula it came from |
+| *blocking*       | `blockingInfo()`   | the blocking variable and the random effects, when there are any |
+| *dispersion*     | `dispersionInfo()` | the dispersion used, and where it came from |
+| *counts*         | `fitCounts()`, `counts()` | the `RegionSetDE.counts` the model was fitted on, filtering included; `counts()` gives the raw matrix |
+| *universe*       | `setUniverse()`    | the comparison rows for the set-level test, built once here |
+| *samples*        | `fitSamples()`     | the samples that entered the fit |
 
 ```{r fit_accessors}
 fitCounts(fit)
 
 class(fitObject(fit))
+
+fitEngine(fit)
 ```
 
 <br>
@@ -1011,17 +1016,23 @@ The biological coefficient of variation is the number to read, since it sits on 
 
 The result is passed back in, which is also how you would supply a dispersion taken from a previous experiment or from the literature:
 
-```{r single_sample_supplied, eval = FALSE}
-singleFit <- fitRegions(singleCounts,
-                        design = ~ condition,
-                        dispersion = nullDispersion)
+```{r single_sample_supplied}
+suppliedFit <- fitRegions(singleCounts,
+                          design = ~ condition,
+                          dispersion = nullDispersion,
+                          verbose = FALSE)
 
 # Or a bare number, when it comes from somewhere else entirely
-singleFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04)
+fixedFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04, verbose = FALSE)
 
-# Or a region set believed to be invariant, rather than the background bins
-singleFit <- fitRegions(singleCounts, design = ~ condition,
-                        dispersion = "regionSet", nullRegionSets = "intergenic")
+dispersionInfo(fixedFit)$common
+```
+
+A region set believed to be invariant can stand in for the background bins. In the example the intergenic windows are too weakly covered for it, so this one is shown and not run:
+
+```{r single_sample_region_set, eval = FALSE}
+invariantFit <- fitRegions(singleCounts, design = ~ condition,
+                           dispersion = "regionSet", nullRegionSets = "intergenic")
 ```
 
 
@@ -1159,7 +1170,7 @@ list.files(outputDirectory)
 
 Three kinds of file come out. The TSV holds the results table. The BED holds the same regions with zero-based starts, as the format requires, so its coordinates sit one lower than the TSV; with `colourByStatus` it carries nine columns and an item colour per direction, which is what makes a genome browser show increasing and decreasing regions apart without a second file. The score maps `-log10(FDR)` onto the range the format allows and saturates at the top, so 1000 means *at least that*, not *exactly that*.
 
-The parameters file is the one worth keeping. It flattens everything the object carries in its `parameters` slot into one parameter per line: counting level, normalisation method and factors, filter and threshold, engine, design, contrast, correction, and on a fit with no replicates the dispersion and its source.
+The parameters file is the one worth keeping. It flattens everything the object carries in its `parameters` slot, the list `parameterLog()` returns, into one parameter per line: counting level, normalisation method and factors, filter and threshold, engine, design, contrast, correction, and on a fit with no replicates the dispersion and its source.
 
 ```{r read_provenance}
 parameterFile <- list.files(outputDirectory,

@@ -198,6 +198,232 @@ loadConsensusPeaks <-
         #-------------------------------#
         # Samples and groups            #
         #-------------------------------#
+        sampleTable <- .consensusSampleTable(
+            sampleSheet = sampleSheet,
+            groupBy = groupBy,
+            technicalBy = technicalBy,
+            verbose = verbose
+        )
+
+        # The levels of a factor are the order the user chose, otherwise the groups follow the sheet
+        groupLevels <- if (!is.null(groupBy) && is.factor(sampleSheet[[groupBy]])) {
+            intersect(levels(sampleSheet[[groupBy]]), sampleTable$group)
+        } else {
+            unique(sampleTable$group)
+        }
+
+        # Recentring works within a group, and the union merges the overlapping windows of different groups back
+        if (isTRUE(consensusArguments$recentre) & length(groupLevels) > 1) {
+            warning("Recentred regions of different groups overlap and are merged back by the union, so the total consensus will not have a fixed width.", call. = FALSE)
+        }
+
+        #-------------------------------#
+        # Read and clean the peaks      #
+        #-------------------------------#
+        peakList <- consensusRegions::readPeakSets(
+            peaks = sampleTable$peak.file,
+            sampleNames = sampleTable$sample,
+            seqlevelsStyle = seqlevelsStyle,
+            verbose = FALSE
+        )
+
+        sampleTable$n.peaks <- as.integer(lengths(peakList))
+
+        #-------------------------------#
+        # Blacklist, then greylist      #
+        #-------------------------------#
+        # An artefact next to a genuine peak would merge with it, so both lists act before the consensus.
+        # The greylist sees only the peaks the blacklist left, so a peak on both is counted once, as blacklisted.
+        exclusionStep <- .excludeListedPeaks(
+            blacklist = blacklist,
+            greylist = greylist,
+            seqlevelsStyle = seqlevelsStyle,
+            genomeAssembly = genomeAssembly,
+            verbose = verbose,
+            peakList = peakList,
+            sampleTable = sampleTable
+        )
+        filteringSteps <- exclusionStep$filteringSteps
+        listRanges <- exclusionStep$listRanges
+        peakList <- exclusionStep$peakList
+        removedPeaks <- exclusionStep$removedPeaks
+        sampleTable <- exclusionStep$sampleTable
+
+        #-------------------------------#
+        # Join the technical replicates #
+        #-------------------------------#
+        # Without technicalBy every library is its own biological sample and its peaks go on unchanged
+        technicalStep <- .biologicalPeakSets(
+            technicalBy = technicalBy,
+            technicalArguments = technicalArguments,
+            seqlevelsStyle = seqlevelsStyle,
+            BPPARAM = BPPARAM,
+            verbose = verbose,
+            peakList = peakList,
+            sampleTable = sampleTable
+        )
+        biologicalPeaks <- technicalStep$biologicalPeaks
+        biologicalTable <- technicalStep$biologicalTable
+        technicalObjects <- technicalStep$technicalObjects
+
+        #-------------------------------#
+        # Consensus of every group      #
+        #-------------------------------#
+        consensusStep <- .groupConsensusList(
+            technicalBy = technicalBy,
+            seqlevelsStyle = seqlevelsStyle,
+            BPPARAM = BPPARAM,
+            seed = seed,
+            verbose = verbose,
+            biologicalPeaks = biologicalPeaks,
+            biologicalTable = biologicalTable,
+            consensusArguments = consensusArguments,
+            groupLevels = groupLevels,
+            sampleTable = sampleTable
+        )
+        consensusObjects <- consensusStep$consensusObjects
+        groupConsensus <- consensusStep$groupConsensus
+        recordedSeed <- consensusStep$recordedSeed
+        seedSource <- consensusStep$seedSource
+
+        #-------------------------------#
+        # Total consensus               #
+        #-------------------------------#
+        totalConsensus <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(groupConsensus)), use.names = FALSE), ignore.strand = TRUE)
+
+        if (length(totalConsensus) == 0) {
+            stop("No consensus region was found in any group.", call. = FALSE)
+        }
+
+        if (isTRUE(verbose)) {
+            message("Total consensus: ", length(totalConsensus), " regions from ", length(groupLevels), " groups.")
+        }
+
+        #-------------------------------#
+        # Regions of the user           #
+        #-------------------------------#
+        regionStep <- .consensusRegionList(
+            technicalBy = technicalBy,
+            regionSets = regionSets,
+            regionMode = regionMode,
+            unassignedSet = unassignedSet,
+            seqlevelsStyle = seqlevelsStyle,
+            genomeAssembly = genomeAssembly,
+            verbose = verbose,
+            biologicalPeaks = biologicalPeaks,
+            groupConsensus = groupConsensus,
+            peakList = peakList,
+            totalConsensus = totalConsensus
+        )
+        analysisMode <- regionStep$analysisMode
+        regionList <- regionStep$regionList
+
+        regionSet <- loadRegions(
+            regions = regionList,
+            keepMetadata = TRUE,
+            seqlevelsStyle = seqlevelsStyle,
+            genomeAssembly = genomeAssembly,
+            verbose = FALSE
+        )
+
+        #-------------------------------#
+        # Keep the consensus data       #
+        #-------------------------------#
+        consensusData(regionSet) <- list(
+            groups = groupConsensus,
+            objects = consensusObjects,
+            technical = technicalObjects,
+            total = totalConsensus,
+            peaks = peakList,
+            removed = removedPeaks,
+            samples = sampleTable,
+            sheet = sampleSheet,
+            groupBy = groupBy,
+            technicalBy = technicalBy,
+            mode = analysisMode,
+            blacklist = listRanges$blacklist,
+            greylist = listRanges$greylist
+        )
+
+        # Recorded as applyBlacklist and applyGreylist record them, so the lists follow the object downstream
+        if (!is.null(listRanges$blacklist)) {
+            blacklistRanges(regionSet) <- listRanges$blacklist
+        }
+
+        if (!is.null(listRanges$greylist)) {
+            greylistRanges(regionSet) <- listRanges$greylist
+            parameterLog(regionSet)$greylist <- list(
+                n.regions = length(listRanges$greylist),
+                covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))),
+                applied.to = "peaks"
+            )
+        }
+
+        if (length(filteringSteps) > 0) {
+            filteringLog(regionSet) <- rbind(filteringLog(regionSet), do.call(what = rbind, args = unname(filteringSteps)))
+        }
+
+        # Only plain values go to the parameters, a BiocParallel object has no place in an exported record
+        parameterLog(regionSet)$loadConsensusPeaks <- list(
+            groupBy = groupBy,
+            technicalBy = technicalBy,
+            regionMode = analysisMode,
+            unassignedSet = unassignedSet,
+            seqlevelsStyle = seqlevelsStyle,
+            n.samples = nrow(sampleTable),
+            n.biological = nrow(biologicalTable),
+            n.groups = length(groupLevels),
+            n.blacklist.regions = if (is.null(listRanges$blacklist)) {
+                0L
+            } else {
+                length(listRanges$blacklist)
+            },
+            n.greylist.regions = if (is.null(listRanges$greylist)) {
+                0L
+            } else {
+                length(listRanges$greylist)
+            },
+            seed = recordedSeed,
+            seed.source = seedSource,
+            consensusArguments = Filter(function(x) {
+                !is.null(x) && is.atomic(x)
+            }, consensusArguments),
+            technicalArguments = if (is.null(technicalBy)) {
+                NULL
+            } else {
+                Filter(function(x) {
+                    !is.null(x) && is.atomic(x)
+                }, technicalArguments)
+            }
+        )
+
+        methods::validObject(regionSet)
+        return(regionSet)
+    } # END function
+
+
+#' @title .consensusSampleTable
+#'
+#' @description Builds the table of the libraries of \code{\link{loadConsensusPeaks}}, one row per library with its peak file, group and biological sample, and checks it.
+#'
+#' @param sampleSheet Sample sheet as checked by \code{.checkLoadConsensusPeaksArguments}.
+#' @param groupBy See \code{\link{loadConsensusPeaks}}.
+#' @param technicalBy See \code{\link{loadConsensusPeaks}}.
+#' @param verbose See \code{\link{loadConsensusPeaks}}.
+#'
+#' @return A data.frame with one row per library holding a peak file.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom dplyr count distinct filter mutate
+#'
+#' @noRd
+
+.consensusSampleTable <-
+    function(sampleSheet,
+             groupBy,
+             technicalBy,
+             verbose) {
         groupValues <- if (is.null(groupBy)) {
             rep("all", nrow(sampleSheet))
         } else {
@@ -264,35 +490,41 @@ loadConsensusPeaks <-
             }
         }
 
-        # The levels of a factor are the order the user chose, otherwise the groups follow the sheet
-        groupLevels <- if (!is.null(groupBy) && is.factor(sampleSheet[[groupBy]])) {
-            intersect(levels(sampleSheet[[groupBy]]), sampleTable$group)
-        } else {
-            unique(sampleTable$group)
-        }
+        return(sampleTable)
+    }
 
-        # Recentring works within a group, and the union merges the overlapping windows of different groups back
-        if (isTRUE(consensusArguments$recentre) & length(groupLevels) > 1) {
-            warning("Recentred regions of different groups overlap and are merged back by the union, so the total consensus will not have a fixed width.", call. = FALSE)
-        }
 
-        #-------------------------------#
-        # Read and clean the peaks      #
-        #-------------------------------#
-        peakList <- consensusRegions::readPeakSets(
-            peaks = sampleTable$peak.file,
-            sampleNames = sampleTable$sample,
-            seqlevelsStyle = seqlevelsStyle,
-            verbose = FALSE
-        )
+#' @title .excludeListedPeaks
+#'
+#' @description Removes from the peaks of every library those overlapping the blacklist, then those overlapping the greylist, and records what each list removed.
+#'
+#' @param blacklist See \code{\link{loadConsensusPeaks}}.
+#' @param greylist See \code{\link{loadConsensusPeaks}}.
+#' @param seqlevelsStyle See \code{\link{loadConsensusPeaks}}.
+#' @param genomeAssembly See \code{\link{loadConsensusPeaks}}.
+#' @param verbose See \code{\link{loadConsensusPeaks}}.
+#' @param peakList List with the peaks of every library.
+#' @param sampleTable Data.frame with one row per library.
+#'
+#' @return A list with \code{peakList} and \code{sampleTable} updated, \code{listRanges}, the two lists as used, \code{removedPeaks}, the peaks removed with their sample and list, and \code{filteringSteps}, the entries of the filtering log.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomeInfoDb seqlevels
+#' @importFrom GenomicRanges GRanges GRangesList
+#' @importFrom IRanges overlapsAny
+#' @importFrom S4Vectors mcols
+#'
+#' @noRd
 
-        sampleTable$n.peaks <- as.integer(lengths(peakList))
-
-        #-------------------------------#
-        # Blacklist, then greylist      #
-        #-------------------------------#
-        # An artefact next to a genuine peak would merge with it, so both lists act before the consensus.
-        # The greylist sees only the peaks the blacklist left, so a peak on both is counted once, as blacklisted.
+.excludeListedPeaks <-
+    function(blacklist,
+             greylist,
+             seqlevelsStyle,
+             genomeAssembly,
+             verbose,
+             peakList,
+             sampleTable) {
         listRanges <- list(blacklist = NULL, greylist = NULL)
         removedList <- list()
         filteringSteps <- list()
@@ -370,10 +602,44 @@ loadConsensusPeaks <-
             unlist(GenomicRanges::GRangesList(unlist(removedList, recursive = FALSE, use.names = FALSE)), use.names = FALSE)
         }
 
-        #-------------------------------#
-        # Join the technical replicates #
-        #-------------------------------#
-        # Without technicalBy every library is its own biological sample and its peaks go on unchanged
+        return(list(
+            filteringSteps = filteringSteps,
+            listRanges = listRanges,
+            peakList = peakList,
+            removedPeaks = removedPeaks,
+            sampleTable = sampleTable
+        ))
+    }
+
+
+#' @title .biologicalPeakSets
+#'
+#' @description Joins the libraries of every biological sample of \code{\link{loadConsensusPeaks}} into one peak set, when \code{technicalBy} is given. Without it every library stands for its own sample.
+#'
+#' @param technicalBy See \code{\link{loadConsensusPeaks}}.
+#' @param technicalArguments See \code{\link{loadConsensusPeaks}}.
+#' @param seqlevelsStyle See \code{\link{loadConsensusPeaks}}.
+#' @param BPPARAM See \code{\link{loadConsensusPeaks}}.
+#' @param verbose See \code{\link{loadConsensusPeaks}}.
+#' @param peakList List with the peaks of every library, after the exclusion.
+#' @param sampleTable Data.frame with one row per library.
+#'
+#' @return A list with \code{biologicalTable}, one row per biological sample, \code{biologicalPeaks}, its peak sets, and \code{technicalObjects}, the consensus objects of the joining step.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom dplyr arrange filter first group_by summarise
+#'
+#' @noRd
+
+.biologicalPeakSets <-
+    function(technicalBy,
+             technicalArguments,
+             seqlevelsStyle,
+             BPPARAM,
+             verbose,
+             peakList,
+             sampleTable) {
         biologicalTable <- sampleTable %>%
             dplyr::group_by(.data$biological) %>%
             dplyr::summarise(group = dplyr::first(.data$group), .groups = "drop") %>%
@@ -407,9 +673,55 @@ loadConsensusPeaks <-
             }
         }
 
-        #-------------------------------#
-        # Consensus of every group      #
-        #-------------------------------#
+        return(list(
+            biologicalPeaks = biologicalPeaks,
+            biologicalTable = biologicalTable,
+            technicalObjects = technicalObjects
+        ))
+    }
+
+
+#' @title .groupConsensusList
+#'
+#' @description Builds the consensus of every group of \code{\link{loadConsensusPeaks}} through \code{consensusRegions}, in parallel over the groups, and resolves where the seed of the calibration comes from.
+#'
+#' @param technicalBy See \code{\link{loadConsensusPeaks}}.
+#' @param seqlevelsStyle See \code{\link{loadConsensusPeaks}}.
+#' @param BPPARAM See \code{\link{loadConsensusPeaks}}.
+#' @param seed See \code{\link{loadConsensusPeaks}}.
+#' @param verbose See \code{\link{loadConsensusPeaks}}.
+#' @param biologicalPeaks List with the peaks of every biological sample, after the exclusion.
+#' @param biologicalTable Data.frame with one row per biological sample and its group.
+#' @param consensusArguments List with the arguments passed on to \code{consensusRegions::runConsensus()}.
+#' @param groupLevels Character vector with the groups, in the order they are reported.
+#' @param sampleTable Data.frame with one row per library.
+#'
+#' @return A list with \code{groupConsensus} and \code{consensusObjects}, named by group, \code{seedSource} and \code{recordedSeed}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocParallel bpRNGseed bplapply
+#' @importFrom GenomicRanges GRanges
+#' @importFrom IRanges reduce
+#' @importFrom S4Vectors mcols
+#' @importFrom consensusRegions consensusRanges
+#' @importFrom dplyr filter
+#' @importFrom methods is
+#' @importFrom utils packageVersion
+#'
+#' @noRd
+
+.groupConsensusList <-
+    function(technicalBy,
+             seqlevelsStyle,
+             BPPARAM,
+             seed,
+             verbose,
+             biologicalPeaks,
+             biologicalTable,
+             consensusArguments,
+             groupLevels,
+             sampleTable) {
         groupConsensus <- list()
         consensusObjects <- list()
 
@@ -577,22 +889,52 @@ loadConsensusPeaks <-
             }
         }
 
-        #-------------------------------#
-        # Total consensus               #
-        #-------------------------------#
-        totalConsensus <- IRanges::reduce(unlist(GenomicRanges::GRangesList(unname(groupConsensus)), use.names = FALSE), ignore.strand = TRUE)
+        return(list(
+            consensusObjects = consensusObjects,
+            groupConsensus = groupConsensus,
+            recordedSeed = recordedSeed,
+            seedSource = seedSource
+        ))
+    }
 
-        if (length(totalConsensus) == 0) {
-            stop("No consensus region was found in any group.", call. = FALSE)
-        }
 
-        if (isTRUE(verbose)) {
-            message("Total consensus: ", length(totalConsensus), " regions from ", length(groupLevels), " groups.")
-        }
+#' @title .consensusRegionList
+#'
+#' @description Turns the total consensus into the list of region sets of \code{\link{loadConsensusPeaks}}, alone or split or replaced by the regions of the user, and carries the occupancy columns onto every set.
+#'
+#' @param technicalBy See \code{\link{loadConsensusPeaks}}.
+#' @param regionSets See \code{\link{loadConsensusPeaks}}.
+#' @param regionMode See \code{\link{loadConsensusPeaks}}.
+#' @param unassignedSet See \code{\link{loadConsensusPeaks}}.
+#' @param seqlevelsStyle See \code{\link{loadConsensusPeaks}}.
+#' @param genomeAssembly See \code{\link{loadConsensusPeaks}}.
+#' @param verbose See \code{\link{loadConsensusPeaks}}.
+#' @param biologicalPeaks List with the peaks of every biological sample, after the exclusion.
+#' @param groupConsensus Named list with the consensus of every group.
+#' @param peakList List with the peaks of every library, after the exclusion.
+#' @param totalConsensus \code{GRanges} with the pooled consensus of the groups.
+#'
+#' @return A list with \code{regionList}, the named list of region sets, and \code{analysisMode}, one of \code{"consensus"}, \code{"split"} or \code{"replace"}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomeInfoDb seqlevels
+#' @importFrom S4Vectors mcols
+#'
+#' @noRd
 
-        #-------------------------------#
-        # Regions of the user           #
-        #-------------------------------#
+.consensusRegionList <-
+    function(technicalBy,
+             regionSets,
+             regionMode,
+             unassignedSet,
+             seqlevelsStyle,
+             genomeAssembly,
+             verbose,
+             biologicalPeaks,
+             groupConsensus,
+             peakList,
+             totalConsensus) {
         analysisMode <- "consensus"
         regionList <- list(consensus = totalConsensus)
 
@@ -654,88 +996,11 @@ loadConsensusPeaks <-
             }
         )
 
-        regionSet <- loadRegions(
-            regions = regionList,
-            keepMetadata = TRUE,
-            seqlevelsStyle = seqlevelsStyle,
-            genomeAssembly = genomeAssembly,
-            verbose = FALSE
-        )
-
-        #-------------------------------#
-        # Keep the consensus data       #
-        #-------------------------------#
-        consensusData(regionSet) <- list(
-            groups = groupConsensus,
-            objects = consensusObjects,
-            technical = technicalObjects,
-            total = totalConsensus,
-            peaks = peakList,
-            removed = removedPeaks,
-            samples = sampleTable,
-            sheet = sampleSheet,
-            groupBy = groupBy,
-            technicalBy = technicalBy,
-            mode = analysisMode,
-            blacklist = listRanges$blacklist,
-            greylist = listRanges$greylist
-        )
-
-        # Recorded as applyBlacklist and applyGreylist record them, so the lists follow the object downstream
-        if (!is.null(listRanges$blacklist)) {
-            blacklistRanges(regionSet) <- listRanges$blacklist
-        }
-
-        if (!is.null(listRanges$greylist)) {
-            greylistRanges(regionSet) <- listRanges$greylist
-            parameterLog(regionSet)$greylist <- list(
-                n.regions = length(listRanges$greylist),
-                covered.bp = sum(as.numeric(BiocGenerics::width(listRanges$greylist))),
-                applied.to = "peaks"
-            )
-        }
-
-        if (length(filteringSteps) > 0) {
-            filteringLog(regionSet) <- rbind(filteringLog(regionSet), do.call(what = rbind, args = unname(filteringSteps)))
-        }
-
-        # Only plain values go to the parameters, a BiocParallel object has no place in an exported record
-        parameterLog(regionSet)$loadConsensusPeaks <- list(
-            groupBy = groupBy,
-            technicalBy = technicalBy,
-            regionMode = analysisMode,
-            unassignedSet = unassignedSet,
-            seqlevelsStyle = seqlevelsStyle,
-            n.samples = nrow(sampleTable),
-            n.biological = nrow(biologicalTable),
-            n.groups = length(groupLevels),
-            n.blacklist.regions = if (is.null(listRanges$blacklist)) {
-                0L
-            } else {
-                length(listRanges$blacklist)
-            },
-            n.greylist.regions = if (is.null(listRanges$greylist)) {
-                0L
-            } else {
-                length(listRanges$greylist)
-            },
-            seed = recordedSeed,
-            seed.source = seedSource,
-            consensusArguments = Filter(function(x) {
-                !is.null(x) && is.atomic(x)
-            }, consensusArguments),
-            technicalArguments = if (is.null(technicalBy)) {
-                NULL
-            } else {
-                Filter(function(x) {
-                    !is.null(x) && is.atomic(x)
-                }, technicalArguments)
-            }
-        )
-
-        methods::validObject(regionSet)
-        return(regionSet)
-    } # END function
+        return(list(
+            analysisMode = analysisMode,
+            regionList = regionList
+        ))
+    }
 
 
 #' @title .checkLoadConsensusPeaksArguments
@@ -774,7 +1039,7 @@ loadConsensusPeaks <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkLoadConsensusPeaksArguments <-
     function(sampleSheet,
@@ -952,7 +1217,7 @@ loadConsensusPeaks <-
 #' @importFrom methods is
 #' @importFrom BiocParallel bpnworkers
 #'
-#' @keywords internal
+#' @noRd
 
 .consensusWorkers <-
     function(BPPARAM,
@@ -1000,7 +1265,7 @@ loadConsensusPeaks <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .runGroupConsensus <-
     function(groupArguments) {
@@ -1028,7 +1293,7 @@ loadConsensusPeaks <-
 #' @importFrom GenomicRanges GRangesList
 #' @importFrom BiocParallel bplapply
 #'
-#' @keywords internal
+#' @noRd
 
 .joinTechnicalReplicates <-
     function(sampleTable,
@@ -1121,7 +1386,7 @@ loadConsensusPeaks <-
 #' @importFrom dplyr tibble group_by slice_max ungroup %>%
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .asBiologicalPeaks <-
     function(peakRanges,
@@ -1208,7 +1473,7 @@ loadConsensusPeaks <-
 #' @importFrom IRanges reduce
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .loadExclusionRegions <-
     function(excludeRegions,
@@ -1254,7 +1519,7 @@ loadConsensusPeaks <-
 #' @importFrom GenomeInfoDb genome
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .checkListAssembly <-
     function(listInput,
@@ -1310,7 +1575,7 @@ loadConsensusPeaks <-
 #'
 #' @importFrom IRanges overlapsAny
 #'
-#' @keywords internal
+#' @noRd
 
 .splitConsensus <-
     function(totalConsensus,
@@ -1376,7 +1641,7 @@ loadConsensusPeaks <-
 #' @importFrom GenomeInfoDb seqlevels
 #' @importFrom utils head
 #'
-#' @keywords internal
+#' @noRd
 
 .peakOccupancy <-
     function(regionRanges,

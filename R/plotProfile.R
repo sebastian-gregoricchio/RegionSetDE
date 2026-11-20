@@ -21,7 +21,7 @@
 #' @param distance Numeric value with the number of base pairs drawn on each side of the centre. Default: \code{1500}.
 #' @param binWidth Numeric value with the width of the bins the signal is averaged over, in base pairs. Default: \code{50}.
 #' @param centre String with the point the regions are aligned on: \code{"summit"}, the \code{summit} column written by \code{\link{countReads}} with \code{summits}, falling back to the midpoint where there is none, or \code{"midpoint"}. Default: \code{"summit"}.
-#' @param useOffsets Logical value to indicate whether the signal read from BAM files must be scaled by the scaling factors of \code{\link{normalizeCounts}}, \code{FALSE} scaling it by the library sizes alone. Ignored for bigWig files, whose signal is taken as it is. Default: \code{TRUE}.
+#' @param useOffsets Logical value to indicate whether the signal read from BAM files must be scaled by the scaling factors of \code{\link{normalizeRegionCounts}}, \code{FALSE} scaling it by the library sizes alone. Ignored for bigWig files, whose signal is taken as it is. Default: \code{TRUE}.
 #' @param BPPARAM A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. One file goes to each worker. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
@@ -40,7 +40,7 @@
 #' peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 #'
 #' counts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 #'
 #' peakProfiles <- computeProfiles(counts, groupBy = "condition", distance = 1000, verbose = FALSE)
 #' names(peakProfiles$profiles)
@@ -331,7 +331,7 @@ computeProfiles <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkComputeProfilesArguments <-
     function(object,
@@ -435,7 +435,7 @@ computeProfiles <-
 #' peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 #'
 #' counts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, countInput = FALSE, verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 #' fit <- fitRegions(counts, design = ~condition, verbose = FALSE)
 #' results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
 #'
@@ -579,7 +579,7 @@ plotProfile <-
         #------------------------#
         # Heatmaps               #
         #------------------------#
-        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
+        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) || !requireNamespace("circlize", quietly = TRUE)) {
             stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the profile heatmaps.", call. = FALSE)
         }
 
@@ -725,7 +725,7 @@ plotProfile <-
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .profileRegions <-
     function(counts,
@@ -914,7 +914,7 @@ plotProfile <-
 #' @importFrom IRanges ranges
 #' @importFrom S4Vectors mcols
 #'
-#' @keywords internal
+#' @noRd
 
 .stackProfileRegions <-
     function(groupList) {
@@ -951,7 +951,7 @@ plotProfile <-
 #'
 #' @importFrom SummarizedExperiment colData
 #'
-#' @keywords internal
+#' @noRd
 
 .profileSignalFiles <-
     function(counts,
@@ -1054,7 +1054,7 @@ plotProfile <-
 #' @importFrom BiocParallel bplapply
 #' @importFrom rtracklayer BigWigFile import
 #'
-#' @keywords internal
+#' @noRd
 
 .binnedSignal <-
     function(files,
@@ -1220,7 +1220,7 @@ plotProfile <-
 #'
 #' @importFrom SummarizedExperiment colData
 #'
-#' @keywords internal
+#' @noRd
 
 .profileScaling <-
     function(counts,

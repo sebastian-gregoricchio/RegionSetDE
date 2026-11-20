@@ -27,7 +27,7 @@ loadGreenlist(
 A \code{GRanges} with the regions of the greenlist and their name, carrying the assembly in its \code{genome} and the source, the version and the reference in its metadata.
 }
 \description{
-Returns a CUT&RUN or CUT&Tag greenlist shipped with the package, the regions whose background is consistent enough between experiments to normalise on. It goes to \code{\link{countGreenlist}}, which counts the libraries over it before \code{\link{normalizeCounts}} turns those counts into scaling factors.
+Returns a CUT&RUN or CUT&Tag greenlist shipped with the package, the regions whose background is consistent enough between experiments to normalise on. It goes to \code{\link{countGreenlist}}, which counts the libraries over it before \code{\link{normalizeRegionCounts}} turns those counts into scaling factors.
 }
 \details{
 The greenlist was built by measuring, over hundreds of public libraries, which 1 kb bins carry background of a consistent magnitude, keeping the most consistent of them and discarding anything within 5 kb of a gene so that genuine signal is not called noise. The reads landing there follow the amount of material sequenced rather than the factor being mapped, which is what makes them usable as an internal reference when no spike-in was added.
@@ -44,7 +44,7 @@ sum(BiocGenerics::width(greenlist))
 de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. \emph{Briefings in Bioinformatics} 25(2):bbad538.
 }
 \seealso{
-\code{\link{countGreenlist}}, \code{\link{normalizeCounts}}, \code{\link{loadBlacklist}}, \code{\link{availableRegionLists}}
+\code{\link{countGreenlist}}, \code{\link{normalizeRegionCounts}}, \code{\link{loadBlacklist}}, \code{\link{availableRegionLists}}
 }
 \author{
 Sebastian Gregoricchio

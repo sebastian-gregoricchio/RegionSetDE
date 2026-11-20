@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.setResults-class}
 \alias{RegionSetDE.setResults-class}
+\alias{show,RegionSetDE.setResults-method}
 \title{RegionSetDE.setResults class}
+\usage{
+\S4method{show}{RegionSetDE.setResults}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.setResults} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class holding the outcome of a set level test. The table in the \code{results} slot has one row per region set and carries the effect size with its confidence interval next to the p-values, since with tens of thousands of regions in a set the p-value stops discriminating long before the effect size does.
 }
@@ -31,6 +41,13 @@ S4 class holding the outcome of a set level test. The table in the \code{results
 \item{\code{counts}}{\code{RegionSetDE.counts} object the test was computed on, so that the signal behind a set level claim can be drawn without carrying a second object around. Empty when \code{carryCounts} was \code{FALSE}.}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+setResults
+
+}
 \author{
 Sebastian Gregoricchio
 }

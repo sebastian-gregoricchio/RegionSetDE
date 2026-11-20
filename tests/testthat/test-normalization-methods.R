@@ -9,7 +9,7 @@ test_that("each normalisation method returns usable factors", {
         "TMM", "TMMwsp", "RLE", "upperQuartile",
         "librarySize", "readsInRegions", "background", "none"
     )) {
-        normalized <- normalizeCounts(counts, method = normalizationMethod, verbose = FALSE)
+        normalized <- normalizeRegionCounts(counts, method = normalizationMethod, verbose = FALSE)
 
         scalingFactors <- SummarizedExperiment::colData(normalized)$scaling.factor
 
@@ -27,17 +27,17 @@ test_that("each normalisation method returns usable factors", {
 
 test_that("the reads in the regions give the factors of the 'readsInRegions' method", {
     counts <- exampleCounts()
-    normalized <- normalizeCounts(counts, method = "readsInRegions", verbose = FALSE)
+    normalized <- normalizeRegionCounts(counts, method = "readsInRegions", verbose = FALSE)
 
     regionTotals <- colSums(SummarizedExperiment::assay(counts, "counts"))
     expect_equal(normalized$scaling.factor, as.numeric(regionTotals / mean(regionTotals)))
 
     # The whole library and the reads in the regions are two different depths
-    librarySizeFactors <- normalizeCounts(counts, method = "librarySize", verbose = FALSE)$scaling.factor
+    librarySizeFactors <- normalizeRegionCounts(counts, method = "librarySize", verbose = FALSE)$scaling.factor
     expect_false(isTRUE(all.equal(normalized$scaling.factor, librarySizeFactors)))
 
     # Only the sets asked for take part in the total
-    oneSet <- normalizeCounts(counts, method = "readsInRegions", useRegionSets = "promoterCpG", verbose = FALSE)
+    oneSet <- normalizeRegionCounts(counts, method = "readsInRegions", useRegionSets = "promoterCpG", verbose = FALSE)
     setRows <- SummarizedExperiment::rowData(counts)$region.set == "promoterCpG"
     setTotals <- colSums(SummarizedExperiment::assay(counts, "counts")[setRows, ])
 
@@ -46,7 +46,7 @@ test_that("the reads in the regions give the factors of the 'readsInRegions' met
 
 
 test_that("'none' leaves every sample on the same footing", {
-    counts <- normalizeCounts(exampleCounts(), method = "none", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "none", verbose = FALSE)
 
     scalingFactors <- SummarizedExperiment::colData(counts)$scaling.factor
 
@@ -58,13 +58,13 @@ test_that("supplied factors are applied in both directions", {
     counts <- exampleCounts()
     suppliedFactors <- c(1, 2, 1, 2)
 
-    byDivision <- normalizeCounts(counts,
+    byDivision <- normalizeRegionCounts(counts,
         method = "manual",
         scalingFactors = suppliedFactors,
         factorType = "division", verbose = FALSE
     )
 
-    byMultiplication <- normalizeCounts(counts,
+    byMultiplication <- normalizeRegionCounts(counts,
         method = "manual",
         scalingFactors = suppliedFactors,
         factorType = "multiplication", verbose = FALSE
@@ -81,9 +81,9 @@ test_that("supplied factors are applied in both directions", {
 })
 
 
-test_that("normalizeCounts rejects the wrong number of supplied factors", {
+test_that("normalizeRegionCounts rejects the wrong number of supplied factors", {
     expect_error(
-        normalizeCounts(exampleCounts(),
+        normalizeRegionCounts(exampleCounts(),
             method = "manual",
             scalingFactors = c(1, 2), verbose = FALSE
         )
@@ -91,9 +91,9 @@ test_that("normalizeCounts rejects the wrong number of supplied factors", {
 })
 
 
-test_that("normalizeCounts rejects a method it does not have", {
+test_that("normalizeRegionCounts rejects a method it does not have", {
     expect_error(
-        normalizeCounts(exampleCounts(), method = "notAMethod", verbose = FALSE)
+        normalizeRegionCounts(exampleCounts(), method = "notAMethod", verbose = FALSE)
     )
 })
 
@@ -101,8 +101,8 @@ test_that("normalizeCounts rejects a method it does not have", {
 test_that("useRegionSets restricts where the factors are estimated", {
     counts <- exampleCounts()
 
-    fromAll <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
-    fromPromoters <- normalizeCounts(counts,
+    fromAll <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
+    fromPromoters <- normalizeRegionCounts(counts,
         method = "TMM",
         useRegionSets = "promoterCpG", verbose = FALSE
     )
@@ -115,7 +115,7 @@ test_that("useRegionSets restricts where the factors are estimated", {
 
 
 test_that("a normalized assay can be given its own name", {
-    counts <- normalizeCounts(exampleCounts(),
+    counts <- normalizeRegionCounts(exampleCounts(),
         method = "TMM",
         normalizedAssay = "scaled", verbose = FALSE
     )
@@ -125,7 +125,7 @@ test_that("a normalized assay can be given its own name", {
 
 
 test_that("each filtering method keeps a sensible subset", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     for (filterMethod in c("background", "abundance", "proportion")) {
         filtered <- filterRegions(counts, method = filterMethod, verbose = FALSE)
@@ -139,7 +139,7 @@ test_that("each filtering method keeps a sensible subset", {
 
 
 test_that("the byExpr filter needs the groups to be declared", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_error(filterRegions(counts, method = "byExpr", verbose = FALSE))
 
@@ -169,7 +169,7 @@ test_that("the byExpr filter needs the groups to be declared", {
 
 
 test_that("the manual filter keeps exactly what it is given", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     keptRows <- seq_len(200)
 
@@ -187,7 +187,7 @@ test_that("filterRegions rejects a method it does not have", {
 
 
 test_that("bySet filters each set on its own terms", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     perSet <- filterRegions(counts, bySet = TRUE, verbose = FALSE)
     pooled <- filterRegions(counts, bySet = FALSE, verbose = FALSE)
@@ -198,7 +198,7 @@ test_that("bySet filters each set on its own terms", {
 
 
 test_that("byWidth accounts for the region length", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     withWidth <- filterRegions(counts, byWidth = TRUE, verbose = FALSE)
     withoutWidth <- filterRegions(counts, byWidth = FALSE, verbose = FALSE)

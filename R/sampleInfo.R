@@ -13,7 +13,7 @@
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #' sampleInfo(counts)
 #'
-#' counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 #' sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
 #'
 #' @author Sebastian Gregoricchio

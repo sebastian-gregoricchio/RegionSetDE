@@ -82,6 +82,8 @@ test_that("plotResultsMA draws each of its variants", {
 
 
 test_that("plotTopHeatmap draws each of its rankings and directions", {
+    skip_if_not_installed("ComplexHeatmap")
+    skip_if_not_installed("circlize")
     results <- exampleResults()
 
     for (ranking in c("log2FC", "FDR", "stat")) {
@@ -104,7 +106,7 @@ test_that("plotTopHeatmap draws each of its rankings and directions", {
 
 test_that("plotSampleCorrelation draws each correlation", {
     skip_if_not_installed("ComplexHeatmap")
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     for (correlationMethod in c("spearman", "pearson", "kendall")) {
         expect_s4_class(plotSampleCorrelation(counts,
@@ -132,7 +134,7 @@ test_that("plotSampleCorrelation draws each correlation", {
 
 
 test_that("plotRegionPCA draws each of its variants", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_s3_class(plotRegionPCA(counts,
         colourBy = "condition",
@@ -147,7 +149,7 @@ test_that("plotRegionPCA draws each of its variants", {
 
 
 test_that("plotSetMA draws with and without a chosen set", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_s3_class(plotSetMA(counts, groupBy = "condition"), "ggplot")
     expect_s3_class(plotSetMA(counts,

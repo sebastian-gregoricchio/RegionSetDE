@@ -24,7 +24,7 @@ plotSetMA(
 )
 }
 \arguments{
-\item{counts}{\code{RegionSetDE.counts} object, normalised by \code{\link{normalizeCounts}}.}
+\item{counts}{\code{RegionSetDE.counts} object, normalised by \code{\link{normalizeRegionCounts}}.}
 
 \item{set}{Character vector with the names of the region sets to highlight. Default: \code{NULL}, one panel per set with the others greyed behind.}
 
@@ -32,7 +32,7 @@ plotSetMA(
 
 \item{contrast}{Character vector of length two with the levels of \code{groupBy} to compare, given as \code{c(numerator, denominator)}. Default: \code{NULL}, the two levels found in the column, in alphabetical order.}
 
-\item{assayName}{String with the assay to plot. Default: \code{NULL}, the normalised assay recorded by \code{\link{normalizeCounts}}, or the raw counts when the object has not been normalised.}
+\item{assayName}{String with the assay to plot. Default: \code{NULL}, the normalised assay recorded by \code{\link{normalizeRegionCounts}}, or the raw counts when the object has not been normalised.}
 
 \item{priorCount}{Numeric value added to the values before the log transformation. Default: \code{1}.}
 
@@ -69,7 +69,7 @@ The median line is the number to read: a set whose median sits at zero behaves l
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 # One panel per region set, each against the rest of the data
 plotSetMA(counts, groupBy = "condition")
@@ -78,7 +78,7 @@ plotSetMA(counts, set = "promoterCpG", groupBy = "condition")
 
 }
 \seealso{
-\code{\link{normalizeCounts}}, \code{\link{plotNormComparison}}
+\code{\link{normalizeRegionCounts}}, \code{\link{plotNormComparison}}
 }
 \author{
 Sebastian Gregoricchio

@@ -42,7 +42,7 @@ A list with \code{correlation}, the matrix of the correlations between the sampl
 Computes the correlation between the samples of an object on the log2 signal of its regions, normalised or raw, and returns it together with the annotation of the samples, ready for \code{\link{plotSampleCorrelation}} or for any other use. With \code{method = "jaccard"} the samples are compared on where their peaks were called rather than on their signal, as the Jaccard index of their peak sets.
 }
 \details{
-The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeCounts}} applied. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised correlations of one object are computed on the same rows.
+The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeRegionCounts}} applied. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised correlations of one object are computed on the same rows.
 
 A correlation does not see a single factor per sample. Scaling a library moves its log values by a constant, which leaves the three correlations exactly where they were, so \code{useOffsets} changes the matrix only when the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. An ordination is a different matter, and \code{\link{plotRegionPCA}} does move with the factors.
 
@@ -50,7 +50,7 @@ The Jaccard index is the occupancy counterpart of the correlation, what DiffBind
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 sampleCorrelation <- computeSampleCorrelation(counts, method = "pearson")
 round(sampleCorrelation$correlation, 3)

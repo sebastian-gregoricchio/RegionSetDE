@@ -27,12 +27,8 @@ text-align: justify}
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = ">",
-                      warning = FALSE, message = FALSE, fig.align = "center",
+                      message = FALSE, fig.align = "center",
                       dev = "png", dpi = 96, fig.width = 7, fig.height = 4.5)
-
-library(RegionSetDE)
-library(dplyr)
-library(ggplot2)
 ```
 
 ----------------------------------------------------------
@@ -56,6 +52,16 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 
 BiocManager::install(c("RegionSetDE", "consensusRegions"))
 ```
+
+The packages used throughout this vignette:
+
+```{r load_packages}
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
+```
+
+The progress messages of the functions are switched off in this document to keep it short, and they appear as usual when the code is run.
 
 <br>
 
@@ -109,7 +115,7 @@ Libraries of both kinds can therefore sit in the same analysis. Each one ends up
 
 A single-end read tells where a fragment starts and not how long it is, so the counting has to be told how far to extend it. A single value for every library is rarely right: fragment sizes change with the sonication and the size selection of each library, and a read extended too far spills into the neighbouring regions while one extended too little misses the centre of its own. `fragmentLength` therefore takes one value per sample, in three ways: a vector, a column of the sample sheet, or `"auto"`.
 
-A pipeline that already estimated the fragment length, with phantompeakqualtools for instance, can write it in the sheet, and the column is then named in the counting:
+A pipeline that already estimated the fragment length, with phantompeakqualtools for instance, can write it in the sheet, and the column is then named in the counting. The AR libraries are paired-end, so the call is shown and not run:
 
 ```{r fragment_column, eval = FALSE}
 # A 'fragmentLength' column in the sheet, one value per library
@@ -227,7 +233,7 @@ filteringLog(consensus) %>% head(3)
 
 ## The rule a peak has to pass
 
-The consensus inside each group is built by [*consensusRegions*](https://github.com/sebastian-gregoricchio/consensusRegions), and it is not a plain overlap count. Every peak is first placed in one of three classes by its p-value: stringent below `stringencyThreshold` (1e-8), weak up to `weakThreshold` (1e-4), background above it. A peak then needs overlapping peaks in enough of the other replicates, and the evidence of all of them, combined by Stouffer's method, has to clear a threshold. Two consequences follow. A weak peak can be rescued by strong support in the other replicates, which a plain intersection would lose; and a peak present in two replicates out of three can still be dropped when the evidence in both is poor.
+The consensus inside each group is built by [*consensusRegions*](https://bioconductor.org/packages/consensusRegions), and it is not a plain overlap count. Every peak is first placed in one of three classes by its p-value: stringent below `stringencyThreshold` (1e-8), weak up to `weakThreshold` (1e-4), background above it. A peak then needs overlapping peaks in enough of the other replicates, and the evidence of all of them, combined by Stouffer's method, has to clear a threshold. Two consequences follow. A weak peak can be rescued by strong support in the other replicates, which a plain intersection would lose; and a peak present in two replicates out of three can still be dropped when the evidence in both is poor.
 
 How many replicates must hold the peak is `minReplicates`, which counts the replicate the peak came from. The default asks for one supporting replicate, so **two out of three** here. It takes a count, a proportion or a percentage:
 
@@ -256,7 +262,7 @@ The rescue of weak peaks needs weak peaks to work with. The calls shipped here w
 
 The nine libraries here are nine biological samples. Many experiments add a level below that, two immunoprecipitations of the same chromatin or two libraries built from one of them, and those are technical replicates of a single biological sample. Entered in the sheet as extra rows of their group, they would be taken as independent evidence, and they are not: the two libraries of one culture agree with each other more than two cultures ever do. A peak found in both libraries of one sample, and in no other sample, would then meet the default requirement of one supporting replicate, and the combined p-value would count that sample twice.
 
-`technicalBy` names the column of the sheet telling which biological sample every library comes from. The libraries of each biological sample are joined first, keeping by default the peaks found in all of them, and the peak set of every biological sample then enters the consensus of its group as one replicate. For an experiment with two conditions, three biological replicates and two libraries each, the sheet holds twelve rows and a `bioRep` column going from `r1` to `r3` within each condition:
+`technicalBy` names the column of the sheet telling which biological sample every library comes from. The libraries of each biological sample are joined first, keeping by default the peaks found in all of them, and the peak set of every biological sample then enters the consensus of its group as one replicate. For an experiment with two conditions, three biological replicates and two libraries each, the sheet holds twelve rows and a `bioRep` column going from `r1` to `r3` within each condition. The AR example holds one library per sample, so the call is shown and not run:
 
 ```{r technical_replicates, eval = FALSE}
 technicalConsensus <- loadConsensusPeaks(technicalSheet,
@@ -316,7 +322,7 @@ lengths(consensusInfo$groups)           # the consensus of every group
 length(consensusInfo$total)             # the pooled set that is counted
 ```
 
-`consensusGroupList()` returns the consensus of every group as a named list of `GRanges`, the form the functions of *ChIPseeker* take for several peak sets, so the groups can be annotated one by one and compared. `seqlevelsStyle = "UCSC"` renames the chromosomes to match a UCSC `TxDb`, which would otherwise find no gene next to any region named `19`:
+`consensusGroupList()` returns the consensus of every group as a named list of `GRanges`, the form the functions of *ChIPseeker* take for several peak sets, so the groups can be annotated one by one and compared. `seqlevelsStyle = "UCSC"` renames the chromosomes to match a UCSC `TxDb`, which would otherwise find no gene next to any region named `19`. The call needs *ChIPseeker* and a full `TxDb`, neither of them a dependency of this package, so the call is shown and not run:
 
 ```{r group_list, eval = FALSE}
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
@@ -465,7 +471,7 @@ The consequence is easiest to see by running the same test several times and cha
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts,
+           normalised <- normalizeRegionCounts(counts,
                                          method = method,
                                          verbose = FALSE)
 
@@ -508,12 +514,12 @@ This dataset is ChIP-seq and is normalised on its background below. The greenlis
 greenlist <- loadGreenlist("hg38", assay = "cuttag")
 
 counts <- countGreenlist(counts, greenlist = greenlist)
-counts <- normalizeCounts(counts, method = "greenlist")
+counts <- normalizeRegionCounts(counts, method = "greenlist")
 ```
 
-Lists are installed for hg38 CUT&RUN and CUT&Tag and for mm39 CUT&RUN, and `availableRegionLists(type = "greenlist")` prints them. `countGreenlist()` stores its counts inside the object, where `normalizeCounts()` finds them. The fragments are counted once each, at their centre, which is how the paper counted them with `multiBamSummary --centerReads`. By default the factors are the median of ratios, the size factor DESeq2 computes and the one the greenlist paper used; `greenlistEstimator = "TMM"` or `"sum"` change that. Counts collected with another tool go in through `greenlistCounts`, as a total per sample or a matrix.
+Lists are installed for hg38 CUT&RUN and CUT&Tag and for mm39 CUT&RUN, and `availableRegionLists(type = "greenlist")` prints them. `countGreenlist()` stores its counts inside the object, where `normalizeRegionCounts()` finds them. The fragments are counted once each, at their centre, which is how the paper counted them with `multiBamSummary --centerReads`. By default the factors are the median of ratios, the size factor DESeq2 computes and the one the greenlist paper used; `greenlistEstimator = "TMM"` or `"sum"` change that. Counts collected with another tool go in through `greenlistCounts`, as a total per sample or a matrix.
 
-`countGreenlist()` holds the libraries to the conditions the lists were built under. The greenlist regions were kept at least 5 kb from genes so that no target binds there, and a greenlist region that one of the regions of the study falls on says the target does bind there in these cells: those are left out, and how many were is reported, unless `excludeCounted = FALSE`. A library below the depth the authors required of a library to enter the construction of the list, 1.5 million reads for human CUT&RUN, 1 million for mouse CUT&RUN and 500,000 for human CUT&Tag, raises a warning, and so does a library reaching fewer than half as many greenlist regions as the median one. `normalizeCounts()` then says how many regions carry reads in every sample, which is what the median of ratios rests on, as it does in DESeq2. The paper sets no rule per group of samples; the number of regions shared by every library is the one that decides how steady the factors are.
+`countGreenlist()` holds the libraries to the conditions the lists were built under. The greenlist regions were kept at least 5 kb from genes so that no target binds there, and a greenlist region that one of the regions of the study falls on says the target does bind there in these cells: those are left out, and how many were is reported, unless `excludeCounted = FALSE`. A library below the depth the authors required of a library to enter the construction of the list, 1.5 million reads for human CUT&RUN, 1 million for mouse CUT&RUN and 500,000 for human CUT&Tag, raises a warning, and so does a library reaching fewer than half as many greenlist regions as the median one. `normalizeRegionCounts()` then says how many regions carry reads in every sample, which is what the median of ratios rests on, as it does in DESeq2. The paper sets no rule per group of samples; the number of regions shared by every library is the one that decides how steady the factors are.
 
 What each library holds over the list is kept beside the counts:
 
@@ -530,7 +536,7 @@ SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
 When the factors come from outside the data, a spike-in counted with another pipeline, deepTools, or a previous analysis, `method = "manual"` takes them as they are. `factorType` says how they apply: `"division"` for size factors the counts are divided by, as DESeq2 writes them, `"multiplication"` for scale factors the counts are multiplied by, as deepTools and most spike-in protocols write them. Named factors are matched to the samples by name and may cover samples absent from the object.
 
 ```{r manual_factors}
-backgroundCounts <- normalizeCounts(counts,
+backgroundCounts <- normalizeRegionCounts(counts,
                                     method = "background",
                                     verbose = FALSE)
 
@@ -538,7 +544,7 @@ backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
 round(backgroundFactors, 2)
 
-manualCounts <- normalizeCounts(counts,
+manualCounts <- normalizeRegionCounts(counts,
                                 method = "manual",
                                 scalingFactors = backgroundFactors,
                                 factorType = "division",
@@ -557,7 +563,7 @@ When the spike-in was aligned separately, `method = "spikeIn"` takes the number 
 ## The choice for this dataset
 
 ```{r normalise}
-counts <- normalizeCounts(counts, method = "background")
+counts <- normalizeRegionCounts(counts, method = "background")
 ```
 
 <br>
@@ -843,7 +849,7 @@ One table and one BED file per contrast, the BED coloured by direction so it can
 
 ## Paired samples and technical replicates {#paired}
 
-`~ condition` treats the nine libraries as nine independent samples. When the replicates are paired, replicate `r1` of every condition coming from the same passage of the cells for instance, the pairing goes into the formula:
+`~ condition` treats the nine libraries as nine independent samples. When the replicates are paired, replicate `r1` of every condition coming from the same passage of the cells for instance, the pairing goes into the formula. The analysis below keeps `~ condition`, so the call is shown and not run:
 
 ```{r paired_design, eval = FALSE}
 pairedFit <- fitRegions(counts,
@@ -856,7 +862,7 @@ pairedResults <- testRegions(pairedFit,
 
 The contrast is written as before. Its three-element form averages the rows of the design within each of the two groups, and with every replicate present in every condition the replicate terms cancel, which leaves the effect of the treatment measured within the pairs. A missing sample breaks that balance, and the coefficient is then better named directly, `contrast = "conditionR1881_24h"`, among the names `colnames(designMatrix(pairedFit))` lists. The pairing costs one coefficient per replicate beyond the first, two residual degrees of freedom here out of six. It is worth paying when the samples of one replicate share something the others do not, a batch of cells or a day of processing, and `plotRegionPCA(counts, colourBy = "condition", shapeBy = "replicate")` shows whether they do. The `replicate` column has to hold labels, `r1` to `r3` as in this sheet: the numbers 1 to 3 would enter the formula as a slope.
 
-Technical replicates do not enter the model as samples. Fitted one by one they would hand the model more residual degrees of freedom than the experiment has, ten instead of four for twelve libraries of six biological samples under `~ condition`, and p-values smaller than the data support. Their counts are added up into one column per biological sample instead, as `edgeR::sumTechReps()` does for RNA-seq, and the variation between them then becomes part of the variation of the biological sample, which is the unit the dispersion has to describe. The simplest route is to merge the BAM files of every biological sample, with `samtools merge` for instance, and to count them through a second sheet holding one row per biological sample:
+Technical replicates do not enter the model as samples. Fitted one by one they would hand the model more residual degrees of freedom than the experiment has, ten instead of four for twelve libraries of six biological samples under `~ condition`, and p-values smaller than the data support. Their counts are added up into one column per biological sample instead, as `edgeR::sumTechReps()` does for RNA-seq, and the variation between them then becomes part of the variation of the biological sample, which is the unit the dispersion has to describe. The simplest route is to merge the BAM files of every biological sample, with `samtools merge` for instance, and to count them through a second sheet holding one row per biological sample. The example has no such sheet, so the call is shown and not run:
 
 ```{r technical_counts, eval = FALSE}
 # biologicalSheet: one row per biological sample, the merged BAM files in 'bam'
@@ -896,7 +902,7 @@ From there the steps are the usual ones, background, normalisation and fit, and 
 
 ```{r tiles_test}
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
-tiledCounts <- normalizeCounts(tiledCounts, method = "background")
+tiledCounts <- normalizeRegionCounts(tiledCounts, method = "background")
 
 tiledFit <- fitRegions(tiledCounts, design = ~ condition, engine = "edgeR")
 
@@ -1062,6 +1068,8 @@ table(resultsTable(geneResults)$direction)
 ```
 
 `direction` is the four-way answer: `up` and `down` when the peaks that changed agree, `mixed` when they do not, `unchanged` when none of them changed. The mixed genes are a category and not a problem to be cleaned up, because a gene with three peaks up and three down is a different statement from a gene with nothing happening and no signed score can tell those apart. `n.up` and `n.down` are read from the `diff.status` column of the peak table, so they follow the `FDR` and `log2FC` set above and move with `updateThresholds()`.
+
+The over-representation and GSEA calls that follow use *clusterProfiler* and *fgsea*, which are not dependencies of this package, so they are shown and not run.
 
 ```{r gene_ora_peaks, eval = FALSE}
 geneTable <- resultsTable(geneResults)

@@ -1,6 +1,6 @@
 # Assisted-by: Claude (Anthropic). Reviewed and validated by S. Gregoricchio.
 
-#' @title normalizeCounts
+#' @title normalizeRegionCounts
 #'
 #' @description Estimates the scaling factors of a \code{RegionSetDE.counts} object and stores them together with a normalised assay. The factors can be computed from the counts themselves, from the background bins collected by \code{\link{countBackground}}, from the greenlist regions collected by \code{\link{countGreenlist}}, from a spike-in, or supplied by the user.
 #'
@@ -43,18 +43,18 @@
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #'
 #' # Scaling factors from the background bins, which is what they are counted for
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #' SummarizedExperiment::colData(counts)
 #'
 #' # TMM estimates them from the regions themselves instead
-#' tmmCounts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+#' tmmCounts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 #' SummarizedExperiment::colData(tmmCounts)$scaling.factor
 #'
 #' # Factors coming from a spike-in, or from any external estimate, named after the samples
 #' spikeInFactors <- c(1.10, 0.95, 1.20, 0.80)
 #' names(spikeInFactors) <- colnames(counts)
 #'
-#' manualCounts <- normalizeCounts(counts, method = "manual", scalingFactors = spikeInFactors, verbose = FALSE)
+#' manualCounts <- normalizeRegionCounts(counts, method = "manual", scalingFactors = spikeInFactors, verbose = FALSE)
 #' SummarizedExperiment::colData(manualCounts)$scaling.factor
 #'
 #' @author Sebastian Gregoricchio
@@ -69,9 +69,9 @@
 #' @importFrom rlang .data
 #' @importFrom methods is
 #'
-#' @export normalizeCounts
+#' @export normalizeRegionCounts
 
-normalizeCounts <-
+normalizeRegionCounts <-
     function(counts,
              method = "TMM",
              scalingFactors = NULL,
@@ -88,7 +88,7 @@ normalizeCounts <-
         #------------------------#
         # Check of the arguments #
         #------------------------#
-        checkedArguments <- .checkNormalizeCountsArguments(
+        checkedArguments <- .checkNormalizeRegionCountsArguments(
             counts = counts,
             method = method,
             scalingFactors = scalingFactors,
@@ -271,7 +271,7 @@ normalizeCounts <-
 
         parameterLog(counts) <- c(
             parameterLog(counts),
-            list(normalizeCounts = list(
+            list(normalizeRegionCounts = list(
                 method = method,
                 factorType = factorType,
                 useRegionSets = useRegionSets,
@@ -304,25 +304,25 @@ normalizeCounts <-
     } # END function
 
 
-#' @title .checkNormalizeCountsArguments
+#' @title .checkNormalizeRegionCountsArguments
 #'
-#' @description Checks the arguments of \code{\link{normalizeCounts}} and brings them to the form the rest of the function works with.
+#' @description Checks the arguments of \code{\link{normalizeRegionCounts}} and brings them to the form the rest of the function works with.
 #'
-#' @param counts See \code{\link{normalizeCounts}}.
-#' @param method See \code{\link{normalizeCounts}}.
-#' @param scalingFactors See \code{\link{normalizeCounts}}.
-#' @param factorType See \code{\link{normalizeCounts}}.
-#' @param spikeInCounts See \code{\link{normalizeCounts}}.
-#' @param greenlistEstimator See \code{\link{normalizeCounts}}.
-#' @param backgroundHoldout See \code{\link{normalizeCounts}}.
+#' @param counts See \code{\link{normalizeRegionCounts}}.
+#' @param method See \code{\link{normalizeRegionCounts}}.
+#' @param scalingFactors See \code{\link{normalizeRegionCounts}}.
+#' @param factorType See \code{\link{normalizeRegionCounts}}.
+#' @param spikeInCounts See \code{\link{normalizeRegionCounts}}.
+#' @param greenlistEstimator See \code{\link{normalizeRegionCounts}}.
+#' @param backgroundHoldout See \code{\link{normalizeRegionCounts}}.
 #'
 #' @return A list with the arguments as checked and completed: \code{backgroundHoldout}, \code{countMatrix}, \code{factorType}, \code{greenlistEstimator}, \code{method}, \code{sampleNumber}.
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
-.checkNormalizeCountsArguments <-
+.checkNormalizeRegionCountsArguments <-
     function(counts,
              method,
              scalingFactors,
@@ -397,7 +397,7 @@ normalizeCounts <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .orderSampleValues <-
     function(values,
@@ -445,7 +445,7 @@ normalizeCounts <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveSampleIndex <-
     function(sample = NULL,

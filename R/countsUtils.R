@@ -12,7 +12,7 @@
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .provenanceSlots <-
     function(regionSet) {
@@ -62,7 +62,7 @@
 #' @importFrom dplyr filter n_distinct
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .tileRegionSets <-
     function(regions,
@@ -124,7 +124,7 @@
 #' @importFrom BiocGenerics start end
 #' @importFrom methods is as
 #'
-#' @keywords internal
+#' @noRd
 
 .flattenRegionSets <-
     function(regionSet,
@@ -227,7 +227,7 @@
 #'
 #' @importFrom dplyr left_join bind_cols
 #'
-#' @keywords internal
+#' @noRd
 
 .buildSampleTable <-
     function(files,
@@ -288,7 +288,7 @@
 #' @importFrom BiocParallel SerialParam MulticoreParam SnowParam
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveBPPARAM <-
     function(BPPARAM = NULL,
@@ -335,7 +335,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .elapsedTime <-
     function(startTime) {
@@ -366,7 +366,7 @@
 #'
 #' @importFrom GenomeInfoDb seqlevelsStyle mapSeqlevels
 #'
-#' @keywords internal
+#' @noRd
 
 .registeredChromosomeNames <-
     function(chromosomeNames,
@@ -412,7 +412,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .translateChromosomeNames <-
     function(chromosomeNames,
@@ -475,7 +475,7 @@
 #'
 #' @importFrom utils head
 #'
-#' @keywords internal
+#' @noRd
 
 .matchChromosomeNames <-
     function(chromosomeNames,
@@ -524,7 +524,7 @@
 #' @importFrom methods is
 #' @importFrom utils head
 #'
-#' @keywords internal
+#' @noRd
 
 .matchSeqlevels <-
     function(x,
@@ -633,7 +633,7 @@
 #' @importFrom methods is
 #' @importFrom stats setNames
 #'
-#' @keywords internal
+#' @noRd
 
 .asRegionSet <-
     function(regionSet,
@@ -695,7 +695,7 @@
 #'
 #' @importFrom S4Vectors metadata
 #'
-#' @keywords internal
+#' @noRd
 
 .storedDiscardRegions <-
     function(counts,
@@ -736,7 +736,7 @@
 #' @importFrom S4Vectors DataFrame
 #' @importFrom methods new
 #'
-#' @keywords internal
+#' @noRd
 
 .newCountsObject <-
     function(countMatrix,
@@ -785,7 +785,7 @@
 #'
 #' @importFrom S4Vectors mcols
 #'
-#' @keywords internal
+#' @noRd
 
 .metadataPlan <-
     function(regionList,
@@ -890,7 +890,7 @@
 #'
 #' @importFrom S4Vectors mcols DataFrame
 #'
-#' @keywords internal
+#' @noRd
 
 .alignMetadata <-
     function(gr,
@@ -946,7 +946,7 @@
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
 #'
-#' @keywords internal
+#' @noRd
 
 .regionIdentifiers <-
     function(gr,

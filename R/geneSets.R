@@ -13,7 +13,7 @@
 #' @importFrom S4Vectors mcols
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .setKeys <-
     function(x) {
@@ -44,7 +44,7 @@
 #' @importFrom dplyr filter %>%
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .asGeneSetList <-
     function(geneSets) {
@@ -329,7 +329,7 @@ geneSetsToRegionSets <-
 #' @importFrom stats setNames
 #' @importFrom utils head
 #'
-#' @keywords internal
+#' @noRd
 
 .setIndexList <-
     function(regionStats,

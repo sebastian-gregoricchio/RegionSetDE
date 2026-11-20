@@ -36,7 +36,7 @@ There is no \code{as(counts, "DESeqDataSet")} to go with it, because a coercion 
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 if (requireNamespace("DESeq2", quietly = TRUE)) {
     deseqData <- asDESeqDataSet(counts, design = ~condition, verbose = FALSE)

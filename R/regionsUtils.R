@@ -82,7 +82,7 @@ renameBedColumns <-
 #' @importFrom GenomicRanges makeGRangesFromDataFrame
 #' @importFrom utils read.delim
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .readRegionFile <-
@@ -100,7 +100,7 @@ renameBedColumns <-
         }
 
         ### Headerless files follow the BED specification, only the first 6 columns have a defined meaning
-        if (header == FALSE) {
+        if (isFALSE(header)) {
             bed <- renameBedColumns(bed, bedFormat = ifelse(ncol(bed) >= 6, 6, 3))
 
             # BED4 and BED5 carry the name, and the score, without a strand
@@ -129,7 +129,7 @@ renameBedColumns <-
             stop("No valid region found in '", filePath, "'.", call. = FALSE)
         }
 
-        if (asGRanges == FALSE) {
+        if (isFALSE(asGRanges)) {
             return(bed)
         }
 

@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE-class}
 \alias{RegionSetDE-class}
+\alias{show,RegionSetDE-method}
 \title{RegionSetDE class}
+\usage{
+\S4method{show}{RegionSetDE}(object)
+}
+\arguments{
+\item{object}{A \code{RegionSetDE} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class collecting a group of genomic region sets together with the filters applied to them. The regions are stored as a \code{GRangesList}, so that any Bioconductor operation remains available through the \code{regions} slot.
 }
@@ -15,6 +25,16 @@ S4 class collecting a group of genomic region sets together with the filters app
 \item{\code{consensus}}{List with the consensus data when the regions were built from peaks by \code{\link{loadConsensusPeaks}}: the consensus of every group, the peaks of every sample after the exclusion, the total consensus, the table of the samples and the sample sheet. Empty for regions loaded any other way. Read it with \code{\link{consensusData}}.}
 }}
 
+\examples{
+regionTable <- loadExampleData("regions", verbose = FALSE)
+
+regions <- loadRegions(split(regionTable[, c("seqnames", "start", "end")], regionTable$setName),
+    genomeAssembly = "rn4", verbose = FALSE
+)
+regions
+regionSetNames(regions)
+
+}
 \author{
 Sebastian Gregoricchio
 }

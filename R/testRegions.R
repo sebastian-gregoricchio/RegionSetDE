@@ -405,7 +405,7 @@ testRegions <-
 #'
 #' @importFrom limma makeContrasts
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveContrast <-
     function(contrast,
@@ -544,7 +544,7 @@ testRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .contrastGroups <-
     function(contrastVector,
@@ -622,7 +622,7 @@ testRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .contrastSuggestion <-
     function(contrast,
@@ -693,7 +693,7 @@ testRegions <-
 #'
 #' @importFrom edgeR glmQLFTest glmLRT glmTreat topTags
 #'
-#' @keywords internal
+#' @noRd
 
 .testEdgeR <-
     function(fit,
@@ -769,7 +769,7 @@ testRegions <-
 #'
 #' @importFrom limma contrasts.fit eBayes treat topTable topTreat
 #'
-#' @keywords internal
+#' @noRd
 
 .testVoom <-
     function(fit,
@@ -820,7 +820,7 @@ testRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .testDream <-
     function(fit,
@@ -911,7 +911,7 @@ testRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .testDESeq2 <-
     function(fit,
@@ -971,7 +971,7 @@ testRegions <-
 #' @importFrom dplyr mutate arrange
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .combineTiles <-
     function(tileTable,
@@ -1084,7 +1084,7 @@ testRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resultColumnNames <-
     function() {
@@ -1110,7 +1110,7 @@ testRegions <-
 #' @importFrom SummarizedExperiment colData
 #' @importFrom edgeR aveLogCPM
 #'
-#' @keywords internal
+#' @noRd
 
 .groupAverageSignal <-
     function(fit,
@@ -1172,7 +1172,7 @@ testRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .extraRowColumns <-
     function(rowTable,

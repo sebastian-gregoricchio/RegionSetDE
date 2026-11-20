@@ -248,7 +248,7 @@ makeGreylist <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkMakeGreylistArguments <-
     function(inputFiles,
@@ -365,7 +365,7 @@ makeGreylist <-
 #' @importFrom GenomicRanges GRanges
 #' @importFrom IRanges IRanges
 #'
-#' @keywords internal
+#' @noRd
 
 .greylistWindows <-
     function(chromosomeLengths,
@@ -398,7 +398,7 @@ makeGreylist <-
 #'
 #' @importFrom stats var dnbinom optimize
 #'
-#' @keywords internal
+#' @noRd
 
 .fitNegativeBinomial <-
     function(windowCounts) {
@@ -444,7 +444,7 @@ makeGreylist <-
 #' @importFrom dplyr group_by summarise n_distinct
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .poolGreylists <-
     function(flaggedList,

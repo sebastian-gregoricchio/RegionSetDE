@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.universe-class}
 \alias{RegionSetDE.universe-class}
+\alias{show,RegionSetDE.universe-method}
 \title{RegionSetDE.universe class}
+\usage{
+\S4method{show}{RegionSetDE.universe}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.universe} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class holding, for every region set, the rows that make up the universe of its competitive test: the set itself together with the rows it is compared against. The positions refer to the object the universe was built from, so the same universe serves every contrast run on that object.
 }
@@ -26,6 +36,13 @@ The universe answers the question "more than what". A competitive test asks whet
 \item{\code{n.rows}}{Numeric value with the number of rows of the object the positions refer to.}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+universe <- makeSetUniverse(fit, verbose = FALSE)
+universe
+
+}
 \seealso{
 \code{\link{makeSetUniverse}}, \code{\link{testRegionSets}}
 }

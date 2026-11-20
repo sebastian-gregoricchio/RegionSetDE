@@ -239,7 +239,7 @@ makeSetUniverse <-
 #'
 #' @importFrom methods is new
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveUniverse <-
     function(object,
@@ -328,7 +328,7 @@ makeSetUniverse <-
 #' @importFrom dplyr mutate
 #' @importFrom stats median
 #'
-#' @keywords internal
+#' @noRd
 
 .universeCovariates <-
     function(counts) {
@@ -371,7 +371,7 @@ makeSetUniverse <-
 #'
 #' @importFrom stats quantile
 #'
-#' @keywords internal
+#' @noRd
 
 .matchStrata <-
     function(setRows,
@@ -477,7 +477,7 @@ makeSetUniverse <-
 #'
 #' @importFrom stats median
 #'
-#' @keywords internal
+#' @noRd
 
 .universeDiagnostics <-
     function(rowTable,

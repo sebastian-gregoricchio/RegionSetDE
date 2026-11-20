@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.setResultsList-class}
 \alias{RegionSetDE.setResultsList-class}
+\alias{show,RegionSetDE.setResultsList-method}
 \title{RegionSetDE.setResultsList class}
+\usage{
+\S4method{show}{RegionSetDE.setResultsList}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.setResultsList} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class holding the set level outcome of several contrasts run on the same fit. Every function that takes a \code{RegionSetDE.setResults} object also takes this one, together with a \code{contrast} argument naming which of them to use.
 }
@@ -15,6 +25,18 @@ S4 class holding the set level outcome of several contrasts run on the same fit.
 \item{\code{contrasts}}{Character vector with the names of the contrasts, in the order they were run.}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+# A named list of contrasts gives one set level result per contrast
+setResultsList <- testRegionSets(fit,
+    contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+    verbose = FALSE
+)
+setResultsList
+names(setResultsList)
+
+}
 \author{
 Sebastian Gregoricchio
 }

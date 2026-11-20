@@ -25,6 +25,15 @@ Virtual class collecting the filters and the parameters shared by all the Region
 \item{\code{parameters}}{List with the arguments used at each step.}
 }}
 
+\examples{
+counts <- loadExampleData("counts", verbose = FALSE)
+
+# Every object of the package carries the provenance slots
+is(counts, "RegionSetDE.provenance")
+genomeAssembly(counts)
+filteringLog(counts)
+
+}
 \author{
 Sebastian Gregoricchio
 }

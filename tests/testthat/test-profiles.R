@@ -4,7 +4,7 @@ testthat::skip_if_not_installed("consensusRegions")
 
 sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 consensus <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
-counts <- normalizeCounts(countReads(consensus, summits = 200, countInput = FALSE, verbose = FALSE), method = "TMM", verbose = FALSE)
+counts <- normalizeRegionCounts(countReads(consensus, summits = 200, countInput = FALSE, verbose = FALSE), method = "TMM", verbose = FALSE)
 results <- testRegions(fitRegions(counts, design = ~condition, verbose = FALSE),
     contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE
 )
@@ -76,6 +76,8 @@ test_that("regions on the minus strand are read from right to left", {
 
 
 test_that("plotProfile draws heatmaps or lines", {
+    skip_if_not_installed("ComplexHeatmap")
+    skip_if_not_installed("circlize")
     heatmapPlot <- plotProfile(results, groupBy = "condition", distance = 500, verbose = FALSE)
     expect_s4_class(heatmapPlot, "HeatmapList")
     expect_length(heatmapPlot@ht_list, 3)

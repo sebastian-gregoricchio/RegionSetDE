@@ -36,11 +36,11 @@ A list with \code{scores}, a data.frame with one row per sample, its coordinates
 Computes the principal components of the samples of an object on the log2 signal of its most variable regions, normalised or raw, and returns the coordinates, the variance explained and the loadings, ready for \code{\link{plotRegionPCA}} or for any other use.
 }
 \details{
-The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeCounts}} applied. The regions are centred and not scaled, so a region weighs as much as it varies. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised ordinations of one object are computed on the same rows.
+The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeRegionCounts}} applied. The regions are centred and not scaled, so a region weighs as much as it varies. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised ordinations of one object are computed on the same rows.
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 samplePCA <- computeSamplePCA(counts, topRegions = 1000)
 samplePCA$variance

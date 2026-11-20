@@ -17,7 +17,7 @@
 #' @details The rows are the regions of the object, the ones that will be counted, and a region counts in a set when it overlaps the consensus of the group or a peak of the sample. After \code{regionMode = "replace"} the rows are the regions of the user, and those overlapping no peak at all are reported in the title rather than as an empty intersection. The intersections are exclusive, as in any UpSet plot: a region is counted once, in the combination of sets holding it and in no other.
 #'
 #' @examples
-#' if (requireNamespace("consensusRegions", quietly = TRUE) & requireNamespace("ComplexHeatmap", quietly = TRUE)) {
+#' if (requireNamespace("consensusRegions", quietly = TRUE) && requireNamespace("ComplexHeatmap", quietly = TRUE)) {
 #'     peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
 #'         pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE
 #'     )
@@ -271,7 +271,7 @@ plotPeakUpset <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .upsetGroupColours <-
     function(groupLevels,

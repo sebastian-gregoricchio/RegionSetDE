@@ -124,7 +124,7 @@ updateThresholds <-
 #' @importFrom rlang .data
 #' @importFrom methods is validObject
 #'
-#' @keywords internal
+#' @noRd
 
 .relabelContrast <-
     function(results,

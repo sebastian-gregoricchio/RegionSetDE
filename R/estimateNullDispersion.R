@@ -11,7 +11,7 @@
 #' @param samples Character vector with the samples the estimate is computed on. Default: \code{NULL}, all of them.
 #' @param minCount Numeric value with the average count a null row must carry to be used. Default: \code{10}.
 #' @param maxRows Numeric value with the number of null rows kept, drawn deterministically when there are more. Default: \code{50000}.
-#' @param holdout Numeric value between 0 and 1 with the fraction of the null rows left out of the estimate, so that \code{\link{checkNullCalibration}} has rows the dispersion has not already been fitted to. Ignored when \code{\link{normalizeCounts}} has already split the background bins, whose split is reused instead. Default: \code{0.5}.
+#' @param holdout Numeric value between 0 and 1 with the fraction of the null rows left out of the estimate, so that \code{\link{checkNullCalibration}} has rows the dispersion has not already been fitted to. Ignored when \code{\link{normalizeRegionCounts}} has already split the background bins, whose split is reused instead. Default: \code{0.5}.
 #' @param subset Integer vector restricting the null rows to a subset of the ones \code{source} selects. Default: \code{NULL}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
@@ -23,11 +23,11 @@
 #'
 #' A plausible number is not a replicate, and the distinction is not a technicality. What this estimate measures is how much the two observed libraries differ from each other over rows assumed not to respond. What a replicated experiment measures is how much two animals, two donors or two cultures differ. The second contains the first and is usually several times larger, and no amount of null rows recovers it, because the variation that was never sampled is not in the data at all. Everything downstream is conditional on the assumption that the variability of the null rows stands in for the variability that was not observed, which is why \code{\link{checkNullCalibration}} exists and why it should be run before any of the output is believed. Treat the result as exploratory and say in the methods that it rests on this estimate.
 #'
-#' Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in \code{holdout.index} for that check to use. How much that holdout is worth depends on what came before it. Held out here alone, the rows are independent of the dispersion but not of the normalisation, since the background bins have already been through \code{csaw::normFactors} in \code{\link{normalizeCounts}}: they are dispersion holdouts and \code{holdout.type} says so. Splitting the bins earlier, with \code{normalizeCounts(backgroundHoldout = )}, keeps the same rows out of both steps, and that split is picked up here rather than a second one being drawn on top of it.
+#' Checking the estimate against the rows it was fitted to would say nothing, so half the null rows are held out by default and travel back in \code{holdout.index} for that check to use. How much that holdout is worth depends on what came before it. Held out here alone, the rows are independent of the dispersion but not of the normalisation, since the background bins have already been through \code{csaw::normFactors} in \code{\link{normalizeRegionCounts}}: they are dispersion holdouts and \code{holdout.type} says so. Splitting the bins earlier, with \code{normalizeRegionCounts(backgroundHoldout = )}, keeps the same rows out of both steps, and that split is picked up here rather than a second one being drawn on top of it.
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' # The background bins cover the genome and carry no strain effect
 #' nullDispersion <- estimateNullDispersion(counts,
@@ -116,14 +116,14 @@ estimateNullDispersion <-
         }
 
         if (!is.null(storedHoldout) & length(storedHoldout) > 0) {
-            # normalizeCounts already kept these bins out of the factors, splitting again would undo that
+            # normalizeRegionCounts already kept these bins out of the factors, splitting again would undo that
             holdoutIndex <- intersect(nullObject$kept.rows, as.integer(storedHoldout))
             estimationRows <- which(!(nullObject$kept.rows %in% holdoutIndex))
             holdoutType <- "normalization and dispersion"
 
             if (length(estimationRows) < 100) {
                 stop("Only ", length(estimationRows), " null rows are left outside the normalisation holdout, ",
-                    "lower 'backgroundHoldout' in normalizeCounts.",
+                    "lower 'backgroundHoldout' in normalizeRegionCounts.",
                     call. = FALSE
                 )
             }
@@ -172,7 +172,7 @@ estimateNullDispersion <-
             if (holdoutType == "dispersion") {
                 message(
                     "The held-out rows are holdouts of the dispersion alone: they were already used to estimate the ",
-                    "normalisation factors. Split them earlier with normalizeCounts(backgroundHoldout = ) for a check ",
+                    "normalisation factors. Split them earlier with normalizeRegionCounts(backgroundHoldout = ) for a check ",
                     "that sits outside the whole chain."
                 )
             }
@@ -210,7 +210,7 @@ estimateNullDispersion <-
 #' @importFrom S4Vectors metadata
 #' @importFrom edgeR aveLogCPM
 #'
-#' @keywords internal
+#' @noRd
 
 .nullMatrix <-
     function(counts,

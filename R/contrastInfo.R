@@ -74,7 +74,7 @@ contrastInfo <-
 #'
 #' @importFrom stats median na.omit
 #'
-#' @keywords internal
+#' @noRd
 
 .singleContrastInfo <-
     function(results,

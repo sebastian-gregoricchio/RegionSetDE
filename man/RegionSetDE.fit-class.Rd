@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.fit-class}
 \alias{RegionSetDE.fit-class}
+\alias{show,RegionSetDE.fit-method}
 \title{RegionSetDE.fit class}
+\usage{
+\S4method{show}{RegionSetDE.fit}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.fit} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class storing a model fitted on a \code{RegionSetDE.counts} object. The object returned by the engine is kept as it is inside the \code{fit} slot, so that any function of \code{edgeR}, \code{limma}, \code{variancePartition} or \code{DESeq2} remains usable on it, while the design, the offsets and the samples that produced it travel with it. The counts are carried along as well: the per-set tests read the fit and never the counts directly, which is what guarantees that the two levels share the same dispersion and the same normalisation.
 }
@@ -31,6 +41,12 @@ S4 class storing a model fitted on a \code{RegionSetDE.counts} object. The objec
 \item{\code{counting.level}}{String indicating whether the rows are regions (\code{"region"}) or tiles (\code{"tile"}).}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+fit
+fitEngine(fit)
+
+}
 \author{
 Sebastian Gregoricchio
 }

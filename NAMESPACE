@@ -58,7 +58,7 @@ export(loadRegions)
 export(loadSampleSheet)
 export(makeGreylist)
 export(makeSetUniverse)
-export(normalizeCounts)
+export(normalizeRegionCounts)
 export(pairwiseContrasts)
 export(parameterLog)
 export(peakOccupancyTable)
@@ -217,6 +217,11 @@ importFrom(BiocParallel,
   bplapply,
   bpnworkers
 )
+importFrom(ComplexHeatmap,
+  Heatmap,
+  HeatmapAnnotation,
+  rowAnnotation
+)
 importFrom(GenomeInfoDb,
   "genome<-",
   "seqlengths<-",
@@ -292,6 +297,7 @@ importFrom(SummarizedExperiment,
   rowData,
   rowRanges
 )
+importFrom(consensusRegions,consensusRanges)
 importFrom(csaw,
   combineTests,
   minimalTests,

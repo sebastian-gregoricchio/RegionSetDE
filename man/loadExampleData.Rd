@@ -26,7 +26,7 @@ Everything but \code{"peakSheet"} comes from the liver ChIP-seq libraries of the
 
 The regions are one kilobase windows split into four sets ordered by the amount of H3K4me3 they are expected to carry: promoters overlapping a CpG island, promoters without one, positions inside gene bodies away from any transcription start site, and intergenic positions that serve as the low-signal control. The sets are disjoint, and a window claimed by an earlier set is never reused by a later one.
 
-Only the counts are stored on disk. Asking for \code{"fit"} runs \code{\link{normalizeCounts}}, \code{\link{filterRegions}} and \code{\link{fitRegions}} on them, with the parameters recorded in \code{"buildMetadata"}, and keeps the result for the rest of the session. A fitted model carries the internals of its engine, and those change between releases of \code{edgeR} and \code{limma}, so a serialised fit would break as soon as the engine moved underneath it.
+Only the counts are stored on disk. Asking for \code{"fit"} runs \code{\link{normalizeRegionCounts}}, \code{\link{filterRegions}} and \code{\link{fitRegions}} on them, with the parameters recorded in \code{"buildMetadata"}, and keeps the result for the rest of the session. A fitted model carries the internals of its engine, and those change between releases of \code{edgeR} and \code{limma}, so a serialised fit would break as soon as the engine moved underneath it.
 
 rn4 has no curated blacklist, so \code{"exclusionRegions"} is assembled from the UCSC assembly gap track and from bins carrying implausible coverage in the input libraries. It is not an ENCODE-grade exclusion list and should not be reused outside these examples.
 

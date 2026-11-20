@@ -222,7 +222,7 @@ setMethod(
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .asTable <-
     function(x) {
@@ -1159,7 +1159,7 @@ setMethod(
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .storedCounts <-
     function(object) {
@@ -1177,7 +1177,7 @@ setMethod(
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .storedTiles <-
     function(results) {
@@ -1197,7 +1197,7 @@ setMethod(
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .storedConsensus <-
     function(object) {

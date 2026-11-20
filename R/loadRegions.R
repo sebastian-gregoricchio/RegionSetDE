@@ -169,9 +169,140 @@ loadRegions <-
         # Failure handler #
         #-----------------#
         # Loading problems are fatal unless the user explicitly asks to skip the faulty elements
+        regionList <- .readRegionSets(
+            regions = regions,
+            keepMetadata = keepMetadata,
+            sortRegions = sortRegions,
+            reduceRegions = reduceRegions,
+            removeDuplicatedRegions = removeDuplicatedRegions,
+            seqlevelsStyle = seqlevelsStyle,
+            genomeAssembly = genomeAssembly,
+            skipInvalid = skipInvalid,
+            verbose = verbose
+        )
+
+        # Names are re-assigned before dropping the skipped elements, to keep the correspondence with the input
+        names(regionList) <- names(regions)
+        regionList <- regionList[!vapply(regionList, is.null, logical(1))]
+
+        if (length(regionList) == 0) {
+            stop("None of the elements provided could be loaded.", call. = FALSE)
+        }
+
+        #-------------------------#
+        # Check the naming styles #
+        #-------------------------#
+        # A mixture of UCSC and Ensembl names returns zero overlaps downstream without raising any error
+        if (is.null(seqlevelsStyle)) {
+            hasChrPrefix <- vapply(regionList, function(gr) {
+                any(grepl("^chr", GenomeInfoDb::seqlevels(gr)))
+            }, logical(1))
+
+            if (length(unique(hasChrPrefix)) > 1) {
+                stop("The region sets mix UCSC ('chr1') and Ensembl/NCBI ('1') chromosome names: ",
+                    paste0(names(regionList), " [", ifelse(hasChrPrefix, "UCSC", "Ensembl/NCBI"), "]", collapse = ", "),
+                    ". Use the 'seqlevelsStyle' parameter to harmonize them.",
+                    call. = FALSE
+                )
+            }
+        }
+
+        #---------------------------#
+        # Check the duplicated sets #
+        #---------------------------#
+        # Sets are compared on sorted coordinates, so that the order of the regions does not matter
+        regionList <- .dropDuplicatedSets(
+            duplicatedSets = duplicatedSets,
+            regionList = regionList
+        )
+
+        #--------------------#
+        # Export the regions #
+        #--------------------#
+        if (outputFormat == "list") {
+            return(regionList)
+        }
+
+        # The coercion fails when the elements carry different metadata columns
+        grangesList <-
+            tryCatch(
+                expr = methods::as(regionList, "GRangesList"),
+                error = function(e) {
+                    warning("The elements carry different metadata columns and could not be combined, the metadata have been dropped.", call. = FALSE)
+                    return(methods::as(lapply(regionList, function(gr) {
+                        S4Vectors::mcols(gr) <- NULL
+                        return(gr)
+                    }), "GRangesList"))
+                }
+            )
+
+        if (outputFormat == "GRangesList") {
+            return(grangesList)
+        }
+
+        ### RegionSetDE object, the loading parameters travel with the regions
+        return(.newObject("RegionSetDE",
+            regions = grangesList,
+            genome.assembly = genomeAssembly,
+            seqlevels.style = ifelse(is.null(seqlevelsStyle), NA_character_, seqlevelsStyle),
+            filtering.log = data.frame(
+                step = character(0), region.set = character(0),
+                n.before = numeric(0), n.after = numeric(0), n.removed = numeric(0),
+                stringsAsFactors = FALSE
+            ),
+            parameters = list(loadRegions = list(
+                keepMetadata = keepMetadata,
+                sortRegions = sortRegions,
+                reduceRegions = reduceRegions,
+                removeDuplicatedRegions = removeDuplicatedRegions,
+                duplicatedSets = duplicatedSets,
+                seqlevelsStyle = seqlevelsStyle,
+                genomeAssembly = genomeAssembly
+            ))
+        ))
+    } # END function
+
+
+#' @title .readRegionSets
+#'
+#' @description Reads every element of \code{regions} in \code{\link{loadRegions}}, a file, a \code{GRanges} or a data.frame, into a \code{GRanges} with the chromosome names, the metadata, the order and the duplicated ranges handled as asked.
+#'
+#' @param regions See \code{\link{loadRegions}}.
+#' @param keepMetadata See \code{\link{loadRegions}}.
+#' @param sortRegions See \code{\link{loadRegions}}.
+#' @param reduceRegions See \code{\link{loadRegions}}.
+#' @param removeDuplicatedRegions See \code{\link{loadRegions}}.
+#' @param seqlevelsStyle See \code{\link{loadRegions}}.
+#' @param genomeAssembly See \code{\link{loadRegions}}.
+#' @param skipInvalid See \code{\link{loadRegions}}.
+#' @param verbose See \code{\link{loadRegions}}.
+#'
+#' @return A list of \code{GRanges}, one per element of \code{regions}, \code{NULL} for the ones skipped.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocGenerics duplicated sort unique
+#' @importFrom GenomeInfoDb genome seqlevels seqlevelsStyle
+#' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @importFrom IRanges reduce
+#' @importFrom S4Vectors mcols
+#' @importFrom methods is
+#'
+#' @noRd
+
+.readRegionSets <-
+    function(regions,
+             keepMetadata,
+             sortRegions,
+             reduceRegions,
+             removeDuplicatedRegions,
+             seqlevelsStyle,
+             genomeAssembly,
+             skipInvalid,
+             verbose) {
         handleFailure <-
             function(errorMessage) {
-                if (skipInvalid == TRUE) {
+                if (isTRUE(skipInvalid)) {
                     warning(errorMessage, " The element will be skipped.", call. = FALSE)
                     return(NULL)
                 } else {
@@ -206,7 +337,7 @@ loadRegions <-
         #------------------#
         # Load the regions #
         #------------------#
-        if (verbose == TRUE) {
+        if (isTRUE(verbose)) {
             message("Loading regions:")
         }
 
@@ -256,30 +387,30 @@ loadRegions <-
                     }
 
                     ### Post-processing of the ranges
-                    if (reduceRegions == TRUE) {
+                    if (isTRUE(reduceRegions)) {
                         gr <- IRanges::reduce(gr)
-                    } else if (removeDuplicatedRegions == TRUE) {
+                    } else if (isTRUE(removeDuplicatedRegions)) {
                         # Repeated coordinates within a file would be counted twice by any overlap-based test
                         nDuplicated <- sum(BiocGenerics::duplicated(gr))
                         if (nDuplicated > 0) {
                             gr <- BiocGenerics::unique(gr)
-                            if (verbose == TRUE) {
+                            if (isTRUE(verbose)) {
                                 message("  ", names(regions)[i], ": ", nDuplicated, " duplicated regions removed")
                             }
                         }
                     }
 
-                    if (keepMetadata == FALSE | reduceRegions == TRUE) {
+                    if (isFALSE(keepMetadata) || isTRUE(reduceRegions)) {
                         S4Vectors::mcols(gr) <- NULL
                     } # reduction makes the metadata meaningless
-                    if (sortRegions == TRUE) {
+                    if (isTRUE(sortRegions)) {
                         gr <- BiocGenerics::sort(gr, ignore.strand = TRUE)
                     }
                     if (!is.null(genomeAssembly)) {
                         GenomeInfoDb::genome(gr) <- genomeAssembly
                     }
 
-                    if (verbose == TRUE) {
+                    if (isTRUE(verbose)) {
                         message("  ", names(regions)[i], ": ", length(gr), " regions")
                     }
 
@@ -287,36 +418,29 @@ loadRegions <-
                 }
             )
 
-        # Names are re-assigned before dropping the skipped elements, to keep the correspondence with the input
-        names(regionList) <- names(regions)
-        regionList <- regionList[!vapply(regionList, is.null, logical(1))]
+        return(regionList)
+    }
 
-        if (length(regionList) == 0) {
-            stop("None of the elements provided could be loaded.", call. = FALSE)
-        }
 
-        #-------------------------#
-        # Check the naming styles #
-        #-------------------------#
-        # A mixture of UCSC and Ensembl names returns zero overlaps downstream without raising any error
-        if (is.null(seqlevelsStyle)) {
-            hasChrPrefix <- vapply(regionList, function(gr) {
-                any(grepl("^chr", GenomeInfoDb::seqlevels(gr)))
-            }, logical(1))
+#' @title .dropDuplicatedSets
+#'
+#' @description Finds the region sets of \code{\link{loadRegions}} holding exactly the same ranges and stops, removes or keeps them following \code{duplicatedSets}.
+#'
+#' @param duplicatedSets See \code{\link{loadRegions}}.
+#' @param regionList Named list of \code{GRanges}, one per set.
+#'
+#' @return The named list of \code{GRanges}, without the duplicated sets when they are removed.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocGenerics end sort start
+#' @importFrom GenomeInfoDb seqnames
+#'
+#' @noRd
 
-            if (length(unique(hasChrPrefix)) > 1) {
-                stop("The region sets mix UCSC ('chr1') and Ensembl/NCBI ('1') chromosome names: ",
-                    paste0(names(regionList), " [", ifelse(hasChrPrefix, "UCSC", "Ensembl/NCBI"), "]", collapse = ", "),
-                    ". Use the 'seqlevelsStyle' parameter to harmonize them.",
-                    call. = FALSE
-                )
-            }
-        }
-
-        #---------------------------#
-        # Check the duplicated sets #
-        #---------------------------#
-        # Sets are compared on sorted coordinates, so that the order of the regions does not matter
+.dropDuplicatedSets <-
+    function(duplicatedSets,
+             regionList) {
         identicalRanges <-
             function(a, b) {
                 a <- BiocGenerics::sort(a, ignore.strand = TRUE)
@@ -337,7 +461,7 @@ loadRegions <-
                 candidates <- setdiff(which(setLengths[seq_len(i - 1)] == setLengths[i]), duplicatedIdx)
 
                 for (j in candidates) {
-                    if (identicalRanges(regionList[[i]], regionList[[j]]) == TRUE) {
+                    if (isTRUE(identicalRanges(regionList[[i]], regionList[[j]]))) {
                         duplicatedIdx <- c(duplicatedIdx, i)
                         duplicatedMsg <- c(duplicatedMsg, paste0("'", names(regionList)[i], "' (identical to '", names(regionList)[j], "')"))
                         break
@@ -359,48 +483,5 @@ loadRegions <-
             }
         }
 
-        #--------------------#
-        # Export the regions #
-        #--------------------#
-        if (outputFormat == "list") {
-            return(regionList)
-        }
-
-        # The coercion fails when the elements carry different metadata columns
-        grangesList <-
-            tryCatch(
-                expr = methods::as(regionList, "GRangesList"),
-                error = function(e) {
-                    warning("The elements carry different metadata columns and could not be combined, the metadata have been dropped.", call. = FALSE)
-                    return(methods::as(lapply(regionList, function(gr) {
-                        S4Vectors::mcols(gr) <- NULL
-                        return(gr)
-                    }), "GRangesList"))
-                }
-            )
-
-        if (outputFormat == "GRangesList") {
-            return(grangesList)
-        }
-
-        ### RegionSetDE object, the loading parameters travel with the regions
-        return(.newObject("RegionSetDE",
-            regions = grangesList,
-            genome.assembly = genomeAssembly,
-            seqlevels.style = ifelse(is.null(seqlevelsStyle), NA_character_, seqlevelsStyle),
-            filtering.log = data.frame(
-                step = character(0), region.set = character(0),
-                n.before = numeric(0), n.after = numeric(0), n.removed = numeric(0),
-                stringsAsFactors = FALSE
-            ),
-            parameters = list(loadRegions = list(
-                keepMetadata = keepMetadata,
-                sortRegions = sortRegions,
-                reduceRegions = reduceRegions,
-                removeDuplicatedRegions = removeDuplicatedRegions,
-                duplicatedSets = duplicatedSets,
-                seqlevelsStyle = seqlevelsStyle,
-                genomeAssembly = genomeAssembly
-            ))
-        ))
-    } # END function
+        return(regionList)
+    }

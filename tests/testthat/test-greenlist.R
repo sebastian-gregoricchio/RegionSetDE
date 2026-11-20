@@ -142,7 +142,7 @@ test_that("the greenlist factors follow the median of ratios", {
     countedCounts <- countGreenlist(counts, greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
 
     # Two copies of one library have nothing to scale between them
-    normalized <- normalizeCounts(countedCounts, method = "greenlist", verbose = FALSE)
+    normalized <- normalizeRegionCounts(countedCounts, method = "greenlist", verbose = FALSE)
     expect_equal(normalized$scaling.factor, c(1, 1), ignore_attr = TRUE)
     expect_identical(S4Vectors::metadata(normalized)$normalization$method, "greenlist")
 
@@ -155,24 +155,24 @@ test_that("the greenlist factors follow the median of ratios", {
         ncol = 2, dimnames = list(NULL, c("first", "second"))
     )
 
-    suppliedCounts <- normalizeCounts(counts, method = "greenlist", greenlistCounts = greenlistMatrix, verbose = FALSE)
+    suppliedCounts <- normalizeRegionCounts(counts, method = "greenlist", greenlistCounts = greenlistMatrix, verbose = FALSE)
     expect_equal(suppliedCounts$scaling.factor, c(2 / 3, 4 / 3), ignore_attr = TRUE)
 
     # One total per sample leaves the sum as the only estimator, whatever was asked for
-    suppliedTotals <- normalizeCounts(counts,
+    suppliedTotals <- normalizeRegionCounts(counts,
         method = "greenlist",
         greenlistCounts = c(first = 1000, second = 3000), verbose = FALSE
     )
     expect_equal(suppliedTotals$scaling.factor, c(0.5, 1.5), ignore_attr = TRUE)
 
     for (estimator in c("medianRatio", "TMM", "sum")) {
-        estimated <- normalizeCounts(countedCounts, method = "greenlist", greenlistEstimator = estimator, verbose = FALSE)
+        estimated <- normalizeRegionCounts(countedCounts, method = "greenlist", greenlistEstimator = estimator, verbose = FALSE)
         expect_equal(estimated$scaling.factor, c(1, 1), ignore_attr = TRUE, info = estimator)
     }
 
-    expect_error(normalizeCounts(counts, method = "greenlist", verbose = FALSE), "run 'countGreenlist'")
+    expect_error(normalizeRegionCounts(counts, method = "greenlist", verbose = FALSE), "run 'countGreenlist'")
     expect_error(
-        normalizeCounts(countedCounts, method = "greenlist", greenlistEstimator = "median", verbose = FALSE),
+        normalizeRegionCounts(countedCounts, method = "greenlist", greenlistEstimator = "median", verbose = FALSE),
         "'medianRatio', 'TMM' or 'sum'"
     )
 })
@@ -251,5 +251,5 @@ test_that("thin libraries are reported against the conditions the lists were bui
 test_that("the median of ratios says how many regions it rests on", {
     counts <- countGreenlist(greenlistCountsObject(), greenlist = toyGreenlist(), excludeCounted = FALSE, pairedEnd = FALSE, verbose = FALSE)
 
-    expect_message(normalizeCounts(counts, method = "greenlist", verbose = TRUE), "greenlist regions with reads in every sample, out of 10")
+    expect_message(normalizeRegionCounts(counts, method = "greenlist", verbose = TRUE), "greenlist regions with reads in every sample, out of 10")
 })

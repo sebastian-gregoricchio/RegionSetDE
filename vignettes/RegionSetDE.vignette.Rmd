@@ -27,12 +27,8 @@ text-align: justify}
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = ">",
-                      warning = FALSE, message = FALSE, fig.align = "center",
+                      message = FALSE, fig.align = "center",
                       dev = "png", dpi = 96, fig.width = 7, fig.height = 4.5)
-
-library(RegionSetDE)
-library(dplyr)
-library(ggplot2)
 ```
 
 ----------------------------------------------------------
@@ -53,7 +49,7 @@ Bioconductor already has several tools for differential binding, and they differ
 
 ## What this vignette covers
 
-The example follows one dataset from BAM files to an interpreted result. Along the way each object is opened up, so that you know what it holds and how to pull the parts out. The last section is a decision guide: which function answers which question.
+The example follows one dataset from its counts to an interpreted result. Along the way each object is opened up, so that you know what it holds and how to pull the parts out. The last section is a decision guide: which function answers which question.
 
 Regions that come from a peak caller rather than from an annotation are the subject of a [second vignette](RegionSetDE.peaks.vignette.html), which covers the sample sheet, the consensus of the peak calls, and the normalisation trap that a dataset with a global change in binding walks into.
 
@@ -67,10 +63,17 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 }
 
 BiocManager::install("RegionSetDE")
-
-# Development version
-# devtools::install_github("sebastian-gregoricchio/RegionSetDE")
 ```
+
+The packages used throughout this vignette:
+
+```{r load_packages}
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
+```
+
+The progress messages of the functions are switched off in this document to keep it short, and they appear as usual when the code is run.
 
 <br>
 
@@ -199,6 +202,8 @@ Naming an assay returns the high signal regions of that protocol instead, `loadB
 
 The BAM files have to be aligned to the same assembly, but they do not have to name its chromosomes alike. Files written `chr1` and files written `1` are counted together, and the regions can follow either style.
 
+The four BAM files of the example are not shipped with the package, so the counting calls of this section are shown and not run. The `counts` object loaded above is what they return, and `make-data.R` holds the exact call. The [second vignette](RegionSetDE.peaks.vignette.html#counting) runs the counting on alignments that are shipped.
+
 ```{r count_reads, eval = FALSE}
 sampleTable <- data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
                           condition = c("BN", "BN", "SHR", "SHR"))
@@ -229,7 +234,7 @@ counts <-
              BPPARAM = 4)
 ```
 
-When only a few regions are needed, `fullLibrarySize = FALSE` limits the reading to the chromosomes carrying them. The counts stay the same and come back in seconds, but the library sizes cover those chromosomes only, and `normalizeCounts()` warns if the chosen method depends on them.
+When only a few regions are needed, `fullLibrarySize = FALSE` limits the reading to the chromosomes carrying them. The counts stay the same and come back in seconds, but the library sizes cover those chromosomes only, and `normalizeRegionCounts()` warns if the chosen method depends on them.
 
 `countBigwig()` is the equivalent for coverage tracks, and `loadCounts()` takes a count matrix produced elsewhere, so an existing *featureCounts* or *deepTools* table can enter the pipeline without recounting.
 
@@ -287,7 +292,7 @@ head(backgroundBins, 3)
 
 # **Normalisation** {#normalization}
 
-The scaling factors decide what a fold change means, and in chromatin data they are rarely a detail. `normalizeCounts()` offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`, `"readsInRegions"`, `"background"`, `"greenlist"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
+The scaling factors decide what a fold change means, and in chromatin data they are rarely a detail. `normalizeRegionCounts()` offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`, `"readsInRegions"`, `"background"`, `"greenlist"`, `"loess"`, `"spikeIn"`, `"manual"` and `"none"`.
 
 The distinction that matters is what each method assumes:
 
@@ -298,7 +303,7 @@ The distinction that matters is what each method assumes:
 - **`"spikeIn"`** and **`"manual"`** take the factors from outside altogether, which is the right answer whenever an exogenous reference exists.
 
 ```{r normalize}
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 SummarizedExperiment::colData(counts)
 ```
@@ -518,15 +523,11 @@ topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
 
 When the counting was tiled, the p-value of a region is a Simes combination across its tiles. That answers *does any part of this region change* rather than *does the whole region change*, and the distinction matters for wide domains: a long region that moves over one tile in forty comes out with a small p-value and a small overall fold change. The `log2FC` reported is the fold change of the most significant tile, not an average, because that is the quantity matching the p-value; `rep.tile.start` and `rep.tile.end` say where that tile is. `mean.tile.log2FC` beside it averages the tiles over the whole region, weighted by their width, and is the number to quote for the region as a whole. A large gap between the two means that only part of the region moved.
 
-The tile-level table stays available:
-
-```{r tile_table, eval = FALSE}
-head(tileTable(tiledResults))
-```
+The tile-level table stays available through `tileTable()`, and the [tiles section](RegionSetDE.peaks.vignette.html#tiles) of the second vignette shows it on a tiled object.
 
 On an object counted per region there are no tiles and `tileTable()` says so rather than returning an empty table.
 
-The counts follow the same logic. `countTable(tiledResults, level = "tile")` returns them per tile, and `level = "region"` sums the tiles back into their region. That sum is higher than a count of the same region taken whole, since a fragment lying across two tiles is counted in both. It still compares between samples, but the number of fragments in a region only comes from counting it without tiles.
+The counts follow the same logic. On a tiled object `countTable(level = "tile")` returns them per tile, and `level = "region"` sums the tiles back into their region. That sum is higher than a count of the same region taken whole, since a fragment lying across two tiles is counted in both. It still compares between samples, but the number of fragments in a region only comes from counting it without tiles.
 
 <br>
 
@@ -824,6 +825,8 @@ table(geneTable$direction)
 
 The weights come from the links, in a fixed order: a weight stored on the link itself if there is one, whatever it measures; failing that `exp(-d / decay)` on the distance to the start site, which is a guess about contact rather than a measure of it; failing both, every region of a gene counts the same. Which applied is in the object and `show` prints it.
 
+The two calls below use *clusterProfiler* and *fgsea*, which are not dependencies of this package, so they are shown and not run.
+
 ```{r gene_table_ora, eval = FALSE}
 # The table an over-representation tool expects, split by direction
 upGenes <- dplyr::filter(geneTable, direction == "up", FDR <= 0.05)$gene.id
@@ -894,12 +897,12 @@ A set-level result rests on the dispersion and on the null being where you think
 
 `estimateNullDispersion()` estimates the dispersion from rows that should carry no effect, which is what makes an exploratory analysis without replicates possible at all. What it measures is how much these two libraries differ over rows assumed not to respond. What a replicated experiment measures is how much two animals, two donors or two cultures differ, which is a larger quantity that contains the first, and no amount of null rows recovers it: variability that was never sampled is not in the data. Read the output as conditional on that assumption and say so in the methods.
 
-By default half the null rows are held back for the calibration check. Those rows are independent of the dispersion but not of the normalisation, since the background bins have already been through `csaw::normFactors()`; `holdout.type` reports which. Passing `normalizeCounts(backgroundHoldout = 0.5)` splits the bins earlier and keeps the same rows out of both steps, and `estimateNullDispersion()` then picks up that split rather than drawing a second one on top of it:
+By default half the null rows are held back for the calibration check. Those rows are independent of the dispersion but not of the normalisation, since the background bins have already been through `csaw::normFactors()`; `holdout.type` reports which. Passing `normalizeRegionCounts(backgroundHoldout = 0.5)` splits the bins earlier and keeps the same rows out of both steps, and `estimateNullDispersion()` then picks up that split rather than drawing a second one on top of it:
 
 ```{r null_dispersion}
 nullDispersion <-
   estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
-                           normalizeCounts(method = "background",
+                           normalizeRegionCounts(method = "background",
                                            verbose = FALSE),
                          source = "background",
                          verbose = FALSE)
@@ -962,7 +965,7 @@ SummarizedExperiment::colData(singleCounts)
 `selectSamples()` drops the normalisation when it subsets, since scaling factors estimated on four libraries do not describe two, so the object is renormalised and refiltered from scratch.
 
 ```{r single_sample_prepare}
-singleCounts <- normalizeCounts(singleCounts,
+singleCounts <- normalizeRegionCounts(singleCounts,
                                 method = "background",
                                 verbose = FALSE)
 
@@ -1201,11 +1204,10 @@ unlink(outputDirectory, recursive = TRUE)
 | Which class carries more signal, with only one condition? | `scoreRegionSets()` | `mean.delta.score` and its interval, see [When there is no contrast at all](#set_scores) |
 | Are my conclusions sensitive to the normalisation? | `plotNormComparison()`, `plotSetMA()` | how far the methods disagree |
 | Are my p-values trustworthy? | `checkNullCalibration()` | flatness of the histogram |
-| Can I test without replicates? | `estimateNullDispersion()` | dispersion from the background, then `fitRegions(dispersion = )` |
+| Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` | the dispersion from the background, see [Working without replicates](#no_replicates) |
 | Is the competitive comparison fair? | `plotUniverseMatching()` | overlap of the two distributions |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` | the tile-level profile |
 | What are the counts behind a region, raw or normalised? | `countTable()` | one column per sample, or `format = "long"` with the `colData` attached |
-| Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` | see [Working without replicates](#no_replicates) |
 
 <br>
 

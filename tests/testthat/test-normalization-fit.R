@@ -1,5 +1,5 @@
-test_that("normalizeCounts adds a normalized assay and positive factors", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+test_that("normalizeRegionCounts adds a normalized assay and positive factors", {
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_true("norm.counts" %in% SummarizedExperiment::assayNames(counts))
 
@@ -14,11 +14,11 @@ test_that("the normalization methods do not all give the same factors", {
     counts <- exampleCounts()
 
     backgroundFactors <- SummarizedExperiment::colData(
-        normalizeCounts(counts, method = "background", verbose = FALSE)
+        normalizeRegionCounts(counts, method = "background", verbose = FALSE)
     )$scaling.factor
 
     tmmFactors <- SummarizedExperiment::colData(
-        normalizeCounts(counts, method = "TMM", verbose = FALSE)
+        normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
     )$scaling.factor
 
     expect_length(tmmFactors, ncol(counts))
@@ -26,15 +26,15 @@ test_that("the normalization methods do not all give the same factors", {
 })
 
 
-test_that("normalizeCounts rejects a wrong number of supplied factors", {
+test_that("normalizeRegionCounts rejects a wrong number of supplied factors", {
     expect_error(
-        normalizeCounts(exampleCounts(), scalingFactors = c(1, 1), verbose = FALSE)
+        normalizeRegionCounts(exampleCounts(), scalingFactors = c(1, 1), verbose = FALSE)
     )
 })
 
 
 test_that("filterRegions removes rows without emptying any set", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     filtered <- filterRegions(counts, verbose = FALSE)
 
     expect_s4_class(filtered, "RegionSetDE.counts")
@@ -50,7 +50,7 @@ test_that("filterRegions removes rows without emptying any set", {
 
 
 test_that("a stricter fold change keeps fewer regions", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     loose <- filterRegions(counts, foldChange = 1.5, verbose = FALSE)
     strict <- filterRegions(counts, foldChange = 4, verbose = FALSE)
@@ -60,7 +60,7 @@ test_that("a stricter fold change keeps fewer regions", {
 
 
 test_that("fitRegions returns a fit whose accessors work", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     counts <- filterRegions(counts, verbose = FALSE)
 
     fit <- fitRegions(counts, design = ~condition, engine = "edgeR", verbose = FALSE)
@@ -73,7 +73,7 @@ test_that("fitRegions returns a fit whose accessors work", {
 
 
 test_that("fitRegions errors on a design variable that is not in colData", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_error(
         fitRegions(counts, design = ~notAVariable, engine = "edgeR", verbose = FALSE)
@@ -94,7 +94,7 @@ test_that("the packaged fit matches what the script produced", {
 
 
 test_that("estimateNullDispersion works from the background", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     nullDispersion <- estimateNullDispersion(counts,
         source = "background",
         verbose = FALSE
@@ -105,7 +105,7 @@ test_that("estimateNullDispersion works from the background", {
 
 
 test_that("estimateNullDispersion refuses a set with too little signal", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     # The intergenic set is the low-signal control by construction
     expect_error(

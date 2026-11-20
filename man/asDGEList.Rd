@@ -28,14 +28,14 @@ This exists because the conversion is easy to get backwards. The object stores a
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 dgeList <- asDGEList(counts)
 dgeList$samples
 
 }
 \seealso{
-\code{\link{asDESeqDataSet}}, \code{\link{fitRegions}}, \code{\link{normalizeCounts}}
+\code{\link{asDESeqDataSet}}, \code{\link{fitRegions}}, \code{\link{normalizeRegionCounts}}
 }
 \author{
 Sebastian Gregoricchio

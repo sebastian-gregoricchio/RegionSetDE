@@ -264,7 +264,7 @@ checkNullCalibration <-
 #'
 #' @importFrom edgeR glmFit glmLRT glmQLFit glmQLFTest
 #'
-#' @keywords internal
+#' @noRd
 
 .nullTest <-
     function(dgeList,
@@ -299,7 +299,7 @@ checkNullCalibration <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .suggestDispersion <-
     function(dgeList,

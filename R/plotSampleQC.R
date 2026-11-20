@@ -33,7 +33,7 @@
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 #'
@@ -43,7 +43,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{computeSamplePCA}}, \code{\link{plotSampleCorrelation}}, \code{\link{normalizeCounts}}, \code{\link{splitSamples}}
+#' @seealso \code{\link{computeSamplePCA}}, \code{\link{plotSampleCorrelation}}, \code{\link{normalizeRegionCounts}}, \code{\link{splitSamples}}
 #'
 #' @importFrom SummarizedExperiment colData rowData
 #' @importFrom ggplot2 ggplot aes geom_point geom_hline geom_vline facet_wrap facet_grid labs theme element_blank element_rect element_line scale_colour_manual guides guide_legend
@@ -289,11 +289,11 @@ plotRegionPCA <-
 #'
 #' @return A list with \code{scores}, a data.frame with one row per sample, its coordinates on every component and its \code{colData}; \code{variance}, a data.frame with the standard deviation, the percentage of variance and the cumulative percentage of every component; \code{loadings}, the matrix of the weights of the regions on the components; and \code{parameters}, with the region sets, the normalisation and the number of regions used.
 #'
-#' @details The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeCounts}} applied. The regions are centred and not scaled, so a region weighs as much as it varies. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised ordinations of one object are computed on the same rows.
+#' @details The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeRegionCounts}} applied. The regions are centred and not scaled, so a region weighs as much as it varies. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised ordinations of one object are computed on the same rows.
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' samplePCA <- computeSamplePCA(counts, topRegions = 1000)
 #' samplePCA$variance
@@ -400,7 +400,7 @@ computeSamplePCA <-
 #'
 #' @return A list with \code{correlation}, the matrix of the correlations between the samples, or of the Jaccard indices; \code{samples}, the \code{colData} of the object with a \code{sample} column in the order of the matrix, or the sample sheet the peaks were read from; and \code{parameters}, with the method, the normalisation, the region sets and the number of regions used.
 #'
-#' @details The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeCounts}} applied. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised correlations of one object are computed on the same rows.
+#' @details The values are log2 counts per million, with a prior count of 2 added to every count and, when \code{useOffsets = TRUE}, the scaling factors or the offsets stored by \code{\link{normalizeRegionCounts}} applied. An object that was never normalised is scaled by the library sizes whatever \code{useOffsets} says, and a message reports it. The most variable regions are chosen on the normalised values, so the raw and the normalised correlations of one object are computed on the same rows.
 #'
 #' A correlation does not see a single factor per sample. Scaling a library moves its log values by a constant, which leaves the three correlations exactly where they were, so \code{useOffsets} changes the matrix only when the normalisation holds one offset per region, as \code{method = "loess"} and offsets supplied from outside do. An ordination is a different matter, and \code{\link{plotRegionPCA}} does move with the factors.
 #'
@@ -408,7 +408,7 @@ computeSamplePCA <-
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' sampleCorrelation <- computeSampleCorrelation(counts, method = "pearson")
 #' round(sampleCorrelation$correlation, 3)
@@ -537,7 +537,7 @@ computeSampleCorrelation <-
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' plotSampleCorrelation(counts, groupBy = "condition", annotationColumns = c("condition", "sex"))
 #'
@@ -554,7 +554,7 @@ computeSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{computeSampleCorrelation}}, \code{\link{plotRegionPCA}}, \code{\link{normalizeCounts}}
+#' @seealso \code{\link{computeSampleCorrelation}}, \code{\link{plotRegionPCA}}, \code{\link{normalizeRegionCounts}}
 #'
 #' @importFrom stats hclust as.dist as.dendrogram
 #' @importFrom methods is
@@ -591,7 +591,7 @@ plotSampleCorrelation <-
         #------------------------#
         # Check of the arguments #
         #------------------------#
-        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
+        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) || !requireNamespace("circlize", quietly = TRUE)) {
             stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the correlation heatmap.", call. = FALSE)
         }
 
@@ -617,6 +617,161 @@ plotSampleCorrelation <-
         # The transformation is named when the two are being compared, or when the values are not the normalised ones
         nameOffsets <- isTRUE(compareOffsets) | isFALSE(useOffsets)
 
+        matrixStep <- .correlationMatrices(
+            object = object,
+            set = set,
+            contrast = contrast,
+            samples = samples,
+            method = method,
+            jaccardLevel = jaccardLevel,
+            useOffsets = useOffsets,
+            compareOffsets = compareOffsets,
+            facetBySet = facetBySet,
+            topRegions = topRegions,
+            verbose = verbose,
+            matrixList = matrixList,
+            nameOffsets = nameOffsets,
+            precomputed = precomputed
+        )
+        matrixList <- matrixStep$matrixList
+        method <- matrixStep$method
+        panelLabels <- matrixStep$panelLabels
+        sampleTable <- matrixStep$sampleTable
+
+        sampleOrder <- colnames(matrixList[[1]])
+        sampleTable <- sampleTable[match(sampleOrder, sampleTable$sample), , drop = FALSE]
+
+        for (columnName in unique(c(groupBy, annotationColumns))) {
+            if (!(columnName %in% colnames(sampleTable))) {
+                stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
+            }
+        }
+
+        groupVector <- if (is.null(groupBy)) {
+            NULL
+        } else {
+            as.character(sampleTable[[groupBy]])
+        }
+
+        #-------------------------------#
+        # Order, scale and annotation   #
+        #-------------------------------#
+        # The first matrix decides the order, the others follow it so that the values move and not the samples
+        sampleClustering <- if (isTRUE(cluster) & length(sampleOrder) > 2) {
+            stats::as.dendrogram(stats::hclust(d = stats::as.dist(1 - matrixList[[1]]), method = clusteringMethod))
+        } else {
+            FALSE
+        }
+
+        offDiagonal <- unlist(lapply(matrixList, function(correlationMatrix) {
+            correlationMatrix[row(correlationMatrix) != col(correlationMatrix)]
+        }))
+        drawnValues <- if (isTRUE(excludeDiagonal)) {
+            offDiagonal
+        } else {
+            unlist(matrixList)
+        }
+
+        scaleLimits <- .resolveScaleLimits(
+            values = offDiagonal, limits = limits, drawnValues = drawnValues,
+            label = if (method == "jaccard") {
+                "Jaccard index"
+            } else {
+                "correlation"
+            }
+        )
+
+        # Two samples leave a single off-diagonal value, which is not a range to build a scale on
+        if (diff(scaleLimits) == 0) {
+            scaleLimits <- scaleLimits + c(-0.01, 0.01)
+        }
+
+        colourFunction <- circlize::colorRamp2(breaks = seq(scaleLimits[1], scaleLimits[2], length.out = length(palette)), colors = palette)
+
+        annotationColourList <- .annotationColourList(
+            sampleTable = sampleTable,
+            annotationColumns = annotationColumns,
+            annotationColours = annotationColours
+        )
+
+        legendTitle <- paste0(toupper(substring(method, 1, 1)), substring(method, 2), if (method == "jaccard") {
+            "\nindex"
+        } else {
+            "\ncorrelation"
+        })
+
+        #-------------------------------#
+        # One heatmap per panel         #
+        #-------------------------------#
+        heatmapList <- .correlationHeatmaps(
+            annotationColumns = annotationColumns,
+            showDendrogram = showDendrogram,
+            excludeDiagonal = excludeDiagonal,
+            showValues = showValues,
+            valuesColour = valuesColour,
+            digits = digits,
+            title = title,
+            fontSize = fontSize,
+            annotationColourList = annotationColourList,
+            colourFunction = colourFunction,
+            groupVector = groupVector,
+            legendTitle = legendTitle,
+            matrixList = matrixList,
+            panelLabels = panelLabels,
+            sampleClustering = sampleClustering,
+            sampleTable = sampleTable
+        )
+
+        if (length(heatmapList) == 1) {
+            return(heatmapList[[1]])
+        }
+
+        return(Reduce(f = `+`, x = heatmapList))
+    } # END function
+
+
+#' @title .correlationMatrices
+#'
+#' @description Computes, or takes from a computation done beforehand, the correlation matrices drawn by \code{\link{plotSampleCorrelation}}, with the sample table and the title of every panel.
+#'
+#' @param object See \code{\link{plotSampleCorrelation}}.
+#' @param set See \code{\link{plotSampleCorrelation}}.
+#' @param contrast See \code{\link{plotSampleCorrelation}}.
+#' @param samples See \code{\link{plotSampleCorrelation}}.
+#' @param method See \code{\link{plotSampleCorrelation}}.
+#' @param jaccardLevel See \code{\link{plotSampleCorrelation}}.
+#' @param useOffsets See \code{\link{plotSampleCorrelation}}.
+#' @param compareOffsets See \code{\link{plotSampleCorrelation}}.
+#' @param facetBySet See \code{\link{plotSampleCorrelation}}.
+#' @param topRegions See \code{\link{plotSampleCorrelation}}.
+#' @param verbose See \code{\link{plotSampleCorrelation}}.
+#' @param matrixList Named list of correlation matrices, empty at the start.
+#' @param nameOffsets Logical value telling whether the panels are named after the values they use, normalised or not.
+#' @param precomputed Logical value telling whether \code{object} is the output of \code{computeSampleCorrelation}.
+#'
+#' @return A list with \code{matrixList}, \code{method}, \code{panelLabels} and \code{sampleTable}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom methods is
+#'
+#' @noRd
+
+.correlationMatrices <-
+    function(object,
+             set,
+             contrast,
+             samples,
+             method,
+             jaccardLevel,
+             useOffsets,
+             compareOffsets,
+             facetBySet,
+             topRegions,
+             verbose,
+             matrixList,
+             nameOffsets,
+             precomputed) {
         if (isTRUE(precomputed)) {
             matrixList[["computed"]] <- object$correlation
             sampleTable <- object$samples
@@ -722,71 +877,62 @@ plotSampleCorrelation <-
             sampleTable <- .sampleAnnotation(counts = counts)
         }
 
-        sampleOrder <- colnames(matrixList[[1]])
-        sampleTable <- sampleTable[match(sampleOrder, sampleTable$sample), , drop = FALSE]
+        return(list(
+            matrixList = matrixList,
+            method = method,
+            panelLabels = panelLabels,
+            sampleTable = sampleTable
+        ))
+    }
 
-        for (columnName in unique(c(groupBy, annotationColumns))) {
-            if (!(columnName %in% colnames(sampleTable))) {
-                stop("The column '", columnName, "' is absent from the colData.", call. = FALSE)
-            }
-        }
 
-        groupVector <- if (is.null(groupBy)) {
-            NULL
-        } else {
-            as.character(sampleTable[[groupBy]])
-        }
+#' @title .correlationHeatmaps
+#'
+#' @description Draws one \code{ComplexHeatmap} heatmap per correlation matrix of \code{\link{plotSampleCorrelation}}, with the annotation bars, the dendrogram and the values in the cells.
+#'
+#' @param annotationColumns See \code{\link{plotSampleCorrelation}}.
+#' @param showDendrogram See \code{\link{plotSampleCorrelation}}.
+#' @param excludeDiagonal See \code{\link{plotSampleCorrelation}}.
+#' @param showValues See \code{\link{plotSampleCorrelation}}.
+#' @param valuesColour See \code{\link{plotSampleCorrelation}}.
+#' @param digits See \code{\link{plotSampleCorrelation}}.
+#' @param title See \code{\link{plotSampleCorrelation}}.
+#' @param fontSize See \code{\link{plotSampleCorrelation}}.
+#' @param annotationColourList Named list with the colours of every annotation column.
+#' @param colourFunction Colour function of \code{circlize::colorRamp2} for the correlation values.
+#' @param groupVector Vector with the group of every sample, or \code{NULL}.
+#' @param legendTitle String with the title of the colour legend.
+#' @param matrixList Named list of correlation matrices, one per panel.
+#' @param panelLabels Character vector with the title of every panel.
+#' @param sampleClustering \code{hclust} object ordering the samples, or \code{FALSE}.
+#' @param sampleTable Data.frame with the annotation of the samples, in the order of the matrices.
+#'
+#' @return A list of \code{Heatmap} objects, one per matrix.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom ComplexHeatmap Heatmap HeatmapAnnotation rowAnnotation
+#' @importFrom grid gpar unit
+#'
+#' @noRd
 
-        #-------------------------------#
-        # Order, scale and annotation   #
-        #-------------------------------#
-        # The first matrix decides the order, the others follow it so that the values move and not the samples
-        sampleClustering <- if (isTRUE(cluster) & length(sampleOrder) > 2) {
-            stats::as.dendrogram(stats::hclust(d = stats::as.dist(1 - matrixList[[1]]), method = clusteringMethod))
-        } else {
-            FALSE
-        }
-
-        offDiagonal <- unlist(lapply(matrixList, function(correlationMatrix) {
-            correlationMatrix[row(correlationMatrix) != col(correlationMatrix)]
-        }))
-        drawnValues <- if (isTRUE(excludeDiagonal)) {
-            offDiagonal
-        } else {
-            unlist(matrixList)
-        }
-
-        scaleLimits <- .resolveScaleLimits(
-            values = offDiagonal, limits = limits, drawnValues = drawnValues,
-            label = if (method == "jaccard") {
-                "Jaccard index"
-            } else {
-                "correlation"
-            }
-        )
-
-        # Two samples leave a single off-diagonal value, which is not a range to build a scale on
-        if (diff(scaleLimits) == 0) {
-            scaleLimits <- scaleLimits + c(-0.01, 0.01)
-        }
-
-        colourFunction <- circlize::colorRamp2(breaks = seq(scaleLimits[1], scaleLimits[2], length.out = length(palette)), colors = palette)
-
-        annotationColourList <- .annotationColourList(
-            sampleTable = sampleTable,
-            annotationColumns = annotationColumns,
-            annotationColours = annotationColours
-        )
-
-        legendTitle <- paste0(toupper(substring(method, 1, 1)), substring(method, 2), if (method == "jaccard") {
-            "\nindex"
-        } else {
-            "\ncorrelation"
-        })
-
-        #-------------------------------#
-        # One heatmap per panel         #
-        #-------------------------------#
+.correlationHeatmaps <-
+    function(annotationColumns,
+             showDendrogram,
+             excludeDiagonal,
+             showValues,
+             valuesColour,
+             digits,
+             title,
+             fontSize,
+             annotationColourList,
+             colourFunction,
+             groupVector,
+             legendTitle,
+             matrixList,
+             panelLabels,
+             sampleClustering,
+             sampleTable) {
         heatmapList <- list()
 
         for (i in seq_along(matrixList)) {
@@ -870,12 +1016,8 @@ plotSampleCorrelation <-
             )
         }
 
-        if (length(heatmapList) == 1) {
-            return(heatmapList[[1]])
-        }
-
-        return(Reduce(f = `+`, x = heatmapList))
-    } # END function
+        return(heatmapList)
+    }
 
 
 #' @title .contrastColour
@@ -890,7 +1032,7 @@ plotSampleCorrelation <-
 #'
 #' @importFrom farver get_channel
 #'
-#' @keywords internal
+#' @noRd
 
 .contrastColour <-
     function(colour) {
@@ -917,7 +1059,7 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveScaleLimits <-
     function(values,
@@ -977,7 +1119,7 @@ plotSampleCorrelation <-
 #'
 #' @importFrom SummarizedExperiment assay colData
 #'
-#' @keywords internal
+#' @noRd
 
 .countsLogMatrix <-
     function(counts,
@@ -1027,7 +1169,7 @@ plotSampleCorrelation <-
 #'
 #' @importFrom SummarizedExperiment rowData
 #'
-#' @keywords internal
+#' @noRd
 
 .panelSets <-
     function(counts,
@@ -1072,7 +1214,7 @@ plotSampleCorrelation <-
 #'
 #' @importFrom stats var
 #'
-#' @keywords internal
+#' @noRd
 
 .topVariableRows <-
     function(counts,
@@ -1108,7 +1250,7 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .sampleTable <-
     function(sampleAnnotation,
@@ -1159,7 +1301,7 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .correlationSummary <-
     function(correlationMatrix,
@@ -1200,14 +1342,14 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .normalisationNotice <-
     function(counts,
              useOffsets = TRUE,
              verbose = TRUE) {
         if (isTRUE(useOffsets) & isTRUE(verbose) && is.null(.fitOffsets(counts = counts, useOffsets = TRUE, verbose = FALSE))) {
-            message("No normalisation is stored in the object, the samples are scaled by their library sizes alone. Run normalizeCounts() first.")
+            message("No normalisation is stored in the object, the samples are scaled by their library sizes alone. Run normalizeRegionCounts() first.")
         }
 
         return(invisible(TRUE))
@@ -1227,7 +1369,7 @@ plotSampleCorrelation <-
 #' @importFrom SummarizedExperiment colData
 #' @importFrom dplyr relocate
 #'
-#' @keywords internal
+#' @noRd
 
 .sampleAnnotation <-
     function(counts) {
@@ -1253,7 +1395,7 @@ plotSampleCorrelation <-
 #'
 #' @importFrom grDevices hcl.colors
 #'
-#' @keywords internal
+#' @noRd
 
 .annotationColourList <-
     function(sampleTable,
@@ -1325,7 +1467,7 @@ plotSampleCorrelation <-
 #'
 #' @importFrom grid grid.text gpar
 #'
-#' @keywords internal
+#' @noRd
 
 .correlationCellFunction <-
     function(panelMatrix,
@@ -1375,7 +1517,7 @@ plotSampleCorrelation <-
 #' @importFrom BiocGenerics width
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .peakJaccard <-
     function(object,
@@ -1514,7 +1656,7 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .sampleIndex <-
     function(sampleNames,
@@ -1565,7 +1707,7 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .subsetSamples <-
     function(counts,

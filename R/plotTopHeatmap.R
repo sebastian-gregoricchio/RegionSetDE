@@ -84,7 +84,7 @@ plotTopHeatmap <-
         #------------------------#
         # Check of the arguments #
         #------------------------#
-        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) | !requireNamespace("circlize", quietly = TRUE)) {
+        if (!requireNamespace("ComplexHeatmap", quietly = TRUE) || !requireNamespace("circlize", quietly = TRUE)) {
             stop("The 'ComplexHeatmap' and 'circlize' packages are needed to draw the heatmap.", call. = FALSE)
         }
 
@@ -300,7 +300,7 @@ plotTopHeatmap <-
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .representativeRow <-
     function(rowTable,

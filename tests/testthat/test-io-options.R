@@ -238,7 +238,7 @@ test_that("splitSamples refuses a column that is not there", {
 
 
 test_that("asDGEList works with and without the offsets", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     withOffsets <- asDGEList(counts, useOffsets = TRUE, verbose = FALSE)
     withoutOffsets <- asDGEList(counts, useOffsets = FALSE, verbose = FALSE)
@@ -255,7 +255,7 @@ test_that("asDGEList works with and without the offsets", {
 test_that("asDESeqDataSet builds a dataset", {
     skip_if_not_installed("DESeq2")
 
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     deseqData <- asDESeqDataSet(counts, design = ~condition, verbose = FALSE)
 

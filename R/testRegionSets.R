@@ -235,6 +235,148 @@ testRegionSets <-
         # Sets supplied as a list overlap each other, so a universe matched set by set against the other
         # sets of the object describes a comparison that is not the one being made. Every other tested row
         # is, and the loop below reaches it through an empty index
+        setStep <- .prepareSetTest(
+            fit = fit,
+            contrast = contrast,
+            method = method,
+            universe = universe,
+            matchOn = matchOn,
+            universeRatio = universeRatio,
+            universeSets = universeSets,
+            effectMethod = effectMethod,
+            interRegionCor = interRegionCor,
+            tileHandling = tileHandling,
+            fryInput = fryInput,
+            regionSets = regionSets,
+            verbose = verbose
+        )
+        contrastObject <- setStep$contrastObject
+        expressionMatrix <- setStep$expressionMatrix
+        fryList <- setStep$fryList
+        regionStats <- setStep$regionStats
+        setIndexList <- setStep$setIndexList
+        setNames <- setStep$setNames
+        suppliedSets <- setStep$suppliedSets
+        universe <- setStep$universe
+
+        #-------------------------------#
+        # One set at a time             #
+        #-------------------------------#
+        resultList <- .testEverySet(
+            fit = fit,
+            method = method,
+            universe = universe,
+            effectMethod = effectMethod,
+            interRegionCor = interRegionCor,
+            overlapPolicy = overlapPolicy,
+            overlapWithinSet = overlapWithinSet,
+            useRanks = useRanks,
+            FDR = FDR,
+            adjustMethod = adjustMethod,
+            contrastObject = contrastObject,
+            expressionMatrix = expressionMatrix,
+            fryList = fryList,
+            regionStats = regionStats,
+            setIndexList = setIndexList,
+            setNames = setNames,
+            suppliedSets = suppliedSets
+        )
+
+        resultTable <- do.call(what = rbind, args = resultList)
+
+        # One warning for every set involved rather than one per set
+        .warnWithinSetOverlap(
+            setTable = resultTable, setColumns = "region.set",
+            countColumns = "n.overlapping.within", policy = overlapWithinSet
+        )
+
+        #-------------------------------#
+        # Correct across the sets       #
+        #-------------------------------#
+        if ("camera" %in% method) {
+            resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
+        }
+        if ("fry" %in% method) {
+            resultTable$fry.FDR <- stats::p.adjust(resultTable$fry.p, method = adjustMethod)
+
+            if (!all(is.na(resultTable$fry.mixed.p))) {
+                resultTable$fry.mixed.FDR <- stats::p.adjust(resultTable$fry.mixed.p, method = adjustMethod)
+            }
+        }
+        if ("sample.delta.p" %in% colnames(resultTable)) {
+            resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
+        }
+
+        resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
+        rownames(resultTable) <- NULL
+
+        #-------------------------------#
+        # Assemble the object           #
+        #-------------------------------#
+        setResults <- .newSetResults(
+            fit = fit,
+            method = method,
+            universe = universe,
+            effectMethod = effectMethod,
+            interRegionCor = interRegionCor,
+            tileHandling = tileHandling,
+            overlapPolicy = overlapPolicy,
+            overlapWithinSet = overlapWithinSet,
+            useRanks = useRanks,
+            FDR = FDR,
+            adjustMethod = adjustMethod,
+            carryCounts = carryCounts,
+            verbose = verbose,
+            contrastObject = contrastObject,
+            fryList = fryList,
+            regionStats = regionStats,
+            resultTable = resultTable
+        )
+
+        return(setResults)
+    } # END function
+
+
+#' @title .prepareSetTest
+#'
+#' @description Prepares what the set tests of \code{\link{testRegionSets}} need: the universe, the contrast, the per-region statistics with the tiles collapsed when asked, the rows of every set, the expression matrix and the fry results.
+#'
+#' @param fit See \code{\link{testRegionSets}}.
+#' @param contrast See \code{\link{testRegionSets}}.
+#' @param method See \code{\link{testRegionSets}}.
+#' @param universe See \code{\link{testRegionSets}}.
+#' @param matchOn See \code{\link{testRegionSets}}.
+#' @param universeRatio See \code{\link{testRegionSets}}.
+#' @param universeSets See \code{\link{testRegionSets}}.
+#' @param effectMethod See \code{\link{testRegionSets}}.
+#' @param interRegionCor See \code{\link{testRegionSets}}.
+#' @param tileHandling See \code{\link{testRegionSets}}.
+#' @param fryInput See \code{\link{testRegionSets}}.
+#' @param regionSets See \code{\link{testRegionSets}}.
+#' @param verbose See \code{\link{testRegionSets}}.
+#'
+#' @return A list with \code{contrastObject}, \code{regionStats}, \code{setIndexList}, \code{setNames}, \code{suppliedSets}, \code{universe}, \code{expressionMatrix} and \code{fryList}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom SummarizedExperiment colData
+#'
+#' @noRd
+
+.prepareSetTest <-
+    function(fit,
+             contrast,
+             method,
+             universe,
+             matchOn,
+             universeRatio,
+             universeSets,
+             effectMethod,
+             interRegionCor,
+             tileHandling,
+             fryInput,
+             regionSets,
+             verbose) {
         suppliedSets <- is.list(regionSets)
 
         if (isTRUE(suppliedSets)) {
@@ -330,9 +472,68 @@ testRegionSets <-
             }
         }
 
-        #-------------------------------#
-        # One set at a time             #
-        #-------------------------------#
+        return(list(
+            contrastObject = contrastObject,
+            expressionMatrix = expressionMatrix,
+            fryList = fryList,
+            regionStats = regionStats,
+            setIndexList = setIndexList,
+            setNames = setNames,
+            suppliedSets = suppliedSets,
+            universe = universe
+        ))
+    }
+
+
+#' @title .testEverySet
+#'
+#' @description Tests every set of \code{\link{testRegionSets}} against its comparison rows, with the set effect, its intervals and the camera and fry statistics.
+#'
+#' @param fit See \code{\link{testRegionSets}}.
+#' @param method See \code{\link{testRegionSets}}.
+#' @param universe See \code{\link{testRegionSets}}.
+#' @param effectMethod See \code{\link{testRegionSets}}.
+#' @param interRegionCor See \code{\link{testRegionSets}}.
+#' @param overlapPolicy See \code{\link{testRegionSets}}.
+#' @param overlapWithinSet See \code{\link{testRegionSets}}.
+#' @param useRanks See \code{\link{testRegionSets}}.
+#' @param FDR See \code{\link{testRegionSets}}.
+#' @param adjustMethod See \code{\link{testRegionSets}}.
+#' @param contrastObject List describing the contrast, as \code{.resolveContrast} returns it.
+#' @param expressionMatrix Matrix with the log signal of every row and sample, or \code{NULL} when no score is computed from the samples.
+#' @param fryList List with the results of \code{limma::fry}, or \code{NULL} when it was not run.
+#' @param regionStats Data.frame with the per-region statistics the sets are built from.
+#' @param setIndexList Named list with the rows of \code{regionStats} belonging to every set.
+#' @param setNames Character vector with the names of the sets tested.
+#' @param suppliedSets Logical value telling whether the sets were supplied as a list rather than taken from the object.
+#'
+#' @return A list with one data.frame per set.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom limma cameraPR fry
+#' @importFrom stats median p.adjust
+#'
+#' @noRd
+
+.testEverySet <-
+    function(fit,
+             method,
+             universe,
+             effectMethod,
+             interRegionCor,
+             overlapPolicy,
+             overlapWithinSet,
+             useRanks,
+             FDR,
+             adjustMethod,
+             contrastObject,
+             expressionMatrix,
+             fryList,
+             regionStats,
+             setIndexList,
+             setNames,
+             suppliedSets) {
         resultList <-
             lapply(
                 setNames,
@@ -530,37 +731,57 @@ testRegionSets <-
                 }
             )
 
-        resultTable <- do.call(what = rbind, args = resultList)
+        return(resultList)
+    }
 
-        # One warning for every set involved rather than one per set
-        .warnWithinSetOverlap(
-            setTable = resultTable, setColumns = "region.set",
-            countColumns = "n.overlapping.within", policy = overlapWithinSet
-        )
 
-        #-------------------------------#
-        # Correct across the sets       #
-        #-------------------------------#
-        if ("camera" %in% method) {
-            resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
-        }
-        if ("fry" %in% method) {
-            resultTable$fry.FDR <- stats::p.adjust(resultTable$fry.p, method = adjustMethod)
+#' @title .newSetResults
+#'
+#' @description Assembles the \code{RegionSetDE.setResults} object of \code{\link{testRegionSets}} from the table of the sets, and reports the sets that changed.
+#'
+#' @param fit See \code{\link{testRegionSets}}.
+#' @param method See \code{\link{testRegionSets}}.
+#' @param universe See \code{\link{testRegionSets}}.
+#' @param effectMethod See \code{\link{testRegionSets}}.
+#' @param interRegionCor See \code{\link{testRegionSets}}.
+#' @param tileHandling See \code{\link{testRegionSets}}.
+#' @param overlapPolicy See \code{\link{testRegionSets}}.
+#' @param overlapWithinSet See \code{\link{testRegionSets}}.
+#' @param useRanks See \code{\link{testRegionSets}}.
+#' @param FDR See \code{\link{testRegionSets}}.
+#' @param adjustMethod See \code{\link{testRegionSets}}.
+#' @param carryCounts See \code{\link{testRegionSets}}.
+#' @param verbose See \code{\link{testRegionSets}}.
+#' @param contrastObject List describing the contrast, as \code{.resolveContrast} returns it.
+#' @param fryList List with the results of \code{limma::fry}, or \code{NULL} when it was not run.
+#' @param regionStats Data.frame with the per-region statistics the sets are built from.
+#' @param resultTable Data.frame with one row per set.
+#'
+#' @return A \code{RegionSetDE.setResults} object.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#'
+#' @noRd
 
-            if (!all(is.na(resultTable$fry.mixed.p))) {
-                resultTable$fry.mixed.FDR <- stats::p.adjust(resultTable$fry.mixed.p, method = adjustMethod)
-            }
-        }
-        if ("sample.delta.p" %in% colnames(resultTable)) {
-            resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
-        }
-
-        resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
-        rownames(resultTable) <- NULL
-
-        #-------------------------------#
-        # Assemble the object           #
-        #-------------------------------#
+.newSetResults <-
+    function(fit,
+             method,
+             universe,
+             effectMethod,
+             interRegionCor,
+             tileHandling,
+             overlapPolicy,
+             overlapWithinSet,
+             useRanks,
+             FDR,
+             adjustMethod,
+             carryCounts,
+             verbose,
+             contrastObject,
+             fryList,
+             regionStats,
+             resultTable) {
         setResults <- .newObject(
             Class = "RegionSetDE.setResults",
             counts = if (isTRUE(carryCounts)) {
@@ -621,7 +842,7 @@ testRegionSets <-
         }
 
         return(setResults)
-    } # END function
+    }
 
 
 #' @title .checkTestRegionSetsArguments
@@ -639,7 +860,7 @@ testRegionSets <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkTestRegionSetsArguments <-
     function(fit,
@@ -866,6 +1087,118 @@ testSetContrast <-
         #-------------------------------#
         # One pair at a time            #
         #-------------------------------#
+        resultList <- .testSetPairs(
+            fit = fit,
+            set1 = set1,
+            set2 = set2,
+            effectMethod = effectMethod,
+            interRegionCor = interRegionCor,
+            useRanks = useRanks,
+            sharedRegions = sharedRegions,
+            overlapWithinSet = overlapWithinSet,
+            contrastObject = contrastObject,
+            expressionMatrix = expressionMatrix,
+            pairTable = pairTable,
+            regionStats = regionStats
+        )
+
+        resultTable <- do.call(what = rbind, args = resultList)
+
+        .warnWithinSetOverlap(
+            setTable = resultTable, setColumns = c("set.1", "set.2"),
+            countColumns = c("n.overlapping.within.1", "n.overlapping.within.2"),
+            policy = overlapWithinSet
+        )
+
+        resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
+        if ("sample.delta.p" %in% colnames(resultTable)) {
+            resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
+        }
+        resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
+        rownames(resultTable) <- NULL
+
+        if (isTRUE(verbose)) {
+            message("Done. ", nrow(resultTable), " pairs tested for '", contrastObject$label, "'.")
+        }
+
+        return(.newObject(
+            Class = "RegionSetDE.setResults",
+            counts = if (isTRUE(carryCounts)) {
+                fitCounts(fit)
+            } else {
+                .newObject(Class = "RegionSetDE.counts")
+            },
+            results = resultTable,
+            regionStats = regionStats,
+            contrast = contrastObject$label,
+            contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
+            test = "setContrast",
+            methods = "camera",
+            universe = .newObject(Class = "RegionSetDE.universe", type = "pairedSet", n.rows = nrow(fitCounts(fit))),
+            engine = fitEngine(fit),
+            thresholds = list(FDR = FDR, adjust.method = adjustMethod),
+            blacklist = blacklistRanges(fit),
+            greylist = greylistRanges(fit),
+            whitelist = whitelistRanges(fit),
+            genome.assembly = genomeAssembly(fit),
+            seqlevels.style = chromosomeStyle(fit),
+            filtering.log = filteringLog(fit),
+            parameters = c(
+                parameterLog(fit),
+                list(testSetContrast = list(
+                    contrast = contrastObject$label,
+                    set1 = set1,
+                    set2 = set2,
+                    effectMethod = effectMethod,
+                    sharedRegions = sharedRegions,
+                    overlapWithinSet = overlapWithinSet,
+                    useRanks = useRanks,
+                    adjustMethod = adjustMethod,
+                    carryCounts = carryCounts
+                ))
+            )
+        ))
+    } # END function
+
+
+#' @title .testSetPairs
+#'
+#' @description Tests every pair of sets of \code{\link{testSetContrast}}: the difference between their effects, with its intervals, and the camera statistic of the first set against the second.
+#'
+#' @param fit See \code{\link{testSetContrast}}.
+#' @param set1 See \code{\link{testSetContrast}}.
+#' @param set2 See \code{\link{testSetContrast}}.
+#' @param effectMethod See \code{\link{testSetContrast}}.
+#' @param interRegionCor See \code{\link{testSetContrast}}.
+#' @param useRanks See \code{\link{testSetContrast}}.
+#' @param sharedRegions See \code{\link{testSetContrast}}.
+#' @param overlapWithinSet See \code{\link{testSetContrast}}.
+#' @param contrastObject List describing the contrast, as \code{.resolveContrast} returns it.
+#' @param expressionMatrix Matrix with the log signal of every row and sample, or \code{NULL} when no score is computed from the samples.
+#' @param pairTable Data.frame with one row per pair of sets, \code{set1} and \code{set2}.
+#' @param regionStats Data.frame with the per-region statistics the sets are built from.
+#'
+#' @return A list with one data.frame per pair of sets.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom limma cameraPR
+#'
+#' @noRd
+
+.testSetPairs <-
+    function(fit,
+             set1,
+             set2,
+             effectMethod,
+             interRegionCor,
+             useRanks,
+             sharedRegions,
+             overlapWithinSet,
+             contrastObject,
+             expressionMatrix,
+             pairTable,
+             regionStats) {
         resultList <-
             lapply(
                 seq_len(nrow(pairTable)),
@@ -1027,63 +1360,8 @@ testSetContrast <-
                 }
             )
 
-        resultTable <- do.call(what = rbind, args = resultList)
-
-        .warnWithinSetOverlap(
-            setTable = resultTable, setColumns = c("set.1", "set.2"),
-            countColumns = c("n.overlapping.within.1", "n.overlapping.within.2"),
-            policy = overlapWithinSet
-        )
-
-        resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
-        if ("sample.delta.p" %in% colnames(resultTable)) {
-            resultTable$sample.delta.FDR <- stats::p.adjust(resultTable$sample.delta.p, method = adjustMethod)
-        }
-        resultTable <- dplyr::arrange(resultTable, dplyr::desc(abs(.data$delta.log2FC)))
-        rownames(resultTable) <- NULL
-
-        if (isTRUE(verbose)) {
-            message("Done. ", nrow(resultTable), " pairs tested for '", contrastObject$label, "'.")
-        }
-
-        return(.newObject(
-            Class = "RegionSetDE.setResults",
-            counts = if (isTRUE(carryCounts)) {
-                fitCounts(fit)
-            } else {
-                .newObject(Class = "RegionSetDE.counts")
-            },
-            results = resultTable,
-            regionStats = regionStats,
-            contrast = contrastObject$label,
-            contrast.groups = contrastObject[intersect(c("column", "groups"), names(contrastObject))],
-            test = "setContrast",
-            methods = "camera",
-            universe = .newObject(Class = "RegionSetDE.universe", type = "pairedSet", n.rows = nrow(fitCounts(fit))),
-            engine = fitEngine(fit),
-            thresholds = list(FDR = FDR, adjust.method = adjustMethod),
-            blacklist = blacklistRanges(fit),
-            greylist = greylistRanges(fit),
-            whitelist = whitelistRanges(fit),
-            genome.assembly = genomeAssembly(fit),
-            seqlevels.style = chromosomeStyle(fit),
-            filtering.log = filteringLog(fit),
-            parameters = c(
-                parameterLog(fit),
-                list(testSetContrast = list(
-                    contrast = contrastObject$label,
-                    set1 = set1,
-                    set2 = set2,
-                    effectMethod = effectMethod,
-                    sharedRegions = sharedRegions,
-                    overlapWithinSet = overlapWithinSet,
-                    useRanks = useRanks,
-                    adjustMethod = adjustMethod,
-                    carryCounts = carryCounts
-                ))
-            )
-        ))
-    } # END function
+        return(resultList)
+    }
 
 
 #' @title .setStatistics
@@ -1103,7 +1381,7 @@ testSetContrast <-
 #' @importFrom dplyr mutate
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .setStatistics <-
     function(fit,
@@ -1153,7 +1431,7 @@ testSetContrast <-
 #' @importFrom SummarizedExperiment assay colData
 #' @importFrom edgeR getOffset
 #'
-#' @keywords internal
+#' @noRd
 
 .expressionMatrix <-
     function(fit,
@@ -1206,7 +1484,7 @@ testSetContrast <-
 #' @importFrom limma contrastAsCoef
 #' @importFrom stats median
 #'
-#' @keywords internal
+#' @noRd
 
 .fryValues <-
     function(fit,
@@ -1295,7 +1573,7 @@ testSetContrast <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkWithinSetPolicy <-
     function(overlapWithinSet) {
@@ -1323,7 +1601,7 @@ testSetContrast <-
 #'
 #' @importFrom IRanges countOverlaps
 #'
-#' @keywords internal
+#' @noRd
 
 .withinSetOverlap <-
     function(regionStats,
@@ -1357,7 +1635,7 @@ testSetContrast <-
 #' @importFrom dplyr filter distinct
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .warnWithinSetOverlap <-
     function(setTable,
@@ -1412,7 +1690,7 @@ testSetContrast <-
 #' @importFrom limma interGeneCorrelation
 #' @importFrom stats var
 #'
-#' @keywords internal
+#' @noRd
 
 .interRegionCor <-
     function(expressionMatrix,
@@ -1486,7 +1764,7 @@ testSetContrast <-
 #'
 #' @importFrom stats sd qnorm
 #'
-#' @keywords internal
+#' @noRd
 
 .setEffectSize <-
     function(logFC,
@@ -1545,7 +1823,7 @@ testSetContrast <-
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .setUniverseOf <-
     function(fit,
@@ -1598,7 +1876,7 @@ testSetContrast <-
 #' @importFrom GenomicRanges GRanges
 #' @importFrom IRanges IRanges
 #'
-#' @keywords internal
+#' @noRd
 
 .statsRanges <-
     function(regionStats,
@@ -1633,7 +1911,7 @@ testSetContrast <-
 #'
 #' @importFrom IRanges overlapsAny
 #'
-#' @keywords internal
+#' @noRd
 
 .overlappingRows <-
     function(regionStats,
@@ -1669,7 +1947,7 @@ testSetContrast <-
 #' @importFrom stats median
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .collapseTileStats <-
     function(regionStats) {
@@ -1715,7 +1993,7 @@ testSetContrast <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .collapseTileMatrix <-
     function(expressionMatrix,
@@ -1755,7 +2033,7 @@ testSetContrast <-
 #' @importFrom limma lmFit contrasts.fit
 #' @importFrom stats qt pt
 #'
-#' @keywords internal
+#' @noRd
 
 .sampleSetEffect <-
     function(expressionMatrix,

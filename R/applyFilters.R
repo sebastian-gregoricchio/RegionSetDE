@@ -22,7 +22,7 @@
 #' @importFrom S4Vectors queryHits subjectHits mcols mcols<-
 #' @importFrom BiocGenerics width
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .filterRegionSets <-
@@ -59,8 +59,8 @@
                         (coveredBp / BiocGenerics::width(gr)) >= minOverlapFraction
 
                     ### Discard mode, the regions are kept entire
-                    if (trimRegions == FALSE) {
-                        if (keepOverlapping == TRUE) {
+                    if (isFALSE(trimRegions)) {
+                        if (isTRUE(keepOverlapping)) {
                             return(gr[isOverlapping])
                         } else {
                             return(gr[!isOverlapping])
@@ -68,7 +68,7 @@
                     }
 
                     ### Trim mode, the regions are clipped at the boundaries of the reference set
-                    if (keepOverlapping == TRUE) {
+                    if (isTRUE(keepOverlapping)) {
                         # One piece per hit, each carrying the metadata of the region it comes from
                         if (length(hits) == 0) {
                             return(gr[0])
@@ -113,7 +113,7 @@
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom IRanges ranges reduce
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .poolStoredList <-
@@ -173,7 +173,7 @@
 #' @importFrom BiocGenerics width
 #' @importFrom methods is as validObject
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .applyRegionFilter <-
@@ -189,7 +189,7 @@
              verbose,
              filterLabel = NULL) {
         if (is.null(filterLabel)) {
-            filterLabel <- ifelse(keepOverlapping == TRUE, "whitelist", "blacklist")
+            filterLabel <- if (isTRUE(keepOverlapping)) "whitelist" else "blacklist"
         }
 
         #------------------------#
@@ -300,14 +300,14 @@
             },
             logical(1)
         )
-        if (all(sharedSeqlevels == FALSE)) {
+        if (!any(sharedSeqlevels)) {
             stop("The ", filterLabel, " shares no chromosome name with the region sets, please check the chromosome naming styles.", call. = FALSE)
         }
 
         #--------------------#
         # Filter the regions #
         #--------------------#
-        if (verbose == TRUE) {
+        if (isTRUE(verbose)) {
             message("Applying the ", filterLabel, " (", length(filterRegions), " regions):")
         }
 
@@ -326,7 +326,7 @@
 
         nAfter <- vapply(filteredSets, length, numeric(1))
 
-        if (verbose == TRUE) {
+        if (isTRUE(verbose)) {
             for (i in seq_along(filteredSets)) {
                 message(
                     "  ", names(filteredSets)[i], ": ", nAfter[i], "/", nBefore[i], " regions retained (",
@@ -390,7 +390,7 @@
 
         # A second list adds to the one already stored, replacing it would lose track of the first.
         # The greylist has a slot of its own and leaves the stored blacklist alone
-        if (keepOverlapping == TRUE) {
+        if (isTRUE(keepOverlapping)) {
             whitelistRanges(regionSet) <- .poolStoredList(storedList = whitelistRanges(regionSet), newList = filterRegions, sharedOnly = TRUE)
         } else if (filterLabel == "blacklist") {
             blacklistRanges(regionSet) <- .poolStoredList(storedList = blacklistRanges(regionSet), newList = filterRegions)
@@ -421,7 +421,7 @@
 #' @importFrom BiocGenerics width
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .applyCountingLists <-

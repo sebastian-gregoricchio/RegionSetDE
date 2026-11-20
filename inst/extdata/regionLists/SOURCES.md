@@ -38,9 +38,11 @@ Shannon entropy over hundreds of public libraries and kept at least 5 kb away fr
 blacklist holds the regions of high and inconsistent signal in the same compendium.
 
 * Source: https://github.com/fndemello/CUT-RUN_greenlist, main folder, downloaded on 2026-09-22.
-* Licence: the repository carries no licence file. The paper is open access and the files are its
-  supporting data, redistributed here unchanged and with the citation attached. Ask the authors
-  before relying on this for anything beyond academic use.
+* Licence: the article is published open access under a CC BY-NC licence (attribution,
+  non-commercial use), and its Supplementary Table S1 holds the human CUT&RUN greenlist and
+  blacklist. The files are redistributed here unchanged, with the citation attached, under the
+  terms of that licence. The CUT&Tag and mm39 lists are published in the repository only, which
+  carries no licence file, so no licence covers them explicitly.
 * Reference: de Mello FN, Tahira AC, Berzoti-Coelho MG, Verjovski-Almeida S (2024). The CUT&RUN
   greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative
   epigenome mapping. *Briefings in Bioinformatics* 25(2):bbad538. doi:10.1093/bib/bbad538

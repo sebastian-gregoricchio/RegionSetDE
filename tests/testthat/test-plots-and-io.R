@@ -43,7 +43,7 @@ test_that("the build metadata records what the script used", {
 
 
 test_that("the counts level plots build", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_s3_class(plotNormComparison(exampleCounts()), "ggplot")
     expect_s3_class(plotSetMA(counts, groupBy = "condition"), "ggplot")
@@ -97,6 +97,8 @@ test_that("plotNullCalibration builds from a calibration object", {
 
 
 test_that("plotTopHeatmap builds", {
+    skip_if_not_installed("ComplexHeatmap")
+    skip_if_not_installed("circlize")
     heatmap <- plotTopHeatmap(exampleResults(), n = 10, FDR = 1)
     expect_false(is.null(heatmap))
 })
@@ -138,7 +140,7 @@ test_that("exportResults creates the output directory when it is missing", {
 
 
 test_that("the PCA axis labels carry the variance explained", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     singlePanel <- plotRegionPCA(counts, colourBy = "condition")
 
@@ -159,7 +161,7 @@ test_that("the PCA axis labels carry the variance explained", {
 
 
 test_that("plotRegionPCA honours the requested components", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     pcaPlot <- plotRegionPCA(counts, colourBy = "condition", dimensions = c(2, 3))
 

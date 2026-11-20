@@ -274,7 +274,7 @@ estimateFragmentLength <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkEstimateFragmentLengthArguments <-
     function(bamFiles,
@@ -378,7 +378,7 @@ estimateFragmentLength <-
 #' @importFrom stats median
 #' @importFrom utils modifyList
 #'
-#' @keywords internal
+#' @noRd
 
 .crossCorrelationEstimate <-
     function(bamFile,
@@ -506,7 +506,7 @@ estimateFragmentLength <-
 #' @importFrom BiocGenerics width
 #' @importFrom stats median
 #'
-#' @keywords internal
+#' @noRd
 
 .insertSizeEstimate <-
     function(bamFile,
@@ -552,7 +552,7 @@ estimateFragmentLength <-
 #' @importFrom GenomicRanges GRangesList granges
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .regionsAsGRanges <-
     function(regions) {

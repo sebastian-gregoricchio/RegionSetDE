@@ -21,7 +21,7 @@ Returns the sample table of an object as a data.frame: one row per sample, with 
 counts <- loadExampleData("counts", verbose = FALSE)
 sampleInfo(counts)
 
-counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
 
 }

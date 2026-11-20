@@ -4,11 +4,11 @@
 #'
 #' @description Draws the log ratio of two groups of samples against their average abundance, with the regions of a set highlighted over the others. A set whose cloud sits away from zero while the rest stays on it is the picture the package is built to produce, and seeing it before any test tells whether the normalisation has already decided the answer.
 #'
-#' @param counts \code{RegionSetDE.counts} object, normalised by \code{\link{normalizeCounts}}.
+#' @param counts \code{RegionSetDE.counts} object, normalised by \code{\link{normalizeRegionCounts}}.
 #' @param set Character vector with the names of the region sets to highlight. Default: \code{NULL}, one panel per set with the others greyed behind.
 #' @param groupBy String with the name of the \code{colData} column defining the groups. Default: \code{NULL}, accepted only when the object holds two samples.
 #' @param contrast Character vector of length two with the levels of \code{groupBy} to compare, given as \code{c(numerator, denominator)}. Default: \code{NULL}, the two levels found in the column, in alphabetical order.
-#' @param assayName String with the assay to plot. Default: \code{NULL}, the normalised assay recorded by \code{\link{normalizeCounts}}, or the raw counts when the object has not been normalised.
+#' @param assayName String with the assay to plot. Default: \code{NULL}, the normalised assay recorded by \code{\link{normalizeRegionCounts}}, or the raw counts when the object has not been normalised.
 #' @param priorCount Numeric value added to the values before the log transformation. Default: \code{1}.
 #' @param minCount Numeric value with the minimum total count required to draw a region. Default: \code{1}.
 #' @param showTrend Logical value indicating whether a loess trend must be drawn over the highlighted regions. Default: \code{TRUE}.
@@ -29,7 +29,7 @@
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' # One panel per region set, each against the rest of the data
 #' plotSetMA(counts, groupBy = "condition")
@@ -38,7 +38,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{normalizeCounts}}, \code{\link{plotNormComparison}}
+#' @seealso \code{\link{normalizeRegionCounts}}, \code{\link{plotNormComparison}}
 #'
 #' @importFrom SummarizedExperiment assay assayNames colData rowData
 #' @importFrom S4Vectors metadata

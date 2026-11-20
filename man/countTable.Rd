@@ -137,7 +137,7 @@ counts <- loadExampleData("counts", verbose = FALSE)
 head(countTable(counts), 3)
 
 # Normalised values in long format, with the sample annotation attached for ggplot2
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 longTable <- countTable(counts, normalized = TRUE, format = "long")
 head(longTable, 3)
 
@@ -171,7 +171,7 @@ countTable(tiledCounts, level = "region")
 
 }
 \seealso{
-\code{\link{normalizeCounts}}, \code{\link{resultCounts}}, \code{\link{fitCounts}}
+\code{\link{normalizeRegionCounts}}, \code{\link{resultCounts}}, \code{\link{fitCounts}}
 }
 \author{
 Sebastian Gregoricchio

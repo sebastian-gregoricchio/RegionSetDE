@@ -274,7 +274,7 @@ countBigwig <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkCountBigwigArguments <-
     function(regionSet,

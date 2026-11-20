@@ -7,7 +7,7 @@ singleSampleCounts <- function() {
         verbose = FALSE
     )
 
-    counts <- RegionSetDE::normalizeCounts(counts, method = "background", verbose = FALSE)
+    counts <- RegionSetDE::normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
     RegionSetDE::filterRegions(counts, verbose = FALSE)
 }

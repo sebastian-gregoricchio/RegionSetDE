@@ -51,14 +51,14 @@ countGreenlist(
 The input \code{RegionSetDE.counts} object with the greenlist counts stored as a \code{RangedSummarizedExperiment} in \code{metadata(counts)$greenlist}. Its \code{colData} describes every library over the list: \code{totals}, the fragments counted, \code{regions.covered}, the regions holding at least one of them, and \code{library.fraction}, the share of the library they represent.
 }
 \description{
-Counts the reads falling in the regions of a CUT&RUN or CUT&Tag greenlist, the places where the background of the protocol is reproducible enough to measure how much material was sequenced. The counts are stored in the metadata of the object, where \code{\link{normalizeCounts}} picks them up with \code{method = "greenlist"}.
+Counts the reads falling in the regions of a CUT&RUN or CUT&Tag greenlist, the places where the background of the protocol is reproducible enough to measure how much material was sequenced. The counts are stored in the metadata of the object, where \code{\link{normalizeRegionCounts}} picks them up with \code{method = "greenlist"}.
 }
 \details{
 The read filters are taken from \code{\link{countReads}} unless they are given here, for the same reason as in \code{\link{countBackground}}: a reference counted with another mapping quality or duplicate policy describes a library that is not the one under study. The reads \code{\link{countReads}} discarded, those of the blacklist, of the greylist and of \code{discardRegions}, are left out here too.
 
 Each fragment is counted once, in the region holding its centre, as the background bins do, so the totals stay a share of the library and two neighbouring regions never claim the same fragment. The list is merged beforehand for the same reason. This is the quantification of the greenlist paper, which counted the lists with \code{multiBamSummary --centerReads}. Greenlist regions lying on chromosomes absent from the BAM files are dropped, and how many were is reported, which is what catches a list built for another assembly before it quietly halves the counts.
 
-The checks follow the conditions under which de Mello \emph{et al.} built and validated the lists. The regions were chosen at least 5 kb away from genes so that no target binds there; a region of this experiment that overlaps one of them means the target does bind there, in these cells, and its reads would carry the biology into the factors, which is why \code{excludeCounted} drops it. The libraries used to build the lists had at least 1.5 million aligned reads for human CUT&RUN, 1 million for mouse CUT&RUN and 500,000 for human CUT&Tag, and a library below that depth, counted here in fragments, is reported. So is a library covering fewer than half as many greenlist regions as the median library, whose factor rests on a small part of the list. The paper sets no rule per group of samples: what matters for the factors is how many regions carry reads in every library, which \code{\link{normalizeCounts}} reports when it computes them.
+The checks follow the conditions under which de Mello \emph{et al.} built and validated the lists. The regions were chosen at least 5 kb away from genes so that no target binds there; a region of this experiment that overlaps one of them means the target does bind there, in these cells, and its reads would carry the biology into the factors, which is why \code{excludeCounted} drops it. The libraries used to build the lists had at least 1.5 million aligned reads for human CUT&RUN, 1 million for mouse CUT&RUN and 500,000 for human CUT&Tag, and a library below that depth, counted here in fragments, is reported. So is a library covering fewer than half as many greenlist regions as the median library, whose factor rests on a small part of the list. The paper sets no rule per group of samples: what matters for the factors is how many regions carry reads in every library, which \code{\link{normalizeRegionCounts}} reports when it computes them.
 }
 \examples{
 sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
@@ -70,7 +70,7 @@ counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
 greenlist <- GenomicRanges::GRanges("19", IRanges::IRanges(start = seq(46.5e6, 57.5e6, by = 1e6), width = 2e5))
 
 counts <- countGreenlist(counts, greenlist = greenlist, verbose = FALSE)
-counts <- normalizeCounts(counts, method = "greenlist", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "greenlist", verbose = FALSE)
 
 SummarizedExperiment::colData(counts)$scaling.factor
 
@@ -79,7 +79,7 @@ SummarizedExperiment::colData(counts)$scaling.factor
 de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S. (2024). The CUT&RUN greenlist: genomic regions of consistent noise are effective normalizing factors for quantitative epigenome mapping. \emph{Briefings in Bioinformatics} 25(2):bbad538.
 }
 \seealso{
-\code{\link{loadGreenlist}}, \code{\link{normalizeCounts}}, \code{\link{countBackground}}
+\code{\link{loadGreenlist}}, \code{\link{normalizeRegionCounts}}, \code{\link{countBackground}}
 }
 \author{
 Sebastian Gregoricchio

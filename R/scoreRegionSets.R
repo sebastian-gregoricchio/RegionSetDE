@@ -325,7 +325,7 @@ scoreRegionSets <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkScoreRegionSetsArguments <-
     function(counts,

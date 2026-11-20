@@ -35,7 +35,7 @@
 #'     \code{\link{loadCounts}}}{count over the regions, or over fixed-width
 #'     tiles of them, from BAM files, from bigWig coverage, or from a matrix
 #'     that already exists.}
-#'   \item{\code{\link{normalizeCounts}}}{scaling factors from background
+#'   \item{\code{\link{normalizeRegionCounts}}}{scaling factors from background
 #'     bins, from the regions themselves, or supplied from a spike-in or
 #'     greenlist.}
 #'   \item{\code{\link{fitRegions}}}{a single fit, with \code{edgeR},
@@ -101,6 +101,14 @@
 #' which is where the individual formats are documented.
 #'
 #' @name RegionSetDE-exampleData
+#'
+#' @examples
+#' # The counts of the EURATRANS example and the sheet of the AR example
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts
+#'
+#' sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+#' head(sampleSheet[, c("sample", "condition")])
 #'
 #' @author Sebastian Gregoricchio
 #'

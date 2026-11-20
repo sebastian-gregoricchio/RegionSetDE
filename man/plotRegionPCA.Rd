@@ -77,7 +77,7 @@ Marks and assays should not share an ordination any more than they share a model
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 plotRegionPCA(counts, colourBy = "condition", shapeBy = "sex")
 
@@ -86,7 +86,7 @@ plotRegionPCA(counts, set = "promoterCpG", colourBy = "condition")
 
 }
 \seealso{
-\code{\link{computeSamplePCA}}, \code{\link{plotSampleCorrelation}}, \code{\link{normalizeCounts}}, \code{\link{splitSamples}}
+\code{\link{computeSamplePCA}}, \code{\link{plotSampleCorrelation}}, \code{\link{normalizeRegionCounts}}, \code{\link{splitSamples}}
 }
 \author{
 Sebastian Gregoricchio

@@ -56,7 +56,7 @@ loadBlacklist <-
 
 #' @title loadGreenlist
 #'
-#' @description Returns a CUT&RUN or CUT&Tag greenlist shipped with the package, the regions whose background is consistent enough between experiments to normalise on. It goes to \code{\link{countGreenlist}}, which counts the libraries over it before \code{\link{normalizeCounts}} turns those counts into scaling factors.
+#' @description Returns a CUT&RUN or CUT&Tag greenlist shipped with the package, the regions whose background is consistent enough between experiments to normalise on. It goes to \code{\link{countGreenlist}}, which counts the libraries over it before \code{\link{normalizeRegionCounts}} turns those counts into scaling factors.
 #'
 #' @param genome String with the genome assembly, \code{"hg38"} or \code{"mm39"} for the published lists. The usual aliases are understood, \code{"GRCh38"} for instance.
 #' @param assay String with the assay the list was built for, \code{"cutrun"} or \code{"cuttag"}.
@@ -80,7 +80,7 @@ loadBlacklist <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{countGreenlist}}, \code{\link{normalizeCounts}}, \code{\link{loadBlacklist}}, \code{\link{availableRegionLists}}
+#' @seealso \code{\link{countGreenlist}}, \code{\link{normalizeRegionCounts}}, \code{\link{loadBlacklist}}, \code{\link{availableRegionLists}}
 #'
 #' @export loadGreenlist
 
@@ -162,7 +162,7 @@ availableRegionLists <-
 #'
 #' @importFrom utils read.delim
 #'
-#' @keywords internal
+#' @noRd
 
 .regionListIndex <-
     function() {
@@ -186,7 +186,7 @@ availableRegionLists <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveGenomeName <-
     function(genome) {
@@ -236,7 +236,7 @@ availableRegionLists <-
 #' @importFrom S4Vectors metadata metadata<- mcols mcols<-
 #' @importFrom BiocGenerics width
 #'
-#' @keywords internal
+#' @noRd
 
 .loadRegionList <-
     function(type,
@@ -356,7 +356,7 @@ availableRegionLists <-
 #'
 #' @importFrom GenomeInfoDb seqlevels seqlevels<- seqlevelsStyle seqlevelsStyle<-
 #'
-#' @keywords internal
+#' @noRd
 
 .styleSeqlevels <-
     function(x,

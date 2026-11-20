@@ -33,7 +33,7 @@
 #' head(countTable(counts), 3)
 #'
 #' # Normalised values in long format, with the sample annotation attached for ggplot2
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #' longTable <- countTable(counts, normalized = TRUE, format = "long")
 #' head(longTable, 3)
 #'
@@ -67,7 +67,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{normalizeCounts}}, \code{\link{resultCounts}}, \code{\link{fitCounts}}
+#' @seealso \code{\link{normalizeRegionCounts}}, \code{\link{resultCounts}}, \code{\link{fitCounts}}
 #'
 #' @importFrom methods setGeneric setMethod
 #'
@@ -291,7 +291,7 @@ setMethod(
 #' @importFrom dplyr filter mutate group_by summarise first n row_number relocate left_join
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .buildCountTable <-
     function(counts,
@@ -350,7 +350,7 @@ setMethod(
             normalizationInfo <- S4Vectors::metadata(counts)$normalization
 
             if (is.null(normalizationInfo)) {
-                stop("The object carries no normalisation, run normalizeCounts() first.", call. = FALSE)
+                stop("The object carries no normalisation, run normalizeRegionCounts() first.", call. = FALSE)
             }
 
             assayName <- normalizationInfo$normalized.assay
@@ -554,7 +554,7 @@ setMethod(
 #'
 #' @importFrom S4Vectors metadata
 #'
-#' @keywords internal
+#' @noRd
 
 .tileSummaryRule <-
     function(counts,
@@ -591,7 +591,7 @@ setMethod(
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .combineTileValues <-
     function(valueMatrix,
@@ -637,7 +637,7 @@ setMethod(
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .carriedCounts <-
     function(results) {

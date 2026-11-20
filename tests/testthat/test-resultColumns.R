@@ -5,7 +5,7 @@
 ## for instance. The degrees of freedom are checked the only way that proves them right: handed back to
 ## the distribution they belong to, with the statistic, they have to give the p-value of the engine.
 
-exampleCounts <- normalizeCounts(loadExampleData("counts", verbose = FALSE), method = "TMM", verbose = FALSE)
+exampleCounts <- normalizeRegionCounts(loadExampleData("counts", verbose = FALSE), method = "TMM", verbose = FALSE)
 exampleContrast <- c("condition", "SHR", "BN")
 
 fitWith <- function(engine, ...) {

@@ -11,7 +11,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveLinkWeights <-
     function(linkTable,

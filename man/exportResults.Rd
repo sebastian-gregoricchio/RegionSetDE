@@ -6,7 +6,7 @@
 \usage{
 exportResults(
   results,
-  path = ".",
+  path,
   prefix = NULL,
   contrast = NULL,
   set = NULL,
@@ -23,7 +23,7 @@ exportResults(
 \arguments{
 \item{results}{\code{RegionSetDE.results}, \code{RegionSetDE.setResults}, or either of the two list classes holding several contrasts.}
 
-\item{path}{String with the directory the files are written to, created when it does not exist. Default: \code{"."}.}
+\item{path}{String with the directory the files are written to, created when it does not exist. There is no default, so nothing is written anywhere the user did not name, \code{tempdir()} for instance.}
 
 \item{prefix}{String prepended to every file name. Default: \code{NULL}, the name of the contrast.}
 

@@ -17,14 +17,14 @@
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' dgeList <- asDGEList(counts)
 #' dgeList$samples
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{asDESeqDataSet}}, \code{\link{fitRegions}}, \code{\link{normalizeCounts}}
+#' @seealso \code{\link{asDESeqDataSet}}, \code{\link{fitRegions}}, \code{\link{normalizeRegionCounts}}
 #'
 #' @importFrom SummarizedExperiment assay assayNames colData rowData rowRanges
 #' @importFrom BiocGenerics width
@@ -121,7 +121,7 @@ asDGEList <-
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' if (requireNamespace("DESeq2", quietly = TRUE)) {
 #'     deseqData <- asDESeqDataSet(counts, design = ~condition, verbose = FALSE)
@@ -234,7 +234,7 @@ asDESeqDataSet <-
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' dgeList <- as(counts, "DGEList")
 #' dgeList$samples

@@ -20,7 +20,7 @@ threeGroupCounts <- function() {
     colnames(mergedCounts) <- c(colnames(counts), paste0(colnames(counts), "-copy"))
     mergedCounts$group3 <- c("A", "A", "B", "B", "C", "C", "B", "B")
 
-    return(normalizeCounts(mergedCounts, method = "TMM", verbose = FALSE))
+    return(normalizeRegionCounts(mergedCounts, method = "TMM", verbose = FALSE))
 }
 
 

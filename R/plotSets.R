@@ -735,7 +735,7 @@ plotSetSignal <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveGroupOrder <-
     function(groupOrder = NULL,
@@ -774,7 +774,7 @@ plotSetSignal <-
 #'
 #' @importFrom grDevices colorRampPalette col2rgb rgb
 #'
-#' @keywords internal
+#' @noRd
 
 .groupShades <-
     function(colTable,
@@ -825,7 +825,7 @@ plotSetSignal <-
 #'
 #' @importFrom grDevices col2rgb rgb
 #'
-#' @keywords internal
+#' @noRd
 
 .lightenColour <-
     function(colour,
@@ -858,7 +858,7 @@ plotSetSignal <-
 #' @importFrom rlang .data
 #' @importFrom stats setNames
 #'
-#' @keywords internal
+#' @noRd
 
 .signalBrackets <-
     function(plotTable,
@@ -1172,7 +1172,7 @@ plotUniverseMatching <-
 #' @importFrom dplyr filter mutate
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .setAnnotation <-
     function(setResults,
@@ -1230,7 +1230,7 @@ plotUniverseMatching <-
 #' @importFrom dplyr arrange filter mutate
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .plotSetScores <-
     function(setScores,

@@ -608,6 +608,159 @@ plotRegion <-
         comparisonTable <- NULL
         captionText <- NULL
 
+        comparisonStep <- .regionComparisonTable(
+            counts = counts,
+            groupBy = groupBy,
+            assay = assay,
+            pairwiseTest = pairwiseTest,
+            pairBy = pairBy,
+            comparisons = comparisons,
+            pAdjustMethod = pAdjustMethod,
+            pLabel = pLabel,
+            pDecimals = pDecimals,
+            colTable = colTable,
+            comparisonTable = comparisonTable,
+            isTiled = isTiled,
+            modelResults = modelResults,
+            plotTable = plotTable,
+            regionRows = regionRows,
+            yLabel = yLabel,
+            captionText = captionText
+        )
+        captionText <- comparisonStep$captionText
+        comparisonTable <- comparisonStep$comparisonTable
+
+        #-------------------------------#
+        # Build the plot                #
+        #-------------------------------#
+        summaryTable <- NULL
+        if (isTRUE(summarise)) {
+            summaryTable <- dplyr::ungroup(dplyr::summarise(dplyr::group_by(plotTable, .data$group, .data$position),
+                mean.value = mean(.data$value),
+                sd.value = stats::sd(.data$value),
+                .groups = "drop"
+            ))
+            summaryTable$sd.value[is.na(summaryTable$sd.value)] <- 0
+        }
+
+        # A ribbon needs a coordinate to run along, which only a tiled region has
+        layerStep <- .regionPlotLayers(
+            summarise = summarise,
+            pairwiseTest = pairwiseTest,
+            pointSize = pointSize,
+            baseSize = baseSize,
+            comparisonTable = comparisonTable,
+            isTiled = isTiled,
+            plotTable = plotTable,
+            summaryTable = summaryTable
+        )
+        hasRibbon <- layerStep$hasRibbon
+        regionPlot <- layerStep$regionPlot
+
+        # Only the summarised plot maps a fill, naming the others would raise an unknown label warning
+        labelList <- list(
+            x = if (isTiled) {
+                paste0(as.character(GenomeInfoDb::seqnames(rowRangesObject))[1], " (bp)")
+            } else {
+                ""
+            },
+            y = yLabel,
+            colour = if (is.null(groupBy)) {
+                "Sample"
+            } else {
+                groupBy
+            },
+            title = if (is.null(title)) {
+                unique(regionRows$region.key)
+            } else {
+                title
+            },
+            subtitle = subtitle
+        )
+
+        if (isTRUE(hasRibbon)) {
+            labelList$fill <- if (is.null(groupBy)) {
+                "Sample"
+            } else {
+                groupBy
+            }
+        }
+
+        if (!is.null(captionText)) {
+            labelList$caption <- captionText
+        }
+
+        regionPlot <- regionPlot +
+            do.call(what = ggplot2::labs, args = labelList) +
+            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = rotateX) +
+            ggplot2::theme(
+                axis.line = ggplot2::element_blank(),
+                panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.5, colour = "black"),
+                axis.ticks.x = ggplot2::element_blank(),
+                panel.grid.major = ggplot2::element_line(linewidth = 0.2, colour = "gray"),
+                plot.caption = ggtext::element_markdown(colour = "gray30")
+            )
+
+        if (!is.null(colours)) {
+            regionPlot <- regionPlot + ggplot2::scale_colour_manual(values = colours)
+
+            if (isTRUE(hasRibbon)) {
+                regionPlot <- regionPlot + ggplot2::scale_fill_manual(values = colours)
+            }
+        }
+
+        return(regionPlot)
+    } # END function
+
+
+#' @title .regionComparisonTable
+#'
+#' @description Tests the pairs of groups of \code{\link{plotRegion}} chosen through \code{pairwiseTest}, from the fitted model or with a test on the drawn values, and writes the labels of the brackets.
+#'
+#' @param counts See \code{\link{plotRegion}}.
+#' @param groupBy See \code{\link{plotRegion}}.
+#' @param assay See \code{\link{plotRegion}}.
+#' @param pairwiseTest See \code{\link{plotRegion}}.
+#' @param pairBy See \code{\link{plotRegion}}.
+#' @param comparisons See \code{\link{plotRegion}}.
+#' @param pAdjustMethod See \code{\link{plotRegion}}.
+#' @param pLabel See \code{\link{plotRegion}}.
+#' @param pDecimals See \code{\link{plotRegion}}.
+#' @param colTable Data.frame with the sample annotation of the counts.
+#' @param comparisonTable Data.frame with one row per comparison, or \code{NULL}.
+#' @param isTiled Logical value telling whether the region holds several tiles.
+#' @param modelResults Results object holding the contrasts of the model, or \code{NULL}.
+#' @param plotTable Data.frame with one row per sample and tile, holding the values drawn.
+#' @param regionRows Data.frame with the rows of the counts that make up the region, as \code{.locateRegion} returns it.
+#' @param yLabel String with the label of the y axis.
+#' @param captionText String with the caption of the plot, or \code{NULL}.
+#'
+#' @return A list with \code{comparisonTable} and \code{captionText}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom S4Vectors metadata
+#'
+#' @noRd
+
+.regionComparisonTable <-
+    function(counts,
+             groupBy,
+             assay,
+             pairwiseTest,
+             pairBy,
+             comparisons,
+             pAdjustMethod,
+             pLabel,
+             pDecimals,
+             colTable,
+             comparisonTable,
+             isTiled,
+             modelResults,
+             plotTable,
+             regionRows,
+             yLabel,
+             captionText) {
         if (!is.null(pairwiseTest)) {
             # A bracket joins two positions of the axis, and along a tiled region the axis holds the coordinates
             if (isTRUE(isTiled)) {
@@ -648,7 +801,7 @@ plotRegion <-
                 objectMetadata <- S4Vectors::metadata(counts)
                 if (!isFALSE(objectMetadata$count.like) & !identical(assay, objectMetadata$normalization$normalized.assay)) {
                     warning("The test runs on the '", assay, "' assay, which is not normalised: a difference in sequencing depth between the groups ",
-                        "is read as a difference in signal. Run normalizeCounts() first, or pick the normalised values through 'assay'.",
+                        "is read as a difference in signal. Run normalizeRegionCounts() first, or pick the normalised values through 'assay'.",
                         call. = FALSE
                     )
                 }
@@ -712,20 +865,45 @@ plotRegion <-
             }
         }
 
-        #-------------------------------#
-        # Build the plot                #
-        #-------------------------------#
-        summaryTable <- NULL
-        if (isTRUE(summarise)) {
-            summaryTable <- dplyr::ungroup(dplyr::summarise(dplyr::group_by(plotTable, .data$group, .data$position),
-                mean.value = mean(.data$value),
-                sd.value = stats::sd(.data$value),
-                .groups = "drop"
-            ))
-            summaryTable$sd.value[is.na(summaryTable$sd.value)] <- 0
-        }
+        return(list(
+            captionText = captionText,
+            comparisonTable = comparisonTable
+        ))
+    }
 
-        # A ribbon needs a coordinate to run along, which only a tiled region has
+
+#' @title .regionPlotLayers
+#'
+#' @description Draws the signal of \code{\link{plotRegion}}: the points and lines of every sample, the ribbon of the groups when the region is tiled and summarised, and the brackets of the comparisons.
+#'
+#' @param summarise See \code{\link{plotRegion}}.
+#' @param pairwiseTest See \code{\link{plotRegion}}.
+#' @param pointSize See \code{\link{plotRegion}}.
+#' @param baseSize See \code{\link{plotRegion}}.
+#' @param comparisonTable Data.frame with one row per comparison and its label, or \code{NULL}.
+#' @param isTiled Logical value telling whether the region holds several tiles.
+#' @param plotTable Data.frame with one row per sample and tile, holding the values drawn.
+#' @param summaryTable Data.frame with the mean and spread of every group along the region, or \code{NULL}.
+#'
+#' @return A list with \code{regionPlot}, the \code{ggplot} object, and \code{hasRibbon}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom ggplot2 aes expand_limits geom_crossbar geom_errorbar geom_line geom_point geom_ribbon geom_segment ggplot
+#' @importFrom ggtext geom_richtext
+#' @importFrom grid unit
+#'
+#' @noRd
+
+.regionPlotLayers <-
+    function(summarise,
+             pairwiseTest,
+             pointSize,
+             baseSize,
+             comparisonTable,
+             isTiled,
+             plotTable,
+             summaryTable) {
         hasRibbon <- isTiled & isTRUE(summarise)
 
         if (isTRUE(hasRibbon)) {
@@ -856,60 +1034,11 @@ plotRegion <-
                 ggplot2::expand_limits(y = comparisonTable$y.top[1])
         }
 
-        # Only the summarised plot maps a fill, naming the others would raise an unknown label warning
-        labelList <- list(
-            x = if (isTiled) {
-                paste0(as.character(GenomeInfoDb::seqnames(rowRangesObject))[1], " (bp)")
-            } else {
-                ""
-            },
-            y = yLabel,
-            colour = if (is.null(groupBy)) {
-                "Sample"
-            } else {
-                groupBy
-            },
-            title = if (is.null(title)) {
-                unique(regionRows$region.key)
-            } else {
-                title
-            },
-            subtitle = subtitle
-        )
-
-        if (isTRUE(hasRibbon)) {
-            labelList$fill <- if (is.null(groupBy)) {
-                "Sample"
-            } else {
-                groupBy
-            }
-        }
-
-        if (!is.null(captionText)) {
-            labelList$caption <- captionText
-        }
-
-        regionPlot <- regionPlot +
-            do.call(what = ggplot2::labs, args = labelList) +
-            .resultsTheme(legendPosition = legendPosition, baseSize = baseSize, rotateX = rotateX) +
-            ggplot2::theme(
-                axis.line = ggplot2::element_blank(),
-                panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.5, colour = "black"),
-                axis.ticks.x = ggplot2::element_blank(),
-                panel.grid.major = ggplot2::element_line(linewidth = 0.2, colour = "gray"),
-                plot.caption = ggtext::element_markdown(colour = "gray30")
-            )
-
-        if (!is.null(colours)) {
-            regionPlot <- regionPlot + ggplot2::scale_colour_manual(values = colours)
-
-            if (isTRUE(hasRibbon)) {
-                regionPlot <- regionPlot + ggplot2::scale_fill_manual(values = colours)
-            }
-        }
-
-        return(regionPlot)
-    } # END function
+        return(list(
+            hasRibbon = hasRibbon,
+            regionPlot = regionPlot
+        ))
+    }
 
 
 #' @title .checkPlotRegionArguments
@@ -932,7 +1061,7 @@ plotRegion <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkPlotRegionArguments <-
     function(object,
@@ -1021,7 +1150,7 @@ plotRegion <-
 #' @importFrom ggplot2 theme element_text rel
 #' @importFrom ggtext element_markdown
 #'
-#' @keywords internal
+#' @noRd
 
 .resultsTheme <-
     function(legendPosition = "right",
@@ -1066,7 +1195,7 @@ plotRegion <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .diffStatusColours <-
     function(colours = NULL) {
@@ -1102,7 +1231,7 @@ plotRegion <-
 #' @importFrom dplyr group_by summarise ungroup
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .diffCounts <-
     function(regionTable,
@@ -1136,7 +1265,7 @@ plotRegion <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .thinBySet <-
     function(regionTable,
@@ -1180,7 +1309,7 @@ plotRegion <-
 #' @importFrom dplyr filter mutate case_when
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .prepareResultTable <-
     function(results,
@@ -1242,7 +1371,7 @@ plotRegion <-
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveCounts <-
     function(object,
@@ -1304,7 +1433,7 @@ plotRegion <-
 #' @importFrom rlang .data
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .locateRegion <-
     function(counts,
@@ -1369,7 +1498,7 @@ plotRegion <-
 #' @importFrom SummarizedExperiment assayNames
 #' @importFrom S4Vectors metadata
 #'
-#' @keywords internal
+#' @noRd
 
 .defaultAssay <-
     function(counts,
@@ -1405,7 +1534,7 @@ plotRegion <-
 #' @importFrom stats setNames
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .modelResultsList <-
     function(object,
@@ -1451,7 +1580,7 @@ plotRegion <-
 #' @importFrom rlang .data
 #' @importFrom methods .hasSlot
 #'
-#' @keywords internal
+#' @noRd
 
 .modelBrackets <-
     function(resultsList,
@@ -1569,7 +1698,7 @@ plotRegion <-
 #' @importFrom rlang .data
 #' @importFrom stats t.test wilcox.test p.adjust
 #'
-#' @keywords internal
+#' @noRd
 
 .pairwiseTests <-
     function(plotTable,
@@ -1755,7 +1884,7 @@ plotRegion <-
 #'
 #' @importFrom utils combn
 #'
-#' @keywords internal
+#' @noRd
 
 .checkComparisons <-
     function(comparisons = NULL,
@@ -1807,7 +1936,7 @@ plotRegion <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .placeBrackets <-
     function(bracketTable,
@@ -1863,7 +1992,7 @@ plotRegion <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .bracketLabels <-
     function(pValues,
@@ -1902,7 +2031,7 @@ plotRegion <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .formatPvalue <-
     function(p,

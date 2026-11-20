@@ -243,7 +243,7 @@ loadSampleSheet <-
 #'
 #' @importFrom utils read.table
 #'
-#' @keywords internal
+#' @noRd
 
 .readSheetFile <-
     function(path) {
@@ -292,7 +292,7 @@ loadSampleSheet <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .matchSheetColumns <-
     function(columnNames,
@@ -382,7 +382,7 @@ loadSampleSheet <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveSheetPaths <-
     function(paths,
@@ -412,7 +412,7 @@ loadSampleSheet <-
 #' @importFrom dplyr distinct filter group_by summarise n_distinct
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .inputIdentifiers <-
     function(inputPaths,
@@ -468,7 +468,7 @@ loadSampleSheet <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkSheetFiles <-
     function(sheetTable,
@@ -516,7 +516,7 @@ loadSampleSheet <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .hasBamIndex <-
     function(bamFiles) {
@@ -542,7 +542,7 @@ loadSampleSheet <-
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .sheetCountingInput <-
     function(regionSet,

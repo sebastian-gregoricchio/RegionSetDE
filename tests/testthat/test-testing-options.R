@@ -228,7 +228,7 @@ test_that("makeSetUniverse can be built for one set", {
 
 
 test_that("the voom engine fits and tests", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     counts <- filterRegions(counts, verbose = FALSE)
 
     fit <- fitRegions(counts, design = ~condition, engine = "voom", verbose = FALSE)
@@ -248,7 +248,7 @@ test_that("the voom engine fits and tests", {
 test_that("the DESeq2 engine fits and tests", {
     skip_if_not_installed("DESeq2")
 
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     counts <- filterRegions(counts, verbose = FALSE)
 
     fit <- fitRegions(counts, design = ~condition, engine = "deseq2", verbose = FALSE)
@@ -261,7 +261,7 @@ test_that("the DESeq2 engine fits and tests", {
 
 
 test_that("fitRegions refuses an engine it does not have", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_error(
         fitRegions(counts, design = ~condition, engine = "notAnEngine", verbose = FALSE)
@@ -270,7 +270,7 @@ test_that("fitRegions refuses an engine it does not have", {
 
 
 test_that("estimateNullDispersion refuses a source it does not have", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     expect_error(
         estimateNullDispersion(counts, source = "notASource", verbose = FALSE)

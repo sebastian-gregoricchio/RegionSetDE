@@ -14,7 +14,7 @@
 #' @importFrom BiocGenerics start end
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .regionKeys <-
     function(x) {
@@ -54,7 +54,7 @@
 #' @importFrom BiocGenerics start end
 #' @importFrom dplyr rename any_of %>%
 #'
-#' @keywords internal
+#' @noRd
 
 .linksFromGRanges <-
     function(linkRanges) {
@@ -105,7 +105,7 @@
 #' @importFrom stats na.omit setNames
 #' @importFrom utils head
 #'
-#' @keywords internal
+#' @noRd
 
 .validateLinkTable <-
     function(linkTable,
@@ -270,7 +270,7 @@
 #'
 #' @importFrom S4Vectors mcols
 #'
-#' @keywords internal
+#' @noRd
 
 .storedRegionIds <-
     function(regions) {
@@ -300,7 +300,7 @@
 #' @importFrom dplyr arrange filter mutate %>%
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .collapseLinks <-
     function(linkTable,
@@ -385,7 +385,7 @@
 #' @importFrom S4Vectors queryHits subjectHits mcols
 #' @importFrom BiocGenerics start end strand
 #'
-#' @keywords internal
+#' @noRd
 
 .nearestGeneLinks <-
     function(regions,
@@ -577,7 +577,7 @@
 #'
 #' @importFrom stats na.omit
 #'
-#' @keywords internal
+#' @noRd
 
 .addGeneSymbols <-
     function(linkTable,
@@ -821,7 +821,7 @@ annotateRegions <-
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .countsOfObject <-
     function(object) {
@@ -857,7 +857,7 @@ annotateRegions <-
 #' @importFrom SummarizedExperiment rowRanges
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .replaceCounts <-
     function(object,
@@ -896,7 +896,7 @@ annotateRegions <-
 #'
 #' @importFrom S4Vectors mcols mcols<-
 #'
-#' @keywords internal
+#' @noRd
 
 .carryLinkColumns <-
     function(regions,

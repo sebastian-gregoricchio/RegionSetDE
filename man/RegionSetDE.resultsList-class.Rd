@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.resultsList-class}
 \alias{RegionSetDE.resultsList-class}
+\alias{show,RegionSetDE.resultsList-method}
 \title{RegionSetDE.resultsList class}
+\usage{
+\S4method{show}{RegionSetDE.resultsList}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.resultsList} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class holding the outcome of several contrasts run on the same fit. Since all of them come from one model, the design, the offsets and the dispersion are shared and the contrasts can be compared with each other directly. Every function that takes a \code{RegionSetDE.results} object also takes this one, together with a \code{contrast} argument naming which of them to use.
 }
@@ -15,6 +25,18 @@ S4 class holding the outcome of several contrasts run on the same fit. Since all
 \item{\code{contrasts}}{Character vector with the names of the contrasts, in the order they were run.}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+# A named list of contrasts gives one result per contrast
+resultsList <- testRegions(fit,
+    contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+    verbose = FALSE
+)
+resultsList
+resultsList[["shr"]]
+
+}
 \author{
 Sebastian Gregoricchio
 }

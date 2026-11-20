@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.geneResults-class}
 \alias{RegionSetDE.geneResults-class}
+\alias{show,RegionSetDE.geneResults-method}
 \title{RegionSetDE.geneResults class}
+\usage{
+\S4method{show}{RegionSetDE.geneResults}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.geneResults} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class holding the per-gene table built by \code{\link{aggregateToGenes}} from a per-region result. One row per gene, with the regions that reached it counted and their directions reported rather than resolved, and the filters applied upstream still readable in the inherited provenance slots.
 }
@@ -25,6 +35,21 @@ S4 class holding the per-gene table built by \code{\link{aggregateToGenes}} from
 \item{\code{thresholds}}{List with the cut-offs the directions were read at.}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+# Links of your own, four regions per gene
+regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fitCounts(fit)))[, 1:3]
+geneNumber <- ceiling(nrow(regionTable) / 4)
+geneIds <- rep(paste0("gene", seq_len(geneNumber)), each = 4)[seq_len(nrow(regionTable))]
+
+annotatedFit <- annotateRegions(fit, linkTable = data.frame(regionTable, gene.id = geneIds), verbose = FALSE)
+results <- testRegions(annotatedFit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+
+geneResults <- aggregateToGenes(results, method = "simes", verbose = FALSE)
+geneResults
+
+}
 \author{
 Sebastian Gregoricchio
 }

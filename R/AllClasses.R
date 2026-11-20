@@ -25,6 +25,14 @@ setClassUnion("characterOrNULL", c("character", "NULL"))
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#'
+#' # Every object of the package carries the provenance slots
+#' is(counts, "RegionSetDE.provenance")
+#' genomeAssembly(counts)
+#' filteringLog(counts)
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.provenance",
@@ -93,6 +101,15 @@ setValidity(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' regionTable <- loadExampleData("regions", verbose = FALSE)
+#'
+#' regions <- loadRegions(split(regionTable[, c("seqnames", "start", "end")], regionTable$setName),
+#'     genomeAssembly = "rn4", verbose = FALSE
+#' )
+#' regions
+#' regionSetNames(regions)
+#'
 #' @export
 setClass(
     Class = "RegionSetDE",
@@ -114,6 +131,11 @@ setClass(
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom methods setClass representation prototype
+#'
+#' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#' counts
+#' head(sampleInfo(counts))
 #'
 #' @export
 setClass(
@@ -202,15 +224,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE objects
-#'
-#' @description Prints a summary of the region sets stored in a \code{RegionSetDE} object.
+#' @rdname RegionSetDE-class
 #'
 #' @param object A \code{RegionSetDE} object.
 #'
-#' @return Prints a summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod show
 #' @importFrom BiocGenerics width
@@ -287,6 +305,12 @@ setMethod(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' universe <- makeSetUniverse(fit, verbose = FALSE)
+#' universe
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.universe",
@@ -337,15 +361,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.universe
-#'
-#' @description Prints a summary of a comparison universe.
+#' @rdname RegionSetDE.universe-class
 #'
 #' @param object \code{RegionSetDE.universe} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #'
@@ -406,6 +426,11 @@ setMethod(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#' fit
+#' fitEngine(fit)
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.fit",
@@ -455,6 +480,13 @@ setClass(
 #'
 #' @importFrom methods setClass representation prototype
 #' @importClassesFrom GenomicRanges GRanges
+#'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+#' results
+#' head(resultsTable(results), 3)
 #'
 #' @export
 setClass(
@@ -562,15 +594,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.fit
-#'
-#' @description Prints a summary of a fitted model.
+#' @rdname RegionSetDE.fit-class
 #'
 #' @param object \code{RegionSetDE.fit} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #'
@@ -625,15 +653,11 @@ setMethod(
 )
 
 
-#' @title show method for RegionSetDE.results
-#'
-#' @description Prints a summary of a per-region contrast.
+#' @rdname RegionSetDE.results-class
 #'
 #' @param object \code{RegionSetDE.results} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #' @importFrom dplyr count filter
@@ -700,6 +724,12 @@ setMethod(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+#' setResults
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.setResults",
@@ -750,15 +780,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.setResults
-#'
-#' @description Prints a summary of a set level test.
+#' @rdname RegionSetDE.setResults-class
 #'
 #' @param object \code{RegionSetDE.setResults} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #'
@@ -817,6 +843,17 @@ setMethod(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' # A named list of contrasts gives one set level result per contrast
+#' setResultsList <- testRegionSets(fit,
+#'     contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+#'     verbose = FALSE
+#' )
+#' setResultsList
+#' names(setResultsList)
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.setResultsList",
@@ -860,15 +897,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.setResultsList
-#'
-#' @description Prints the contrasts held by the object and the sets tested in each of them.
+#' @rdname RegionSetDE.setResultsList-class
 #'
 #' @param object \code{RegionSetDE.setResultsList} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #'
@@ -966,6 +999,17 @@ setMethod(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' # A named list of contrasts gives one result per contrast
+#' resultsList <- testRegions(fit,
+#'     contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+#'     verbose = FALSE
+#' )
+#' resultsList
+#' resultsList[["shr"]]
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.resultsList",
@@ -1010,15 +1054,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.resultsList
-#'
-#' @description Prints the contrasts held by the object and how many regions change in each of them.
+#' @rdname RegionSetDE.resultsList-class
 #'
 #' @param object \code{RegionSetDE.resultsList} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #'
@@ -1070,6 +1110,17 @@ setMethod(
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom methods setMethod
+#'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' resultsList <- testRegions(fit,
+#'     contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+#'     verbose = FALSE
+#' )
+#' names(resultsList)
+#' length(resultsList)
+#' resultsList$bn
 #'
 #' @rdname resultsList-accessors
 #' @export
@@ -1125,7 +1176,7 @@ setMethod(
 #'
 #' @importFrom methods is
 #'
-#' @keywords internal
+#' @noRd
 
 .pickResults <-
     function(results,
@@ -1188,6 +1239,12 @@ setMethod(
 #' @seealso \code{\link{scoreRegionSets}}
 #'
 #' @importFrom methods setClass representation prototype
+#'
+#' @examples
+#' counts <- loadExampleData("counts", verbose = FALSE)
+#'
+#' setScores <- scoreRegionSets(counts, verbose = FALSE)
+#' setScores
 #'
 #' @export
 setClass(
@@ -1252,19 +1309,15 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.setScores
-#'
-#' @description Prints a summary of the region set scores and of the comparisons between them.
+#' @rdname RegionSetDE.setScores-class
 #'
 #' @param object \code{RegionSetDE.setScores} object.
 #'
-#' @return Prints the summary to the console.
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
 #' scoreRegionSets(counts, verbose = FALSE)
-#'
-#' @author Sebastian Gregoricchio
 #'
 #' @importFrom methods setMethod
 #' @importFrom dplyr n_distinct
@@ -1330,7 +1383,7 @@ setMethod(
 #' @importFrom methods .hasSlot slot<- is
 #' @importFrom BiocGenerics updateObject
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .updateProvenance <-
@@ -1386,7 +1439,7 @@ setMethod(
 #'
 #' @importFrom methods getSlots .hasSlot slot slot<- as
 #'
-#' @keywords internal
+#' @noRd
 #' @noRd
 
 .updateTableSlots <-
@@ -1586,6 +1639,20 @@ setMethod(
 #'
 #' @importFrom methods setClass representation prototype
 #'
+#' @examples
+#' fit <- loadExampleData("fit", verbose = FALSE)
+#'
+#' # Links of your own, four regions per gene
+#' regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fitCounts(fit)))[, 1:3]
+#' geneNumber <- ceiling(nrow(regionTable) / 4)
+#' geneIds <- rep(paste0("gene", seq_len(geneNumber)), each = 4)[seq_len(nrow(regionTable))]
+#'
+#' annotatedFit <- annotateRegions(fit, linkTable = data.frame(regionTable, gene.id = geneIds), verbose = FALSE)
+#' results <- testRegions(annotatedFit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+#'
+#' geneResults <- aggregateToGenes(results, method = "simes", verbose = FALSE)
+#' geneResults
+#'
 #' @export
 setClass(
     Class = "RegionSetDE.geneResults",
@@ -1640,15 +1707,11 @@ setValidity(
 )
 
 
-#' @title show method for RegionSetDE.geneResults
-#'
-#' @description Prints a summary of a per-gene table: the contrast it came from, how it was aggregated and weighted, how many genes and links it holds, how the genes split between the four directions, and the first rows of the table.
+#' @rdname RegionSetDE.geneResults-class
 #'
 #' @param object \code{RegionSetDE.geneResults} object.
 #'
-#' @return Prints the summary to the console.
-#'
-#' @author Sebastian Gregoricchio
+#' @return \code{show()} prints a summary of the object to the console.
 #'
 #' @importFrom methods setMethod
 #' @importFrom utils head
@@ -1722,7 +1785,7 @@ setMethod(
 #'
 #' @importFrom methods .hasSlot
 #'
-#' @keywords internal
+#' @noRd
 
 .checkContrastLists <-
     function(object) {
@@ -1763,7 +1826,7 @@ setMethod(
 #'
 #' @importFrom methods getSlots as
 #'
-#' @keywords internal
+#' @noRd
 
 .asSlotValue <-
     function(className,
@@ -1792,7 +1855,7 @@ setMethod(
 #'
 #' @importFrom methods new
 #'
-#' @keywords internal
+#' @noRd
 
 .newObject <-
     function(Class,
@@ -1823,7 +1886,7 @@ setMethod(
 #'
 #' @importFrom methods slot<-
 #'
-#' @keywords internal
+#' @noRd
 
 .replaceSlots <-
     function(object,

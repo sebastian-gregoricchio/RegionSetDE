@@ -60,9 +60,9 @@ test_that("the long format has one row per region and sample, with the colData a
 
 test_that("the normalised values require a normalisation and match its assay", {
     counts <- exampleCounts()
-    expect_error(countTable(counts, normalized = TRUE), "normalizeCounts")
+    expect_error(countTable(counts, normalized = TRUE), "normalizeRegionCounts")
 
-    counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
     expect_equal(
         countTable(counts, normalized = TRUE, format = "matrix"),
@@ -133,7 +133,7 @@ test_that("the tiles are summed into their region, and exceed the count of the r
 
 test_that("the normalised region values equal the summed counts divided by the scaling factor", {
     tiledCounts <- twoSampleCounts(tileWidth = 100L)
-    tiledCounts <- normalizeCounts(tiledCounts, method = "manual", scalingFactors = c(1, 3), verbose = FALSE)
+    tiledCounts <- normalizeRegionCounts(tiledCounts, method = "manual", scalingFactors = c(1, 3), verbose = FALSE)
 
     rawMatrix <- countTable(tiledCounts, format = "matrix", verbose = FALSE)
     normalizedMatrix <- countTable(tiledCounts, normalized = TRUE, format = "matrix", verbose = FALSE)

@@ -8,6 +8,15 @@ Description of the example objects installed under \code{inst/extdata}
 and of the dataset they come from. The objects are read with \code{\link{loadExampleData}},
 which is where the individual formats are documented.
 }
+\examples{
+# The counts of the EURATRANS example and the sheet of the AR example
+counts <- loadExampleData("counts", verbose = FALSE)
+counts
+
+sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
+head(sampleSheet[, c("sample", "condition")])
+
+}
 \seealso{
 \code{\link{loadExampleData}}
 }

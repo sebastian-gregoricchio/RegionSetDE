@@ -1,5 +1,5 @@
 test_that("the components, the variance and the annotation come back together", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     samplePCA <- computeSamplePCA(counts, topRegions = 500, verbose = FALSE)
 
     expect_named(samplePCA, c("scores", "variance", "loadings", "parameters"))
@@ -18,7 +18,7 @@ test_that("the components, the variance and the annotation come back together", 
 
 
 test_that("the ordination moves with the normalisation and the correlation does not", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     normalisedPCA <- computeSamplePCA(counts, topRegions = 500, verbose = FALSE)
     rawPCA <- computeSamplePCA(counts, topRegions = 500, useOffsets = FALSE, verbose = FALSE)
@@ -36,7 +36,7 @@ test_that("the ordination moves with the normalisation and the correlation does 
 
 
 test_that("the correlation comes back with the samples it was computed on", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     sampleCorrelation <- computeSampleCorrelation(counts, topRegions = 400, verbose = FALSE)
 
     correlationMatrix <- sampleCorrelation$correlation
@@ -70,7 +70,7 @@ test_that("an object without normalisation is scaled by the library sizes and sa
 
 test_that("the plots take a computation done beforehand", {
     skip_if_not_installed("ComplexHeatmap")
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     samplePCA <- computeSamplePCA(counts, topRegions = 500, verbose = FALSE)
     pcaPlot <- plotRegionPCA(samplePCA, colourBy = "condition")
@@ -89,7 +89,7 @@ test_that("the plots take a computation done beforehand", {
 
 test_that("the annotation bars carry the columns and the colours asked for", {
     skip_if_not_installed("ComplexHeatmap")
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     correlationPlot <- plotSampleCorrelation(counts,
         annotationColumns = c("condition", "sex", "biologicalReplicate"),
@@ -113,7 +113,7 @@ test_that("the annotation bars carry the columns and the colours asked for", {
 
 test_that("the diagonal can be left out of the drawing and of the scale", {
     skip_if_not_installed("ComplexHeatmap")
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
 
     correlationPlot <- plotSampleCorrelation(counts, excludeDiagonal = TRUE, cluster = FALSE, verbose = FALSE)
 
@@ -151,6 +151,8 @@ test_that("the Jaccard index compares the peak calls of the samples", {
 
 
 test_that("the Jaccard heatmap takes the peaks and the annotation of a consensus", {
+    skip_if_not_installed("ComplexHeatmap")
+    skip_if_not_installed("circlize")
     testthat::skip_if_not_installed("consensusRegions")
 
     sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
@@ -171,7 +173,9 @@ test_that("the Jaccard heatmap takes the peaks and the annotation of a consensus
 
 
 test_that("the ordination and the correlation can be restricted to some samples", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    skip_if_not_installed("ComplexHeatmap")
+    skip_if_not_installed("circlize")
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     sampleNames <- colnames(counts)
 
     # The normalisation of the whole analysis is kept, so a subset of the matrix is a subset of the samples
@@ -230,6 +234,6 @@ test_that("selectSamples keeps the files, the layouts and the greenlist counts i
 
     # Every step reading the files again works on the selection
     expect_s3_class(libInfo(selectedCounts), "data.frame")
-    expect_s4_class(normalizeCounts(selectedCounts, method = "greenlist", verbose = FALSE), "RegionSetDE.counts")
+    expect_s4_class(normalizeRegionCounts(selectedCounts, method = "greenlist", verbose = FALSE), "RegionSetDE.counts")
     expect_s4_class(countBackground(selectedCounts, binSize = 10000, verbose = FALSE), "RegionSetDE.counts")
 })

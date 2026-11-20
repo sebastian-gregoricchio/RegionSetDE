@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.setScores-class}
 \alias{RegionSetDE.setScores-class}
+\alias{show,RegionSetDE.setScores-method}
 \title{RegionSetDE.setScores class}
+\usage{
+\S4method{show}{RegionSetDE.setScores}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.setScores} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class storing the signal scores computed by \code{\link{scoreRegionSets}}, one per region set per library, together with the paired comparisons between the sets. No contrast lies behind these numbers and no model was fitted on them, which is what separates this class from \code{RegionSetDE.setResults}: the replication is the libraries, and the comparison runs between sets rather than between conditions.
 }
@@ -25,6 +35,16 @@ S4 class storing the signal scores computed by \code{\link{scoreRegionSets}}, on
 \item{\code{per.basepair}}{Logical value indicating whether the signal was divided by the width of the region before being summarised.}
 }}
 
+\examples{
+counts <- loadExampleData("counts", verbose = FALSE)
+
+setScores <- scoreRegionSets(counts, verbose = FALSE)
+setScores
+
+counts <- loadExampleData("counts", verbose = FALSE)
+scoreRegionSets(counts, verbose = FALSE)
+
+}
 \seealso{
 \code{\link{scoreRegionSets}}
 }

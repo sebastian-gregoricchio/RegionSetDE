@@ -72,6 +72,6 @@ test_that("countTable returns the inputs, and they follow the samples through th
     selectedCounts <- selectSamples(counts, samples = 1:4, verbose = FALSE)
     expect_identical(dim(SummarizedExperiment::assay(selectedCounts, "input")), c(nrow(counts), 4L))
 
-    normalisedCounts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+    normalisedCounts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
     expect_s4_class(fitRegions(normalisedCounts, design = ~condition, verbose = FALSE), "RegionSetDE.fit")
 })

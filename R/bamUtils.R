@@ -10,7 +10,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .bamIndexPath <-
     function(bamFile) {
@@ -43,7 +43,7 @@
 #'
 #' @importFrom Rsamtools BamFile
 #'
-#' @keywords internal
+#' @noRd
 
 .bamWithIndex <-
     function(bamFile) {
@@ -70,7 +70,7 @@
 #'
 #' @importFrom Rsamtools BamFile scanBam ScanBamParam bamFlagTest
 #'
-#' @keywords internal
+#' @noRd
 
 .bamIsPairedEnd <-
     function(bamFiles,
@@ -109,7 +109,7 @@
 #' @importFrom stats setNames
 #' @importFrom utils head
 #'
-#' @keywords internal
+#' @noRd
 
 .bamChromosomeMap <-
     function(bamFiles,
@@ -242,7 +242,7 @@
 #' @importFrom dplyr filter mutate arrange desc
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .countBamFragments <-
     function(bamFiles,
@@ -436,7 +436,7 @@
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .readBamFragments <-
     function(job,
@@ -554,7 +554,7 @@
 #'
 #' @importFrom Rsamtools ScanBamParam scanBamFlag
 #'
-#' @keywords internal
+#' @noRd
 
 .bamReadParameters <-
     function(which,
@@ -628,7 +628,7 @@
 #'
 #' @importFrom IRanges IRanges overlapsAny
 #'
-#' @keywords internal
+#' @noRd
 
 .fragmentsFromReads <-
     function(reads,
@@ -740,7 +740,7 @@
 #' @importFrom BiocGenerics start end
 #' @importFrom IRanges IRanges ranges reduce
 #'
-#' @keywords internal
+#' @noRd
 
 .windowFragments <-
     function(bamFile,
@@ -917,7 +917,7 @@
 #' @importFrom GenomicRanges coverage
 #' @importFrom GenomeInfoDb seqlevels<- seqlengths<-
 #'
-#' @keywords internal
+#' @noRd
 
 .windowCoverage <-
     function(bamFile,
@@ -976,7 +976,7 @@
 #' @importFrom IRanges Views viewMaxs viewRangeMaxs ranges
 #' @importFrom BiocGenerics start end
 #'
-#' @keywords internal
+#' @noRd
 
 .bamSummits <-
     function(bamFiles,
@@ -1049,7 +1049,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .cigarReferenceWidth <-
     function(cigar) {

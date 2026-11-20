@@ -39,7 +39,7 @@ promoters are never counted as thirty thousand replicates.
     \code{\link{loadCounts}}}{count over the regions, or over fixed-width
     tiles of them, from BAM files, from bigWig coverage, or from a matrix
     that already exists.}
-  \item{\code{\link{normalizeCounts}}}{scaling factors from background
+  \item{\code{\link{normalizeRegionCounts}}}{scaling factors from background
     bins, from the regions themselves, or supplied from a spike-in or
     greenlist.}
   \item{\code{\link{fitRegions}}}{a single fit, with \code{edgeR},

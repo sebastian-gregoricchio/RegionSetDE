@@ -33,7 +33,7 @@
 #'
 #' @examples
 #' counts <- loadExampleData("counts", verbose = FALSE)
-#' counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+#' counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #'
 #' filtered <- filterRegions(counts, foldChange = 2, verbose = FALSE)
 #'
@@ -45,7 +45,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{countBackground}}, \code{\link{normalizeCounts}}, \code{\link{fitRegions}}
+#' @seealso \code{\link{countBackground}}, \code{\link{normalizeRegionCounts}}, \code{\link{fitRegions}}
 #'
 #' @importFrom SummarizedExperiment assay assayNames colData rowData rowRanges
 #' @importFrom S4Vectors metadata
@@ -347,7 +347,7 @@ filterRegions <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkFilterRegionsArguments <-
     function(counts,
@@ -415,7 +415,7 @@ filterRegions <-
 #'
 #' @importFrom edgeR aveLogCPM
 #'
-#' @keywords internal
+#' @noRd
 
 .regionAbundance <-
     function(countMatrix,
@@ -451,7 +451,7 @@ filterRegions <-
 #'
 #' @importFrom stats quantile
 #'
-#' @keywords internal
+#' @noRd
 
 .widthStratum <-
     function(rowWidths,

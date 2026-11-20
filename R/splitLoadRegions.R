@@ -187,7 +187,7 @@ splitLoadRegions <-
         # Split the regions #
         #-------------------#
         # The splitting column is constant within each set, therefore redundant with the set name
-        if (keepSplitColumn == FALSE & splitBy %in% colnames(S4Vectors::mcols(allRegions))) {
+        if (isFALSE(keepSplitColumn) && splitBy %in% colnames(S4Vectors::mcols(allRegions))) {
             S4Vectors::mcols(allRegions)[[splitBy]] <- NULL
         }
 
@@ -225,7 +225,7 @@ splitLoadRegions <-
             stop("No region set left after the filtering, please lower the 'minRegionsPerSet' threshold.", call. = FALSE)
         }
 
-        if (verbose == TRUE) {
+        if (isTRUE(verbose)) {
             message("Regions split by '", splitBy, "' into ", length(regionSets), " sets.")
         }
 

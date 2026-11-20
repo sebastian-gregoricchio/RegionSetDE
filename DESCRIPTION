@@ -1,6 +1,6 @@
 Package: RegionSetDE
 Type: Package
-Title: Differential analysis of chromatin signal over user-defined genomic region sets, without peak calling
+Title: Differential analysis of chromatin signal over genomic region sets
 Version: 0.99.0
 Authors@R: c(
     person(
@@ -12,10 +12,11 @@ Authors@R: c(
   )
 Description:
   Differential analysis of chromatin profiling data over genomic
-  regions supplied by the user, with no peak calling step. Regions are
-  grouped into named sets of arbitrary width and size, such as promoter
-  classes, enhancer catalogues or chromatin states, and are counted per
-  region or per tile. Normalisation factors can be estimated from
+  regions fixed in advance, either supplied by the user or built from the
+  peak calls of the samples through consensusRegions. Regions are grouped
+  into named sets of arbitrary width and size, such as promoter classes,
+  enhancer catalogues or chromatin states, and are counted per region or
+  per tile. Normalisation factors can be estimated from
   background bins or supplied externally, for instance from spike-in or
   greenlist approaches. A single model fit supports testing at two levels:
   individual regions, and whole region sets, including direct contrasts
@@ -25,8 +26,7 @@ Description:
   or sliding windows, and test them one at a time. Here the regions are
   fixed in advance and a whole set can be tested as one unit, the way the
   camera and fry tests of limma treat gene sets, while the region-level
-  test stays available from the same fit. Peak calls can still be turned
-  into regions through consensusRegions.
+  test stays available from the same fit.
 License: GPL-3
 Depends:
 	R (>= 4.6.0),
@@ -58,11 +58,9 @@ Imports:
 Suggests:
   AnnotationDbi,
   BiocStyle,
-  BiocManager,
   circlize,
   ComplexHeatmap,
   consensusRegions (>= 0.99.3),
-  covr,
   DESeq2,
   GenomicFeatures,
   ggrepel,

@@ -50,6 +50,18 @@ A \code{RegionSetDE.results} object, or a \code{RegionSetDE.setResults} object f
 \description{
 Extract one contrast, all of them, or the names of the contrasts, from a \code{RegionSetDE.resultsList} or a \code{RegionSetDE.setResultsList} object.
 }
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+resultsList <- testRegions(fit,
+    contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+    verbose = FALSE
+)
+names(resultsList)
+length(resultsList)
+resultsList$bn
+
+}
 \author{
 Sebastian Gregoricchio
 }

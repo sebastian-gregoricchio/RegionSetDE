@@ -70,7 +70,7 @@ test_that("pairwiseContrasts writes every pair, or every level against a referen
 
 
 test_that("the contrasts written out run through testRegions as a list", {
-    fit <- fitRegions(normalizeCounts(counts, method = "librarySize", verbose = FALSE),
+    fit <- fitRegions(normalizeRegionCounts(counts, method = "librarySize", verbose = FALSE),
         design = ~condition, engine = "edgeR", verbose = FALSE
     )
     results <- testRegions(fit, contrast = pairwiseContrasts(fit, column = "condition"), verbose = FALSE)
@@ -149,7 +149,7 @@ test_that("sampleInfo returns the sample table of counts, fits and results alike
     expect_error(sampleInfo(counts, columns = "tissue"), "not in the sample table")
 
     # The normalisation adds its factors, and the fit and the results reach the same table
-    normalisedCounts <- normalizeCounts(counts, method = "librarySize", verbose = FALSE)
+    normalisedCounts <- normalizeRegionCounts(counts, method = "librarySize", verbose = FALSE)
     expect_true("scaling.factor" %in% colnames(sampleInfo(normalisedCounts)))
 
     fit <- fitRegions(normalisedCounts, design = ~condition, engine = "edgeR", verbose = FALSE)

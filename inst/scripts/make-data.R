@@ -533,7 +533,7 @@ counts <- RegionSetDE::countBackground(
 
 # The shipped counts object stays raw so that the vignette can run the
 # normalisation and the filtering itself. The fit is built on a separate copy.
-fitCountsObject <- RegionSetDE::normalizeCounts(
+fitCountsObject <- RegionSetDE::normalizeRegionCounts(
   counts = counts,
   method = normalizationMethod,
   verbose = TRUE

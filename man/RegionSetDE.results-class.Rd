@@ -3,7 +3,17 @@
 \docType{class}
 \name{RegionSetDE.results-class}
 \alias{RegionSetDE.results-class}
+\alias{show,RegionSetDE.results-method}
 \title{RegionSetDE.results class}
+\usage{
+\S4method{show}{RegionSetDE.results}(object)
+}
+\arguments{
+\item{object}{\code{RegionSetDE.results} object.}
+}
+\value{
+\code{show()} prints a summary of the object to the console.
+}
 \description{
 S4 class holding the outcome of a per-region contrast. The table in the \code{results} slot has one row per region and follows the coordinates in the \code{regions} slot, so the two can be bound together without any matching step. When the counts were tiled, the tile level statistics are kept in the \code{tiles} slot next to the combined ones, since a region that changes only over part of its length is easier to read from the tiles than from the summary.
 }
@@ -33,6 +43,14 @@ S4 class holding the outcome of a per-region contrast. The table in the \code{re
 \item{\code{counts}}{\code{RegionSetDE.counts} object the contrast was computed on, so that the values behind a result can be drawn without carrying a second object around. Empty when \code{testRegions} was called with \code{carryCounts = FALSE}.}
 }}
 
+\examples{
+fit <- loadExampleData("fit", verbose = FALSE)
+
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+results
+head(resultsTable(results), 3)
+
+}
 \author{
 Sebastian Gregoricchio
 }

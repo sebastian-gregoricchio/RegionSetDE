@@ -38,7 +38,7 @@
 #'
 #' A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from the \code{MQ} tag, which \code{samtools fixmate} and Picard write; on files without it only the first mate is checked, and a message says so.
 #'
-#' Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeCounts}} warns when a method relies on them.
+#' Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeRegionCounts}} warns when a method relies on them.
 #'
 #' The blacklist and the greylist act before the counting, and on two things. The regions overlapping them are removed, as \code{\link{applyBlacklist}} and \code{\link{applyGreylist}} do: taking rows out of a counts object would leave library sizes, inputs and summits computed on regions that are no longer there, which is why those two functions refuse it. With \code{discardListedReads = TRUE} the reads lying on the lists are ignored as well. These regions collect reads in amounts that change from one sample to the next, so leaving them in the library sizes shifts the scaling of each sample by a different amount. \code{discarded.reads} tells how many fragments each sample lost this way, and \code{library.size} plus \code{discarded.reads} is the library size the sample would have with nothing discarded.
 #'
@@ -183,6 +183,232 @@ countReads <-
         # Blacklist and greylist #
         #------------------------#
         # A greylist applied beforehand, or the one a consensus was cleaned against, is already in the object
+        greylistStep <- .resolveCountingGreylist(
+            regionSet = regionSet,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            greylist = greylist,
+            inputFiles = inputFiles,
+            BPPARAM = BPPARAM,
+            progressBar = progressBar,
+            verbose = verbose,
+            sampleTable = sampleTable
+        )
+        builtGreylist <- greylistStep$builtGreylist
+        greylist <- greylistStep$greylist
+        greylistSource <- greylistStep$greylistSource
+
+        # The regions lying on the lists leave before anything is counted: taking them out afterwards would leave
+        # library sizes, summits and inputs computed on regions that are no longer there
+        regionStep <- .prepareCountingRegions(
+            regionSet = regionSet,
+            bamFiles = bamFiles,
+            tileWidth = tileWidth,
+            keepMetadata = keepMetadata,
+            regionId = regionId,
+            partialTiles = partialTiles,
+            excludeChromosomes = excludeChromosomes,
+            blacklist = blacklist,
+            greylist = greylist,
+            discardListedReads = discardListedReads,
+            discardRegions = discardRegions,
+            verbose = verbose,
+            bamSeqlevels = bamSeqlevels
+        )
+        allRegions <- regionStep$allRegions
+        countingRegions <- regionStep$countingRegions
+        discardRegions <- regionStep$discardRegions
+        expansionIndex <- regionStep$expansionIndex
+        listedRegions <- regionStep$listedRegions
+        regionChromosomes <- regionStep$regionChromosomes
+        regionSet <- regionStep$regionSet
+        uniqueRegions <- regionStep$uniqueRegions
+
+        #------------------------#
+        # Fragment lengths       #
+        #------------------------#
+        # One length per sample, NA for the paired-end ones whose fragments come from the pairs
+        windowStep <- .resolveCountingWindows(
+            regionSet = regionSet,
+            bamFiles = bamFiles,
+            pairedEnd = pairedEnd,
+            fragmentLength = fragmentLength,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            discardRegions = discardRegions,
+            summits = summits,
+            summitSource = summitSource,
+            BPPARAM = BPPARAM,
+            verbose = verbose,
+            allRegions = allRegions,
+            bamTargets = bamTargets,
+            countingRegions = countingRegions,
+            expansionIndex = expansionIndex,
+            regionChromosomes = regionChromosomes,
+            sampleTable = sampleTable,
+            showProgress = showProgress,
+            uniqueRegions = uniqueRegions
+        )
+        allRegions <- windowStep$allRegions
+        countingRegions <- windowStep$countingRegions
+        fragmentInfo <- windowStep$fragmentInfo
+        sampleFragmentLength <- windowStep$sampleFragmentLength
+        uniqueRegions <- windowStep$uniqueRegions
+
+        #----------------#
+        # Read the files #
+        #----------------#
+        if (isTRUE(verbose)) {
+            message(
+                "Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
+                length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."
+            )
+        }
+
+        if (isTRUE(verbose) & length(unique(pairedEnd)) > 1) {
+            message("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd), " single-end samples.")
+        }
+
+        fragmentCounts <- .countBamFragments(
+            bamFiles = bamFiles,
+            ranges = countingRegions,
+            pairedEnd = pairedEnd,
+            fragmentLength = sampleFragmentLength,
+            maxFragmentLength = maxFragmentLength[1],
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            discardRegions = discardRegions,
+            fullLibrarySize = fullLibrarySize,
+            countMode = "overlap",
+            progressBar = showProgress,
+            BPPARAM = BPPARAM
+        )
+
+        countMatrix <- fragmentCounts$counts
+        storage.mode(countMatrix) <- "double"
+
+        # Without the MQ tag the quality of the second mate is unknown, the pair then rests on the first mate alone
+        missingMateMapq <- which(pairedEnd & !fragmentCounts$mate.mapq.found)
+
+        if (isTRUE(verbose) & length(missingMateMapq) > 0 & isTRUE(minMapq > 0)) {
+            message(
+                "No MQ tag in: ", paste(sampleTable$sample[missingMateMapq], collapse = ", "),
+                ". For these samples 'minMapq' is applied to the first mate of each pair only."
+            )
+        }
+
+        # An empty library breaks every normalisation downstream, and usually points to a wrong layout or to excluding too much
+        emptyLibraries <- which(fragmentCounts$library.size == 0)
+        if (length(emptyLibraries) > 0) {
+            warning("No fragment entered the library size of: ", paste(sampleTable$sample[emptyLibraries], collapse = ", "),
+                ". Check 'pairedEnd', 'excludeChromosomes' and the read filters.",
+                call. = FALSE
+            )
+        }
+
+        #------------------------#
+        # Inputs                 #
+        #------------------------#
+        inputStep <- .countReadInputs(
+            pairedEnd = pairedEnd,
+            fragmentLength = fragmentLength,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            discardRegions = discardRegions,
+            fullLibrarySize = fullLibrarySize,
+            inputFiles = inputFiles,
+            countInput = countInput,
+            BPPARAM = BPPARAM,
+            verbose = verbose,
+            bamTargets = bamTargets,
+            countingRegions = countingRegions,
+            fragmentCounts = fragmentCounts,
+            sampleFragmentLength = sampleFragmentLength,
+            sampleTable = sampleTable,
+            showProgress = showProgress
+        )
+        inputCounts <- inputStep$inputCounts
+        inputPaths <- inputStep$inputPaths
+        sampleTable <- inputStep$sampleTable
+
+        countMatrix <- countMatrix[expansionIndex, , drop = FALSE]
+
+        counts <- .newReadCountsObject(
+            bamFiles = bamFiles,
+            tileWidth = tileWidth,
+            partialTiles = partialTiles,
+            pairedEnd = pairedEnd,
+            maxFragmentLength = maxFragmentLength,
+            minMapq = minMapq,
+            removeDuplicates = removeDuplicates,
+            excludeChromosomes = excludeChromosomes,
+            greylist = greylist,
+            discardListedReads = discardListedReads,
+            discardRegions = discardRegions,
+            fullLibrarySize = fullLibrarySize,
+            summits = summits,
+            summitSource = summitSource,
+            verbose = verbose,
+            allRegions = allRegions,
+            builtGreylist = builtGreylist,
+            countMatrix = countMatrix,
+            expansionIndex = expansionIndex,
+            fragmentInfo = fragmentInfo,
+            greylistSource = greylistSource,
+            inputCounts = inputCounts,
+            inputPaths = inputPaths,
+            listedRegions = listedRegions,
+            sampleFragmentLength = sampleFragmentLength,
+            sampleTable = sampleTable,
+            startTime = startTime
+        )
+
+        return(counts)
+    } # END function
+
+
+#' @title .resolveCountingGreylist
+#'
+#' @description Decides the greylist of \code{\link{countReads}}: the one given, the one stored in the object, or one built from the inputs of the samples.
+#'
+#' @param regionSet See \code{\link{countReads}}.
+#' @param maxFragmentLength See \code{\link{countReads}}.
+#' @param minMapq See \code{\link{countReads}}.
+#' @param removeDuplicates See \code{\link{countReads}}.
+#' @param excludeChromosomes See \code{\link{countReads}}.
+#' @param greylist See \code{\link{countReads}}.
+#' @param inputFiles See \code{\link{countReads}}.
+#' @param BPPARAM See \code{\link{countReads}}.
+#' @param progressBar See \code{\link{countReads}}.
+#' @param verbose See \code{\link{countReads}}.
+#' @param sampleTable Data.frame with one row per sample.
+#'
+#' @return A list with \code{greylist}, \code{builtGreylist} and \code{greylistSource}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom methods is
+#'
+#' @noRd
+
+.resolveCountingGreylist <-
+    function(regionSet,
+             maxFragmentLength,
+             minMapq,
+             removeDuplicates,
+             excludeChromosomes,
+             greylist,
+             inputFiles,
+             BPPARAM,
+             progressBar,
+             verbose,
+             sampleTable) {
         storedGreylist <- if (methods::is(regionSet, "RegionSetDE")) {
             greylistRanges(regionSet)
         } else {
@@ -238,8 +464,55 @@ countReads <-
             greylistSource <- "given"
         }
 
-        # The regions lying on the lists leave before anything is counted: taking them out afterwards would leave
-        # library sizes, summits and inputs computed on regions that are no longer there
+        return(list(
+            builtGreylist = builtGreylist,
+            greylist = greylist,
+            greylistSource = greylistSource
+        ))
+    }
+
+
+#' @title .prepareCountingRegions
+#'
+#' @description Removes the listed regions, flattens the sets of \code{\link{countReads}} into one set of unique regions named as the BAM files name the chromosomes, and pools the regions whose reads are ignored.
+#'
+#' @param regionSet See \code{\link{countReads}}.
+#' @param bamFiles See \code{\link{countReads}}.
+#' @param tileWidth See \code{\link{countReads}}.
+#' @param keepMetadata See \code{\link{countReads}}.
+#' @param regionId See \code{\link{countReads}}.
+#' @param partialTiles See \code{\link{countReads}}.
+#' @param excludeChromosomes See \code{\link{countReads}}.
+#' @param blacklist See \code{\link{countReads}}.
+#' @param greylist See \code{\link{countReads}}.
+#' @param discardListedReads See \code{\link{countReads}}.
+#' @param discardRegions See \code{\link{countReads}}.
+#' @param verbose See \code{\link{countReads}}.
+#' @param bamSeqlevels Character vector with the chromosome names of the first BAM file.
+#'
+#' @return A list with \code{listedRegions}, \code{regionSet}, \code{allRegions}, \code{uniqueRegions}, \code{expansionIndex}, \code{countingRegions}, \code{regionChromosomes} and \code{discardRegions}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocGenerics end start width
+#' @importFrom GenomeInfoDb seqnames
+#'
+#' @noRd
+
+.prepareCountingRegions <-
+    function(regionSet,
+             bamFiles,
+             tileWidth,
+             keepMetadata,
+             regionId,
+             partialTiles,
+             excludeChromosomes,
+             blacklist,
+             greylist,
+             discardListedReads,
+             discardRegions,
+             verbose,
+             bamSeqlevels) {
         listedRegions <- .applyCountingLists(regionSet = regionSet, blacklist = blacklist, greylist = greylist, verbose = verbose)
         regionSet <- listedRegions$regionSet
 
@@ -303,10 +576,75 @@ countReads <-
             message(excludedRegions, " regions lie on chromosomes listed in 'excludeChromosomes': they are counted, but their chromosomes stay out of the library sizes.")
         }
 
-        #------------------------#
-        # Fragment lengths       #
-        #------------------------#
-        # One length per sample, NA for the paired-end ones whose fragments come from the pairs
+        return(list(
+            allRegions = allRegions,
+            countingRegions = countingRegions,
+            discardRegions = discardRegions,
+            expansionIndex = expansionIndex,
+            listedRegions = listedRegions,
+            regionChromosomes = regionChromosomes,
+            regionSet = regionSet,
+            uniqueRegions = uniqueRegions
+        ))
+    }
+
+
+#' @title .resolveCountingWindows
+#'
+#' @description Resolves the fragment length of every sample of \code{\link{countReads}} and, when \code{summits} is given, recentres the regions on their summits.
+#'
+#' @param regionSet See \code{\link{countReads}}.
+#' @param bamFiles See \code{\link{countReads}}.
+#' @param pairedEnd See \code{\link{countReads}}.
+#' @param fragmentLength See \code{\link{countReads}}.
+#' @param maxFragmentLength See \code{\link{countReads}}.
+#' @param minMapq See \code{\link{countReads}}.
+#' @param removeDuplicates See \code{\link{countReads}}.
+#' @param discardRegions See \code{\link{countReads}}.
+#' @param summits See \code{\link{countReads}}.
+#' @param summitSource See \code{\link{countReads}}.
+#' @param BPPARAM See \code{\link{countReads}}.
+#' @param verbose See \code{\link{countReads}}.
+#' @param allRegions \code{GRanges} with every region of every set, in the order of the sets.
+#' @param bamTargets List with the chromosome lengths of every BAM file.
+#' @param countingRegions \code{GRanges} with the unique regions, named as the BAM files name them.
+#' @param expansionIndex Integer vector bringing the unique regions back to \code{allRegions}.
+#' @param regionChromosomes Character vector with the chromosome of every unique region.
+#' @param sampleTable Data.frame with one row per sample.
+#' @param showProgress Logical value telling whether a progress bar is drawn.
+#' @param uniqueRegions \code{GRanges} with the regions counted once each.
+#'
+#' @return A list with \code{fragmentInfo}, \code{sampleFragmentLength}, and \code{allRegions}, \code{uniqueRegions} and \code{countingRegions}, recentred when asked.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocGenerics end start
+#' @importFrom IRanges ranges
+#' @importFrom S4Vectors mcols
+#'
+#' @noRd
+
+.resolveCountingWindows <-
+    function(regionSet,
+             bamFiles,
+             pairedEnd,
+             fragmentLength,
+             maxFragmentLength,
+             minMapq,
+             removeDuplicates,
+             discardRegions,
+             summits,
+             summitSource,
+             BPPARAM,
+             verbose,
+             allRegions,
+             bamTargets,
+             countingRegions,
+             expansionIndex,
+             regionChromosomes,
+             sampleTable,
+             showProgress,
+             uniqueRegions) {
         fragmentInfo <- .resolveFragmentLength(
             fragmentLength = fragmentLength,
             sampleTable = sampleTable,
@@ -387,61 +725,66 @@ countReads <-
             }
         }
 
-        #----------------#
-        # Read the files #
-        #----------------#
-        if (isTRUE(verbose)) {
-            message(
-                "Counting reads in ", length(bamFiles), " samples over ", length(uniqueRegions), " unique regions (",
-                length(allRegions), " rows, ", dplyr::n_distinct(S4Vectors::mcols(allRegions)$region.set), " sets)..."
-            )
-        }
+        return(list(
+            allRegions = allRegions,
+            countingRegions = countingRegions,
+            fragmentInfo = fragmentInfo,
+            sampleFragmentLength = sampleFragmentLength,
+            uniqueRegions = uniqueRegions
+        ))
+    }
 
-        if (isTRUE(verbose) & length(unique(pairedEnd)) > 1) {
-            message("Mixed layouts: ", sum(pairedEnd), " paired-end and ", sum(!pairedEnd), " single-end samples.")
-        }
 
-        fragmentCounts <- .countBamFragments(
-            bamFiles = bamFiles,
-            ranges = countingRegions,
-            pairedEnd = pairedEnd,
-            fragmentLength = sampleFragmentLength,
-            maxFragmentLength = maxFragmentLength[1],
-            minMapq = minMapq,
-            removeDuplicates = removeDuplicates,
-            excludeChromosomes = excludeChromosomes,
-            discardRegions = discardRegions,
-            fullLibrarySize = fullLibrarySize,
-            countMode = "overlap",
-            progressBar = showProgress,
-            BPPARAM = BPPARAM
-        )
+#' @title .countReadInputs
+#'
+#' @description Counts the inputs of the samples of \code{\link{countReads}} over the same regions, each input file once, and adds their identifiers and library sizes to the sample table.
+#'
+#' @param pairedEnd See \code{\link{countReads}}.
+#' @param fragmentLength See \code{\link{countReads}}.
+#' @param maxFragmentLength See \code{\link{countReads}}.
+#' @param minMapq See \code{\link{countReads}}.
+#' @param removeDuplicates See \code{\link{countReads}}.
+#' @param excludeChromosomes See \code{\link{countReads}}.
+#' @param discardRegions See \code{\link{countReads}}.
+#' @param fullLibrarySize See \code{\link{countReads}}.
+#' @param inputFiles See \code{\link{countReads}}.
+#' @param countInput See \code{\link{countReads}}.
+#' @param BPPARAM See \code{\link{countReads}}.
+#' @param verbose See \code{\link{countReads}}.
+#' @param bamTargets List with the chromosome lengths of every BAM file.
+#' @param countingRegions \code{GRanges} with the unique regions, named as the BAM files name them.
+#' @param fragmentCounts List returned by \code{.countBamFragments} for the samples.
+#' @param sampleFragmentLength Numeric vector with the fragment length of every sample.
+#' @param sampleTable Data.frame with one row per sample.
+#' @param showProgress Logical value telling whether a progress bar is drawn.
+#'
+#' @return A list with \code{inputCounts}, \code{inputPaths} and the updated \code{sampleTable}.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom dplyr mutate
+#'
+#' @noRd
 
-        countMatrix <- fragmentCounts$counts
-        storage.mode(countMatrix) <- "double"
-
-        # Without the MQ tag the quality of the second mate is unknown, the pair then rests on the first mate alone
-        missingMateMapq <- which(pairedEnd & !fragmentCounts$mate.mapq.found)
-
-        if (isTRUE(verbose) & length(missingMateMapq) > 0 & isTRUE(minMapq > 0)) {
-            message(
-                "No MQ tag in: ", paste(sampleTable$sample[missingMateMapq], collapse = ", "),
-                ". For these samples 'minMapq' is applied to the first mate of each pair only."
-            )
-        }
-
-        # An empty library breaks every normalisation downstream, and usually points to a wrong layout or to excluding too much
-        emptyLibraries <- which(fragmentCounts$library.size == 0)
-        if (length(emptyLibraries) > 0) {
-            warning("No fragment entered the library size of: ", paste(sampleTable$sample[emptyLibraries], collapse = ", "),
-                ". Check 'pairedEnd', 'excludeChromosomes' and the read filters.",
-                call. = FALSE
-            )
-        }
-
-        #------------------------#
-        # Inputs                 #
-        #------------------------#
+.countReadInputs <-
+    function(pairedEnd,
+             fragmentLength,
+             maxFragmentLength,
+             minMapq,
+             removeDuplicates,
+             excludeChromosomes,
+             discardRegions,
+             fullLibrarySize,
+             inputFiles,
+             countInput,
+             BPPARAM,
+             verbose,
+             bamTargets,
+             countingRegions,
+             fragmentCounts,
+             sampleFragmentLength,
+             sampleTable,
+             showProgress) {
         inputPaths <- if (isTRUE(countInput)) {
             .resolveInputFiles(inputFiles = inputFiles, sampleTable = sampleTable)
         } else {
@@ -497,8 +840,84 @@ countReads <-
             )
         }
 
-        countMatrix <- countMatrix[expansionIndex, , drop = FALSE]
+        return(list(
+            inputCounts = inputCounts,
+            inputPaths = inputPaths,
+            sampleTable = sampleTable
+        ))
+    }
 
+
+#' @title .newReadCountsObject
+#'
+#' @description Assembles the \code{RegionSetDE.counts} object of \code{\link{countReads}}, with the parameters of the counting, the lists used, the input assay and the regions back in their order, and reports how long the counting took.
+#'
+#' @param bamFiles See \code{\link{countReads}}.
+#' @param tileWidth See \code{\link{countReads}}.
+#' @param partialTiles See \code{\link{countReads}}.
+#' @param pairedEnd See \code{\link{countReads}}.
+#' @param maxFragmentLength See \code{\link{countReads}}.
+#' @param minMapq See \code{\link{countReads}}.
+#' @param removeDuplicates See \code{\link{countReads}}.
+#' @param excludeChromosomes See \code{\link{countReads}}.
+#' @param greylist See \code{\link{countReads}}.
+#' @param discardListedReads See \code{\link{countReads}}.
+#' @param discardRegions See \code{\link{countReads}}.
+#' @param fullLibrarySize See \code{\link{countReads}}.
+#' @param summits See \code{\link{countReads}}.
+#' @param summitSource See \code{\link{countReads}}.
+#' @param verbose See \code{\link{countReads}}.
+#' @param allRegions \code{GRanges} with every region of every set, in the order of the sets.
+#' @param builtGreylist Greylist built from the inputs, as \code{makeGreylist} returns it, or \code{NULL}.
+#' @param countMatrix Matrix with the counts of the unique regions, one column per sample.
+#' @param expansionIndex Integer vector bringing the unique regions back to \code{allRegions}.
+#' @param fragmentInfo List with the fragment lengths and where they come from, as \code{.resolveFragmentLength} returns it.
+#' @param greylistSource String naming where the greylist comes from: \code{"none"}, \code{"inputs"}, \code{"given"} or \code{"stored"}.
+#' @param inputCounts Matrix with the counts of the inputs, or \code{NULL}.
+#' @param inputPaths Character vector with the input file of every sample, or \code{NULL}.
+#' @param listedRegions List returned by \code{.applyCountingLists}.
+#' @param sampleFragmentLength Numeric vector with the fragment length of every sample.
+#' @param sampleTable Data.frame with one row per sample.
+#' @param startTime Value of \code{Sys.time()} when the counting started.
+#'
+#' @return A \code{RegionSetDE.counts} object.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom BiocGenerics width
+#' @importFrom GenomeInfoDb seqlevels
+#' @importFrom SummarizedExperiment assay
+#'
+#' @noRd
+
+.newReadCountsObject <-
+    function(bamFiles,
+             tileWidth,
+             partialTiles,
+             pairedEnd,
+             maxFragmentLength,
+             minMapq,
+             removeDuplicates,
+             excludeChromosomes,
+             greylist,
+             discardListedReads,
+             discardRegions,
+             fullLibrarySize,
+             summits,
+             summitSource,
+             verbose,
+             allRegions,
+             builtGreylist,
+             countMatrix,
+             expansionIndex,
+             fragmentInfo,
+             greylistSource,
+             inputCounts,
+             inputPaths,
+             listedRegions,
+             sampleFragmentLength,
+             sampleTable,
+             startTime) {
         newParameters <- list(countReads = list(
             bamFiles = bamFiles,
             tileWidth = tileWidth,
@@ -584,7 +1003,7 @@ countReads <-
         }
 
         return(counts)
-    } # END function
+    }
 
 
 #' @title .checkCountReadsArguments
@@ -614,7 +1033,7 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .checkCountReadsArguments <-
     function(regionSet,
@@ -770,7 +1189,7 @@ countReads <-
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom IRanges ranges reduce
 #'
-#' @keywords internal
+#' @noRd
 
 .poolDiscardRegions <-
     function(regionLists,
@@ -830,7 +1249,7 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveFragmentLength <-
     function(fragmentLength,
@@ -929,7 +1348,7 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .resolveInputFiles <-
     function(inputFiles,
@@ -988,7 +1407,7 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .countInputFiles <-
     function(inputPaths,
@@ -1124,7 +1543,7 @@ countReads <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .readSummits <-
     function(bamFiles,
@@ -1183,7 +1602,7 @@ countReads <-
 #' @importFrom dplyr filter group_by summarise
 #' @importFrom rlang .data
 #'
-#' @keywords internal
+#' @noRd
 
 .peakSummits <-
     function(regions,
@@ -1259,7 +1678,7 @@ countReads <-
 #'
 #' @importFrom IRanges IRanges
 #'
-#' @keywords internal
+#' @noRd
 
 .recentreRanges <-
     function(summitPosition,

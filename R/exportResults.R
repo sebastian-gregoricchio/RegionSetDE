@@ -5,7 +5,7 @@
 #' @description Writes a result to disk: the table as a compressed TSV, the coordinates as a BED that a genome browser will colour by direction, and every parameter the analysis was run with as a flat file next to them.
 #'
 #' @param results \code{RegionSetDE.results}, \code{RegionSetDE.setResults}, or either of the two list classes holding several contrasts.
-#' @param path String with the directory the files are written to, created when it does not exist. Default: \code{"."}.
+#' @param path String with the directory the files are written to, created when it does not exist. There is no default, so nothing is written anywhere the user did not name, \code{tempdir()} for instance.
 #' @param prefix String prepended to every file name. Default: \code{NULL}, the name of the contrast.
 #' @param contrast String with the name of the contrast to write, or its position, when \code{results} holds several of them. Default: \code{NULL}, every one of them.
 #' @param set Character vector with the names of the region sets to write. Default: \code{NULL}, all of them.
@@ -55,7 +55,7 @@
 
 exportResults <-
     function(results,
-             path = ".",
+             path,
              prefix = NULL,
              contrast = NULL,
              set = NULL,
@@ -70,6 +70,10 @@ exportResults <-
         #------------------------#
         # Check of the arguments #
         #------------------------#
+        if (missing(path) || !is.character(path) || length(path) != 1 || is.na(path)) {
+            stop("The 'path' parameter must be a single string naming the output directory, tempdir() for instance.", call. = FALSE)
+        }
+
         if (!(bedScore %in% c("FDR", "log2FC", "none"))) {
             stop("The 'bedScore' parameter must be one of 'FDR', 'log2FC', 'none'.", call. = FALSE)
         }
@@ -77,9 +81,9 @@ exportResults <-
         #-------------------------------#
         # Several contrasts at once     #
         #-------------------------------#
-        isList <- methods::is(results, "RegionSetDE.resultsList") | methods::is(results, "RegionSetDE.setResultsList")
+        isList <- methods::is(results, "RegionSetDE.resultsList") || methods::is(results, "RegionSetDE.setResultsList")
 
-        if (isTRUE(isList) & is.null(contrast)) {
+        if (isTRUE(isList) && is.null(contrast)) {
             writtenPaths <-
                 unlist(lapply(
                     names(results),
@@ -224,7 +228,7 @@ exportResults <-
 #'
 #' @importFrom utils write.table
 #'
-#' @keywords internal
+#' @noRd
 
 .writeTable <-
     function(table,
@@ -261,7 +265,7 @@ exportResults <-
 #'
 #' @importFrom utils write.table
 #'
-#' @keywords internal
+#' @noRd
 
 .writeBed <-
     function(resultTable,
@@ -324,7 +328,7 @@ exportResults <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .flattenParameters <-
     function(x,

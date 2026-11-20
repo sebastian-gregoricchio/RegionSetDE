@@ -11,7 +11,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @keywords internal
+#' @noRd
 
 .thinIndex <-
     function(n,
@@ -38,7 +38,7 @@
 #' @importFrom ggplot2 theme_bw theme element_blank element_line element_text margin
 #' @importFrom ggtext element_markdown
 #'
-#' @keywords internal
+#' @noRd
 
 .regionSetTheme <-
     function(legendPosition = "right",

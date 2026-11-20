@@ -12,7 +12,7 @@
 #'
 #' @return A \code{RegionSetDE.counts} object with the selected columns.
 #'
-#' @details Marks, and more generally experiments run on different antibodies or different assays, should not share a model. The dispersion, the dynamic range and the meaning of the scaling factors all differ between them, so a fit that pools them borrows information across rows that have nothing to say about each other. The selection therefore belongs upstream of \code{\link{normalizeCounts}} rather than at test time, and this is why \code{dropNormalization} defaults to \code{TRUE}: factors estimated over a set of samples that no longer exists describe a library composition that no longer exists either. The raw counts are never modified, so re-normalising costs one call.
+#' @details Marks, and more generally experiments run on different antibodies or different assays, should not share a model. The dispersion, the dynamic range and the meaning of the scaling factors all differ between them, so a fit that pools them borrows information across rows that have nothing to say about each other. The selection therefore belongs upstream of \code{\link{normalizeRegionCounts}} rather than at test time, and this is why \code{dropNormalization} defaults to \code{TRUE}: factors estimated over a set of samples that no longer exists describe a library composition that no longer exists either. The raw counts are never modified, so re-normalising costs one call.
 #'
 #' The background bins and the greenlist counts stored in the metadata, when present, are subset along with the samples, and so are the files, the layouts and the fragment lengths recorded by the counting, so that \code{\link{countBackground}}, \code{\link{countGreenlist}}, \code{\link{libInfo}} and \code{\link{computeProfiles}} keep working on the selection.
 #'
@@ -29,7 +29,7 @@
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @seealso \code{\link{splitSamples}}, \code{\link{normalizeCounts}}, \code{\link{fitRegions}}
+#' @seealso \code{\link{splitSamples}}, \code{\link{normalizeRegionCounts}}, \code{\link{fitRegions}}
 #'
 #' @importFrom SummarizedExperiment colData assayNames assays assays<-
 #' @importFrom S4Vectors metadata metadata<-
@@ -134,7 +134,7 @@ selectSamples <-
             if (isTRUE(verbose)) {
                 message(
                     "The normalisation computed with '", normalizationInfo$method,
-                    "' has been removed, run normalizeCounts on the selected samples."
+                    "' has been removed, run normalizeRegionCounts on the selected samples."
                 )
             }
         } else if (!is.null(normalizationInfo) & isTRUE(verbose)) {

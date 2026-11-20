@@ -62,7 +62,7 @@ computeProfiles(
 
 \item{centre}{String with the point the regions are aligned on: \code{"summit"}, the \code{summit} column written by \code{\link{countReads}} with \code{summits}, falling back to the midpoint where there is none, or \code{"midpoint"}. Default: \code{"summit"}.}
 
-\item{useOffsets}{Logical value to indicate whether the signal read from BAM files must be scaled by the scaling factors of \code{\link{normalizeCounts}}, \code{FALSE} scaling it by the library sizes alone. Ignored for bigWig files, whose signal is taken as it is. Default: \code{TRUE}.}
+\item{useOffsets}{Logical value to indicate whether the signal read from BAM files must be scaled by the scaling factors of \code{\link{normalizeRegionCounts}}, \code{FALSE} scaling it by the library sizes alone. Ignored for bigWig files, whose signal is taken as it is. Default: \code{TRUE}.}
 
 \item{BPPARAM}{A \code{BiocParallelParam} object, used as it is, or a number of cores as a shorthand for one. One file goes to each worker. Default: \code{NULL}, a \code{BiocParallel::SerialParam()}, so that nothing runs in parallel unasked.}
 
@@ -88,7 +88,7 @@ sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
 counts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)
-counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 
 peakProfiles <- computeProfiles(counts, groupBy = "condition", distance = 1000, verbose = FALSE)
 names(peakProfiles$profiles)

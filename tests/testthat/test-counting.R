@@ -156,7 +156,7 @@ test_that("splitSamples returns one object per level", {
 
 
 test_that("asDGEList carries the library sizes across", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     dgeList <- asDGEList(counts)
 
     expect_s4_class(dgeList, "DGEList")

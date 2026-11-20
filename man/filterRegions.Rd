@@ -73,7 +73,7 @@ On a tiled object the filter applies to the tiles. A region that loses every til
 }
 \examples{
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 filtered <- filterRegions(counts, foldChange = 2, verbose = FALSE)
 
@@ -85,7 +85,7 @@ table(SummarizedExperiment::rowData(filtered)$region.set)
 
 }
 \seealso{
-\code{\link{countBackground}}, \code{\link{normalizeCounts}}, \code{\link{fitRegions}}
+\code{\link{countBackground}}, \code{\link{normalizeRegionCounts}}, \code{\link{fitRegions}}
 }
 \author{
 Sebastian Gregoricchio

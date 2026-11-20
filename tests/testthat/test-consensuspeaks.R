@@ -466,7 +466,7 @@ test_that("a tiled object is tested tile by tile and combined back to its region
     regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", seqlevelsStyle = "Ensembl", verbose = FALSE)
 
     tiledCounts <- countReads(regions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)
-    tiledFit <- fitRegions(normalizeCounts(tiledCounts, method = "librarySize", verbose = FALSE),
+    tiledFit <- fitRegions(normalizeRegionCounts(tiledCounts, method = "librarySize", verbose = FALSE),
         design = ~condition, engine = "edgeR", verbose = FALSE
     )
 
@@ -513,11 +513,11 @@ test_that("the peak counts are normalised like any other region set", {
     counts <- countReads(regions, sampleSheet = sampleSheet, pairedEnd = FALSE, verbose = FALSE)
     counts <- countBackground(counts, binSize = 20000, verbose = FALSE)
 
-    backgroundNormalised <- normalizeCounts(counts, method = "background", verbose = FALSE)
+    backgroundNormalised <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
     # A handful of peaks is a thin basis for TMM, and the function says so
     expect_warning(
-        peakNormalised <- normalizeCounts(counts, method = "TMM", verbose = FALSE),
+        peakNormalised <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE),
         "consider 'background'"
     )
 
@@ -604,7 +604,7 @@ peakAnalysis <- function() {
 
         counts <- countReads(regions, sampleSheet = sampleSheet, pairedEnd = FALSE, verbose = FALSE)
         counts <- countBackground(counts, binSize = 20000, verbose = FALSE)
-        counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+        counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
         peakFit <- fitRegions(counts, design = ~condition, engine = "edgeR", verbose = FALSE)
         peakAnalysisCache$results <- testRegions(peakFit,

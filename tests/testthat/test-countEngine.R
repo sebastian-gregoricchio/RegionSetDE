@@ -308,14 +308,14 @@ test_that("the counts do not depend on the number of cores", {
 })
 
 
-test_that("normalizeCounts warns when the library sizes are partial", {
+test_that("normalizeRegionCounts warns when the library sizes are partial", {
     partialCounts <- RegionSetDE::countReads(toyEngineRegions(),
         bamFiles = toyPairedBam(), sampleNames = "toy",
         fullLibrarySize = FALSE, verbose = FALSE
     )
 
     expect_warning(
-        RegionSetDE::normalizeCounts(partialCounts, method = "librarySize", verbose = FALSE),
+        RegionSetDE::normalizeRegionCounts(partialCounts, method = "librarySize", verbose = FALSE),
         "fullLibrarySize"
     )
 })

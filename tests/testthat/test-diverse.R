@@ -98,7 +98,7 @@ test_that("the limma engine fits a signal that is not counts", {
 
 
 test_that("the normalisation holdout travels into the dispersion estimate", {
-    counts <- normalizeCounts(exampleCounts(),
+    counts <- normalizeRegionCounts(exampleCounts(),
         method = "background",
         backgroundHoldout = 0.5, verbose = FALSE
     )
@@ -113,7 +113,7 @@ test_that("the normalisation holdout travels into the dispersion estimate", {
 
 
 test_that("without that split the holdout is a dispersion holdout and says so", {
-    counts <- normalizeCounts(exampleCounts(), method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(exampleCounts(), method = "background", verbose = FALSE)
     nullDispersion <- estimateNullDispersion(counts, source = "background", verbose = FALSE)
 
     expect_identical(nullDispersion$holdout.type, "dispersion")

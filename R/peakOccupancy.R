@@ -299,7 +299,7 @@ plotPeakOccupancy <-
         #-------------------------------#
         # Groups of the consensus       #
         #-------------------------------#
-        occupancyColumns <- setdiff(grep("^peak\\.", colnames(resultTable), value = TRUE), c("peak.groups", "peak.samples"))
+        occupancyColumns <- setdiff(grep("^peak\\.", colnames(resultTable), value = TRUE), c("peak.groups", "peak.samples", "peak.biological"))
 
         if (length(occupancyColumns) == 0) {
             stop("The results carry no occupancy column, the regions were not built by loadConsensusPeaks().", call. = FALSE)

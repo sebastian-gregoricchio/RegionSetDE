@@ -7,6 +7,8 @@
 loadConsensusPeaks(
   sampleSheet,
   groupBy = NULL,
+  technicalBy = NULL,
+  technicalArguments = NULL,
   blacklist = NULL,
   greylist = NULL,
   regionSets = NULL,
@@ -42,6 +44,10 @@ loadConsensusPeaks(
 \item{sampleSheet}{Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, with at least the \code{sample} and \code{peaks} columns.}
 
 \item{groupBy}{String with the column of the sample sheet defining the groups, for instance \code{"condition"}. Default: \code{NULL}, all the samples form a single group.}
+
+\item{technicalBy}{String with the column of the sample sheet naming the biological sample each library comes from, for instance \code{"bioRep"}. The libraries of a group sharing a value are technical replicates: their peaks are joined first into one peak set per biological sample, which then enters the consensus of the group as a single replicate. A label found in more than one group, such as \code{R1} in every condition, names a different sample in each of them. Default: \code{NULL}, every library is a biological replicate.}
+
+\item{technicalArguments}{Named list of arguments of \code{consensusRegions::runConsensus}, or of \code{consensusRegions::buildConsensus}, for the step joining the technical replicates, for instance \code{list(replicateType = "biological", minReplicates = 2)} to keep the peaks found in two libraries out of three. They take precedence over the ones this step inherits from the consensus of the groups. The calibration, the recentring and their arguments are reserved to the consensus of the groups. Ignored without \code{technicalBy}. Default: \code{NULL}, the arguments of the consensus of the groups, with \code{replicateType = "technical"} and equal weights.}
 
 \item{blacklist}{Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot (read with \code{\link{blacklistRanges}}) of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.}
 
@@ -102,13 +108,15 @@ loadConsensusPeaks(
 \item{...}{Any other argument of \code{consensusRegions::runConsensus} or \code{consensusRegions::buildConsensus}, for instance \code{adjustmentFamily} or \code{minSupportWeight}. \code{peaks} and \code{sampleNames} come from the sample sheet and cannot be given.}
 }
 \value{
-A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot (read with \code{\link{consensusData}}), read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot (read with \code{\link{blacklistRanges}}), the greylist to the \code{greylist} slot (read with \code{\link{greylistRanges}}) with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
+A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. With \code{technicalBy}, \code{peak.samples} counts the libraries and \code{peak.biological} the biological samples. The \code{consensus} slot (read with \code{\link{consensusData}}), read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot (read with \code{\link{blacklistRanges}}), the greylist to the \code{greylist} slot (read with \code{\link{greylistRanges}}) with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
 }
 \description{
 Builds the regions of an analysis from the peaks called on each sample. The peaks are combined into a consensus within each group of samples through \code{consensusRegions}, and the group consensus are pooled into a total one, which becomes the region set counted downstream. Regions supplied by the user can split the total consensus into sets, or take its place.
 }
 \details{
 The consensus is built group by group and then pooled, rather than once over all the samples. A single requirement over all the libraries, such as a peak in at least two of them, favours the larger group, while the same requirement applied within each group treats them alike, and the union keeps the regions found in one group only. A group with a single sample has no replicate to agree with, and its peaks stand for the group as they are.
+
+Technical replicates, given through \code{technicalBy}, are joined before the consensus of the group. The combination of \code{consensusRegions} takes every replicate as an independent piece of evidence, and two libraries of the same biological sample are not: put side by side with the other samples of the group, they would count the same sample twice, and a peak found in the two libraries of one sample alone would meet a requirement of two supporting replicates. Here the libraries of each biological sample are joined first, by default keeping the peaks found in all of them, and the peak set of every biological sample enters the consensus of its group as one replicate. That peak set carries the combined p-value of its libraries, which with the Stouffer method is close to what a peak caller would report on the pooled reads, and the summit of its most significant peak, so that \code{recentre} still has a summit to work from. The calibration, when asked for, runs on the consensus of the groups only. A biological sample with a single library keeps its peaks as they are. The consensus of every biological sample is kept in \code{consensusData(x)$technical}. Weights taken from the BAM files of the sheet, with \code{weightMethod = "frip"} or \code{"librarySize"}, describe libraries rather than biological samples, and they are refused with \code{technicalBy} unless the values are given through \code{...}.
 
 The peaks are read by \code{consensusRegions}, which keeps the standard chromosomes only, as \code{GenomeInfoDb::keepStandardChromosomes} defines them: scaffolds, patches and unplaced contigs are dropped, and so are chromosomes whose names it does not recognise.
 
@@ -151,6 +159,26 @@ if (requireNamespace("consensusRegions", quietly = TRUE)) {
         verbose = FALSE
     )
     lengths(regionRanges(splitRegions))
+
+    # Two libraries per biological sample, joined before the consensus of each condition
+    libraryNames <- c("A_1a", "A_1b", "A_2a", "A_2b", "B_1a", "B_1b", "B_2a", "B_2b")
+    technicalSheet <- loadSampleSheet(
+        data.frame(
+            sample = libraryNames,
+            bam = paste0(libraryNames, ".bam"),
+            peaks = peakFiles[c(1, 2, 2, 3, 1, 3, 2, 3)],
+            condition = rep(c("A", "B"), each = 4),
+            bioRep = rep(c("R1", "R1", "R2", "R2"), times = 2)
+        ),
+        checkFiles = FALSE, verbose = FALSE
+    )
+
+    technicalRegions <- loadConsensusPeaks(technicalSheet,
+        groupBy = "condition",
+        technicalBy = "bioRep",
+        verbose = FALSE
+    )
+    names(consensusData(technicalRegions)$technical)
 }
 
 }

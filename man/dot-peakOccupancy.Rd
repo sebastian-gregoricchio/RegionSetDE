@@ -4,7 +4,7 @@
 \alias{.peakOccupancy}
 \title{.peakOccupancy}
 \usage{
-.peakOccupancy(regionRanges, groupConsensus, peakList)
+.peakOccupancy(regionRanges, groupConsensus, peakList, biologicalPeaks = NULL)
 }
 \arguments{
 \item{regionRanges}{\code{GRanges} with the regions.}
@@ -12,9 +12,11 @@
 \item{groupConsensus}{Named list of \code{GRanges}, the consensus of every group.}
 
 \item{peakList}{Named \code{GRangesList} with the peaks of every sample.}
+
+\item{biologicalPeaks}{Named \code{GRangesList} with the peak set of every biological sample, or \code{NULL} when every library is one. Default: \code{NULL}.}
 }
 \value{
-A \code{DataFrame} with one logical \code{peak.<group>} column per group, \code{peak.groups} and \code{peak.samples}.
+A \code{DataFrame} with one logical \code{peak.<group>} column per group, \code{peak.groups} and \code{peak.samples}, and \code{peak.biological} when \code{biologicalPeaks} is given.
 }
 \description{
 Tells, for every region, which groups have a consensus peak on it and how many samples have a peak on it.

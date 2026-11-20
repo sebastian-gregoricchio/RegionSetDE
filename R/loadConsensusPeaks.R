@@ -6,6 +6,8 @@
 #'
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, with at least the \code{sample} and \code{peaks} columns.
 #' @param groupBy String with the column of the sample sheet defining the groups, for instance \code{"condition"}. Default: \code{NULL}, all the samples form a single group.
+#' @param technicalBy String with the column of the sample sheet naming the biological sample each library comes from, for instance \code{"bioRep"}. The libraries of a group sharing a value are technical replicates: their peaks are joined first into one peak set per biological sample, which then enters the consensus of the group as a single replicate. A label found in more than one group, such as \code{R1} in every condition, names a different sample in each of them. Default: \code{NULL}, every library is a biological replicate.
+#' @param technicalArguments Named list of arguments of \code{consensusRegions::runConsensus}, or of \code{consensusRegions::buildConsensus}, for the step joining the technical replicates, for instance \code{list(replicateType = "biological", minReplicates = 2)} to keep the peaks found in two libraries out of three. They take precedence over the ones this step inherits from the consensus of the groups. The calibration, the recentring and their arguments are reserved to the consensus of the groups. Ignored without \code{technicalBy}. Default: \code{NULL}, the arguments of the consensus of the groups, with \code{replicateType = "technical"} and equal weights.
 #' @param blacklist Regions of the assembly whose peaks must be dropped before any consensus is built, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The list is stored in the \code{blacklist} slot (read with \code{\link{blacklistRanges}}) of the object, as \code{\link{applyBlacklist}} does. Default: \code{NULL}.
 #' @param greylist Regions of this experiment whose peaks must be dropped before any consensus is built, typically the list built from the inputs by \code{\link{makeGreylist}}. Accepts the same forms as \code{blacklist}. Default: \code{NULL}.
 #' @param regionSets Regions of interest of the user, in any form accepted by \code{\link{loadRegions}}: a named list of paths, \code{GRanges} or data.frames. Default: \code{NULL}, the total consensus is the only set.
@@ -36,9 +38,11 @@
 #' @param maxConsensusWidth Maximum width in base pairs of a merged region. Wider regions are rebuilt with the iterative rule. Default: \code{NULL}, no limit.
 #' @param ... Any other argument of \code{consensusRegions::runConsensus} or \code{consensusRegions::buildConsensus}, for instance \code{adjustmentFamily} or \code{minSupportWeight}. \code{peaks} and \code{sampleNames} come from the sample sheet and cannot be given.
 #'
-#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. The \code{consensus} slot (read with \code{\link{consensusData}}), read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot (read with \code{\link{blacklistRanges}}), the greylist to the \code{greylist} slot (read with \code{\link{greylistRanges}}) with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
+#' @return A \code{RegionSetDE} object. Every region carries \code{peak.<group>}, telling whether the consensus of that group overlaps it, \code{peak.groups}, the number of groups with a consensus peak on it, and \code{peak.samples}, the number of samples with a peak on it. With \code{technicalBy}, \code{peak.samples} counts the libraries and \code{peak.biological} the biological samples. The \code{consensus} slot (read with \code{\link{consensusData}}), read with \code{\link{consensusData}}, keeps the consensus of every group, the \code{consensusRegions} object behind it, the peaks of every sample after the blacklist and the greylist, the peaks they removed, the two lists, the total consensus, the table of the samples and the sample sheet itself, which \code{\link{countReads}} and \code{\link{countBigwig}} read when no file is given to them. The blacklist goes to the \code{blacklist} slot (read with \code{\link{blacklistRanges}}), the greylist to the \code{greylist} slot (read with \code{\link{greylistRanges}}) with its size in \code{parameters$greylist}, and the peaks each of them removed from every sample to the \code{filtering.log}, read with \code{\link{filteringLog}}. Where the random numbers of the calibration came from is recorded in \code{parameters$loadConsensusPeaks}, see Details.
 #'
 #' @details The consensus is built group by group and then pooled, rather than once over all the samples. A single requirement over all the libraries, such as a peak in at least two of them, favours the larger group, while the same requirement applied within each group treats them alike, and the union keeps the regions found in one group only. A group with a single sample has no replicate to agree with, and its peaks stand for the group as they are.
+#'
+#' Technical replicates, given through \code{technicalBy}, are joined before the consensus of the group. The combination of \code{consensusRegions} takes every replicate as an independent piece of evidence, and two libraries of the same biological sample are not: put side by side with the other samples of the group, they would count the same sample twice, and a peak found in the two libraries of one sample alone would meet a requirement of two supporting replicates. Here the libraries of each biological sample are joined first, by default keeping the peaks found in all of them, and the peak set of every biological sample enters the consensus of its group as one replicate. That peak set carries the combined p-value of its libraries, which with the Stouffer method is close to what a peak caller would report on the pooled reads, and the summit of its most significant peak, so that \code{recentre} still has a summit to work from. The calibration, when asked for, runs on the consensus of the groups only. A biological sample with a single library keeps its peaks as they are. The consensus of every biological sample is kept in \code{consensusData(x)$technical}. Weights taken from the BAM files of the sheet, with \code{weightMethod = "frip"} or \code{"librarySize"}, describe libraries rather than biological samples, and they are refused with \code{technicalBy} unless the values are given through \code{...}.
 #'
 #' The peaks are read by \code{consensusRegions}, which keeps the standard chromosomes only, as \code{GenomeInfoDb::keepStandardChromosomes} defines them: scaffolds, patches and unplaced contigs are dropped, and so are chromosomes whose names it does not recognise.
 #'
@@ -81,13 +85,33 @@
 #'         verbose = FALSE
 #'     )
 #'     lengths(regionRanges(splitRegions))
+#'
+#'     # Two libraries per biological sample, joined before the consensus of each condition
+#'     libraryNames <- c("A_1a", "A_1b", "A_2a", "A_2b", "B_1a", "B_1b", "B_2a", "B_2b")
+#'     technicalSheet <- loadSampleSheet(
+#'         data.frame(
+#'             sample = libraryNames,
+#'             bam = paste0(libraryNames, ".bam"),
+#'             peaks = peakFiles[c(1, 2, 2, 3, 1, 3, 2, 3)],
+#'             condition = rep(c("A", "B"), each = 4),
+#'             bioRep = rep(c("R1", "R1", "R2", "R2"), times = 2)
+#'         ),
+#'         checkFiles = FALSE, verbose = FALSE
+#'     )
+#'
+#'     technicalRegions <- loadConsensusPeaks(technicalSheet,
+#'         groupBy = "condition",
+#'         technicalBy = "bioRep",
+#'         verbose = FALSE
+#'     )
+#'     names(consensusData(technicalRegions)$technical)
 #' }
 #'
 #' @author Sebastian Gregoricchio
 #'
 #' @seealso \code{\link{plotPeakUpset}}, \code{\link{consensusData}}, \code{\link{loadSampleSheet}}, \code{\link{loadBlacklist}}, \code{\link{makeGreylist}}
 #'
-#' @importFrom dplyr filter
+#' @importFrom dplyr filter distinct count mutate group_by summarise first arrange %>%
 #' @importFrom rlang .data
 #' @importFrom GenomicRanges GRangesList GRanges
 #' @importFrom IRanges reduce overlapsAny IRanges
@@ -103,6 +127,8 @@
 loadConsensusPeaks <-
     function(sampleSheet,
              groupBy = NULL,
+             technicalBy = NULL,
+             technicalArguments = NULL,
              blacklist = NULL,
              greylist = NULL,
              regionSets = NULL,
@@ -138,6 +164,8 @@ loadConsensusPeaks <-
         checkedArguments <- .checkLoadConsensusPeaksArguments(
             sampleSheet = sampleSheet,
             groupBy = groupBy,
+            technicalBy = technicalBy,
+            technicalArguments = technicalArguments,
             regionMode = regionMode,
             unassignedSet = unassignedSet,
             seed = seed,
@@ -163,6 +191,7 @@ loadConsensusPeaks <-
             ...
         )
         consensusArguments <- checkedArguments$consensusArguments
+        technicalArguments <- checkedArguments$technicalArguments
         regionMode <- checkedArguments$regionMode
         sampleSheet <- checkedArguments$sampleSheet
 
@@ -178,6 +207,11 @@ loadConsensusPeaks <-
         sampleTable <- data.frame(
             sample = as.character(sampleSheet$sample),
             group = groupValues,
+            biological = if (is.null(technicalBy)) {
+                as.character(sampleSheet$sample)
+            } else {
+                as.character(sampleSheet[[technicalBy]])
+            },
             peak.file = as.character(sampleSheet$peaks),
             bam = if ("bam" %in% colnames(sampleSheet)) {
                 as.character(sampleSheet$bam)
@@ -194,6 +228,13 @@ loadConsensusPeaks <-
             )
         }
 
+        if (anyNA(sampleTable$biological)) {
+            stop("The following samples have no value in the '", technicalBy, "' column: ",
+                paste(sampleTable$sample[is.na(sampleTable$biological)], collapse = ", "), ".",
+                call. = FALSE
+            )
+        }
+
         withoutPeaks <- dplyr::filter(sampleTable, is.na(.data$peak.file))
         if (isTRUE(verbose) & nrow(withoutPeaks) > 0) {
             message("The following samples have no peak file and stay out of the consensus: ", paste(withoutPeaks$sample, collapse = ", "), ".")
@@ -203,6 +244,24 @@ loadConsensusPeaks <-
 
         if (nrow(sampleTable) < 2) {
             stop("At least two samples with a peak file are needed to build a consensus.", call. = FALSE)
+        }
+
+        # A label repeated across the groups, such as R1 in every condition, names a different sample in each of them
+        if (!is.null(technicalBy)) {
+            sharedLabels <- sampleTable %>%
+                dplyr::distinct(.data$group, .data$biological) %>%
+                dplyr::count(.data$biological) %>%
+                dplyr::filter(.data$n > 1)
+
+            if (nrow(sharedLabels) > 0) {
+                sampleTable <- dplyr::mutate(sampleTable, biological = paste(.data$group, .data$biological, sep = "_"))
+                if (isTRUE(verbose)) {
+                    message(
+                        "The labels of '", technicalBy, "' repeat across the groups, the biological samples are named after both: ",
+                        paste(unique(sampleTable$biological), collapse = ", "), "."
+                    )
+                }
+            }
         }
 
         # The levels of a factor are the order the user chose, otherwise the groups follow the sheet
@@ -312,13 +371,50 @@ loadConsensusPeaks <-
         }
 
         #-------------------------------#
+        # Join the technical replicates #
+        #-------------------------------#
+        # Without technicalBy every library is its own biological sample and its peaks go on unchanged
+        biologicalTable <- sampleTable %>%
+            dplyr::group_by(.data$biological) %>%
+            dplyr::summarise(group = dplyr::first(.data$group), .groups = "drop") %>%
+            dplyr::arrange(match(.data$biological, unique(sampleTable$biological))) %>%
+            as.data.frame()
+
+        technicalObjects <- list()
+        biologicalPeaks <- peakList
+
+        if (!is.null(technicalBy)) {
+            technicalList <- .joinTechnicalReplicates(
+                sampleTable = sampleTable,
+                peakList = peakList,
+                technicalArguments = technicalArguments,
+                seqlevelsStyle = seqlevelsStyle,
+                BPPARAM = BPPARAM,
+                verbose = verbose
+            )
+            technicalObjects <- technicalList$objects
+            biologicalPeaks <- technicalList$peaks
+
+            # An empty peak set would leave the group without a statistic to combine, so the sample stays out
+            emptySamples <- names(biologicalPeaks)[lengths(biologicalPeaks) == 0]
+            if (length(emptySamples) > 0) {
+                warning("The libraries of the following biological samples share no peak, and the samples stay out of the consensus of their group: ",
+                    paste(emptySamples, collapse = ", "), ".",
+                    call. = FALSE
+                )
+                biologicalTable <- dplyr::filter(biologicalTable, !(.data$biological %in% emptySamples))
+                biologicalPeaks <- biologicalPeaks[biologicalTable$biological]
+            }
+        }
+
+        #-------------------------------#
         # Consensus of every group      #
         #-------------------------------#
         groupConsensus <- list()
         consensusObjects <- list()
 
         groupSizes <- vapply(groupLevels, function(groupName) {
-            sum(sampleTable$group == groupName)
+            sum(biologicalTable$group == groupName)
         }, integer(1))
         multiGroups <- groupLevels[groupSizes > 1]
 
@@ -371,10 +467,16 @@ loadConsensusPeaks <-
             )
         }
 
+        # A group left without biological samples has no consensus
+        for (groupName in groupLevels[groupSizes == 0]) {
+            groupConsensus[[groupName]] <- GenomicRanges::GRanges()
+            consensusObjects[groupName] <- list(NULL)
+        }
+
         # A single sample has no replicate to agree with, its peaks stand for the group
         for (groupName in groupLevels[groupSizes == 1]) {
-            groupSamples <- sampleTable$sample[sampleTable$group == groupName]
-            groupConsensus[[groupName]] <- IRanges::reduce(peakList[[groupSamples]], ignore.strand = TRUE)
+            groupSamples <- dplyr::filter(biologicalTable, .data$group == groupName)$biological
+            groupConsensus[[groupName]] <- IRanges::reduce(biologicalPeaks[[groupSamples]], ignore.strand = TRUE)
             consensusObjects[groupName] <- list(NULL)
         }
 
@@ -389,7 +491,7 @@ loadConsensusPeaks <-
             lapply(
                 multiGroups,
                 function(groupName) {
-                    groupSamples <- sampleTable$sample[sampleTable$group == groupName]
+                    groupSamples <- dplyr::filter(biologicalTable, .data$group == groupName)$biological
 
                     groupArguments <- consensusArguments
                     groupArguments$BPPARAM <- workerPlan$inner
@@ -409,14 +511,14 @@ loadConsensusPeaks <-
                         groupArguments["seqlevelsStyle"] <- list(seqlevelsStyle)
                     }
 
-                    # Weights from the libraries need the BAM files, which the sheet already lists
+                    # Weights from the libraries need the BAM files, which the sheet already lists. With technicalBy this is refused upstream
                     weightMethod <- groupArguments$weightMethod
                     if (!is.null(weightMethod) && weightMethod[1] %in% c("frip", "librarySize") &
                         is.null(groupArguments$bamFiles) & is.null(groupArguments$frip) & is.null(groupArguments$librarySize)) {
                         groupArguments$bamFiles <- sampleTable$bam[match(groupSamples, sampleTable$sample)]
                     }
 
-                    return(c(list(peaks = peakList[groupSamples], sampleNames = groupSamples), groupArguments))
+                    return(c(list(peaks = biologicalPeaks[groupSamples], sampleNames = groupSamples), groupArguments))
                 }
             )
         names(groupArgumentList) <- multiGroups
@@ -456,11 +558,21 @@ loadConsensusPeaks <-
         consensusObjects <- consensusObjects[groupLevels]
 
         if (isTRUE(verbose)) {
+            sampleLabel <- if (is.null(technicalBy)) {
+                "sample"
+            } else {
+                "biological sample"
+            }
             for (groupName in groupLevels) {
-                if (groupSizes[[groupName]] == 1) {
-                    message("Group ", groupName, ": a single sample, its ", length(groupConsensus[[groupName]]), " peaks are taken as they are.")
+                libraryNote <- if (is.null(technicalBy)) {
+                    ""
                 } else {
-                    message("Group ", groupName, ": ", groupSizes[[groupName]], " samples, ", length(groupConsensus[[groupName]]), " consensus regions.")
+                    paste0(" (", sum(sampleTable$group == groupName), " libraries)")
+                }
+                if (groupSizes[[groupName]] == 1) {
+                    message("Group ", groupName, ": a single ", sampleLabel, libraryNote, ", its ", length(groupConsensus[[groupName]]), " peaks are taken as they are.")
+                } else {
+                    message("Group ", groupName, ": ", groupSizes[[groupName]], " ", sampleLabel, "s", libraryNote, ", ", length(groupConsensus[[groupName]]), " consensus regions.")
                 }
             }
         }
@@ -530,7 +642,12 @@ loadConsensusPeaks <-
                 occupancyTable <- .peakOccupancy(
                     regionRanges = regionRanges,
                     groupConsensus = groupConsensus,
-                    peakList = peakList
+                    peakList = peakList,
+                    biologicalPeaks = if (is.null(technicalBy)) {
+                        NULL
+                    } else {
+                        biologicalPeaks
+                    }
                 )
                 S4Vectors::mcols(regionRanges) <- cbind(S4Vectors::mcols(regionRanges), occupancyTable)
                 return(regionRanges)
@@ -551,12 +668,14 @@ loadConsensusPeaks <-
         consensusData(regionSet) <- list(
             groups = groupConsensus,
             objects = consensusObjects,
+            technical = technicalObjects,
             total = totalConsensus,
             peaks = peakList,
             removed = removedPeaks,
             samples = sampleTable,
             sheet = sampleSheet,
             groupBy = groupBy,
+            technicalBy = technicalBy,
             mode = analysisMode,
             blacklist = listRanges$blacklist,
             greylist = listRanges$greylist
@@ -583,10 +702,12 @@ loadConsensusPeaks <-
         # Only plain values go to the parameters, a BiocParallel object has no place in an exported record
         parameterLog(regionSet)$loadConsensusPeaks <- list(
             groupBy = groupBy,
+            technicalBy = technicalBy,
             regionMode = analysisMode,
             unassignedSet = unassignedSet,
             seqlevelsStyle = seqlevelsStyle,
             n.samples = nrow(sampleTable),
+            n.biological = nrow(biologicalTable),
             n.groups = length(groupLevels),
             n.blacklist.regions = if (is.null(listRanges$blacklist)) {
                 0L
@@ -602,7 +723,14 @@ loadConsensusPeaks <-
             seed.source = seedSource,
             consensusArguments = Filter(function(x) {
                 !is.null(x) && is.atomic(x)
-            }, consensusArguments)
+            }, consensusArguments),
+            technicalArguments = if (is.null(technicalBy)) {
+                NULL
+            } else {
+                Filter(function(x) {
+                    !is.null(x) && is.atomic(x)
+                }, technicalArguments)
+            }
         )
 
         methods::validObject(regionSet)
@@ -616,6 +744,8 @@ loadConsensusPeaks <-
 #'
 #' @param sampleSheet See \code{\link{loadConsensusPeaks}}.
 #' @param groupBy See \code{\link{loadConsensusPeaks}}.
+#' @param technicalBy See \code{\link{loadConsensusPeaks}}.
+#' @param technicalArguments See \code{\link{loadConsensusPeaks}}.
 #' @param regionMode See \code{\link{loadConsensusPeaks}}.
 #' @param unassignedSet See \code{\link{loadConsensusPeaks}}.
 #' @param seed See \code{\link{loadConsensusPeaks}}.
@@ -640,7 +770,7 @@ loadConsensusPeaks <-
 #' @param verbose See \code{\link{loadConsensusPeaks}}.
 #' @param ... See \code{\link{loadConsensusPeaks}}.
 #'
-#' @return A list with the arguments as checked and completed: \code{consensusArguments}, \code{regionMode}, \code{sampleSheet}.
+#' @return A list with the arguments as checked and completed: \code{consensusArguments}, \code{technicalArguments}, the arguments of the step joining the technical replicates (\code{NULL} without \code{technicalBy}), \code{regionMode}, \code{sampleSheet}.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -649,6 +779,8 @@ loadConsensusPeaks <-
 .checkLoadConsensusPeaksArguments <-
     function(sampleSheet,
              groupBy,
+             technicalBy,
+             technicalArguments,
              regionMode,
              unassignedSet,
              seed,
@@ -688,6 +820,19 @@ loadConsensusPeaks <-
             if (!is.character(groupBy) | length(groupBy) != 1 || !(groupBy %in% colnames(sampleSheet))) {
                 stop("The 'groupBy' parameter must name a column of the sample sheet.", call. = FALSE)
             }
+        }
+
+        if (!is.null(technicalBy)) {
+            if (!is.character(technicalBy) | length(technicalBy) != 1 || !(technicalBy %in% colnames(sampleSheet))) {
+                stop("The 'technicalBy' parameter must name a column of the sample sheet.", call. = FALSE)
+            }
+            if (technicalBy %in% c("sample", groupBy)) {
+                stop("The 'technicalBy' parameter must name the biological sample of every library, a column other than 'sample' and 'groupBy'.", call. = FALSE)
+            }
+        }
+
+        if (!is.null(technicalArguments) && (!is.list(technicalArguments) || is.null(names(technicalArguments)) || any(names(technicalArguments) == ""))) {
+            stop("The 'technicalArguments' parameter must be a named list, or NULL.", call. = FALSE)
         }
 
         regionMode <- tolower(as.character(regionMode[1]))
@@ -740,8 +885,52 @@ loadConsensusPeaks <-
             )
         }
 
+        #-------------------------------#
+        # Technical replicates          #
+        #-------------------------------#
+        if (!is.null(technicalBy)) {
+            # The weights of the sheet describe libraries, the consensus of a group is built on biological samples
+            weightSource <- c("bamFiles", "frip", "librarySize")
+            if (!is.null(weightMethod) && weightMethod[1] %in% c("frip", "librarySize") & !any(weightSource %in% names(consensusArguments))) {
+                stop("With 'technicalBy' the groups hold biological samples, and the BAM files of the sheet describe libraries. ",
+                    "Give 'frip' or 'librarySize' per biological sample through '...', or use weightMethod = 'equal' or 'intrinsic'.",
+                    call. = FALSE
+                )
+            }
+
+            reservedTechnical <- intersect(
+                names(technicalArguments),
+                c(
+                    "peaks", "sampleNames", "calibrate", "calibration", "nPermutations", "targetFDR", "recentre", "width",
+                    "seed", "BPPARAM", "outputFile", "excludeRegions", "seqlevelsStyle"
+                )
+            )
+            if (length(reservedTechnical) > 0) {
+                stop("The following arguments cannot be given to the step joining the technical replicates: ",
+                    paste(reservedTechnical, collapse = ", "), ".",
+                    call. = FALSE
+                )
+            }
+
+            # Inherited from the groups, apart from what only makes sense between biological samples
+            technicalDefaults <- consensusArguments[setdiff(
+                names(consensusArguments),
+                c(
+                    "calibrate", "nPermutations", "targetFDR", "recentre", "width", "minSupport", "minReplicates",
+                    "minSupportWeight", "bamFiles", "frip", "librarySize", "seqlevelsStyle"
+                )
+            )]
+            technicalDefaults$weightMethod <- "equal"
+            technicalDefaults$replicateType <- "technical"
+            technicalDefaults[names(technicalArguments)] <- technicalArguments
+            technicalArguments <- technicalDefaults
+        } else {
+            technicalArguments <- NULL
+        }
+
         return(list(
             consensusArguments = consensusArguments,
+            technicalArguments = technicalArguments,
             regionMode = regionMode,
             sampleSheet = sampleSheet
         ))
@@ -816,6 +1005,190 @@ loadConsensusPeaks <-
 .runGroupConsensus <-
     function(groupArguments) {
         return(do.call(what = consensusRegions::runConsensus, args = groupArguments))
+    } # END function
+
+
+#' @title .joinTechnicalReplicates
+#'
+#' @description Joins the libraries of every biological sample into one peak set through \code{consensusRegions::runConsensus}, before the consensus of the groups of \code{\link{loadConsensusPeaks}}.
+#'
+#' @param sampleTable Data.frame with one row per library and the \code{sample}, \code{group} and \code{biological} columns.
+#' @param peakList Named \code{GRangesList} with the peaks of every library, after the blacklist and the greylist.
+#' @param technicalArguments List with the arguments of \code{consensusRegions::runConsensus} for this step.
+#' @param seqlevelsStyle String with the chromosome naming style of the peaks, or \code{NULL}.
+#' @param BPPARAM A \code{BiocParallelParam} object, a number of cores, or \code{NULL}. Default: \code{NULL}.
+#' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
+#'
+#' @return A list with \code{peaks}, a named \code{GRangesList} with one peak set per biological sample, and \code{objects}, a named list with the \code{consensusRegions} object behind each of them, \code{NULL} for the biological samples with a single library.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom dplyr filter
+#' @importFrom rlang .data
+#' @importFrom GenomicRanges GRangesList
+#' @importFrom BiocParallel bplapply
+#'
+#' @keywords internal
+
+.joinTechnicalReplicates <-
+    function(sampleTable,
+             peakList,
+             technicalArguments,
+             seqlevelsStyle,
+             BPPARAM = NULL,
+             verbose = TRUE) {
+        biologicalNames <- unique(sampleTable$biological)
+        libraryNumber <- vapply(biologicalNames, function(biologicalName) {
+            sum(sampleTable$biological == biologicalName)
+        }, integer(1))
+        multiSamples <- biologicalNames[libraryNumber > 1]
+
+        if (length(multiSamples) == 0) {
+            warning("Every biological sample of 'technicalBy' has a single library, there is no technical replicate to join.", call. = FALSE)
+        }
+
+        #-------------------------------#
+        # Arguments of every sample     #
+        #-------------------------------#
+        technicalArguments["seqlevelsStyle"] <- list(seqlevelsStyle)
+        if (is.null(technicalArguments$verbose)) {
+            technicalArguments$verbose <- FALSE
+        }
+
+        argumentList <- lapply(multiSamples, function(biologicalName) {
+            libraryNames <- dplyr::filter(sampleTable, .data$biological == biologicalName)$sample
+            return(c(list(peaks = peakList[libraryNames], sampleNames = libraryNames), technicalArguments))
+        })
+        names(argumentList) <- multiSamples
+
+        # Nothing is calibrated here, so every core can take a biological sample
+        workerPlan <- .consensusWorkers(BPPARAM = BPPARAM, nGroups = length(multiSamples), calibrate = FALSE)
+
+        technicalObjects <- BiocParallel::bplapply(
+            X = argumentList,
+            FUN = .runGroupConsensus,
+            BPPARAM = .resolveBPPARAM(BPPARAM = workerPlan$outer, tasks = length(multiSamples))
+        )
+
+        #-------------------------------#
+        # One peak set per sample       #
+        #-------------------------------#
+        biologicalPeaks <- lapply(biologicalNames, function(biologicalName) {
+            libraryNames <- dplyr::filter(sampleTable, .data$biological == biologicalName)$sample
+            if (length(libraryNames) == 1) {
+                return(.asBiologicalPeaks(peakRanges = peakList[[libraryNames]], libraryPeaks = NULL))
+            }
+            return(.asBiologicalPeaks(
+                peakRanges = consensusRegions::consensusRanges(technicalObjects[[biologicalName]]),
+                libraryPeaks = peakList[libraryNames]
+            ))
+        })
+        names(biologicalPeaks) <- biologicalNames
+
+        if (isTRUE(verbose)) {
+            message(
+                "Technical replicates joined into ", length(biologicalNames), " biological samples: ",
+                paste(biologicalNames, " (", libraryNumber, " libraries, ", lengths(biologicalPeaks), " peaks)", sep = "", collapse = ", "), "."
+            )
+        }
+
+        objectList <- lapply(biologicalNames, function(biologicalName) {
+            if (biologicalName %in% multiSamples) {
+                return(technicalObjects[[biologicalName]])
+            }
+            return(NULL)
+        })
+        names(objectList) <- biologicalNames
+
+        return(list(peaks = GenomicRanges::GRangesList(biologicalPeaks), objects = objectList))
+    } # END function
+
+
+#' @title .asBiologicalPeaks
+#'
+#' @description Brings the peaks of a biological sample to the columns the consensus of a group reads: \code{pValue}, the significance on the -log10 scale, and \code{peak}, the summit as an offset from the start, as in a narrowPeak file.
+#'
+#' @param peakRanges \code{GRanges} with the peaks of a single library, carrying \code{negLog10P}, or with the consensus of several libraries, carrying \code{combinedNegLog10P}.
+#' @param libraryPeaks Named \code{GRangesList} with the peaks of the libraries behind a consensus, used to place its summits, or \code{NULL} for a single library.
+#'
+#' @return A \code{GRanges} with the \code{pValue} and \code{peak} columns only. \code{peak} is -1 where the peaks carry no summit.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom GenomicRanges findOverlaps
+#' @importFrom BiocGenerics start width
+#' @importFrom S4Vectors mcols mcols<- queryHits subjectHits
+#' @importFrom dplyr tibble group_by slice_max ungroup %>%
+#' @importFrom rlang .data
+#'
+#' @keywords internal
+
+.asBiologicalPeaks <-
+    function(peakRanges,
+             libraryPeaks = NULL) {
+        metadataTable <- S4Vectors::mcols(peakRanges)
+
+        #-------------------------------#
+        # A single library              #
+        #-------------------------------#
+        if (is.null(libraryPeaks)) {
+            summitOffset <- if ("peak" %in% colnames(metadataTable)) {
+                as.integer(metadataTable$peak)
+            } else {
+                rep(-1L, length(peakRanges))
+            }
+            S4Vectors::mcols(peakRanges) <- NULL
+            S4Vectors::mcols(peakRanges)$pValue <- as.numeric(metadataTable$negLog10P)
+            S4Vectors::mcols(peakRanges)$peak <- summitOffset
+            return(peakRanges)
+        }
+
+        #-------------------------------#
+        # A consensus of libraries      #
+        #-------------------------------#
+        combinedSignificance <- if ("combinedNegLog10P" %in% colnames(metadataTable)) {
+            as.numeric(metadataTable$combinedNegLog10P)
+        } else {
+            rep(NA_real_, length(peakRanges))
+        }
+
+        S4Vectors::mcols(peakRanges) <- NULL
+        S4Vectors::mcols(peakRanges)$pValue <- combinedSignificance
+        S4Vectors::mcols(peakRanges)$peak <- rep(-1L, length(peakRanges))
+
+        pooledPeaks <- unlist(libraryPeaks, use.names = FALSE)
+        if (length(peakRanges) == 0 | !("peak" %in% colnames(S4Vectors::mcols(pooledPeaks)))) {
+            return(peakRanges)
+        }
+
+        # The summit of a region is the one of its most significant library peak
+        summitOffset <- as.integer(S4Vectors::mcols(pooledPeaks)$peak)
+        hasSummit <- !is.na(summitOffset) & summitOffset >= 0
+        summitPosition <- ifelse(hasSummit,
+            BiocGenerics::start(pooledPeaks) + summitOffset,
+            BiocGenerics::start(pooledPeaks) + BiocGenerics::width(pooledPeaks) %/% 2L
+        )
+
+        hits <- GenomicRanges::findOverlaps(peakRanges, pooledPeaks, ignore.strand = TRUE)
+        if (length(hits) == 0) {
+            return(peakRanges)
+        }
+
+        bestHits <- dplyr::tibble(
+            region = S4Vectors::queryHits(hits),
+            negLog10P = as.numeric(S4Vectors::mcols(pooledPeaks)$negLog10P)[S4Vectors::subjectHits(hits)],
+            summit = summitPosition[S4Vectors::subjectHits(hits)]
+        ) %>%
+            dplyr::group_by(.data$region) %>%
+            dplyr::slice_max(order_by = .data$negLog10P, n = 1, with_ties = FALSE) %>%
+            dplyr::ungroup()
+
+        # Kept inside the region, a summit from a library peak reaching past its edge would fall outside
+        regionStart <- BiocGenerics::start(peakRanges)[bestHits$region]
+        regionWidth <- BiocGenerics::width(peakRanges)[bestHits$region]
+        S4Vectors::mcols(peakRanges)$peak[bestHits$region] <- as.integer(pmin(pmax(bestHits$summit - regionStart, 0L), regionWidth - 1L))
+
+        return(peakRanges)
     } # END function
 
 
@@ -992,8 +1365,9 @@ loadConsensusPeaks <-
 #' @param regionRanges \code{GRanges} with the regions.
 #' @param groupConsensus Named list of \code{GRanges}, the consensus of every group.
 #' @param peakList Named \code{GRangesList} with the peaks of every sample.
+#' @param biologicalPeaks Named \code{GRangesList} with the peak set of every biological sample, or \code{NULL} when every library is one. Default: \code{NULL}.
 #'
-#' @return A \code{DataFrame} with one logical \code{peak.<group>} column per group, \code{peak.groups} and \code{peak.samples}.
+#' @return A \code{DataFrame} with one logical \code{peak.<group>} column per group, \code{peak.groups} and \code{peak.samples}, and \code{peak.biological} when \code{biologicalPeaks} is given.
 #'
 #' @author Sebastian Gregoricchio
 #'
@@ -1007,7 +1381,8 @@ loadConsensusPeaks <-
 .peakOccupancy <-
     function(regionRanges,
              groupConsensus,
-             peakList) {
+             peakList,
+             biologicalPeaks = NULL) {
         regionNumber <- length(regionRanges)
 
         # Two naming styles meeting here would give an empty overlap for every sample rather than an error
@@ -1053,6 +1428,21 @@ loadConsensusPeaks <-
         occupancyTable$peak.groups <- as.integer(rowSums(groupMatrix))
         occupancyTable$peak.samples <- as.integer(rowSums(sampleMatrix))
 
+        # With technical replicates the libraries and the biological samples are two different counts
+        if (!is.null(biologicalPeaks)) {
+            biologicalMatrix <- matrix(
+                vapply(
+                    as.list(biologicalPeaks),
+                    function(peakRanges) {
+                        IRanges::overlapsAny(regionRanges, peakRanges, ignore.strand = TRUE)
+                    },
+                    logical(regionNumber)
+                ),
+                nrow = regionNumber
+            )
+            occupancyTable$peak.biological <- as.integer(rowSums(biologicalMatrix))
+        }
+
         return(occupancyTable)
     } # END function
 
@@ -1063,7 +1453,7 @@ loadConsensusPeaks <-
 #'
 #' @param object \code{RegionSetDE} object.
 #'
-#' @return A list with \code{groups}, the consensus regions of every group; \code{objects}, the \code{consensusRegions} object behind each of them (\code{NULL} for the groups with a single sample); \code{total}, the pooled consensus; \code{peaks}, the peaks of every sample after the blacklist and the greylist; \code{removed}, the peaks they took out, with the \code{sample} they came from and the list that removed them in \code{removed.by}; \code{samples}, a data.frame with the group, the peak file, the number of peaks read (\code{n.peaks}), removed by the blacklist (\code{n.blacklist}), by the greylist (\code{n.greylist}) and by both (\code{n.excluded}) for every sample; \code{sheet}, the sample sheet the consensus was built from; \code{groupBy}; \code{mode}, one among \code{"consensus"}, \code{"split"} and \code{"replace"}; and \code{blacklist} and \code{greylist}, the regions the peaks were cleaned against, \code{NULL} when a list was not given.
+#' @return A list with \code{groups}, the consensus regions of every group; \code{objects}, the \code{consensusRegions} object behind each of them (\code{NULL} for the groups with a single sample); \code{technical}, the \code{consensusRegions} object joining the libraries of every biological sample (\code{NULL} for the samples with a single library), an empty list without \code{technicalBy}; \code{total}, the pooled consensus; \code{peaks}, the peaks of every sample after the blacklist and the greylist; \code{removed}, the peaks they took out, with the \code{sample} they came from and the list that removed them in \code{removed.by}; \code{samples}, a data.frame with the group, the biological sample (the library itself without \code{technicalBy}), the peak file, the number of peaks read (\code{n.peaks}), removed by the blacklist (\code{n.blacklist}), by the greylist (\code{n.greylist}) and by both (\code{n.excluded}) for every sample; \code{sheet}, the sample sheet the consensus was built from; \code{groupBy}; \code{technicalBy}; \code{mode}, one among \code{"consensus"}, \code{"split"} and \code{"replace"}; and \code{blacklist} and \code{greylist}, the regions the peaks were cleaned against, \code{NULL} when a list was not given.
 #'
 #' @examples
 #' if (requireNamespace("consensusRegions", quietly = TRUE)) {

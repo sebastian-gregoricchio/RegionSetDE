@@ -7,6 +7,8 @@
 .checkLoadConsensusPeaksArguments(
   sampleSheet,
   groupBy,
+  technicalBy,
+  technicalArguments,
   regionMode,
   unassignedSet,
   seed,
@@ -36,6 +38,10 @@
 \item{sampleSheet}{See \code{\link{loadConsensusPeaks}}.}
 
 \item{groupBy}{See \code{\link{loadConsensusPeaks}}.}
+
+\item{technicalBy}{See \code{\link{loadConsensusPeaks}}.}
+
+\item{technicalArguments}{See \code{\link{loadConsensusPeaks}}.}
 
 \item{regionMode}{See \code{\link{loadConsensusPeaks}}.}
 
@@ -84,7 +90,7 @@
 \item{...}{See \code{\link{loadConsensusPeaks}}.}
 }
 \value{
-A list with the arguments as checked and completed: \code{consensusArguments}, \code{regionMode}, \code{sampleSheet}.
+A list with the arguments as checked and completed: \code{consensusArguments}, \code{technicalArguments}, the arguments of the step joining the technical replicates (\code{NULL} without \code{technicalBy}), \code{regionMode}, \code{sampleSheet}.
 }
 \description{
 Checks the arguments of \code{\link{loadConsensusPeaks}} and brings them to the form the rest of the function works with.

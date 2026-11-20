@@ -322,7 +322,9 @@ importFrom(dplyr,
   select,
   slice,
   slice_head,
+  slice_max,
   summarise,
+  tibble,
   ungroup
 )
 importFrom(edgeR,

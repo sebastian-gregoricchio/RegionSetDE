@@ -76,7 +76,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 if (requireNamespace("DESeq2", quietly = TRUE)) {

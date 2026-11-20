@@ -2,7 +2,7 @@
 
 ## All functions
 
-- [`RegionSetDE-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-class.md)
+- [`show(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-class.md)
   : RegionSetDE class
 - [`RegionSetDE-exampleData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-exampleData.md)
   : RegionSetDE example data
@@ -12,23 +12,23 @@
   sets
 - [`RegionSetDE.counts-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.counts-class.md)
   : RegionSetDE.counts class
-- [`RegionSetDE.fit-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.fit-class.md)
+- [`show(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.fit-class.md)
   : RegionSetDE.fit class
-- [`RegionSetDE.geneResults-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.geneResults-class.md)
+- [`show(`*`<RegionSetDE.geneResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.geneResults-class.md)
   : RegionSetDE.geneResults class
 - [`RegionSetDE.provenance-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.provenance-class.md)
   : RegionSetDE.provenance class
-- [`RegionSetDE.results-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.results-class.md)
+- [`show(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.results-class.md)
   : RegionSetDE.results class
-- [`RegionSetDE.resultsList-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.resultsList-class.md)
+- [`show(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.resultsList-class.md)
   : RegionSetDE.resultsList class
-- [`RegionSetDE.setResults-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResults-class.md)
+- [`show(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResults-class.md)
   : RegionSetDE.setResults class
-- [`RegionSetDE.setResultsList-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResultsList-class.md)
+- [`show(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResultsList-class.md)
   : RegionSetDE.setResultsList class
-- [`RegionSetDE.setScores-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setScores-class.md)
+- [`show(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setScores-class.md)
   : RegionSetDE.setScores class
-- [`RegionSetDE.universe-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.md)
+- [`show(`*`<RegionSetDE.universe>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.md)
   : RegionSetDE.universe class
 - [`aggregateToGenes()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/aggregateToGenes.md)
   : aggregateToGenes
@@ -151,8 +151,8 @@
   : makeGreylist
 - [`makeSetUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeSetUniverse.md)
   : makeSetUniverse
-- [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
-  : normalizeCounts
+- [`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
+  : normalizeRegionCounts
 - [`pairwiseContrasts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/pairwiseContrasts.md)
   : pairwiseContrasts
 - [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md)
@@ -240,24 +240,6 @@
   [`setTestType()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
   [`setTestMethods()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
   : Set level result accessors
-- [`show(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE-method.md)
-  : show method for RegionSetDE objects
-- [`show(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.fit-method.md)
-  : show method for RegionSetDE.fit
-- [`show(`*`<RegionSetDE.geneResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.geneResults-method.md)
-  : show method for RegionSetDE.geneResults
-- [`show(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.results-method.md)
-  : show method for RegionSetDE.results
-- [`show(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.resultsList-method.md)
-  : show method for RegionSetDE.resultsList
-- [`show(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResults-method.md)
-  : show method for RegionSetDE.setResults
-- [`show(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResultsList-method.md)
-  : show method for RegionSetDE.setResultsList
-- [`show(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setScores-method.md)
-  : show method for RegionSetDE.setScores
-- [`show(`*`<RegionSetDE.universe>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.universe-method.md)
-  : show method for RegionSetDE.universe
 - [`splitLoadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.md)
   : splitLoadRegions
 - [`splitSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitSamples.md)

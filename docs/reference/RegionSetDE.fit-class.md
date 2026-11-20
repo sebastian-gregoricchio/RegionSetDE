@@ -9,6 +9,24 @@ per-set tests read the fit and never the counts directly, which is what
 guarantees that the two levels share the same dispersion and the same
 normalisation.
 
+## Usage
+
+``` r
+# S4 method for class 'RegionSetDE.fit'
+show(object)
+```
+
+## Arguments
+
+- object:
+
+  `RegionSetDE.fit` object.
+
+## Value
+
+[`show()`](https://rdrr.io/r/methods/show.html) prints a summary of the
+object to the console.
+
 ## Slots
 
 - `fit`:
@@ -63,3 +81,20 @@ normalisation.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+fit <- loadExampleData("fit", verbose = FALSE)
+#> calcNormFactors has been renamed to normLibSizes
+fit
+#> An object of class 'RegionSetDE.fit'
+#>   engine          : edgeR 
+#>   rows            : 1895 (region level) 
+#>   samples         : 4 (lv-H3K4me3-BN-female-bio1-tech1, lv-H3K4me3-BN-male-bio2-tech1, lv-H3K4me3-SHR-male-bio2-tech1, lv-H3K4me3-SHR-male-bio3-tech1) 
+#>   coefficients    : (Intercept), conditionSHR 
+#>   set universe    : otherSets (matched on width and abundance) 
+#>   common disp.    : 0.139 (BCV 0.373)  
+fitEngine(fit)
+#> [1] "edgeR"
+```

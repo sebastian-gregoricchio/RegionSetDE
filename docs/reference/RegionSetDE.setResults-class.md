@@ -6,6 +6,24 @@ with its confidence interval next to the p-values, since with tens of
 thousands of regions in a set the p-value stops discriminating long
 before the effect size does.
 
+## Usage
+
+``` r
+# S4 method for class 'RegionSetDE.setResults'
+show(object)
+```
+
+## Arguments
+
+- object:
+
+  `RegionSetDE.setResults` object.
+
+## Value
+
+[`show()`](https://rdrr.io/r/methods/show.html) prints a summary of the
+object to the console.
+
 ## Slots
 
 - `results`:
@@ -60,3 +78,29 @@ before the effect size does.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+fit <- loadExampleData("fit", verbose = FALSE)
+
+setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+setResults
+#> An object of class 'RegionSetDE.setResults'
+#>   test            : set 
+#>   contrast        : condition: SHR vs BN 
+#>   engine          : edgeR 
+#>   methods         : camera, fry 
+#>   universe        : otherSets (matched on width and abundance) 
+#> 
+#>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper CI.type
+#>     promoterCpG       269     -0.8340      -0.9310   -1.930    0.561  sample
+#>        geneBody       909      0.2910       0.4070   -0.333    0.919  sample
+#>      intergenic       440      0.2650       0.2060   -0.171    0.367  sample
+#>  promoterNonCpG       277     -0.0209      -0.0787   -0.263    0.251  sample
+#>  camera.FDR fry.FDR inter.region.cor.universe
+#>       0.938   0.479                     0.378
+#>       0.938   0.479                     0.453
+#>       0.938   0.669                     0.382
+#>       0.938   0.669                     0.350
+```

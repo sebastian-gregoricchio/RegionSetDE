@@ -5,7 +5,7 @@ regions whose background is consistent enough between experiments to
 normalise on. It goes to
 [`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),
 which counts the libraries over it before
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 turns those counts into scaling factors.
 
 ## Usage
@@ -84,7 +84,7 @@ effective normalizing factors for quantitative epigenome mapping.
 ## See also
 
 [`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`loadBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md),
 [`availableRegionLists`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md)
 

@@ -35,7 +35,7 @@ plotNormComparison(
 - methods:
 
   Character vector with the methods to compare, among those accepted by
-  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+  [`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
   that need no extra input: `"librarySize"`, `"readsInRegions"`,
   `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"background"` and
   `"greenlist"`, the last one requiring
@@ -118,7 +118,7 @@ of factors, which are free to disagree.
 
 ## See also
 
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`plotSetMA`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md)
 
 ## Author

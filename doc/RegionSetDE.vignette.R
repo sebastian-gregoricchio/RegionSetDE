@@ -1,11 +1,7 @@
 ## ----setup, include = FALSE---------------------------------------------------
 knitr::opts_chunk$set(collapse = TRUE, comment = ">",
-                      warning = FALSE, message = FALSE, fig.align = "center",
+                      message = FALSE, fig.align = "center",
                       dev = "png", dpi = 96, fig.width = 7, fig.height = 4.5)
-
-library(RegionSetDE)
-library(dplyr)
-library(ggplot2)
 
 ## ----installation, eval = FALSE-----------------------------------------------
 # if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -13,9 +9,11 @@ library(ggplot2)
 # }
 # 
 # BiocManager::install("RegionSetDE")
-# 
-# # Development version
-# # devtools::install_github("sebastian-gregoricchio/RegionSetDE")
+
+## ----load_packages------------------------------------------------------------
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
 
 ## ----load_example-------------------------------------------------------------
 counts <- loadExampleData("counts")
@@ -118,7 +116,7 @@ dim(backgroundBins)
 head(backgroundBins, 3)
 
 ## ----normalize----------------------------------------------------------------
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 SummarizedExperiment::colData(counts)
 
@@ -214,9 +212,6 @@ topRegions(results, n = 5, FDR = 1)
 
 ## ----top_regions_set----------------------------------------------------------
 topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
-
-## ----tile_table, eval = FALSE-------------------------------------------------
-# head(tileTable(tiledResults))
 
 ## ----plot_volcano, fig.height = 5---------------------------------------------
 plotVolcano(results, labelTop = 3)
@@ -372,7 +367,7 @@ plotSetSignal(setScores, groupBy = "condition")
 ## ----null_dispersion----------------------------------------------------------
 nullDispersion <-
   estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
-                           normalizeCounts(method = "background",
+                           normalizeRegionCounts(method = "background",
                                            verbose = FALSE),
                          source = "background",
                          verbose = FALSE)
@@ -405,7 +400,7 @@ singleCounts <- selectSamples(counts = counts,
 SummarizedExperiment::colData(singleCounts)
 
 ## ----single_sample_prepare----------------------------------------------------
-singleCounts <- normalizeCounts(singleCounts,
+singleCounts <- normalizeRegionCounts(singleCounts,
                                 method = "background",
                                 verbose = FALSE)
 

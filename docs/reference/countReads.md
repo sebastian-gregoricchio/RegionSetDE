@@ -307,7 +307,7 @@ changes from sample to sample. With `fullLibrarySize = FALSE` only the
 chromosomes carrying regions are read, and the library sizes are
 partial: the counts do not change, but the library sizes are not usable
 for normalisation, and
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 warns when a method relies on them.
 
 The blacklist and the greylist act before the counting, and on two

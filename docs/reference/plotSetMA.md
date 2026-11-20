@@ -34,7 +34,7 @@ plotSetMA(
 - counts:
 
   `RegionSetDE.counts` object, normalised by
-  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md).
+  [`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md).
 
 - set:
 
@@ -56,7 +56,7 @@ plotSetMA(
 
   String with the assay to plot. Default: `NULL`, the normalised assay
   recorded by
-  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+  [`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
   or the raw counts when the object has not been normalised.
 
 - priorCount:
@@ -133,7 +133,7 @@ to the biology.
 
 ## See also
 
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`plotNormComparison`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
 
 ## Author
@@ -144,7 +144,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 # One panel per region set, each against the rest of the data

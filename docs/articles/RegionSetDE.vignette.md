@@ -50,10 +50,10 @@ shows how.
 
 ### What this vignette covers
 
-The example follows one dataset from BAM files to an interpreted result.
-Along the way each object is opened up, so that you know what it holds
-and how to pull the parts out. The last section is a decision guide:
-which function answers which question.
+The example follows one dataset from its counts to an interpreted
+result. Along the way each object is opened up, so that you know what it
+holds and how to pull the parts out. The last section is a decision
+guide: which function answers which question.
 
 Regions that come from a peak caller rather than from an annotation are
 the subject of a [second
@@ -73,10 +73,19 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 }
 
 BiocManager::install("RegionSetDE")
-
-# Development version
-# devtools::install_github("sebastian-gregoricchio/RegionSetDE")
 ```
+
+The packages used throughout this vignette:
+
+``` r
+
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
+```
+
+The progress messages of the functions are switched off in this document
+to keep it short, and they appear as usual when the code is run.
 
   
 
@@ -324,6 +333,13 @@ have to name its chromosomes alike. Files written `chr1` and files
 written `1` are counted together, and the regions can follow either
 style.
 
+The four BAM files of the example are not shipped with the package, so
+the counting calls of this section are shown and not run. The `counts`
+object loaded above is what they return, and `make-data.R` holds the
+exact call. The [second
+vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html#counting)
+runs the counting on alignments that are shipped.
+
 ``` r
 
 sampleTable <- data.frame(sample = c("BN_1", "BN_2", "SHR_1", "SHR_2"),
@@ -376,7 +392,7 @@ When only a few regions are needed, `fullLibrarySize = FALSE` limits the
 reading to the chromosomes carrying them. The counts stay the same and
 come back in seconds, but the library sizes cover those chromosomes
 only, and
-[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 warns if the chosen method depends on them.
 
 [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
@@ -510,7 +526,7 @@ head(backgroundBins, 3)
 
 The scaling factors decide what a fold change means, and in chromatin
 data they are rarely a detail.
-[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 offers `"TMM"`, `"TMMwsp"`, `"RLE"`, `"upperQuartile"`, `"librarySize"`,
 `"readsInRegions"`, `"background"`, `"greenlist"`, `"loess"`,
 `"spikeIn"`, `"manual"` and `"none"`.
@@ -546,7 +562,7 @@ The distinction that matters is what each method assumes:
   exists.
 
 ``` r
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
 SummarizedExperiment::colData(counts)
 > DataFrame with 4 rows and 9 columns
@@ -1094,19 +1110,18 @@ weighted by their width, and is the number to quote for the region as a
 whole. A large gap between the two means that only part of the region
 moved.
 
-The tile-level table stays available:
-
-``` r
-
-head(tileTable(tiledResults))
-```
+The tile-level table stays available through
+[`tileTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md),
+and the [tiles
+section](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.html#tiles)
+of the second vignette shows it on a tiled object.
 
 On an object counted per region there are no tiles and
 [`tileTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md)
 says so rather than returning an empty table.
 
-The counts follow the same logic.
-`countTable(tiledResults, level = "tile")` returns them per tile, and
+The counts follow the same logic. On a tiled object
+`countTable(level = "tile")` returns them per tile, and
 `level = "region"` sums the tiles back into their region. That sum is
 higher than a count of the same region taken whole, since a fragment
 lying across two tiles is counted in both. It still compares between
@@ -2017,6 +2032,9 @@ about contact rather than a measure of it; failing both, every region of
 a gene counts the same. Which applied is in the object and `show` prints
 it.
 
+The two calls below use *clusterProfiler* and *fgsea*, which are not
+dependencies of this package, so they are shown and not run.
+
 ``` r
 
 # The table an over-representation tool expects, split by direction
@@ -2190,15 +2208,15 @@ Those rows are independent of the dispersion but not of the
 normalisation, since the background bins have already been through
 [`csaw::normFactors()`](https://rdrr.io/pkg/csaw/man/normFactors.html);
 `holdout.type` reports which. Passing
-`normalizeCounts(backgroundHoldout = 0.5)` splits the bins earlier and
-keeps the same rows out of both steps, and
+`normalizeRegionCounts(backgroundHoldout = 0.5)` splits the bins earlier
+and keeps the same rows out of both steps, and
 [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md)
 then picks up that split rather than drawing a second one on top of it:
 
 ``` r
 nullDispersion <-
   estimateNullDispersion(loadExampleData("counts", verbose = FALSE) |>
-                           normalizeCounts(method = "background",
+                           normalizeRegionCounts(method = "background",
                                            verbose = FALSE),
                          source = "background",
                          verbose = FALSE)
@@ -2371,7 +2389,7 @@ on four libraries do not describe two, so the object is renormalised and
 refiltered from scratch.
 
 ``` r
-singleCounts <- normalizeCounts(singleCounts,
+singleCounts <- normalizeRegionCounts(singleCounts,
                                 method = "background",
                                 verbose = FALSE)
 
@@ -2545,6 +2563,13 @@ singleResults <- testRegions(singleFit,
 singleSetResults <- testRegionSets(singleFit,
                                    contrast = c("condition", "SHR", "BN"),
                                    verbose = FALSE)
+> Warning: The design leaves no residual degree of freedom, so no interval can be
+> built on the samples. The reported interval is the region-heterogeneity one,
+> which describes variation between loci and not between biological samples.
+> Warning: The correlation between regions cannot be estimated with 0 residual
+> degrees of freedom, and is held at 0.01. Every confidence interval and p-value
+> below rests on that number. Set 'interRegionCor' from a replicated experiment
+> on the same assay, and state the value in the methods.
 
 resultsTable(singleSetResults)
 >       region.set n.regions n.up n.down n.comparison n.comparison.overlapping
@@ -2746,11 +2771,10 @@ be reproduced and one that can only be repeated.
 | Which class carries more signal, with only one condition? | [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md) | `mean.delta.score` and its interval, see [When there is no contrast at all](#set_scores) |
 | Are my conclusions sensitive to the normalisation? | [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md), [`plotSetMA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSetMA.md) | how far the methods disagree |
 | Are my p-values trustworthy? | [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md) | flatness of the histogram |
-| Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md) | dispersion from the background, then `fitRegions(dispersion = )` |
+| Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md), then `fitRegions(dispersion = )` | the dispersion from the background, see [Working without replicates](#no_replicates) |
 | Is the competitive comparison fair? | [`plotUniverseMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotUniverseMatching.md) | overlap of the two distributions |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then [`plotRegion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md) | the tile-level profile |
 | What are the counts behind a region, raw or normalised? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) | one column per sample, or `format = "long"` with the `colData` attached |
-| Can I test without replicates? | [`estimateNullDispersion()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateNullDispersion.md), then `fitRegions(dispersion = )` | see [Working without replicates](#no_replicates) |
 
   
 
@@ -2808,53 +2832,55 @@ sessionInfo()
 >   [7] matrixStats_1.5.0           compiler_4.6.1             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
 >  [11] systemfonts_1.3.2           vctrs_0.7.3                
->  [13] stringr_1.6.0               shape_1.4.6.1              
->  [15] pkgconfig_2.0.3             crayon_1.5.3               
+>  [13] stringr_1.6.0               pkgconfig_2.0.3            
+>  [15] shape_1.4.6.1               crayon_1.5.3               
 >  [17] fastmap_1.2.0               magick_2.9.1               
 >  [19] XVector_0.52.0              labeling_0.4.3             
 >  [21] Rsamtools_2.28.0            rmarkdown_2.32             
 >  [23] markdown_2.0                UCSC.utils_1.8.0           
->  [25] ragg_1.5.2                  xfun_0.61                  
->  [27] cachem_1.1.0                cigarillo_1.2.1            
->  [29] litedown_0.11               GenomeInfoDb_1.48.0        
->  [31] jsonlite_2.0.0              DelayedArray_0.38.2        
->  [33] BiocParallel_1.46.0         cluster_2.1.8.3            
->  [35] parallel_4.6.1              R6_2.6.1                   
->  [37] bslib_0.12.0                stringi_1.8.9              
->  [39] RColorBrewer_1.1-3          limma_3.68.5               
->  [41] rtracklayer_1.72.0          jquerylib_0.1.4            
->  [43] iterators_1.0.14            Rcpp_1.1.2                 
+>  [25] ragg_1.5.2                  purrr_1.2.2                
+>  [27] xfun_0.61                   cachem_1.1.0               
+>  [29] litedown_0.11               cigarillo_1.2.1            
+>  [31] GenomeInfoDb_1.48.0         jsonlite_2.0.0             
+>  [33] DelayedArray_0.38.2         BiocParallel_1.46.0        
+>  [35] parallel_4.6.1              cluster_2.1.8.3            
+>  [37] R6_2.6.1                    stringi_1.8.9              
+>  [39] bslib_0.12.0                RColorBrewer_1.1-3         
+>  [41] limma_3.68.5                rtracklayer_1.72.0         
+>  [43] jquerylib_0.1.4             Rcpp_1.1.2                 
 >  [45] bookdown_0.48               SummarizedExperiment_1.42.0
->  [47] knitr_1.52                  Matrix_1.7-6               
->  [49] splines_4.6.1               tidyselect_1.2.1           
->  [51] rstudioapi_0.19.0           dichromat_2.0-1            
->  [53] abind_1.4-8                 yaml_2.3.12                
->  [55] doParallel_1.0.17           ggtext_0.2.0               
->  [57] codetools_0.2-20            curl_8.0.0                 
->  [59] lattice_0.23-1              tibble_3.3.1               
->  [61] Biobase_2.72.0              withr_3.0.3                
->  [63] S7_0.2.2                    csaw_1.46.0                
->  [65] evaluate_1.0.5              desc_1.4.3                 
->  [67] xml2_1.6.0                  circlize_0.4.18            
->  [69] Biostrings_2.80.2           pillar_1.11.1              
->  [71] BiocManager_1.30.27         MatrixGenerics_1.24.0      
->  [73] foreach_1.5.2               RCurl_1.98-1.20            
->  [75] commonmark_2.0.0            scales_1.4.0               
->  [77] glue_1.8.1                  metapod_1.20.0             
->  [79] tools_4.6.1                 BiocIO_1.22.0              
->  [81] locfit_1.5-9.12             GenomicAlignments_1.48.0   
->  [83] fs_2.1.0                    XML_3.99-0.25              
->  [85] Cairo_1.7-0                 grid_4.6.1                 
->  [87] colorspace_2.1-3            edgeR_4.10.5               
->  [89] nlme_3.1-171                restfulr_0.0.17            
->  [91] cli_3.6.6                   textshaping_1.0.5          
->  [93] viridisLite_0.4.3           S4Arrays_1.12.1            
->  [95] ComplexHeatmap_2.28.0       gtable_0.3.6               
->  [97] sass_0.4.10                 digest_0.6.39              
->  [99] ggrepel_0.9.8               SparseArray_1.12.3         
-> [101] rjson_0.2.23                htmlwidgets_1.6.4          
-> [103] farver_2.1.2                htmltools_0.5.9            
-> [105] pkgdown_2.2.1               lifecycle_1.0.5            
-> [107] httr_1.4.9                  GlobalOptions_0.1.4        
-> [109] statmod_1.5.2               gridtext_0.1.6
+>  [47] iterators_1.0.14            knitr_1.52                 
+>  [49] splines_4.6.1               Matrix_1.7-6               
+>  [51] tidyselect_1.2.1            rstudioapi_0.19.0          
+>  [53] dichromat_2.0-1             abind_1.4-8                
+>  [55] yaml_2.3.12                 ggtext_0.2.0               
+>  [57] doParallel_1.0.17           codetools_0.2-20           
+>  [59] curl_8.0.0                  lattice_0.23-1             
+>  [61] tibble_3.3.1                withr_3.0.3                
+>  [63] Biobase_2.72.0              S7_0.2.2                   
+>  [65] csaw_1.46.0                 evaluate_1.0.5             
+>  [67] desc_1.4.3                  xml2_1.6.0                 
+>  [69] circlize_0.4.18             Biostrings_2.80.2          
+>  [71] pillar_1.11.1               BiocManager_1.30.27        
+>  [73] MatrixGenerics_1.24.0       foreach_1.5.2              
+>  [75] RCurl_1.98-1.20             commonmark_2.0.0           
+>  [77] scales_1.4.0                glue_1.8.1                 
+>  [79] metapod_1.20.0              tools_4.6.1                
+>  [81] BiocIO_1.22.0               locfit_1.5-9.12            
+>  [83] GenomicAlignments_1.48.0    fs_2.1.0                   
+>  [85] XML_3.99-0.25               Cairo_1.7-0                
+>  [87] grid_4.6.1                  tidyr_1.3.2                
+>  [89] edgeR_4.10.5                colorspace_2.1-3           
+>  [91] nlme_3.1-171                consensusRegions_0.99.3    
+>  [93] restfulr_0.0.17             cli_3.6.6                  
+>  [95] textshaping_1.0.5           viridisLite_0.4.3          
+>  [97] S4Arrays_1.12.1             ComplexHeatmap_2.28.0      
+>  [99] gtable_0.3.6                sass_0.4.10                
+> [101] digest_0.6.39               ggrepel_0.9.8              
+> [103] SparseArray_1.12.3          rjson_0.2.23               
+> [105] htmlwidgets_1.6.4           farver_2.1.2               
+> [107] htmltools_0.5.9             pkgdown_2.2.1              
+> [109] lifecycle_1.0.5             httr_1.4.9                 
+> [111] GlobalOptions_0.1.4         statmod_1.5.2              
+> [113] gridtext_0.1.6
 ```

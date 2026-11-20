@@ -1,11 +1,7 @@
 ## ----setup, include = FALSE---------------------------------------------------
 knitr::opts_chunk$set(collapse = TRUE, comment = ">",
-                      warning = FALSE, message = FALSE, fig.align = "center",
+                      message = FALSE, fig.align = "center",
                       dev = "png", dpi = 96, fig.width = 7, fig.height = 4.5)
-
-library(RegionSetDE)
-library(dplyr)
-library(ggplot2)
 
 ## ----installation, eval = FALSE-----------------------------------------------
 # if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -13,6 +9,11 @@ library(ggplot2)
 # }
 # 
 # BiocManager::install(c("RegionSetDE", "consensusRegions"))
+
+## ----load_packages------------------------------------------------------------
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
 
 ## ----load_sheet---------------------------------------------------------------
 sampleSheet <- loadExampleData("peakSheet")
@@ -166,7 +167,7 @@ plotNormComparison(counts,
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts,
+           normalised <- normalizeRegionCounts(counts,
                                          method = method,
                                          verbose = FALSE)
 
@@ -192,13 +193,13 @@ dplyr::bind_rows(normalisationEffect)
 # greenlist <- loadGreenlist("hg38", assay = "cuttag")
 # 
 # counts <- countGreenlist(counts, greenlist = greenlist)
-# counts <- normalizeCounts(counts, method = "greenlist")
+# counts <- normalizeRegionCounts(counts, method = "greenlist")
 
 ## ----greenlist_check, eval = FALSE--------------------------------------------
 # SummarizedExperiment::colData(S4Vectors::metadata(counts)$greenlist)
 
 ## ----manual_factors-----------------------------------------------------------
-backgroundCounts <- normalizeCounts(counts,
+backgroundCounts <- normalizeRegionCounts(counts,
                                     method = "background",
                                     verbose = FALSE)
 
@@ -206,7 +207,7 @@ backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
 round(backgroundFactors, 2)
 
-manualCounts <- normalizeCounts(counts,
+manualCounts <- normalizeRegionCounts(counts,
                                 method = "manual",
                                 scalingFactors = backgroundFactors,
                                 factorType = "division",
@@ -216,7 +217,7 @@ all.equal(countTable(manualCounts, normalized = TRUE, format = "matrix"),
           countTable(backgroundCounts, normalized = TRUE, format = "matrix"))
 
 ## ----normalise----------------------------------------------------------------
-counts <- normalizeCounts(counts, method = "background")
+counts <- normalizeRegionCounts(counts, method = "background")
 
 ## ----scaling_factors----------------------------------------------------------
 sampleInfo(counts)
@@ -352,7 +353,7 @@ tiledCounts <- countReads(consensus,
 
 ## ----tiles_test---------------------------------------------------------------
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
-tiledCounts <- normalizeCounts(tiledCounts, method = "background")
+tiledCounts <- normalizeRegionCounts(tiledCounts, method = "background")
 
 tiledFit <- fitRegions(tiledCounts, design = ~ condition, engine = "edgeR")
 

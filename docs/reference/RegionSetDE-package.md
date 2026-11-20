@@ -38,7 +38,7 @@ thousand promoters are never counted as thirty thousand replicates.
   count over the regions, or over fixed-width tiles of them, from BAM
   files, from bigWig coverage, or from a matrix that already exists.
 
-- [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md):
+- [`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md):
 
   scaling factors from background bins, from the regions themselves, or
   supplied from a spike-in or greenlist.

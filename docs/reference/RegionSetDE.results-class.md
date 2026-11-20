@@ -8,6 +8,24 @@ the `tiles` slot next to the combined ones, since a region that changes
 only over part of its length is easier to read from the tiles than from
 the summary.
 
+## Usage
+
+``` r
+# S4 method for class 'RegionSetDE.results'
+show(object)
+```
+
+## Arguments
+
+- object:
+
+  `RegionSetDE.results` object.
+
+## Value
+
+[`show()`](https://rdrr.io/r/methods/show.html) prints a summary of the
+object to the console.
+
 ## Slots
 
 - `results`:
@@ -74,3 +92,36 @@ the summary.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+fit <- loadExampleData("fit", verbose = FALSE)
+
+results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FALSE)
+results
+#> An object of class 'RegionSetDE.results'
+#>   contrast        : condition: SHR vs BN 
+#>   engine          : edgeR 
+#>   regions         : 1895 
+#>   counts carried  : 4 samples
+#>   thresholds      : FDR < 0.05 | |log2FC| > 0 
+#>   changing regions:
+#>     promoterNonCpG: 1 up, 2 down
+#>     intergenic: 2 up, 3 down
+#>     geneBody: 0 up, 3 down
+#>     promoterCpG: 0 up, 1 down
+head(resultsTable(results), 3)
+#>       region.set    region.id tile.id seqnames start   end width     log2FC
+#> 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744875
+#> 2 promoterNonCpG region_00017      NA    chr12 39449 40448  1000 -1.6911510
+#> 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328365
+#>   average.signal average.signal.BN average.signal.SHR       stat
+#> 1       3.098695          3.154609           3.071096 0.16629041
+#> 2       3.141973          3.512708           2.774385 2.33758830
+#> 3       3.273341          3.149796           3.390540 0.01002874
+#>   stat.distribution df1      df2   p.value       FDR diff.status     regionId
+#> 1                 f   1 18.94543 0.6880013 0.9200864        null region_00012
+#> 2                 f   1 18.73556 0.1429932 0.7997195        null region_00017
+#> 3                 f   1 18.45274 0.9213104 0.9807286        null region_00019
+```

@@ -169,7 +169,7 @@ describe unrelated experiments. Split the object with
 [`splitSamples`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitSamples.md)
 and normalise each piece on its own before coming here. Offsets are read
 from the object rather than recomputed. When
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 produced a matrix of log offsets, in the `offset` assay, that matrix is
 used; otherwise the per-sample `scaling.factor` is expanded into one. In
 both cases
@@ -270,7 +270,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 counts <- filterRegions(counts, verbose = FALSE)
 

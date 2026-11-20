@@ -38,6 +38,18 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 BiocManager::install(c("RegionSetDE", "consensusRegions"))
 ```
 
+The packages used throughout this vignette:
+
+``` r
+
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
+```
+
+The progress messages of the functions are switched off in this document
+to keep it short, and they appear as usual when the code is run.
+
   
 
 ------------------------------------------------------------------------
@@ -169,7 +181,8 @@ per sample, in three ways: a vector, a column of the sample sheet, or
 
 A pipeline that already estimated the fragment length, with
 phantompeakqualtools for instance, can write it in the sheet, and the
-column is then named in the counting:
+column is then named in the counting. The AR libraries are paired-end,
+so the call is shown and not run:
 
 ``` r
 
@@ -320,8 +333,8 @@ greylist <- makeGreylist(sampleSheet)
 S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
->                                                                             file
-> 1 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
+>                                                                               file
+> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
 > 1      5353 0.09351198 0.1836287         2  114488             362     161
 >   greylisted.bp
@@ -344,8 +357,8 @@ greylist <- makeGreylist(sampleSheet, binSize = 10000)
 S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
->                                                                             file
-> 1 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
+>                                                                               file
+> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments      mean      size threshold windows flagged.windows regions
 > 1      5353 0.9131696 0.1003771        15   11724               3       2
 >   greylisted.bp
@@ -461,7 +474,7 @@ nothing more, and the union of the groups is what gets counted.
 ### The rule a peak has to pass
 
 The consensus inside each group is built by
-[*consensusRegions*](https://github.com/sebastian-gregoricchio/consensusRegions),
+[*consensusRegions*](https://bioconductor.org/packages/consensusRegions),
 and it is not a plain overlap count. Every peak is first placed in one
 of three classes by its p-value: stringent below `stringencyThreshold`
 (1e-8), weak up to `weakThreshold` (1e-4), background above it. A peak
@@ -535,7 +548,8 @@ the peak set of every biological sample then enters the consensus of its
 group as one replicate. For an experiment with two conditions, three
 biological replicates and two libraries each, the sheet holds twelve
 rows and a `bioRep` column going from `r1` to `r3` within each
-condition:
+condition. The AR example holds one library per sample, so the call is
+shown and not run:
 
 ``` r
 
@@ -627,26 +641,26 @@ consensusInfo$samples
 > 7 AR_R1881_24h_r1 R1881_24h AR_R1881_24h_r1
 > 8 AR_R1881_24h_r2 R1881_24h AR_R1881_24h_r2
 > 9 AR_R1881_24h_r3 R1881_24h AR_R1881_24h_r3
->                                                                                               peak.file
-> 1      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
->                                                                                        bam
-> 1      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+>                                                                                                 peak.file
+> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+>                                                                                          bam
+> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >   n.peaks n.blacklist n.greylist n.excluded
 > 1      13           0          0          0
 > 2      13           0          0          0
@@ -680,7 +694,8 @@ form the functions of *ChIPseeker* take for several peak sets, so the
 groups can be annotated one by one and compared.
 `seqlevelsStyle = "UCSC"` renames the chromosomes to match a UCSC
 `TxDb`, which would otherwise find no gene next to any region named
-`19`:
+`19`. The call needs *ChIPseeker* and a full `TxDb`, neither of them a
+dependency of this package, so the call is shown and not run:
 
 ``` r
 
@@ -891,21 +906,21 @@ countTable(counts, format = "long") %>%
 > 2          TRUE          FALSE           1            2 AR_DMSO_r1      0
 > 3          TRUE           TRUE           2            6 AR_DMSO_r1      0
 > 4          TRUE           TRUE           2            5 AR_DMSO_r1      2
->                                                                              bam.file
-> 1 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 3 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 4 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
->                                                                                              peaks
-> 1 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 3 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 4 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
->                                                                            input
-> 1 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
+>                                                                                bam.file
+> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+>                                                                                                peaks
+> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+>                                                                              input
+> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r1       TRUE              NA
@@ -1039,7 +1054,7 @@ and changing nothing but the normalisation.
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts,
+           normalised <- normalizeRegionCounts(counts,
                                          method = method,
                                          verbose = FALSE)
 
@@ -1125,14 +1140,14 @@ normalise.
 greenlist <- loadGreenlist("hg38", assay = "cuttag")
 
 counts <- countGreenlist(counts, greenlist = greenlist)
-counts <- normalizeCounts(counts, method = "greenlist")
+counts <- normalizeRegionCounts(counts, method = "greenlist")
 ```
 
 Lists are installed for hg38 CUT&RUN and CUT&Tag and for mm39 CUT&RUN,
 and `availableRegionLists(type = "greenlist")` prints them.
 [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
 stores its counts inside the object, where
-[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 finds them. The fragments are counted once each, at their centre, which
 is how the paper counted them with `multiBamSummary --centerReads`. By
 default the factors are the median of ratios, the size factor DESeq2
@@ -1152,7 +1167,7 @@ construction of the list, 1.5 million reads for human CUT&RUN, 1 million
 for mouse CUT&RUN and 500,000 for human CUT&Tag, raises a warning, and
 so does a library reaching fewer than half as many greenlist regions as
 the median one.
-[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 then says how many regions carry reads in every sample, which is what
 the median of ratios rests on, as it does in DESeq2. The paper sets no
 rule per group of samples; the number of regions shared by every library
@@ -1186,7 +1201,7 @@ matched to the samples by name and may cover samples absent from the
 object.
 
 ``` r
-backgroundCounts <- normalizeCounts(counts,
+backgroundCounts <- normalizeRegionCounts(counts,
                                     method = "background",
                                     verbose = FALSE)
 
@@ -1198,7 +1213,7 @@ round(backgroundFactors, 2)
 >  AR_R1881_4h_r3 AR_R1881_24h_r1 AR_R1881_24h_r2 AR_R1881_24h_r3 
 >            1.22            1.25            0.89            0.87
 
-manualCounts <- normalizeCounts(counts,
+manualCounts <- normalizeRegionCounts(counts,
                                 method = "manual",
                                 scalingFactors = backgroundFactors,
                                 factorType = "division",
@@ -1225,7 +1240,7 @@ number of reads each sample put on the exogenous genome, through
 
 ``` r
 
-counts <- normalizeCounts(counts, method = "background")
+counts <- normalizeRegionCounts(counts, method = "background")
 ```
 
   
@@ -1252,36 +1267,36 @@ sampleInfo(counts)
 > 7 AR_R1881_24h_r1
 > 8 AR_R1881_24h_r2
 > 9 AR_R1881_24h_r3
->                                                                                   bam.file
-> 1      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
->                                                                                                   peaks
-> 1      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
->                                                                            input
-> 1 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 5 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 6 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 7 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 8 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
-> 9 /tmp/RtmpsoWAXU/temp_libpath52e4cead4425/RegionSetDE/extdata/lncapAR/input.bam
+>                                                                                     bam.file
+> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+>                                                                                                     peaks
+> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+>                                                                              input
+> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 5 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 6 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r2       TRUE              NA
@@ -1897,7 +1912,8 @@ every parameter the analysis ran with.
 `~ condition` treats the nine libraries as nine independent samples.
 When the replicates are paired, replicate `r1` of every condition coming
 from the same passage of the cells for instance, the pairing goes into
-the formula:
+the formula. The analysis below keeps `~ condition`, so the call is
+shown and not run:
 
 ``` r
 
@@ -1936,7 +1952,8 @@ does for RNA-seq, and the variation between them then becomes part of
 the variation of the biological sample, which is the unit the dispersion
 has to describe. The simplest route is to merge the BAM files of every
 biological sample, with `samtools merge` for instance, and to count them
-through a second sheet holding one row per biological sample:
+through a second sheet holding one row per biological sample. The
+example has no such sheet, so the call is shown and not run:
 
 ``` r
 
@@ -2002,7 +2019,7 @@ one row per region and the region stays the unit of inference.
 
 ``` r
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
-tiledCounts <- normalizeCounts(tiledCounts, method = "background")
+tiledCounts <- normalizeRegionCounts(tiledCounts, method = "background")
 
 tiledFit <- fitRegions(tiledCounts, design = ~ condition, engine = "edgeR")
 
@@ -2497,6 +2514,10 @@ column of the peak table, so they follow the `FDR` and `log2FC` set
 above and move with
 [`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md).
 
+The over-representation and GSEA calls that follow use *clusterProfiler*
+and *fgsea*, which are not dependencies of this package, so they are
+shown and not run.
+
 ``` r
 
 geneTable <- resultsTable(geneResults)
@@ -2736,61 +2757,61 @@ sessionInfo()
 > [10] BiocStyle_2.40.0    
 > 
 > loaded via a namespace (and not attached):
->   [1] RColorBrewer_1.1-3          rstudioapi_0.19.0          
->   [3] jsonlite_2.0.0              shape_1.4.6.1              
->   [5] magrittr_2.0.5              magick_2.9.1               
->   [7] farver_2.1.2                rmarkdown_2.32             
->   [9] GlobalOptions_0.1.4         fs_2.1.0                   
->  [11] BiocIO_1.22.0               ragg_1.5.2                 
->  [13] vctrs_0.7.3                 Cairo_1.7-0                
->  [15] Rsamtools_2.28.0            RCurl_1.98-1.20            
->  [17] htmltools_0.5.9             S4Arrays_1.12.1            
->  [19] curl_8.0.0                  SparseArray_1.12.3         
->  [21] sass_0.4.10                 consensusRegions_0.99.3    
->  [23] bslib_0.12.0                htmlwidgets_1.6.4          
->  [25] desc_1.4.3                  cachem_1.1.0               
->  [27] GenomicAlignments_1.48.0    commonmark_2.0.0           
->  [29] lifecycle_1.0.5             iterators_1.0.14           
->  [31] pkgconfig_2.0.3             Matrix_1.7-6               
->  [33] R6_2.6.1                    fastmap_1.2.0              
->  [35] MatrixGenerics_1.24.0       clue_0.3-68                
->  [37] digest_0.6.39               colorspace_2.1-3           
->  [39] textshaping_1.0.5           labeling_0.4.3             
->  [41] httr_1.4.9                  abind_1.4-8                
->  [43] mgcv_1.9-4                  compiler_4.6.1             
->  [45] withr_3.0.3                 doParallel_1.0.17          
->  [47] csaw_1.46.0                 S7_0.2.2                   
->  [49] BiocParallel_1.46.0         DelayedArray_0.38.2        
->  [51] rjson_0.2.23                tools_4.6.1                
->  [53] otel_0.2.0                  glue_1.8.1                 
->  [55] restfulr_0.0.17             nlme_3.1-171               
->  [57] gridtext_0.1.6              grid_4.6.1                 
->  [59] cluster_2.1.8.3             gtable_0.3.6               
->  [61] tidyr_1.3.2                 metapod_1.20.0             
->  [63] xml2_1.6.0                  XVector_0.52.0             
->  [65] ggrepel_0.9.8               foreach_1.5.2              
->  [67] pillar_1.11.1               markdown_2.0               
->  [69] stringr_1.6.0               limma_3.68.5               
->  [71] circlize_0.4.18             splines_4.6.1              
->  [73] ggtext_0.2.0                lattice_0.23-1             
->  [75] rtracklayer_1.72.0          tidyselect_1.2.1           
->  [77] ComplexHeatmap_2.28.0       locfit_1.5-9.12            
->  [79] Biostrings_2.80.2           knitr_1.52                 
->  [81] bookdown_0.48               litedown_0.11              
->  [83] edgeR_4.10.5                SummarizedExperiment_1.42.0
->  [85] xfun_0.61                   Biobase_2.72.0             
->  [87] statmod_1.5.2               matrixStats_1.5.0          
->  [89] stringi_1.8.9               UCSC.utils_1.8.0           
->  [91] yaml_2.3.12                 evaluate_1.0.5             
->  [93] codetools_0.2-20            cigarillo_1.2.1            
->  [95] tibble_3.3.1                BiocManager_1.30.27        
->  [97] cli_3.6.6                   systemfonts_1.3.2          
->  [99] jquerylib_0.1.4             dichromat_2.0-1            
-> [101] Rcpp_1.1.2                  GenomeInfoDb_1.48.0        
-> [103] png_0.1-9                   XML_3.99-0.25              
-> [105] parallel_4.6.1              pkgdown_2.2.1              
-> [107] bitops_1.1-0                viridisLite_0.4.3          
-> [109] scales_1.4.0                purrr_1.2.2                
-> [111] crayon_1.5.3                GetoptLong_1.1.1           
-> [113] rlang_1.3.0
+>   [1] bitops_1.1-0                rlang_1.3.0                
+>   [3] magrittr_2.0.5              clue_0.3-68                
+>   [5] GetoptLong_1.1.1            otel_0.2.0                 
+>   [7] matrixStats_1.5.0           compiler_4.6.1             
+>   [9] mgcv_1.9-4                  png_0.1-9                  
+>  [11] systemfonts_1.3.2           vctrs_0.7.3                
+>  [13] stringr_1.6.0               pkgconfig_2.0.3            
+>  [15] shape_1.4.6.1               crayon_1.5.3               
+>  [17] fastmap_1.2.0               magick_2.9.1               
+>  [19] XVector_0.52.0              labeling_0.4.3             
+>  [21] Rsamtools_2.28.0            rmarkdown_2.32             
+>  [23] markdown_2.0                UCSC.utils_1.8.0           
+>  [25] ragg_1.5.2                  purrr_1.2.2                
+>  [27] xfun_0.61                   cachem_1.1.0               
+>  [29] litedown_0.11               cigarillo_1.2.1            
+>  [31] GenomeInfoDb_1.48.0         jsonlite_2.0.0             
+>  [33] DelayedArray_0.38.2         BiocParallel_1.46.0        
+>  [35] parallel_4.6.1              cluster_2.1.8.3            
+>  [37] R6_2.6.1                    stringi_1.8.9              
+>  [39] bslib_0.12.0                RColorBrewer_1.1-3         
+>  [41] limma_3.68.5                rtracklayer_1.72.0         
+>  [43] jquerylib_0.1.4             Rcpp_1.1.2                 
+>  [45] bookdown_0.48               SummarizedExperiment_1.42.0
+>  [47] iterators_1.0.14            knitr_1.52                 
+>  [49] splines_4.6.1               Matrix_1.7-6               
+>  [51] tidyselect_1.2.1            rstudioapi_0.19.0          
+>  [53] dichromat_2.0-1             abind_1.4-8                
+>  [55] yaml_2.3.12                 ggtext_0.2.0               
+>  [57] doParallel_1.0.17           codetools_0.2-20           
+>  [59] curl_8.0.0                  lattice_0.23-1             
+>  [61] tibble_3.3.1                withr_3.0.3                
+>  [63] Biobase_2.72.0              S7_0.2.2                   
+>  [65] csaw_1.46.0                 evaluate_1.0.5             
+>  [67] desc_1.4.3                  xml2_1.6.0                 
+>  [69] circlize_0.4.18             Biostrings_2.80.2          
+>  [71] pillar_1.11.1               BiocManager_1.30.27        
+>  [73] MatrixGenerics_1.24.0       foreach_1.5.2              
+>  [75] RCurl_1.98-1.20             commonmark_2.0.0           
+>  [77] scales_1.4.0                glue_1.8.1                 
+>  [79] metapod_1.20.0              tools_4.6.1                
+>  [81] BiocIO_1.22.0               locfit_1.5-9.12            
+>  [83] GenomicAlignments_1.48.0    fs_2.1.0                   
+>  [85] XML_3.99-0.25               Cairo_1.7-0                
+>  [87] grid_4.6.1                  tidyr_1.3.2                
+>  [89] edgeR_4.10.5                colorspace_2.1-3           
+>  [91] nlme_3.1-171                consensusRegions_0.99.3    
+>  [93] restfulr_0.0.17             cli_3.6.6                  
+>  [95] textshaping_1.0.5           viridisLite_0.4.3          
+>  [97] S4Arrays_1.12.1             ComplexHeatmap_2.28.0      
+>  [99] gtable_0.3.6                sass_0.4.10                
+> [101] digest_0.6.39               ggrepel_0.9.8              
+> [103] SparseArray_1.12.3          rjson_0.2.23               
+> [105] htmlwidgets_1.6.4           farver_2.1.2               
+> [107] htmltools_0.5.9             pkgdown_2.2.1              
+> [109] lifecycle_1.0.5             httr_1.4.9                 
+> [111] GlobalOptions_0.1.4         statmod_1.5.2              
+> [113] gridtext_0.1.6
 ```

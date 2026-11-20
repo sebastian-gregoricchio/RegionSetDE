@@ -42,7 +42,24 @@
     <p>S4 class storing a model fitted on a <code>RegionSetDE.counts</code> object. The object returned by the engine is kept as it is inside the <code>fit</code> slot, so that any function of <code>edgeR</code>, <code>limma</code>, <code>variancePartition</code> or <code>DESeq2</code> remains usable on it, while the design, the offsets and the samples that produced it travel with it. The counts are carried along as well: the per-set tests read the fit and never the counts directly, which is what guarantees that the two levels share the same dispersion and the same normalisation.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S4 method for class 'RegionSetDE.fit'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/methods/show.html" class="external-link">show</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+    </div>
 
+    <div class="section level2">
+    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
+
+
+<dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
+<dd><p><code>RegionSetDE.fit</code> object.</p></dd>
+
+</dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p><code><a href="https://rdrr.io/r/methods/show.html" class="external-link">show()</a></code> prints a summary of the object to the console.</p>
+    </div>
     <div class="section level2">
     <h2 id="slots">Slots<a class="anchor" aria-label="anchor" href="#slots"></a></h2>
 
@@ -93,6 +110,23 @@
     <p>Sebastian Gregoricchio</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> calcNormFactors has been renamed to normLibSizes</span>
+<span class="r-in"><span><span class="va">fit</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.fit'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rows            : 1895 (region level) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   samples         : 4 (lv-H3K4me3-BN-female-bio1-tech1, lv-H3K4me3-BN-male-bio2-tech1, lv-H3K4me3-SHR-male-bio2-tech1, lv-H3K4me3-SHR-male-bio3-tech1) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   coefficients    : (Intercept), conditionSHR </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   set universe    : otherSets (matched on width and abundance) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   common disp.    : 0.139 (BCV 0.373)  </span>
+<span class="r-in"><span><span class="fu"><a href="fitAccessors.html">fitEngine</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "edgeR"</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

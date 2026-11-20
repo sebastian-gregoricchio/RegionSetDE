@@ -1,7 +1,6 @@
 # RegionSetDE
 
-Differential analysis of chromatin signal over user-defined genomic
-region sets, without peak calling
+Differential analysis of chromatin signal over genomic region sets
 
 ## Introduction
 
@@ -75,10 +74,10 @@ visible instead of being absorbed into a new set of peak boundaries.
   respond, half of them held back so
   [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   can check the assumption rather than confirm it, and
-  `normalizeCounts(backgroundHoldout = )` keeps those rows out of the
-  normalisation as well. What this measures is how two libraries differ,
-  not how two animals or two donors would. It is conditional on the
-  null-region assumption and it is not a substitute for biological
+  `normalizeRegionCounts(backgroundHoldout = )` keeps those rows out of
+  the normalisation as well. What this measures is how two libraries
+  differ, not how two animals or two donors would. It is conditional on
+  the null-region assumption and it is not a substitute for biological
   replication.
 
   
@@ -169,7 +168,7 @@ counts <- countReads(regions,
 counts <- countBackground(counts, binSize = 10000, BPPARAM = 4)
 
 # Normalisation and filtering
-counts <- normalizeCounts(counts, method = "background")
+counts <- normalizeRegionCounts(counts, method = "background")
 counts <- filterRegions(counts, method = "background", foldChange = 2)
 
 # One fit, two levels of testing
@@ -217,7 +216,7 @@ plotVolcano(results)
 | What are the raw and normalised counts of each region? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) |
 | Do the replicates agree, and do the conditions separate? | [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md), [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md) |
 | Do the inputs flag artefact regions? | [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md), then [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) |
-| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeCounts(method = "greenlist")` |
+| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeRegionCounts(method = "greenlist")` |
 | Where is the blacklist for my assembly, T2T included? | [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md), then [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md) |
 | Which peaks are shared between the groups? | [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), then [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md) |
 | Did the condition move the shared peaks, or gain and lose whole sites? | [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md), then [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md) |
@@ -249,9 +248,9 @@ a bounded near-zero interval is what the argument needs.
 **Whether a global shift is technical or biological cannot be decided
 from endogenous data.** A mark genuinely 1.5x higher everywhere and an
 IP that worked 1.5x better look the same in the reads.
-`normalizeCounts(method = "background")` assumes the background bins are
-invariant enough to carry the technical scaling, which is a reasonable
-assumption and still an assumption.
+`normalizeRegionCounts(method = "background")` assumes the background
+bins are invariant enough to carry the technical scaling, which is a
+reasonable assumption and still an assumption.
 [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
 shows how far the conclusions move when it is changed, which is a
 different and answerable question. Deciding the original one needs an

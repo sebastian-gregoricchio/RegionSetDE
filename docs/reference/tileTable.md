@@ -37,7 +37,7 @@ sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
 tiledCounts <- countReads(peakRegions, sampleSheet = sampleSheet, tileWidth = 100, verbose = FALSE)
-tiledCounts <- normalizeCounts(tiledCounts, method = "TMM", verbose = FALSE)
+tiledCounts <- normalizeRegionCounts(tiledCounts, method = "TMM", verbose = FALSE)
 tiledFit <- fitRegions(tiledCounts, design = ~condition, verbose = FALSE)
 
 # The tiles are combined into regions, and their own statistics sit behind the combined ones

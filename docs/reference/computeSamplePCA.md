@@ -76,7 +76,7 @@ region sets, the normalisation and the number of regions used.
 The values are log2 counts per million, with a prior count of 2 added to
 every count and, when `useOffsets = TRUE`, the scaling factors or the
 offsets stored by
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 applied. The regions are centred and not scaled, so a region weighs as
 much as it varies. An object that was never normalised is scaled by the
 library sizes whatever `useOffsets` says, and a message reports it. The
@@ -97,7 +97,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 samplePCA <- computeSamplePCA(counts, topRegions = 1000)

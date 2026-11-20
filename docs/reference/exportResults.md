@@ -9,7 +9,7 @@ parameter the analysis was run with as a flat file next to them.
 ``` r
 exportResults(
   results,
-  path = ".",
+  path,
   prefix = NULL,
   contrast = NULL,
   set = NULL,
@@ -34,7 +34,9 @@ exportResults(
 - path:
 
   String with the directory the files are written to, created when it
-  does not exist. Default: `"."`.
+  does not exist. There is no default, so nothing is written anywhere
+  the user did not name,
+  [`tempdir()`](https://rdrr.io/r/base/tempfile.html) for instance.
 
 - prefix:
 

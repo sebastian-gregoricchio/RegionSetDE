@@ -60,7 +60,7 @@ sampleInfo(counts)
 #> 3       SHR   male                bio2      FALSE       337600
 #> 4       SHR   male                bio3      FALSE       780222
 
-counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 sampleInfo(counts, columns = c("sample", "condition", "library.size", "scaling.factor"))
 #>                            sample condition library.size scaling.factor
 #> 1 lv-H3K4me3-BN-female-bio1-tech1        BN       386378      0.7502489

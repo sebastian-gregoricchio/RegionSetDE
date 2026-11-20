@@ -55,7 +55,7 @@ coefficients readable, and there is no direction left to get wrong.
 
 [`asDESeqDataSet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/asDESeqDataSet.md),
 [`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md),
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 
 ## Author
 
@@ -65,7 +65,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 dgeList <- asDGEList(counts)

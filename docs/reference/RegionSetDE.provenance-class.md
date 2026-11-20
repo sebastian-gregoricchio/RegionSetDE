@@ -51,3 +51,21 @@ every step of the analysis. Not meant to be instantiated directly.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+counts <- loadExampleData("counts", verbose = FALSE)
+
+# Every object of the package carries the provenance slots
+is(counts, "RegionSetDE.provenance")
+#> [1] TRUE
+genomeAssembly(counts)
+#> [1] "rn4"
+filteringLog(counts)
+#>        step     region.set n.before n.after n.removed
+#> 1 blacklist promoterNonCpG      498     464        34
+#> 2 blacklist     intergenic     1500    1112       388
+#> 3 blacklist       geneBody     1500    1370       130
+#> 4 blacklist    promoterCpG      303     278        25
+```

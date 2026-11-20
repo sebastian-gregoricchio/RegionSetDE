@@ -88,7 +88,7 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-if (requireNamespace("consensusRegions", quietly = TRUE) & requireNamespace("ComplexHeatmap", quietly = TRUE)) {
+if (requireNamespace("consensusRegions", quietly = TRUE) && requireNamespace("ComplexHeatmap", quietly = TRUE)) {
     peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
         pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE
     )

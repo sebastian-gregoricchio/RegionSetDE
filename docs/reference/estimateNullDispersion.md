@@ -69,7 +69,7 @@ estimateNullDispersion(
   out of the estimate, so that
   [`checkNullCalibration`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   has rows the dispersion has not already been fitted to. Ignored when
-  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+  [`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
   has already split the background bins, whose split is reused instead.
   Default: `0.5`.
 
@@ -132,10 +132,10 @@ depends on what came before it. Held out here alone, the rows are
 independent of the dispersion but not of the normalisation, since the
 background bins have already been through
 [`csaw::normFactors`](https://rdrr.io/pkg/csaw/man/normFactors.html) in
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md):
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md):
 they are dispersion holdouts and `holdout.type` says so. Splitting the
-bins earlier, with `normalizeCounts(backgroundHoldout = )`, keeps the
-same rows out of both steps, and that split is picked up here rather
+bins earlier, with `normalizeRegionCounts(backgroundHoldout = )`, keeps
+the same rows out of both steps, and that split is picked up here rather
 than a second one being drawn on top of it.
 
 ## See also
@@ -152,7 +152,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 # The background bins cover the genome and carry no strain effect

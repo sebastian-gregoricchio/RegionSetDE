@@ -228,7 +228,7 @@ covers those tiles alone.
 
 ## See also
 
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`resultCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultCounts.md),
 [`fitCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitCounts.md)
 
@@ -265,7 +265,7 @@ head(countTable(counts), 3)
 #> promoterNonCpG|region_00005                              1
 
 # Normalised values in long format, with the sample annotation attached for ggplot2
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 longTable <- countTable(counts, normalized = TRUE, format = "long")
 head(longTable, 3)

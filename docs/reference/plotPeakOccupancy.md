@@ -138,7 +138,7 @@ if (requireNamespace("consensusRegions", quietly = TRUE)) {
 
     counts <- countReads(consensus, sampleSheet = sampleSheet, verbose = FALSE)
     counts <- countBackground(counts, binSize = 10000, verbose = FALSE)
-    counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+    counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 
     fit <- fitRegions(counts, design = ~condition, verbose = FALSE)
     results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)

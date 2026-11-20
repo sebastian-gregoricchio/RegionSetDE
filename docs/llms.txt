@@ -1,7 +1,6 @@
 # RegionSetDE
 
-Differential analysis of chromatin signal over user-defined genomic
-region sets, without peak calling
+Differential analysis of chromatin signal over genomic region sets
 
 ## Introduction
 
@@ -75,10 +74,10 @@ visible instead of being absorbed into a new set of peak boundaries.
   respond, half of them held back so
   [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   can check the assumption rather than confirm it, and
-  `normalizeCounts(backgroundHoldout = )` keeps those rows out of the
-  normalisation as well. What this measures is how two libraries differ,
-  not how two animals or two donors would. It is conditional on the
-  null-region assumption and it is not a substitute for biological
+  `normalizeRegionCounts(backgroundHoldout = )` keeps those rows out of
+  the normalisation as well. What this measures is how two libraries
+  differ, not how two animals or two donors would. It is conditional on
+  the null-region assumption and it is not a substitute for biological
   replication.
 
   
@@ -169,7 +168,7 @@ counts <- countReads(regions,
 counts <- countBackground(counts, binSize = 10000, BPPARAM = 4)
 
 # Normalisation and filtering
-counts <- normalizeCounts(counts, method = "background")
+counts <- normalizeRegionCounts(counts, method = "background")
 counts <- filterRegions(counts, method = "background", foldChange = 2)
 
 # One fit, two levels of testing
@@ -217,7 +216,7 @@ plotVolcano(results)
 | What are the raw and normalised counts of each region? | [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md) |
 | Do the replicates agree, and do the conditions separate? | [`plotRegionPCA()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegionPCA.md), [`plotSampleCorrelation()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotSampleCorrelation.md) |
 | Do the inputs flag artefact regions? | [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md), then [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) |
-| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeCounts(method = "greenlist")` |
+| How do I normalise CUT&RUN or CUT&Tag without a spike-in? | [`loadGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md), [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md), then `normalizeRegionCounts(method = "greenlist")` |
 | Where is the blacklist for my assembly, T2T included? | [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md), then [`loadBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadBlacklist.md) |
 | Which peaks are shared between the groups? | [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), then [`plotPeakUpset()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakUpset.md) |
 | Did the condition move the shared peaks, or gain and lose whole sites? | [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md), then [`plotPeakOccupancy()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotPeakOccupancy.md) |
@@ -249,9 +248,9 @@ a bounded near-zero interval is what the argument needs.
 **Whether a global shift is technical or biological cannot be decided
 from endogenous data.** A mark genuinely 1.5x higher everywhere and an
 IP that worked 1.5x better look the same in the reads.
-`normalizeCounts(method = "background")` assumes the background bins are
-invariant enough to carry the technical scaling, which is a reasonable
-assumption and still an assumption.
+`normalizeRegionCounts(method = "background")` assumes the background
+bins are invariant enough to carry the technical scaling, which is a
+reasonable assumption and still an assumption.
 [`plotNormComparison()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotNormComparison.md)
 shows how far the conclusions move when it is changed, which is a
 different and answerable question. Deciding the original one needs an
@@ -305,7 +304,7 @@ This package is under a GNU General Public License (version 3).
 
 ## All functions
 
-- [`RegionSetDE-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-class.md)
+- [`show(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-class.md)
   : RegionSetDE class
 - [`RegionSetDE-exampleData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-exampleData.md)
   : RegionSetDE example data
@@ -315,23 +314,23 @@ This package is under a GNU General Public License (version 3).
   sets
 - [`RegionSetDE.counts-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.counts-class.md)
   : RegionSetDE.counts class
-- [`RegionSetDE.fit-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.fit-class.md)
+- [`show(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.fit-class.md)
   : RegionSetDE.fit class
-- [`RegionSetDE.geneResults-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.geneResults-class.md)
+- [`show(`*`<RegionSetDE.geneResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.geneResults-class.md)
   : RegionSetDE.geneResults class
 - [`RegionSetDE.provenance-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.provenance-class.md)
   : RegionSetDE.provenance class
-- [`RegionSetDE.results-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.results-class.md)
+- [`show(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.results-class.md)
   : RegionSetDE.results class
-- [`RegionSetDE.resultsList-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.resultsList-class.md)
+- [`show(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.resultsList-class.md)
   : RegionSetDE.resultsList class
-- [`RegionSetDE.setResults-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResults-class.md)
+- [`show(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResults-class.md)
   : RegionSetDE.setResults class
-- [`RegionSetDE.setResultsList-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResultsList-class.md)
+- [`show(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setResultsList-class.md)
   : RegionSetDE.setResultsList class
-- [`RegionSetDE.setScores-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setScores-class.md)
+- [`show(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.setScores-class.md)
   : RegionSetDE.setScores class
-- [`RegionSetDE.universe-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.md)
+- [`show(`*`<RegionSetDE.universe>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.universe-class.md)
   : RegionSetDE.universe class
 - [`aggregateToGenes()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/aggregateToGenes.md)
   : aggregateToGenes
@@ -454,8 +453,8 @@ This package is under a GNU General Public License (version 3).
   : makeGreylist
 - [`makeSetUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeSetUniverse.md)
   : makeSetUniverse
-- [`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
-  : normalizeCounts
+- [`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
+  : normalizeRegionCounts
 - [`pairwiseContrasts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/pairwiseContrasts.md)
   : pairwiseContrasts
 - [`peakOccupancyTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/peakOccupancyTable.md)
@@ -543,24 +542,6 @@ This package is under a GNU General Public License (version 3).
   [`setTestType()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
   [`setTestMethods()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
   : Set level result accessors
-- [`show(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE-method.md)
-  : show method for RegionSetDE objects
-- [`show(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.fit-method.md)
-  : show method for RegionSetDE.fit
-- [`show(`*`<RegionSetDE.geneResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.geneResults-method.md)
-  : show method for RegionSetDE.geneResults
-- [`show(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.results-method.md)
-  : show method for RegionSetDE.results
-- [`show(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.resultsList-method.md)
-  : show method for RegionSetDE.resultsList
-- [`show(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResults-method.md)
-  : show method for RegionSetDE.setResults
-- [`show(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setResultsList-method.md)
-  : show method for RegionSetDE.setResultsList
-- [`show(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.setScores-method.md)
-  : show method for RegionSetDE.setScores
-- [`show(`*`<RegionSetDE.universe>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.universe-method.md)
-  : show method for RegionSetDE.universe
 - [`splitLoadRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.md)
   : splitLoadRegions
 - [`splitSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitSamples.md)

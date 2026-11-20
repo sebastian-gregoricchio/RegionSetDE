@@ -42,7 +42,24 @@
     <p>S4 class collecting a group of genomic region sets together with the filters applied to them. The regions are stored as a <code>GRangesList</code>, so that any Bioconductor operation remains available through the <code>regions</code> slot.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S4 method for class 'RegionSetDE'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/methods/show.html" class="external-link">show</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+    </div>
 
+    <div class="section level2">
+    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
+
+
+<dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
+<dd><p>A <code>RegionSetDE</code> object.</p></dd>
+
+</dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p><code><a href="https://rdrr.io/r/methods/show.html" class="external-link">show()</a></code> prints a summary of the object to the console.</p>
+    </div>
     <div class="section level2">
     <h2 id="slots">Slots<a class="anchor" aria-label="anchor" href="#slots"></a></h2>
 
@@ -61,6 +78,32 @@
     <p>Sebastian Gregoricchio</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">regionTable</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"regions"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadRegions.html">loadRegions</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/split.html" class="external-link">split</a></span><span class="op">(</span><span class="va">regionTable</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seqnames"</span>, <span class="st">"start"</span>, <span class="st">"end"</span><span class="op">)</span><span class="op">]</span>, <span class="va">regionTable</span><span class="op">$</span><span class="va">setName</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    genomeAssembly <span class="op">=</span> <span class="st">"rn4"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">regions</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ### RegionSetDE object ###</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Genome assembly:   rn4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Chromosome style:  UCSC</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Region sets:       4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   geneBody        1,500 regions  (1,500,000 bp)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   intergenic      1,500 regions  (1,500,000 bp)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterCpG     303 regions  (303,000 bp)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   promoterNonCpG  498 regions  (498,000 bp)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Blacklist:  not applied</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Greylist:   not applied</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Whitelist:  not applied</span>
+<span class="r-in"><span><span class="fu"><a href="regionSetNames.html">regionSetNames</a></span><span class="op">(</span><span class="va">regions</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "geneBody"       "intergenic"     "promoterCpG"    "promoterNonCpG"</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

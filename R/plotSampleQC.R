@@ -911,7 +911,6 @@ plotSampleCorrelation <-
 #'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom ComplexHeatmap Heatmap HeatmapAnnotation rowAnnotation
 #' @importFrom grid gpar unit
 #'
 #' @noRd

@@ -704,7 +704,6 @@ loadConsensusPeaks <-
 #' @importFrom GenomicRanges GRanges
 #' @importFrom IRanges reduce
 #' @importFrom S4Vectors mcols
-#' @importFrom consensusRegions consensusRanges
 #' @importFrom dplyr filter
 #' @importFrom methods is
 #' @importFrom utils packageVersion

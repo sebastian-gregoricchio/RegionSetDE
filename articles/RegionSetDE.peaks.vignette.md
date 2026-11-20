@@ -511,6 +511,68 @@ around *p* \< 1e-3, and on calls made that way the thresholds matter.
 
   
 
+### Technical replicates
+
+The nine libraries here are nine biological samples. Many experiments
+add a level below that, two immunoprecipitations of the same chromatin
+or two libraries built from one of them, and those are technical
+replicates of a single biological sample. Entered in the sheet as extra
+rows of their group, they would be taken as independent evidence, and
+they are not: the two libraries of one culture agree with each other
+more than two cultures ever do. A peak found in both libraries of one
+sample, and in no other sample, would then meet the default requirement
+of one supporting replicate, and the combined p-value would count that
+sample twice.
+
+`technicalBy` names the column of the sheet telling which biological
+sample every library comes from. The libraries of each biological sample
+are joined first, keeping by default the peaks found in all of them, and
+the peak set of every biological sample then enters the consensus of its
+group as one replicate. For an experiment with two conditions, three
+biological replicates and two libraries each, the sheet holds twelve
+rows and a `bioRep` column going from `r1` to `r3` within each
+condition:
+
+``` r
+
+technicalConsensus <- loadConsensusPeaks(technicalSheet,
+                                         groupBy = "condition",
+                                         technicalBy = "bioRep",
+                                         blacklist = blacklist,
+                                         greylist = greylist,
+                                         seqlevelsStyle = "Ensembl")
+```
+
+A label repeated across the groups, `r1` in every condition, names a
+different sample in each of them, so the biological samples are called
+after both, `DMSO_r1` and so on. Their peak sets carry the combined
+p-value of the libraries, which with the Stouffer method comes close to
+what the peak caller would report on the pooled reads, and the summit of
+the strongest library peak, so that `recentre` still has a summit to
+work from. `technicalArguments` changes the rule of the joining step and
+of nothing else, for instance
+`list(replicateType = "biological", minReplicates = 2)` to keep the
+peaks found in two libraries out of three. The calibration, when asked
+for, runs on the consensus of the groups only.
+
+`consensusData()$technical` keeps the consensus of every biological
+sample, and the `biological` column of `consensusData()$samples` tells
+which sample each library went into. The regions gain `peak.biological`,
+the number of biological samples with a peak on them, next to
+`peak.samples`, which still counts the libraries.
+
+One case does not belong here. A library sequenced twice is one library
+split over two runs rather than two observations of the
+immunoprecipitation: its BAM files are better merged and the peaks
+called once on them, since joining two calls made at half the depth
+throws away the weak sites. `technicalBy` is for libraries built
+separately.
+
+Counting and testing such an experiment are described [with the
+design](#paired).
+
+  
+
 ### Chromosome names
 
 `seqlevelsStyle` is worth setting deliberately. The peak files here name
@@ -551,16 +613,16 @@ human chr1 share a name and nothing else.
 consensusInfo <- consensusData(consensus)
 
 consensusInfo$samples
->            sample     group
-> 1      AR_DMSO_r1      DMSO
-> 2      AR_DMSO_r2      DMSO
-> 3      AR_DMSO_r3      DMSO
-> 4  AR_R1881_4h_r1  R1881_4h
-> 5  AR_R1881_4h_r2  R1881_4h
-> 6  AR_R1881_4h_r3  R1881_4h
-> 7 AR_R1881_24h_r1 R1881_24h
-> 8 AR_R1881_24h_r2 R1881_24h
-> 9 AR_R1881_24h_r3 R1881_24h
+>            sample     group      biological
+> 1      AR_DMSO_r1      DMSO      AR_DMSO_r1
+> 2      AR_DMSO_r2      DMSO      AR_DMSO_r2
+> 3      AR_DMSO_r3      DMSO      AR_DMSO_r3
+> 4  AR_R1881_4h_r1  R1881_4h  AR_R1881_4h_r1
+> 5  AR_R1881_4h_r2  R1881_4h  AR_R1881_4h_r2
+> 6  AR_R1881_4h_r3  R1881_4h  AR_R1881_4h_r3
+> 7 AR_R1881_24h_r1 R1881_24h AR_R1881_24h_r1
+> 8 AR_R1881_24h_r2 R1881_24h AR_R1881_24h_r2
+> 9 AR_R1881_24h_r3 R1881_24h AR_R1881_24h_r3
 >                                                                                      peak.file
 > 1      /home/runner/work/_temp/Library/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
 > 2      /home/runner/work/_temp/Library/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
@@ -1823,6 +1885,71 @@ exportResults(results,
 One table and one BED file per contrast, the BED coloured by direction
 so it can be dropped into a genome browser as it is, and a record of
 every parameter the analysis ran with.
+
+  
+
+### Paired samples and technical replicates
+
+`~ condition` treats the nine libraries as nine independent samples.
+When the replicates are paired, replicate `r1` of every condition coming
+from the same passage of the cells for instance, the pairing goes into
+the formula:
+
+``` r
+
+pairedFit <- fitRegions(counts,
+                        design = ~ replicate + condition,
+                        engine = "edgeR")
+
+pairedResults <- testRegions(pairedFit,
+                             contrast = c("condition", "R1881_24h", "DMSO"))
+```
+
+The contrast is written as before. Its three-element form averages the
+rows of the design within each of the two groups, and with every
+replicate present in every condition the replicate terms cancel, which
+leaves the effect of the treatment measured within the pairs. A missing
+sample breaks that balance, and the coefficient is then better named
+directly, `contrast = "conditionR1881_24h"`, among the names
+`colnames(designMatrix(pairedFit))` lists. The pairing costs one
+coefficient per replicate beyond the first, two residual degrees of
+freedom here out of six. It is worth paying when the samples of one
+replicate share something the others do not, a batch of cells or a day
+of processing, and
+`plotRegionPCA(counts, colourBy = "condition", shapeBy = "replicate")`
+shows whether they do. The `replicate` column has to hold labels, `r1`
+to `r3` as in this sheet: the numbers 1 to 3 would enter the formula as
+a slope.
+
+Technical replicates do not enter the model as samples. Fitted one by
+one they would hand the model more residual degrees of freedom than the
+experiment has, ten instead of four for twelve libraries of six
+biological samples under `~ condition`, and p-values smaller than the
+data support. Their counts are added up into one column per biological
+sample instead, as
+[`edgeR::sumTechReps()`](https://rdrr.io/pkg/edgeR/man/sumTechReps.html)
+does for RNA-seq, and the variation between them then becomes part of
+the variation of the biological sample, which is the unit the dispersion
+has to describe. The simplest route is to merge the BAM files of every
+biological sample, with `samtools merge` for instance, and to count them
+through a second sheet holding one row per biological sample:
+
+``` r
+
+# biologicalSheet: one row per biological sample, the merged BAM files in 'bam'
+technicalCounts <- countReads(technicalConsensus,
+                              sampleSheet = biologicalSheet)
+```
+
+The consensus is still the one built from the twelve libraries
+[above](#technical); only the counting moves to the six biological
+samples. Keeping the libraries apart in the model is possible as well,
+through `engine = "voom"` with `block` naming a column that is unique to
+every biological sample, or through `engine = "dream"` with a random
+term such as `random = ~ (1|biologicalSample)`. Both estimate how
+closely the libraries of one sample agree, and with three biological
+samples per condition there is little to estimate it from, so the sum is
+the safer choice.
 
   
 

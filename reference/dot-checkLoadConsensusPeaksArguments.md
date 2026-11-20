@@ -10,6 +10,8 @@ and brings them to the form the rest of the function works with.
 .checkLoadConsensusPeaksArguments(
   sampleSheet,
   groupBy,
+  technicalBy,
+  technicalArguments,
   regionMode,
   unassignedSet,
   seed,
@@ -44,6 +46,16 @@ and brings them to the form the rest of the function works with.
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
 
 - groupBy:
+
+  See
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+
+- technicalBy:
+
+  See
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+
+- technicalArguments:
 
   See
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
@@ -166,7 +178,9 @@ and brings them to the form the rest of the function works with.
 ## Value
 
 A list with the arguments as checked and completed:
-`consensusArguments`, `regionMode`, `sampleSheet`.
+`consensusArguments`, `technicalArguments`, the arguments of the step
+joining the technical replicates (`NULL` without `technicalBy`),
+`regionMode`, `sampleSheet`.
 
 ## Author
 

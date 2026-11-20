@@ -6,7 +6,7 @@ how many samples have a peak on it.
 ## Usage
 
 ``` r
-.peakOccupancy(regionRanges, groupConsensus, peakList)
+.peakOccupancy(regionRanges, groupConsensus, peakList, biologicalPeaks = NULL)
 ```
 
 ## Arguments
@@ -23,10 +23,16 @@ how many samples have a peak on it.
 
   Named `GRangesList` with the peaks of every sample.
 
+- biologicalPeaks:
+
+  Named `GRangesList` with the peak set of every biological sample, or
+  `NULL` when every library is one. Default: `NULL`.
+
 ## Value
 
 A `DataFrame` with one logical `peak.<group>` column per group,
-`peak.groups` and `peak.samples`.
+`peak.groups` and `peak.samples`, and `peak.biological` when
+`biologicalPeaks` is given.
 
 ## Author
 

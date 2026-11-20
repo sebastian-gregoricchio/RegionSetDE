@@ -44,7 +44,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.peakOccupancy</span><span class="op">(</span><span class="va">regionRanges</span>, <span class="va">groupConsensus</span>, <span class="va">peakList</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.peakOccupancy</span><span class="op">(</span><span class="va">regionRanges</span>, <span class="va">groupConsensus</span>, <span class="va">peakList</span>, biologicalPeaks <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -62,10 +62,14 @@
 <dt id="arg-peaklist">peakList<a class="anchor" aria-label="anchor" href="#arg-peaklist"></a></dt>
 <dd><p>Named <code>GRangesList</code> with the peaks of every sample.</p></dd>
 
+
+<dt id="arg-biologicalpeaks">biologicalPeaks<a class="anchor" aria-label="anchor" href="#arg-biologicalpeaks"></a></dt>
+<dd><p>Named <code>GRangesList</code> with the peak set of every biological sample, or <code>NULL</code> when every library is one. Default: <code>NULL</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>DataFrame</code> with one logical <code>peak.&lt;group&gt;</code> column per group, <code>peak.groups</code> and <code>peak.samples</code>.</p>
+    <p>A <code>DataFrame</code> with one logical <code>peak.&lt;group&gt;</code> column per group, <code>peak.groups</code> and <code>peak.samples</code>, and <code>peak.biological</code> when <code>biologicalPeaks</code> is given.</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

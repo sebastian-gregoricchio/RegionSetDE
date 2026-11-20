@@ -119,8 +119,10 @@ Sebastian Gregoricchio
 ``` r
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
-regionList <- split(regionTable[, c("seqnames", "start", "end")],
-                    regionTable$setName)
+regionList <- split(
+    regionTable[, c("seqnames", "start", "end")],
+    regionTable$setName
+)
 
 regions <- loadRegions(regionList, genomeAssembly = "rn4", verbose = FALSE)
 regions
@@ -140,13 +142,15 @@ regions
 
 # Files and GRanges can be mixed, and an unnamed file takes the name of the file
 peakFiles <- list.files(system.file("extdata", "lncapAR", package = "RegionSetDE"),
-                        pattern = "R1881_24h_r[12]_peaks\\.narrowPeak$", full.names = TRUE)
+    pattern = "R1881_24h_r[12]_peaks\\.narrowPeak$", full.names = TRUE
+)
 
 firstPeaks <- rtracklayer::import(peakFiles[1], format = "narrowPeak")
 
 regions <- loadRegions(list(firstReplicate = firstPeaks, peakFiles[2]),
-                       genomeAssembly = "hg38",
-                       verbose = FALSE)
+    genomeAssembly = "hg38",
+    verbose = FALSE
+)
 regionSetNames(regions)
 #> [1] "firstReplicate"        "AR_R1881_24h_r2_peaks"
 ```

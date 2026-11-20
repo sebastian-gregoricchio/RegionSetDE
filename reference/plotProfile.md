@@ -20,7 +20,25 @@ plotProfile(
   fontSize = 9,
   baseSize = 12,
   legendPosition = "right",
-  ...
+  regions = NULL,
+  contrast = NULL,
+  set = NULL,
+  samples = NULL,
+  direction = "both",
+  FDR = NULL,
+  log2FC = NULL,
+  maxRegions = 1000,
+  blacklist = NULL,
+  whitelist = NULL,
+  groupBy = NULL,
+  signal = "auto",
+  signalFiles = NULL,
+  distance = 1500,
+  binWidth = 50,
+  centre = "summit",
+  useOffsets = TRUE,
+  BPPARAM = NULL,
+  verbose = TRUE
 )
 ```
 
@@ -78,15 +96,130 @@ plotProfile(
   String with the position of the legend of the `"lines"` style.
   Default: `"right"`.
 
-- ...:
+- regions:
 
-  Arguments passed to
-  [`computeProfiles`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
-  when `object` is not already a set of profiles, such as `groupBy`,
-  `contrast`, `distance` or `signalFiles`. They are ignored when
-  `object` is the list returned by
-  [`computeProfiles`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md),
-  which already holds them.
+  Regions to profile instead of those picked from `object`: a `GRanges`,
+  a named list of `GRanges` or a `GRangesList`, one group of rows per
+  element, or a `RegionSetDE` object, one group per set. Default:
+  `NULL`.
+
+- contrast:
+
+  String with the name of a contrast, or its position, when `object`
+  holds several of them. Default: `NULL`.
+
+- set:
+
+  Character vector with the names of the region sets used. Default:
+  `NULL`, all of them.
+
+- samples:
+
+  Samples profiled: a character vector with their names, a numeric
+  vector with their positions, or a logical vector with one value per
+  sample. The scaling factors of the whole analysis are kept. Default:
+  `NULL`, all of them.
+
+- direction:
+
+  String with the differential regions profiled, one among `"both"`,
+  which draws the regions going up and those going down as two groups of
+  rows, `"up"` and `"down"`. Only for results. Default: `"both"`.
+
+- FDR:
+
+  Numeric value with the adjusted p-value cut-off defining a
+  differential region. Default: `NULL`, the one used by the test.
+
+- log2FC:
+
+  Numeric value with the absolute log2 fold change cut-off defining a
+  differential region. Default: `NULL`, the one used by the test.
+
+- maxRegions:
+
+  Numeric value with the maximum number of regions per group of rows:
+  the most significant ones for results, the strongest ones for the
+  region sets of a counts object, and regions spread evenly along the
+  list for regions given through `regions`. It is applied after
+  `blacklist` and `whitelist`. Default: `1000`.
+
+- blacklist:
+
+  Regions whose signal must stay out of the figure: a row is left out
+  when its drawn window, `distance` on each side of the centre, overlaps
+  them. A `GRanges`, a path to a BED-like file, a data.frame, a list of
+  them, or `TRUE` for the blacklist stored in the object by
+  [`applyBlacklist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md)
+  or
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+  Default: `NULL`.
+
+- whitelist:
+
+  Regions the rows are restricted to: a row is kept when its region
+  overlaps them. Accepts the same forms as `blacklist`, except `TRUE`.
+  Default: `NULL`.
+
+- groupBy:
+
+  String with the name of a `colData` column whose groups are averaged
+  into one profile each, for instance `"condition"`. Default: `NULL`,
+  one profile per sample.
+
+- signal:
+
+  String with the files the signal is read from: `"bam"`, the BAM files
+  of
+  [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  `"bigwig"`, the bigWig files of the sample sheet or of
+  [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md),
+  or `"auto"`, the BAM files when they are known and the bigWig files
+  otherwise. Default: `"auto"`.
+
+- signalFiles:
+
+  Character vector with one BAM or bigWig file per sample, in the order
+  of the samples, overriding the ones recorded in the object. Default:
+  `NULL`.
+
+- distance:
+
+  Numeric value with the number of base pairs drawn on each side of the
+  centre. Default: `1500`.
+
+- binWidth:
+
+  Numeric value with the width of the bins the signal is averaged over,
+  in base pairs. Default: `50`.
+
+- centre:
+
+  String with the point the regions are aligned on: `"summit"`, the
+  `summit` column written by
+  [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
+  with `summits`, falling back to the midpoint where there is none, or
+  `"midpoint"`. Default: `"summit"`.
+
+- useOffsets:
+
+  Logical value to indicate whether the signal read from BAM files must
+  be scaled by the scaling factors of
+  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+  `FALSE` scaling it by the library sizes alone. Ignored for bigWig
+  files, whose signal is taken as it is. Default: `TRUE`.
+
+- BPPARAM:
+
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. One file goes to each worker. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
+
+- verbose:
+
+  Logical value to indicate whether the messages must be printed.
+  Default: `TRUE`.
 
 ## Value
 
@@ -100,9 +233,11 @@ opens the layout of the heatmaps, for instance
 
 Given a results, counts or fit object, `plotProfile()` calls
 [`computeProfiles`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
-and draws what it returns. The reading of the files is the slow part, so
-profiles drawn in both styles, or with different colours, are better
-computed once with
+and draws what it returns. The arguments shared with `computeProfiles`,
+from `regions` to `verbose`, are passed on to it, and they are ignored
+when `object` is already the list returned by `computeProfiles`. The
+reading of the files is the slow part, so profiles drawn in both styles,
+or with different colours, are better computed once with
 [`computeProfiles`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md)
 and handed over as they are.
 
@@ -138,7 +273,7 @@ peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = 
 
 counts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, countInput = FALSE, verbose = FALSE)
 counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
-fit <- fitRegions(counts, design = ~ condition, verbose = FALSE)
+fit <- fitRegions(counts, design = ~condition, verbose = FALSE)
 results <- testRegions(fit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
 
 # The regions going up and down, one heatmap per condition

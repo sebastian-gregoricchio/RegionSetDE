@@ -4,6 +4,12 @@
 
 - [`RegionSetDE-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-class.md)
   : RegionSetDE class
+- [`RegionSetDE-exampleData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-exampleData.md)
+  : RegionSetDE example data
+- [`RegionSetDE`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-package.md)
+  [`RegionSetDE-package`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE-package.md)
+  : RegionSetDE: differential chromatin signal over user-defined region
+  sets
 - [`RegionSetDE.counts-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.counts-class.md)
   : RegionSetDE.counts class
 - [`RegionSetDE.fit-class`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/RegionSetDE.fit-class.md)
@@ -40,6 +46,22 @@
   : asDGEList
 - [`availableRegionLists()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/availableRegionLists.md)
   : availableRegionLists
+- [`counts(`*`<RegionSetDE.counts>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`counts(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`counts(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`counts(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`counts(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`counts(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`design(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotMA(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotMA(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotMA(`*`<RegionSetDE.counts>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotPCA(`*`<RegionSetDE.counts>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotPCA(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotPCA(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotPCA(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  [`plotPCA(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/biocGenerics-methods.md)
+  : Methods for the generics of BiocGenerics
 - [`checkNullCalibration()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/checkNullCalibration.md)
   : checkNullCalibration
 - [`coerce-RegionSetDE.counts-DGEList`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/coerce-RegionSetDE.counts-DGEList.md)
@@ -55,6 +77,11 @@
   : consensusData
 - [`consensusGroupList()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusGroupList.md)
   : consensusGroupList
+- [`contrastVector()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)
+  [`contrastGroups()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)
+  [`thresholdInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)
+  [`tileCombination()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)
+  : Contrast accessors
 - [`contrastInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
   : contrastInfo
 - [`contrastName()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastName.md)
@@ -83,12 +110,23 @@
   : filterRegions
 - [`filteringLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md)
   : filteringLog
+- [`fitComponents()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  [`fitEngine()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  [`designMatrix()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  [`designFormula()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  [`blockingInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  [`fitSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  [`setUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md)
+  : Fit accessors
 - [`fitCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitCounts.md)
   : fitCounts
 - [`fitObject()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitObject.md)
   : fitObject
 - [`fitRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
   : fitRegions
+- [`geneMethod()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneResultsAccessors.md)
+  [`geneWeighting()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneResultsAccessors.md)
+  : Gene result accessors
 - [`geneSetsToRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/geneSetsToRegionSets.md)
   : geneSetsToRegionSets
 - [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md)
@@ -151,6 +189,12 @@
   : plotUniverseMatching
 - [`plotVolcano()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotVolcano.md)
   : plotVolcano
+- [`blacklistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  [`greylistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  [`whitelistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  [`chromosomeStyle()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  [`parameterLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+  : Provenance accessors
 - [`regionLinks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionLinks.md)
   [`` `regionLinks<-`() ``](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionLinks.md)
   : regionLinks
@@ -172,17 +216,30 @@
   [`` `$`( ``*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsList-accessors.md)
   [`names(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsList-accessors.md)
   [`length(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsList-accessors.md)
+  [`as.list(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsList-accessors.md)
+  [`as.list(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsList-accessors.md)
   : Accessors of RegionSetDE.resultsList
 - [`resultsTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md)
   : resultsTable
 - [`sampleInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/sampleInfo.md)
   : sampleInfo
+- [`scoreComparisons()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  [`scoreSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  [`scoreReference()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  [`scoreAssay()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  [`scoreSummary()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  [`scorePerBasepair()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreAccessors.md)
+  : Set score accessors
 - [`scoreRegionSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreRegionSets.md)
   : scoreRegionSets
 - [`scoreTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/scoreTable.md)
   : scoreTable
 - [`selectSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/selectSamples.md)
   : selectSamples
+- [`regionStats()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
+  [`setTestType()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
+  [`setTestMethods()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/setResultsAccessors.md)
+  : Set level result accessors
 - [`show(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE-method.md)
   : show method for RegionSetDE objects
 - [`show(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/show-RegionSetDE.fit-method.md)
@@ -215,14 +272,23 @@
   : tileTable
 - [`topRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/topRegions.md)
   : topRegions
+- [`universeIndex()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  [`universeType()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  [`universeMatching()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  [`comparisonSets()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  [`universeDiagnostics()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  [`universeRows()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md)
+  : Universe accessors
 - [`updateObject(`*`<RegionSetDE>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.counts>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.fit>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.results>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.setResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.setScores>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.universe>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.resultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   [`updateObject(`*`<RegionSetDE.setResultsList>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
+  [`updateObject(`*`<RegionSetDE.geneResults>`*`)`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateObject-RegionSetDE.md)
   : updateObject methods for the RegionSetDE classes
 - [`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md)
   : updateThresholds

@@ -196,7 +196,10 @@ p-value and the one `diff.status` is read from. It describes that tile,
 and a sentence such as "the domain gained 3-fold" needs
 `mean.tile.log2FC` instead, which is the closer thing to a fold change
 of the whole region. When the two are far apart, only part of the region
-moved. The tile level table stays available in the `tiles` slot, and
+moved. The tile level table stays available in the `tiles` slot (read
+with
+[`tileTable`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md)),
+and
 [`plotRegion`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/plotRegion.md)
 draws it.
 
@@ -228,11 +231,21 @@ sample size analysis for instance.
 [`contrastInfo`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastInfo.md)
 gathers the rest of what such an analysis needs, the engine and the
 number of samples in each group of the contrast, which is also stored in
-the `n.samples` element of the `contrast.groups` slot.
+the `n.samples` element of the `contrast.groups` slot (read with
+[`contrastGroups`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)).
 
 The `diff.status` column is a labelling convenience, not a claim. It is
 filled from `FDR` and `log2FC` and used by the plotting functions; the
 thresholds are stored in the object so that a figure can state them.
+
+## References
+
+Lun A.T.L., Smyth G.K. (2014). De novo detection of differentially bound
+regions for ChIP-seq data using peaks and windows: controlling error
+rates correctly. *Nucleic Acids Research* 42(11):e95.
+
+Simes R.J. (1986). An improved Bonferroni procedure for multiple tests
+of significance. *Biometrika* 73(3):751-754.
 
 ## See also
 
@@ -271,9 +284,13 @@ res
 resReverse <- testRegions(fit, contrast = c("condition", "BN", "SHR"), verbose = FALSE)
 
 # Several contrasts on the same fit
-resList <- testRegions(fit, contrast = list(shr = c("condition", "SHR", "BN"),
-                                            bn = c("condition", "BN", "SHR")),
-                       verbose = FALSE)
+resList <- testRegions(fit,
+    contrast = list(
+        shr = c("condition", "SHR", "BN"),
+        bn = c("condition", "BN", "SHR")
+    ),
+    verbose = FALSE
+)
 resList
 #> An object of class 'RegionSetDE.resultsList'
 #>   contrasts       : 2 

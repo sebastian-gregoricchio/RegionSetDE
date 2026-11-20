@@ -50,5 +50,4 @@ class(fitObject(fit))
 #> [1] "DGEGLM"
 #> attr(,"package")
 #> [1] "edgeR"
-
 ```

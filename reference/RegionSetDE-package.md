@@ -93,16 +93,21 @@ Law C.W., Chen Y., Shi W., Smyth G.K. (2014). voom: precision weights
 unlock linear model analysis tools for RNA-seq read counts. *Genome
 Biology* 15:R29.
 
+Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold
+change and dispersion for RNA-seq data with DESeq2. *Genome Biology*
+15:550.
+
+Ross-Innes C.S., Stark R., Teschendorff A.E., et al. (2012).
+Differential oestrogen receptor binding is associated with clinical
+outcome in breast cancer. *Nature* 481:389-393.
+
 ## See also
 
-Useful links:
-
-- <https://github.com/sebastian-gregoricchio/RegionSetDE/>
-
-- <https://sebastian-gregoricchio.github.io/RegionSetDE/>
-
-- Report bugs at
-  <https://github.com/sebastian-gregoricchio/RegionSetDE/issues>
+The two vignettes walk through the package on an example dataset:
+[`vignette("RegionSetDE.vignette", package = "RegionSetDE")`](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.vignette.md)
+starts from regions defined by the user, and
+[`vignette("RegionSetDE.peaks.vignette", package = "RegionSetDE")`](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.md)
+from the peak calls of every sample.
 
 ## Author
 

@@ -89,19 +89,24 @@ Sebastian Gregoricchio
 
 ``` r
 if (requireNamespace("consensusRegions", quietly = TRUE) & requireNamespace("ComplexHeatmap", quietly = TRUE)) {
-  peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
-                          pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE)
+    peakFiles <- list.files(system.file("extdata", package = "consensusRegions"),
+        pattern = "rep[0-9]\\.narrowPeak$", full.names = TRUE
+    )
 
-  sampleSheet <- loadSampleSheet(data.frame(sample = c("A_1", "A_2", "A_3", "B_1", "B_2"),
-                                            bam = c("A_1.bam", "A_2.bam", "A_3.bam", "B_1.bam", "B_2.bam"),
-                                            peaks = peakFiles[c(1, 2, 3, 2, 3)],
-                                            condition = c("A", "A", "A", "B", "B")),
-                                 checkFiles = FALSE, verbose = FALSE)
+    sampleSheet <- loadSampleSheet(
+        data.frame(
+            sample = c("A_1", "A_2", "A_3", "B_1", "B_2"),
+            bam = c("A_1.bam", "A_2.bam", "A_3.bam", "B_1.bam", "B_2.bam"),
+            peaks = peakFiles[c(1, 2, 3, 2, 3)],
+            condition = c("A", "A", "A", "B", "B")
+        ),
+        checkFiles = FALSE, verbose = FALSE
+    )
 
-  regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
+    regions <- loadConsensusPeaks(sampleSheet, groupBy = "condition", verbose = FALSE)
 
-  plotPeakUpset(regions, by = "group")
-  plotPeakUpset(regions, by = "sample")
+    plotPeakUpset(regions, by = "group")
+    plotPeakUpset(regions, by = "sample")
 }
 
 ```

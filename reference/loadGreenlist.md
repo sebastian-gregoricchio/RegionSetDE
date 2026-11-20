@@ -74,6 +74,13 @@ greenlist for mm10, only for mm39, so an mm10 analysis needs the mm39
 list lifted over, and the lifted file should be kept beside the chain it
 came from rather than passed off as the published one.
 
+## References
+
+de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S.
+(2024). The CUT&RUN greenlist: genomic regions of consistent noise are
+effective normalizing factors for quantitative epigenome mapping.
+*Briefings in Bioinformatics* 25(2):bbad538.
+
 ## See also
 
 [`countGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),

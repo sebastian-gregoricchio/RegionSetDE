@@ -12,19 +12,19 @@ comparison runs between sets rather than between conditions.
 
 - `scores`:
 
-  Data.frame with one row per library per set, carrying the summarised
+  `DataFrame` with one row per library per set, carrying the summarised
   signal, the reference it was divided by and the `score` on a log2
   scale.
 
 - `comparisons`:
 
-  Data.frame with one row per pair of sets, carrying the mean paired
+  `DataFrame` with one row per pair of sets, carrying the mean paired
   difference between their scores, its confidence interval, the paired
   t-statistic and the adjusted p-value.
 
 - `sample.metadata`:
 
-  Data.frame with the `colData` of the counts object the scores came
+  `DataFrame` with the `colData` of the counts object the scores came
   from, so that the libraries can be grouped and coloured downstream
   without handing that object over again.
 

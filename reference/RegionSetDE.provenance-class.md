@@ -40,8 +40,9 @@ every step of the analysis. Not meant to be instantiated directly.
 
 - `filtering.log`:
 
-  Data.frame collecting the number of regions before and after each
-  filtering step.
+  `DataFrame` collecting the number of regions before and after each
+  filtering step. Read it with
+  [`filteringLog`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md).
 
 - `parameters`:
 

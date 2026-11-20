@@ -28,6 +28,24 @@ definitions come from you and stay fixed across conditions. Nothing is
 redefined when the signal moves, which is what makes a redistribution
 visible instead of being absorbed into a new set of peak boundaries.
 
+### Other Bioconductor packages
+
+Bioconductor already has several tools for differential binding, and
+they differ from this one in where the regions come from and in what is
+tested. *DiffBind* builds a consensus of the peak calls, counts the
+reads over every consensus peak and tests one peak at a time with
+*DESeq2* or *edgeR*. *csaw* counts in sliding windows, merges
+neighbouring windows into regions and combines their p-values, so that
+the FDR is controlled over regions rather than windows. In both, the
+regions are found in the data, and the unit of the test is a single
+region. *RegionSetDE* takes the regions as given and adds a test over a
+whole set, in the spirit of the `camera` and `fry` gene set tests of
+*limma*, from the same fit that gives the region-level results. When the
+regions do have to come from peak calls, *consensusRegions* builds them,
+and the [second
+vignette](https://sebastian-gregoricchio.github.io/RegionSetDE/articles/RegionSetDE.peaks.vignette.md)
+shows how.
+
   
 
 ### What this vignette covers
@@ -158,19 +176,20 @@ regions
 > Whitelist:  not applied
 ```
 
-The result is an S4 object of class `RegionSetDE`. The slots that matter
-in an analysis have an accessor:
+The result is an S4 object of class `RegionSetDE`. Every slot has an
+accessor, and the accessors are the way to read an object, since the
+slots may change between versions while the accessors stay:
 
 | Slot | Accessor | Description |
 |---:|:---|:---|
 | *regions* | [`regionRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/regionRanges.md) | `GRangesList` with one element per region set, named |
-| *blacklist* |  | the exclusion regions applied, `NULL` until [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md) runs |
-| *greylist* |  | the greylisted regions, `NULL` until [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) runs |
-| *whitelist* |  | the regions kept, `NULL` until [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md) runs |
+| *blacklist* | [`blacklistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md) | the exclusion regions applied, `NULL` until [`applyBlacklist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyBlacklist.md) runs |
+| *greylist* | [`greylistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md) | the greylisted regions, `NULL` until [`applyGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyGreylist.md) runs |
+| *whitelist* | [`whitelistRanges()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md) | the regions kept, `NULL` until [`applyWhitelist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/applyWhitelist.md) runs |
 | *genome.assembly* | [`genomeAssembly()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/genomeAssembly.md) | assembly string, or `NULL` |
-| *seqlevels.style* |  | naming style the sets were harmonised to |
+| *seqlevels.style* | [`chromosomeStyle()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md) | naming style the sets were harmonised to |
 | *filtering.log* | [`filteringLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filteringLog.md) | one row per filtering step, with how many regions each set lost |
-| *parameters* |  | the arguments of every call that touched the object |
+| *parameters* | [`parameterLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md) | the arguments of every call that touched the object |
 | *consensus* | [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md) | the consensus data when the regions come from peaks through [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md), empty otherwise |
 
 The set names come back from
@@ -318,13 +337,16 @@ counts <-
              pairedEnd = FALSE,
              fragmentLength = 180,
              minMapq = 10,
-             nThreads = 4)
+             BPPARAM = 4)
 ```
 
 Paired-end libraries are counted as fragments: a fragment counts in
 every region it overlaps, the stretch between its two reads included.
 The BAM files are cut into pieces of at most 50 Mb, shared among the
-threads, so even a single file runs faster with a larger `nThreads`.
+workers, so even a single file runs faster on more cores. `BPPARAM`
+takes a number of cores, as here, or any `BiocParallelParam` object,
+`BiocParallel::MulticoreParam(4)` or a cluster back end for instance,
+which is used as it is. Left out, everything runs on one core.
 
 The counts and the library sizes are two separate things. Every region
 is counted, wherever it lies, and the counts only need the chromosomes
@@ -347,7 +369,7 @@ counts <-
   countReads(regions,
              bamFiles = bamPaths,
              excludeChromosomes = c("chrM", "chrY", extraContigs),
-             nThreads = 4)
+             BPPARAM = 4)
 ```
 
 When only a few regions are needed, `fullLibrarySize = FALSE` limits the
@@ -455,7 +477,7 @@ steps use them: normalisation, filtering, and the calibration checks.
 
 ``` r
 
-counts <- countBackground(counts, binSize = 10000, nThreads = 4)
+counts <- countBackground(counts, binSize = 10000, BPPARAM = 4)
 ```
 
 They live in the metadata of the object and can be inspected like any
@@ -780,18 +802,17 @@ a different question.
 
 The `RegionSetDE.fit` object holds:
 
-| Slot | Description |
-|---:|:---|
-| *fit* | list with the engine’s own fit object |
-| *engine* | which engine produced it |
-| *design* | the design matrix |
-| *design.formula* | the formula it came from |
-| *dispersion* | the dispersion used, and where it came from |
-| *counts* | the `RegionSetDE.counts` the model was fitted on, filtering included |
-| *universe* | the comparison rows for the set-level test, built once here |
-| *samples* | the samples that entered the fit |
-
-Two accessors avoid reaching into the slots:
+| Slot | Accessor | Description |
+|---:|:---|:---|
+| *fit* | [`fitComponents()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md), [`fitObject()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitObject.md) | list with the engine’s own fit object, which [`fitObject()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitObject.md) returns alone |
+| *engine* | [`fitEngine()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md) | which engine produced it |
+| *design* | [`designMatrix()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md), `design()` | the design matrix |
+| *design.formula* | [`designFormula()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md) | the formula it came from |
+| *blocking* | [`blockingInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md) | the blocking variable and the random effects, when there are any |
+| *dispersion* | [`dispersionInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/dispersionInfo.md) | the dispersion used, and where it came from |
+| *counts* | [`fitCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitCounts.md), `counts()` | the `RegionSetDE.counts` the model was fitted on, filtering included; `counts()` gives the raw matrix |
+| *universe* | [`setUniverse()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md) | the comparison rows for the set-level test, built once here |
+| *samples* | [`fitSamples()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitAccessors.md) | the samples that entered the fit |
 
 ``` r
 fitCounts(fit)
@@ -811,6 +832,9 @@ fitCounts(fit)
 class(fitObject(fit))
 > [1] "DGEGLM"
 > attr(,"package")
+> [1] "edgeR"
+
+fitEngine(fit)
 > [1] "edgeR"
 ```
 
@@ -2445,17 +2469,26 @@ The result is passed back in, which is also how you would supply a
 dispersion taken from a previous experiment or from the literature:
 
 ``` r
-
-singleFit <- fitRegions(singleCounts,
-                        design = ~ condition,
-                        dispersion = nullDispersion)
+suppliedFit <- fitRegions(singleCounts,
+                          design = ~ condition,
+                          dispersion = nullDispersion,
+                          verbose = FALSE)
 
 # Or a bare number, when it comes from somewhere else entirely
-singleFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04)
+fixedFit <- fitRegions(singleCounts, design = ~ condition, dispersion = 0.04, verbose = FALSE)
 
-# Or a region set believed to be invariant, rather than the background bins
-singleFit <- fitRegions(singleCounts, design = ~ condition,
-                        dispersion = "regionSet", nullRegionSets = "intergenic")
+dispersionInfo(fixedFit)$common
+> [1] 0.04
+```
+
+A region set believed to be invariant can stand in for the background
+bins. In the example the intergenic windows are too weakly covered for
+it, so this one is shown and not run:
+
+``` r
+
+invariantFit <- fitRegions(singleCounts, design = ~ condition,
+                           dispersion = "regionSet", nullRegionSets = "intergenic")
 ```
 
   
@@ -2668,10 +2701,12 @@ format allows and saturates at the top, so 1000 means *at least that*,
 not *exactly that*.
 
 The parameters file is the one worth keeping. It flattens everything the
-object carries in its `parameters` slot into one parameter per line:
-counting level, normalisation method and factors, filter and threshold,
-engine, design, contrast, correction, and on a fit with no replicates
-the dispersion and its source.
+object carries in its `parameters` slot, the list
+[`parameterLog()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)
+returns, into one parameter per line: counting level, normalisation
+method and factors, filter and threshold, engine, design, contrast,
+correction, and on a fit with no replicates the dispersion and its
+source.
 
 ``` r
 parameterFile <- list.files(outputDirectory,
@@ -2738,11 +2773,11 @@ genome-wide catalogue.
 sessionInfo()
 > R version 4.6.2 (2026-10-29)
 > Platform: x86_64-pc-linux-gnu
-> Running under: Ubuntu 24.04.5 LTS
+> Running under: Ubuntu 26.04.1 LTS
 > 
 > Matrix products: default
 > BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
-> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.32.so;  LAPACK version 3.12.0
 > 
 > locale:
 >  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
@@ -2758,7 +2793,7 @@ sessionInfo()
 > [8] base     
 > 
 > other attached packages:
->  [1] ggplot2_4.0.3        dplyr_1.2.1          RegionSetDE_0.99.0  
+>  [1] ggplot2_4.0.4        dplyr_1.2.1          RegionSetDE_0.99.0  
 >  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
 >  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
 > [10] BiocStyle_2.40.0    
@@ -2766,10 +2801,10 @@ sessionInfo()
 > loaded via a namespace (and not attached):
 >   [1] bitops_1.1-0                rlang_1.3.0                
 >   [3] magrittr_2.0.5              clue_0.3-68                
->   [5] GetoptLong_1.1.1            otel_0.2.0                 
+>   [5] GetoptLong_1.1.1            otel_0.3.0                 
 >   [7] matrixStats_1.5.0           compiler_4.6.2             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
->  [11] systemfonts_1.3.2           vctrs_0.7.3                
+>  [11] systemfonts_1.3.3           vctrs_0.7.3                
 >  [13] stringr_1.6.0               shape_1.4.6.1              
 >  [15] pkgconfig_2.0.3             crayon_1.5.3               
 >  [17] fastmap_1.2.0               XVector_0.52.0             
@@ -2793,7 +2828,7 @@ sessionInfo()
 >  [53] ggtext_0.2.0                codetools_0.2-20           
 >  [55] curl_8.1.0                  lattice_0.23-1             
 >  [57] tibble_3.3.1                Biobase_2.72.0             
->  [59] withr_3.0.3                 S7_0.2.2                   
+>  [59] withr_3.0.3                 S7_1.0.0                   
 >  [61] csaw_1.46.0                 evaluate_1.0.5             
 >  [63] desc_1.4.3                  xml2_1.6.0                 
 >  [65] circlize_0.4.18             Biostrings_2.80.2          

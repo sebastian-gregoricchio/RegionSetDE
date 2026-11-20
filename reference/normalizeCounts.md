@@ -194,6 +194,21 @@ in the regions is a property of the protocol rather than of the biology,
 and a treatment that genuinely redistributes a mark violates it in the
 direction that hides the effect.
 
+## References
+
+Robinson M.D., Oshlack A. (2010). A scaling normalization method for
+differential expression analysis of RNA-seq data. *Genome Biology*
+11:R25.
+
+Lun A.T.L., Smyth G.K. (2016). csaw: a Bioconductor package for
+differential binding analysis of ChIP-seq data using sliding windows.
+*Nucleic Acids Research* 44(5):e45.
+
+de Mello F.N., Tahira A.C., Berzoti-Coelho M.G., Verjovski-Almeida S.
+(2024). The CUT&RUN greenlist: genomic regions of consistent noise are
+effective normalizing factors for quantitative epigenome mapping.
+*Briefings in Bioinformatics* 25(2):bbad538.
+
 ## See also
 
 [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),

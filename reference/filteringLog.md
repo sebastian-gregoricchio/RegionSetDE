@@ -24,7 +24,7 @@ filteringLog(object)
 ## Value
 
 A data.frame with one row per filtering step, empty when no filter has
-been applied.
+been applied. The object stores it as a `DataFrame`.
 
 ## See also
 
@@ -43,7 +43,8 @@ regionTable <- loadExampleData("regions", verbose = FALSE)
 exclusionRegions <- loadExampleData("exclusionRegions", verbose = FALSE)
 
 regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-                            splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 regions <- applyBlacklist(regions, blacklist = exclusionRegions, verbose = FALSE)
 
 filteringLog(regions)

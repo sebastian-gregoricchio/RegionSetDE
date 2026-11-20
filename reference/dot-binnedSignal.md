@@ -6,7 +6,7 @@ bins of fixed width, one matrix per file.
 ## Usage
 
 ``` r
-.binnedSignal(files, type, windows, binWidth, counts, nThreads = 1)
+.binnedSignal(files, type, windows, binWidth, counts, BPPARAM = NULL)
 ```
 
 ## Arguments
@@ -33,9 +33,10 @@ bins of fixed width, one matrix per file.
   `RegionSetDE.counts` object, whose counting parameters are used for
   BAM files.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads, one file per thread.
+  `BiocParallelParam` object, number of cores or `NULL`, as taken by
+  `.resolveBPPARAM`.
 
 ## Value
 

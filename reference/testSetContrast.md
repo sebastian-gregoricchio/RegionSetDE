@@ -139,6 +139,15 @@ as
 [`testRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md)
 handles them.
 
+## References
+
+Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting
+for inter-gene correlation. *Nucleic Acids Research* 40(17):e133.
+
+Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K.
+(2015). limma powers differential expression analyses for RNA-sequencing
+and microarray studies. *Nucleic Acids Research* 43(7):e47.
+
 ## See also
 
 [`testRegionSets`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegionSets.md),
@@ -153,8 +162,10 @@ Sebastian Gregoricchio
 ``` r
 fit <- loadExampleData("fit", verbose = FALSE)
 
-setContrast <- testSetContrast(fit, contrast = c("condition", "SHR", "BN"),
-                               set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE)
+setContrast <- testSetContrast(fit,
+    contrast = c("condition", "SHR", "BN"),
+    set1 = "promoterCpG", set2 = "promoterNonCpG", verbose = FALSE
+)
 resultsTable(setContrast)
 #>         set.1          set.2 n.regions.1 n.regions.2 n.shared.dropped
 #> 1 promoterCpG promoterNonCpG         269         277                0

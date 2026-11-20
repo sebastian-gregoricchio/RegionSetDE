@@ -93,9 +93,10 @@ Sebastian Gregoricchio
 fit <- loadExampleData("fit", verbose = FALSE)
 
 calibration <- checkNullCalibration(fit,
-                                    contrast = c("condition", "SHR", "BN"),
-                                    source = "background",
-                                    verbose = FALSE)
+    contrast = c("condition", "SHR", "BN"),
+    source = "background",
+    verbose = FALSE
+)
 
 # A flat histogram is what a well calibrated test looks like
 plotNullCalibration(calibration)

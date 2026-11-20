@@ -41,7 +41,7 @@ which counts genome bins for the normalisation.
 
 - `diagnostics`:
 
-  Data.frame with, for every set, the median width and abundance of the
+  `DataFrame` with, for every set, the median width and abundance of the
   set and of the rows it is compared against.
 
 - `n.rows`:

@@ -195,7 +195,9 @@ results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FA
 plotTopHeatmap(results, n = 25, FDR = 1)
 
 
-plotTopHeatmap(results, n = 15, set = "promoterCpG", FDR = 1,
-               annotationColumns = "condition")
+plotTopHeatmap(results,
+    n = 15, set = "promoterCpG", FDR = 1,
+    annotationColumns = "condition"
+)
 
 ```

@@ -1,6 +1,6 @@
 # contrastName
 
-Returns the contrast that produced a `RegionSetDE.results` object.
+Returns the contrast that produced a result.
 
 ## Usage
 
@@ -11,6 +11,9 @@ contrastName(results)
 contrastName(results)
 
 # S4 method for class 'RegionSetDE.setResults'
+contrastName(results)
+
+# S4 method for class 'RegionSetDE.geneResults'
 contrastName(results)
 
 # S4 method for class 'RegionSetDE.resultsList'
@@ -24,11 +27,13 @@ contrastName(results)
 
 - results:
 
-  `RegionSetDE.results` object.
+  `RegionSetDE.results`, `RegionSetDE.setResults` or
+  `RegionSetDE.geneResults` object, or one of the two list classes
+  holding several contrasts.
 
 ## Value
 
-A string.
+A string, or one string per contrast for a list of results.
 
 ## Author
 

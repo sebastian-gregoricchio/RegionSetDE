@@ -105,7 +105,8 @@ SummarizedExperiment::colData(brownNorway)
 #> lv-H3K4me3-BN-male-bio2-tech1        FALSE       400384
 
 firstReplicates <- selectSamples(counts, biologicalReplicate == "bio2",
-                                 verbose = FALSE)
+    verbose = FALSE
+)
 SummarizedExperiment::colData(firstReplicates)
 #> DataFrame with 2 rows and 7 columns
 #>                                                sample               bam.file

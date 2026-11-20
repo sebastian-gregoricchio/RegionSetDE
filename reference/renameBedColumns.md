@@ -36,12 +36,14 @@ Sebastian Gregoricchio
 ## Examples
 
 ``` r
-bedTable <- data.frame(V1 = "chr12",
-                       V2 = c(1000, 5000),
-                       V3 = c(2000, 6000),
-                       V4 = c("peak_1", "peak_2"),
-                       V5 = c(120, 340),
-                       V6 = c("+", "-"))
+bedTable <- data.frame(
+    V1 = "chr12",
+    V2 = c(1000, 5000),
+    V3 = c(2000, 6000),
+    V4 = c("peak_1", "peak_2"),
+    V5 = c(120, 340),
+    V6 = c("+", "-")
+)
 
 renameBedColumns(bedTable, bedFormat = 6)
 #>   seqnames start  end   name score strand

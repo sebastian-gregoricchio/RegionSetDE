@@ -92,8 +92,10 @@ Sebastian Gregoricchio
 
 ``` r
 fit <- loadExampleData("fit", verbose = FALSE)
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-                             verbose = FALSE)
+setResults <- testRegionSets(fit,
+    contrast = c("condition", "SHR", "BN"),
+    verbose = FALSE
+)
 
 # The whole fold change distribution behind each set-level statistic
 plotSetDistribution(setResults)

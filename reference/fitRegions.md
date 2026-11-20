@@ -145,8 +145,11 @@ fitRegions(
 
 - BPPARAM:
 
-  `BiocParallelParam` object passed to the `"dream"` engine. Default:
-  `NULL`, sequential.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. Only the `"dream"` engine uses it, to fit the mixed
+  models of the regions side by side. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 - verbose:
 
@@ -231,6 +234,27 @@ unaffected. Low-count rows are not removed here. Filter them with
 first, or the dispersion trend is fitted on rows that carry no
 information.
 
+## References
+
+Robinson M.D., McCarthy D.J., Smyth G.K. (2010). edgeR: a Bioconductor
+package for differential expression analysis of digital gene expression
+data. *Bioinformatics* 26(1):139-140.
+
+Chen Y., Lun A.T.L., Smyth G.K. (2016). From reads to genes to pathways:
+differential expression analysis of RNA-Seq experiments using Rsubread
+and the edgeR quasi-likelihood pipeline. *F1000Research* 5:1438.
+
+Law C.W., Chen Y., Shi W., Smyth G.K. (2014). voom: precision weights
+unlock linear model analysis tools for RNA-seq read counts. *Genome
+Biology* 15:R29.
+
+Love M.I., Huber W., Anders S. (2014). Moderated estimation of fold
+change and dispersion for RNA-seq data with DESeq2. *Genome Biology*
+15:550.
+
+Hoffman G.E., Roussos P. (2021). Dream: powerful differential expression
+analysis for repeated measures designs. *Bioinformatics* 37(2):192-201.
+
 ## See also
 
 [`testRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md),
@@ -250,7 +274,7 @@ counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 counts <- filterRegions(counts, verbose = FALSE)
 
-fit <- fitRegions(counts, design = ~ condition, engine = "edgeR", verbose = FALSE)
+fit <- fitRegions(counts, design = ~condition, engine = "edgeR", verbose = FALSE)
 fit
 #> An object of class 'RegionSetDE.fit'
 #>   engine          : edgeR 
@@ -261,7 +285,7 @@ fit
 #>   common disp.    : 0.139 (BCV 0.373)  
 
 # limma-voom on the same design
-voomFit <- fitRegions(counts, design = ~ condition, engine = "voom", verbose = FALSE)
+voomFit <- fitRegions(counts, design = ~condition, engine = "voom", verbose = FALSE)
 
 # Random effects need the dream engine and the formula given as such, for instance
 # ~ condition + (1|donor) for repeated samples of the same donors. Four samples are

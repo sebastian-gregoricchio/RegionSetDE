@@ -9,7 +9,17 @@ tiles can be combined back into their region.
 ## Usage
 
 ``` r
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
 # S4 method for class 'RegionSetDE.counts'
 countTable(
@@ -25,19 +35,69 @@ countTable(
 )
 
 # S4 method for class 'RegionSetDE.fit'
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
 # S4 method for class 'RegionSetDE.results'
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
 # S4 method for class 'RegionSetDE.setResults'
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
 # S4 method for class 'RegionSetDE.resultsList'
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 
 # S4 method for class 'RegionSetDE.setResultsList'
-countTable(object, ...)
+countTable(
+  object,
+  level = "region",
+  normalized = FALSE,
+  input = FALSE,
+  format = "wide",
+  set = NULL,
+  tileSummary = NULL,
+  extraColumns = TRUE,
+  verbose = TRUE
+)
 ```
 
 ## Arguments
@@ -49,10 +109,6 @@ countTable(object, ...)
   holding several contrasts. For the results the counts are the ones
   carried inside them, which requires the test to have been run with
   `carryCounts = TRUE`.
-
-- ...:
-
-  Arguments passed on to the method for `RegionSetDE.counts` objects.
 
 - level:
 
@@ -243,17 +299,22 @@ dim(countMatrix)
 bamFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
 
 exampleRegions <- GenomicRanges::GRanges(
-  seqnames = rep(c("seq1", "seq2"), each = 2),
-  ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400))
+    seqnames = rep(c("seq1", "seq2"), each = 2),
+    ranges = IRanges::IRanges(start = rep(c(1, 800), 2), width = 400)
+)
 
 exampleRegions$setName <- rep(c("firstSet", "secondSet"), each = 2)
 
-exampleSets <- splitLoadRegions(exampleRegions, splitBy = "setName",
-                                seqlevelsStyle = NULL, verbose = FALSE)
+exampleSets <- splitLoadRegions(exampleRegions,
+    splitBy = "setName",
+    seqlevelsStyle = NULL, verbose = FALSE
+)
 
-tiledCounts <- countReads(exampleSets, bamFiles = bamFile,
-                          sampleNames = "example", tileWidth = 100,
-                          verbose = FALSE)
+tiledCounts <- countReads(exampleSets,
+    bamFiles = bamFile,
+    sampleNames = "example", tileWidth = 100,
+    verbose = FALSE
+)
 
 countTable(tiledCounts, level = "tile")
 #>                               region.set     region.id tile.id seqnames start

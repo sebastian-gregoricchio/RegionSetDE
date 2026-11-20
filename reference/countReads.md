@@ -37,7 +37,7 @@ countReads(
   countInput = TRUE,
   summits = NULL,
   summitSource = "reads",
-  nThreads = 1,
+  BPPARAM = NULL,
   progressBar = interactive(),
   verbose = TRUE
 )
@@ -232,19 +232,24 @@ countReads(
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
   Default: `"reads"`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads. The files are cut into pieces of at most 50 Mb,
-  shared among the threads, so even a single file benefits from several
-  of them. Default: `1`.
+  A `BiocParallelParam` object, used as it is, or a number of cores as a
+  shorthand for one. The files are cut into pieces of at most 50 Mb,
+  shared among the workers, so even a single file benefits from several
+  of them. Default: `NULL`, a
+  [`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html),
+  so that nothing runs in parallel unasked.
 
 - progressBar:
 
   Logical value to indicate whether a progress bar must be drawn while
   the files are read. It advances with the pieces of the files as the
-  threads hand them back, and it is drawn only when `verbose = TRUE`.
-  Default: [`interactive()`](https://rdrr.io/r/base/interactive.html),
-  which keeps it out of scripts and rendered documents.
+  workers hand them back, and it is drawn only when `verbose = TRUE`. A
+  `BPPARAM` given as a `BiocParallelParam` object keeps its own
+  `progressbar` setting. Default:
+  [`interactive()`](https://rdrr.io/r/base/interactive.html), which
+  keeps it out of scripts and rendered documents.
 
 - verbose:
 
@@ -272,7 +277,8 @@ and
 read. A greylist built by this call is kept in `metadata(x)$greylist` as
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)
 returned it. The lists applied, here or before, are in the `blacklist`
-and `greylist` slots.
+and `greylist` slots (read with
+[`greylistRanges`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/provenanceAccessors.md)).
 
 ## Details
 
@@ -452,10 +458,11 @@ head(SummarizedExperiment::assay(counts, "input"), 3)
 
 # The same files given one by one, with the annotation as a table and no input
 counts <- countReads(peakRegions,
-                     bamFiles = sampleSheet$bam,
-                     sampleNames = sampleSheet$sample,
-                     sampleMetadata = sampleSheet[, c("sample", "condition")],
-                     verbose = FALSE)
+    bamFiles = sampleSheet$bam,
+    sampleNames = sampleSheet$sample,
+    sampleMetadata = sampleSheet[, c("sample", "condition")],
+    verbose = FALSE
+)
 
 # The ENCODE blacklist on the way: its regions are removed and its reads ignored
 blacklist <- loadBlacklist("hg38", verbose = FALSE)

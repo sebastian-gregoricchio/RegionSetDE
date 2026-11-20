@@ -75,6 +75,17 @@ The files are the published ones, converted to gzipped BED and nothing
 else. `inst/extdata/regionLists/SOURCES.md` records where each of them
 comes from, the version, the date it was taken and the licence.
 
+## References
+
+Amemiya H.M., Kundaje A., Boyle A.P. (2019). The ENCODE blacklist:
+identification of problematic regions of the genome. *Scientific
+Reports* 9:9354.
+
+Ogata J.D., Mu W., Davis E.S., Xue B., Harrell J.C., Sheffield N.C.,
+Phanstiel D.H., Love M.I., Dozmorov M.G. (2023). excluderanges:
+exclusion sets for T2T-CHM13, GRCm39, and other genome assemblies.
+*Bioinformatics* 39(4):btad198.
+
 ## See also
 
 [`loadGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md),

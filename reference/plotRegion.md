@@ -204,8 +204,10 @@ to be reported.
 gave to the region, one bracket per contrast comparing two levels of
 `groupBy`. A contrast qualifies when it was written as
 `c("column", "groupA", "groupB")`, or when it reduces to that
-difference, which the result records in its `contrast.groups` slot. The
-caption says which test, or which fit, the brackets come from.
+difference, which the result records in its `contrast.groups` slot (read
+with
+[`contrastGroups`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/contrastAccessors.md)).
+The caption says which test, or which fit, the brackets come from.
 
 ## See also
 
@@ -245,7 +247,9 @@ plotRegion(results, region = topRegion, groupBy = "condition", pairwiseTest = "t
 pairedCounts <- resultCounts(results)
 pairedCounts$pair <- c("p1", "p2", "p1", "p2")
 
-plotRegion(pairedCounts, region = topRegion, groupBy = "condition",
-           pairwiseTest = "t.test", pairBy = "pair")
+plotRegion(pairedCounts,
+    region = topRegion, groupBy = "condition",
+    pairwiseTest = "t.test", pairBy = "pair"
+)
 
 ```

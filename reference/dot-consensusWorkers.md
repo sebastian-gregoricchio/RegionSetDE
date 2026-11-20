@@ -1,19 +1,20 @@
 # .consensusWorkers
 
-Shares the threads between the groups built in parallel and the
+Shares the cores between the groups built in parallel and the
 calibration run inside each group.
 
 ## Usage
 
 ``` r
-.consensusWorkers(nThreads, nGroups, calibrate = FALSE, userBPPARAM = NULL)
+.consensusWorkers(BPPARAM, nGroups, calibrate = FALSE)
 ```
 
 ## Arguments
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads asked for.
+  A `BiocParallelParam` object, a number of cores, or `NULL` for one
+  core.
 
 - nGroups:
 
@@ -25,16 +26,12 @@ calibration run inside each group.
   Logical value to indicate whether the threshold is calibrated inside
   each group.
 
-- userBPPARAM:
-
-  The `BPPARAM` passed by the user to
-  [`consensusRegions::runConsensus`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html),
-  or `NULL`.
-
 ## Value
 
-A list with `outer`, the number of groups run at once, and `inner`, the
-number of threads each group gets for its permutations.
+A list with `outer`, the back end or the number of cores running the
+groups, `inner`, the back end or the number of cores each group gets for
+its permutations, and `nOuter` and `nInner`, the number of workers of
+each.
 
 ## Author
 

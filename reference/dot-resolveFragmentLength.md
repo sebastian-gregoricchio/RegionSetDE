@@ -16,7 +16,7 @@ or an estimate made on the reads.
   minMapq,
   removeDuplicates,
   discardRegions,
-  nThreads,
+  BPPARAM,
   verbose
 )
 ```
@@ -57,9 +57,10 @@ or an estimate made on the reads.
 
   `GRanges` with the regions whose reads must be ignored, or `NULL`.
 
-- nThreads:
+- BPPARAM:
 
-  Number of threads.
+  `BiocParallelParam` object, number of cores or `NULL`, as taken by
+  `.resolveBPPARAM`.
 
 - verbose:
 

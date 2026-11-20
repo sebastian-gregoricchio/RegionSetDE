@@ -365,6 +365,19 @@ scale of a single z-score. `fryInput = "logCPM"` brings back the earlier
 behaviour, which is worth keeping for comparing results with an older
 analysis.
 
+## References
+
+Wu D., Smyth G.K. (2012). Camera: a competitive gene set test accounting
+for inter-gene correlation. *Nucleic Acids Research* 40(17):e133.
+
+Wu D., Lim E., Vaillant F., Asselin-Labat M.L., Visvader J.E., Smyth
+G.K. (2010). ROAST: rotation gene set tests for complex microarray
+experiments. *Bioinformatics* 26(17):2176-2182.
+
+Ritchie M.E., Phipson B., Wu D., Hu Y., Law C.W., Shi W., Smyth G.K.
+(2015). limma powers differential expression analyses for RNA-sequencing
+and microarray studies. *Nucleic Acids Research* 43(7):e47.
+
 ## See also
 
 [`testSetContrast`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testSetContrast.md),

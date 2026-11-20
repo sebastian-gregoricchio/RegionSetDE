@@ -2,7 +2,7 @@
 
 Reads the fragments of one BAM file over a group of pieces of genome and
 counts them over the ranges of the same chromosomes. It is the job run
-by every thread of `.countBamFragments`.
+by every worker of `.countBamFragments`.
 
 ## Usage
 

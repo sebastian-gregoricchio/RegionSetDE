@@ -12,12 +12,14 @@ the summary.
 
 - `results`:
 
-  Data.frame with one row per region.
+  `DataFrame` with one row per region. Read it with
+  [`resultsTable`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultsTable.md).
 
 - `tiles`:
 
-  Data.frame with one row per tile, empty when the counts were not
-  tiled.
+  `DataFrame` with one row per tile, empty when the counts were not
+  tiled. Read it with
+  [`tileTable`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/tileTable.md).
 
 - `regions`:
 

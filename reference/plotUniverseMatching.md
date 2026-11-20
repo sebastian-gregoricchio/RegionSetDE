@@ -82,7 +82,9 @@ cannot be attributed to it. Curves offset from each other mean the
 matching did not find enough eligible rows in some strata, which happens
 when a set occupies a corner of the width or abundance range that
 nothing else reaches, and the numbers behind it are in the `diagnostics`
-slot of the universe.
+slot (read with
+[`universeDiagnostics`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/universeAccessors.md))
+of the universe.
 
 ## See also
 
@@ -97,8 +99,10 @@ Sebastian Gregoricchio
 
 ``` r
 fit <- loadExampleData("fit", verbose = FALSE)
-setResults <- testRegionSets(fit, contrast = c("condition", "SHR", "BN"),
-                             verbose = FALSE)
+setResults <- testRegionSets(fit,
+    contrast = c("condition", "SHR", "BN"),
+    verbose = FALSE
+)
 
 # Whether the universe really matches the set it is compared against
 plotUniverseMatching(setResults, set = "promoterCpG")

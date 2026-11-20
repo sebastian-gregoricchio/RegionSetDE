@@ -1,7 +1,8 @@
 # regionRanges
 
 Returns the region sets of a `RegionSetDE` object as a named
-`GRangesList`, one element per set.
+`GRangesList`, one element per set, or the tested coordinates of a
+per-region result.
 
 ## Usage
 
@@ -9,6 +10,9 @@ Returns the region sets of a `RegionSetDE` object as a named
 regionRanges(object)
 
 # S4 method for class 'RegionSetDE'
+regionRanges(object)
+
+# S4 method for class 'RegionSetDE.results'
 regionRanges(object)
 ```
 
@@ -20,12 +24,18 @@ regionRanges(object)
   [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md),
   [`splitLoadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitLoadRegions.md)
   or
-  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
+  [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md),
+  or a `RegionSetDE.results` object.
 
 ## Value
 
-A named `GRangesList` with the regions of every set, together with their
-metadata columns.
+For a `RegionSetDE` object, a named `GRangesList` with the regions of
+every set, together with their metadata columns. For a
+`RegionSetDE.results` object, a `GRanges` with the coordinates of the
+rows of the results table, in the same order and without the statistics,
+which
+[`resultRanges`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/resultRanges.md)
+attaches.
 
 ## See also
 
@@ -42,7 +52,8 @@ Sebastian Gregoricchio
 regionTable <- loadExampleData("regions", verbose = FALSE)
 
 regions <- splitLoadRegions(GenomicRanges::makeGRangesFromDataFrame(regionTable, keep.extra.columns = TRUE),
-                            splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE)
+    splitBy = "setName", genomeAssembly = "rn4", verbose = FALSE
+)
 
 lengths(regionRanges(regions))
 #> promoterNonCpG     intergenic       geneBody    promoterCpG 

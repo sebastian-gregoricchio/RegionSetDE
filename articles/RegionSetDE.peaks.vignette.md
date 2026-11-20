@@ -24,6 +24,22 @@ counting, the fit and the results table.
 
   
 
+### Installation
+
+The consensus of the peak calls is built by *consensusRegions*, which is
+installed next to *RegionSetDE*:
+
+``` r
+
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install(c("RegionSetDE", "consensusRegions"))
+```
+
+  
+
 ------------------------------------------------------------------------
 
 ## **The example dataset**
@@ -384,7 +400,7 @@ consensus <- loadConsensusPeaks(sampleSheet,
                                 blacklist = blacklist,
                                 greylist = greylist,
                                 seqlevelsStyle = "Ensembl",
-                                nThreads = 1)
+                                BPPARAM = 1)
 
 consensus
 > ### RegionSetDE object ###
@@ -399,7 +415,7 @@ consensus
 > Whitelist:  not applied
 > 
 > Filtering steps: blacklist, greylist
-> (see the 'filtering.log' slot for the details)
+> (see filteringLog() for the details)
 > 
 > Consensus:  9 samples in 3 groups (consensus mode), 109 regions in the total consensus
 > (see consensusData() for the details)
@@ -464,7 +480,7 @@ strictConsensus <- loadConsensusPeaks(sampleSheet,
                                       greylist = greylist,
                                       seqlevelsStyle = "Ensembl",
                                       minReplicates = 3,
-                                      nThreads = 1,
+                                      BPPARAM = 1,
                                       verbose = FALSE)
 
 data.frame(group = names(consensusData(consensus)$groups),
@@ -732,8 +748,8 @@ which can be changed through `removeDuplicates` and `minMapq`.
 `excludeChromosomes` leaves chromosomes out of the library sizes, the
 mitochondrial genome in ATAC-seq above all, and accepts the names in
 either style. The files are read one after the other here, the slices
-being small; on whole-genome BAMs `nThreads` spreads them over several
-workers.
+being small; on whole-genome BAMs `BPPARAM`, a number of cores or a
+`BiocParallelParam` object, spreads them over several workers.
 
   
 
@@ -1799,7 +1815,7 @@ rather than intersecting.
 ``` r
 
 exportResults(results,
-              path = "results",
+              path = file.path(tempdir(), "results"),
               onlyChanging = TRUE,
               splitByDirection = TRUE)
 ```
@@ -1837,7 +1853,7 @@ same site than a narrow one.
 ### Tiles
 
 `tileWidth` cuts every region into tiles of that width, and each tile
-becomes a row of its own. The code of this part is shown, not run.
+becomes a row of its own.
 
 ``` r
 
@@ -1854,7 +1870,6 @@ p-values are then combined back into one per region, so the results keep
 one row per region and the region stays the unit of inference.
 
 ``` r
-
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
 tiledCounts <- normalizeCounts(tiledCounts, method = "background")
 
@@ -1864,8 +1879,72 @@ tiledResults <- testRegions(tiledFit,
                             contrast = c("condition", "R1881_24h", "DMSO"),
                             combineMethod = "simes")
 
-resultsTable(tiledResults)     # one row per region
-tileTable(tiledResults)        # one row per tile
+head(resultsTable(tiledResults), 3)     # one row per region
+>   region.set            region.id seqnames    start      end width   log2FC
+> 1  consensus 19:46089709-46090037       19 46089709 46090037   329 3.854852
+> 2  consensus 19:46182368-46182658       19 46182368 46182658   291 3.169605
+> 3  consensus 19:46300807-46301375       19 46300807 46301375   569 5.341291
+>   average.signal average.signal.DMSO average.signal.R1881_4h
+> 1       9.432795            8.830140                9.810565
+> 2       9.224647            8.830140                9.573591
+> 3      10.953454            9.047857               10.492002
+>   average.signal.R1881_24h      stat stat.distribution df1  df2      p.value
+> 1                 9.456241  5.858349                 f   1 1950 1.559417e-02
+> 2                 9.155047  3.515500                 f   1 1950 6.094667e-02
+> 3                11.895479 45.294650                 f   1 1950 6.664258e-11
+>            FDR diff.status n.tiles n.tiles.up n.tiles.down direction
+> 1 2.360783e-02          up       2          2            0        up
+> 2 7.322416e-02        null       2          0            0        up
+> 3 9.080051e-10          up       3          2            0        up
+>   rep.tile.start rep.tile.end mean.tile.log2FC peak.DMSO peak.R1881_4h
+> 1       46089909     46090037         4.006052     FALSE          TRUE
+> 2       46182368     46182567         3.287727     FALSE          TRUE
+> 3       46301007     46301206         4.152827     FALSE          TRUE
+>   peak.R1881_24h peak.groups peak.samples
+> 1           TRUE           2            5
+> 2          FALSE           1            2
+> 3           TRUE           2            6
+head(tileTable(tiledResults), 3)        # one row per tile
+>                                        log2FC average.signal     stat
+> consensus|19:46089709-46090037|tile1 4.103576       9.480226 7.007949
+> consensus|19:46089709-46090037|tile2 3.854852       9.432795 5.858349
+> consensus|19:46182368-46182658|tile1 3.169605       9.224647 3.515500
+>                                      stat.distribution df1  df2     p.value
+> consensus|19:46089709-46090037|tile1                 f   1 1950 0.008180197
+> consensus|19:46089709-46090037|tile2                 f   1 1950 0.015594165
+> consensus|19:46182368-46182658|tile1                 f   1 1950 0.060946667
+>                                      average.signal.DMSO
+> consensus|19:46089709-46090037|tile1             8.83014
+> consensus|19:46089709-46090037|tile2             8.83014
+> consensus|19:46182368-46182658|tile1             8.83014
+>                                      average.signal.R1881_4h
+> consensus|19:46089709-46090037|tile1                9.810565
+> consensus|19:46089709-46090037|tile2                9.810565
+> consensus|19:46182368-46182658|tile1                9.573591
+>                                      average.signal.R1881_24h region.set
+> consensus|19:46089709-46090037|tile1                 9.583511  consensus
+> consensus|19:46089709-46090037|tile2                 9.456241  consensus
+> consensus|19:46182368-46182658|tile1                 9.155047  consensus
+>                                                 region.id tile.id
+> consensus|19:46089709-46090037|tile1 19:46089709-46090037       1
+> consensus|19:46089709-46090037|tile2 19:46089709-46090037       2
+> consensus|19:46182368-46182658|tile1 19:46182368-46182658       1
+>                                                          region.key seqnames
+> consensus|19:46089709-46090037|tile1 consensus|19:46089709-46090037       19
+> consensus|19:46089709-46090037|tile2 consensus|19:46089709-46090037       19
+> consensus|19:46182368-46182658|tile1 consensus|19:46182368-46182658       19
+>                                         start      end width peak.DMSO
+> consensus|19:46089709-46090037|tile1 46089709 46089908   200     FALSE
+> consensus|19:46089709-46090037|tile2 46089909 46090037   129     FALSE
+> consensus|19:46182368-46182658|tile1 46182368 46182567   200     FALSE
+>                                      peak.R1881_4h peak.R1881_24h peak.groups
+> consensus|19:46089709-46090037|tile1          TRUE           TRUE           2
+> consensus|19:46089709-46090037|tile2          TRUE           TRUE           2
+> consensus|19:46182368-46182658|tile1          TRUE          FALSE           1
+>                                      peak.samples        FDR
+> consensus|19:46089709-46090037|tile1            5 0.01682635
+> consensus|19:46089709-46090037|tile2            5 0.02858277
+> consensus|19:46182368-46182658|tile1            2 0.08474474
 ```
 
 Tiles are worth it when the shape of a region matters and not only its
@@ -2496,11 +2575,11 @@ less.
 sessionInfo()
 > R version 4.6.2 (2026-10-29)
 > Platform: x86_64-pc-linux-gnu
-> Running under: Ubuntu 24.04.5 LTS
+> Running under: Ubuntu 26.04.1 LTS
 > 
 > Matrix products: default
 > BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
-> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.32.so;  LAPACK version 3.12.0
 > 
 > locale:
 >  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
@@ -2516,7 +2595,7 @@ sessionInfo()
 > [8] base     
 > 
 > other attached packages:
->  [1] ggplot2_4.0.3        dplyr_1.2.1          RegionSetDE_0.99.0  
+>  [1] ggplot2_4.0.4        dplyr_1.2.1          RegionSetDE_0.99.0  
 >  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
 >  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
 > [10] BiocStyle_2.40.0    
@@ -2524,10 +2603,10 @@ sessionInfo()
 > loaded via a namespace (and not attached):
 >   [1] bitops_1.1-0                rlang_1.3.0                
 >   [3] magrittr_2.0.5              clue_0.3-68                
->   [5] GetoptLong_1.1.1            otel_0.2.0                 
+>   [5] GetoptLong_1.1.1            otel_0.3.0                 
 >   [7] matrixStats_1.5.0           compiler_4.6.2             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
->  [11] systemfonts_1.3.2           vctrs_0.7.3                
+>  [11] systemfonts_1.3.3           vctrs_0.7.3                
 >  [13] stringr_1.6.0               shape_1.4.6.1              
 >  [15] pkgconfig_2.0.3             crayon_1.5.3               
 >  [17] fastmap_1.2.0               XVector_0.52.0             
@@ -2552,7 +2631,7 @@ sessionInfo()
 >  [55] codetools_0.2-20            curl_8.1.0                 
 >  [57] lattice_0.23-1              tibble_3.3.1               
 >  [59] Biobase_2.72.0              withr_3.0.3                
->  [61] S7_0.2.2                    csaw_1.46.0                
+>  [61] S7_1.0.0                    csaw_1.46.0                
 >  [63] evaluate_1.0.5              desc_1.4.3                 
 >  [65] xml2_1.6.0                  circlize_0.4.18            
 >  [67] Biostrings_2.80.2           pillar_1.11.1              
@@ -2565,7 +2644,7 @@ sessionInfo()
 >  [81] XML_3.99-0.25               grid_4.6.2                 
 >  [83] tidyr_1.3.2                 colorspace_2.1-4           
 >  [85] edgeR_4.10.7                nlme_3.1-171               
->  [87] consensusRegions_0.99.2     restfulr_0.0.17            
+>  [87] consensusRegions_0.99.3     restfulr_0.0.17            
 >  [89] cli_3.6.6                   textshaping_1.0.5          
 >  [91] viridisLite_0.4.3           S4Arrays_1.12.1            
 >  [93] ComplexHeatmap_2.28.0       gtable_0.3.6               

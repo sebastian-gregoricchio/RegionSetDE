@@ -168,7 +168,7 @@ pays for those tiles in multiplicity, so the default leaves them out.
 ## See also
 
 [`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
 
 ## Author
@@ -179,7 +179,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 filtered <- filterRegions(counts, foldChange = 2, verbose = FALSE)

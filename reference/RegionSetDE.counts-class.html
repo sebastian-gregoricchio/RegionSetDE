@@ -57,6 +57,40 @@
     <p>Sebastian Gregoricchio</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"counts"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">counts</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> class: RegionSetDE.counts </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> dim: 3224 4 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> metadata(3): signal.type count.like background</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> assays(1): counts</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rownames(3224): promoterNonCpG|region_00002 promoterNonCpG|region_00003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ... promoterCpG|region_03797 promoterCpG|region_03798</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rowData names(4): region.set region.id tile.id regionId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> colnames(4): lv-H3K4me3-BN-female-bio1-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lv-H3K4me3-BN-male-bio2-tech1 lv-H3K4me3-SHR-male-bio2-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lv-H3K4me3-SHR-male-bio3-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> colData names(7): sample bam.file ... paired.end library.size</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="sampleInfo.html">sampleInfo</a></span><span class="op">(</span><span class="va">counts</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                            sample</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 lv-H3K4me3-BN-female-bio1-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   lv-H3K4me3-BN-male-bio2-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  lv-H3K4me3-SHR-male-bio2-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  lv-H3K4me3-SHR-male-bio3-tech1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                                                                                     bam.file</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-female-bio1-tech1.bam</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-BN-male-bio2-tech1.bam</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-SHR-male-bio2-tech1.bam</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/chromstaRData/extdata/euratrans/lv-H3K4me3-SHR-male-bio3-tech1.bam</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   condition    sex biologicalReplicate paired.end library.size</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1        BN female                bio1      FALSE       386378</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        BN   male                bio2      FALSE       400384</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3       SHR   male                bio2      FALSE       337600</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       SHR   male                bio3      FALSE       780222</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

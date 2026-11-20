@@ -152,7 +152,7 @@ computeProfiles(
 
   Logical value to indicate whether the signal read from BAM files must
   be scaled by the scaling factors of
-  [`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+  [`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
   `FALSE` scaling it by the library sizes alone. Ignored for bigWig
   files, whose signal is taken as it is. Default: `TRUE`.
 
@@ -226,7 +226,7 @@ sampleSheet <- loadExampleData("peakSheet", verbose = FALSE)
 peakRegions <- loadRegions(list(peaks = sampleSheet$peaks[7]), genomeAssembly = "hg38", verbose = FALSE)
 
 counts <- countReads(peakRegions, sampleSheet = sampleSheet, summits = 200, verbose = FALSE)
-counts <- normalizeCounts(counts, method = "TMM", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "TMM", verbose = FALSE)
 
 peakProfiles <- computeProfiles(counts, groupBy = "condition", distance = 1000, verbose = FALSE)
 names(peakProfiles$profiles)

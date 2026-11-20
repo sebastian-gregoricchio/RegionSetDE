@@ -57,7 +57,7 @@ different assays, should not share a model. The dispersion, the dynamic
 range and the meaning of the scaling factors all differ between them, so
 a fit that pools them borrows information across rows that have nothing
 to say about each other. The selection therefore belongs upstream of
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 rather than at test time, and this is why `dropNormalization` defaults
 to `TRUE`: factors estimated over a set of samples that no longer exists
 describe a library composition that no longer exists either. The raw
@@ -76,7 +76,7 @@ keep working on the selection.
 ## See also
 
 [`splitSamples`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/splitSamples.md),
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)
 
 ## Author

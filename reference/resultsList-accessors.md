@@ -69,3 +69,30 @@ result, one per contrast.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+fit <- loadExampleData("fit", verbose = FALSE)
+
+resultsList <- testRegions(fit,
+    contrast = list(shr = c("condition", "SHR", "BN"), bn = c("condition", "BN", "SHR")),
+    verbose = FALSE
+)
+names(resultsList)
+#> [1] "shr" "bn" 
+length(resultsList)
+#> [1] 2
+resultsList$bn
+#> An object of class 'RegionSetDE.results'
+#>   contrast        : condition: BN vs SHR 
+#>   engine          : edgeR 
+#>   regions         : 1895 
+#>   counts carried  : 4 samples
+#>   thresholds      : FDR < 0.05 | |log2FC| > 0 
+#>   changing regions:
+#>     promoterNonCpG: 2 up, 1 down
+#>     intergenic: 3 up, 2 down
+#>     geneBody: 3 up, 0 down
+#>     promoterCpG: 1 up, 0 down
+```

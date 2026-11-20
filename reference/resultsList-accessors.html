@@ -108,6 +108,33 @@
     <p>Sebastian Gregoricchio</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">resultsList</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">fit</span>,</span></span>
+<span class="r-in"><span>    contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>shr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, bn <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"BN"</span>, <span class="st">"SHR"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    verbose <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">resultsList</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "shr" "bn" </span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">resultsList</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
+<span class="r-in"><span><span class="va">resultsList</span><span class="op">$</span><span class="va">bn</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.results'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   contrast        : condition: BN vs SHR </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   regions         : 1895 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   counts carried  : 4 samples</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   thresholds      : FDR &lt; 0.05 | |log2FC| &gt; 0 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   changing regions:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterNonCpG: 2 up, 1 down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     intergenic: 3 up, 2 down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     geneBody: 3 up, 0 down</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterCpG: 1 up, 0 down</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

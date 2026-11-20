@@ -38,6 +38,18 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 BiocManager::install(c("RegionSetDE", "consensusRegions"))
 ```
 
+The packages used throughout this vignette:
+
+``` r
+
+library(RegionSetDE)
+library(dplyr)
+library(ggplot2)
+```
+
+The progress messages of the functions are switched off in this document
+to keep it short, and they appear as usual when the code is run.
+
   
 
 ------------------------------------------------------------------------
@@ -169,7 +181,8 @@ per sample, in three ways: a vector, a column of the sample sheet, or
 
 A pipeline that already estimated the fragment length, with
 phantompeakqualtools for instance, can write it in the sheet, and the
-column is then named in the counting:
+column is then named in the counting. The AR libraries are paired-end,
+so the call is shown and not run:
 
 ``` r
 
@@ -457,7 +470,7 @@ nothing more, and the union of the groups is what gets counted.
 ### The rule a peak has to pass
 
 The consensus inside each group is built by
-[*consensusRegions*](https://github.com/sebastian-gregoricchio/consensusRegions),
+[*consensusRegions*](https://bioconductor.org/packages/consensusRegions),
 and it is not a plain overlap count. Every peak is first placed in one
 of three classes by its p-value: stringent below `stringencyThreshold`
 (1e-8), weak up to `weakThreshold` (1e-4), background above it. A peak
@@ -531,7 +544,8 @@ the peak set of every biological sample then enters the consensus of its
 group as one replicate. For an experiment with two conditions, three
 biological replicates and two libraries each, the sheet holds twelve
 rows and a `bioRep` column going from `r1` to `r3` within each
-condition:
+condition. The AR example holds one library per sample, so the call is
+shown and not run:
 
 ``` r
 
@@ -676,7 +690,8 @@ form the functions of *ChIPseeker* take for several peak sets, so the
 groups can be annotated one by one and compared.
 `seqlevelsStyle = "UCSC"` renames the chromosomes to match a UCSC
 `TxDb`, which would otherwise find no gene next to any region named
-`19`:
+`19`. The call needs *ChIPseeker* and a full `TxDb`, neither of them a
+dependency of this package, so the call is shown and not run:
 
 ``` r
 
@@ -1035,7 +1050,7 @@ and changing nothing but the normalisation.
 normalisationEffect <-
   lapply(c("librarySize", "background", "TMM", "RLE", "readsInRegions"),
          function(method) {
-           normalised <- normalizeCounts(counts,
+           normalised <- normalizeRegionCounts(counts,
                                          method = method,
                                          verbose = FALSE)
 
@@ -1121,14 +1136,14 @@ normalise.
 greenlist <- loadGreenlist("hg38", assay = "cuttag")
 
 counts <- countGreenlist(counts, greenlist = greenlist)
-counts <- normalizeCounts(counts, method = "greenlist")
+counts <- normalizeRegionCounts(counts, method = "greenlist")
 ```
 
 Lists are installed for hg38 CUT&RUN and CUT&Tag and for mm39 CUT&RUN,
 and `availableRegionLists(type = "greenlist")` prints them.
 [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md)
 stores its counts inside the object, where
-[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 finds them. The fragments are counted once each, at their centre, which
 is how the paper counted them with `multiBamSummary --centerReads`. By
 default the factors are the median of ratios, the size factor DESeq2
@@ -1148,7 +1163,7 @@ construction of the list, 1.5 million reads for human CUT&RUN, 1 million
 for mouse CUT&RUN and 500,000 for human CUT&Tag, raises a warning, and
 so does a library reaching fewer than half as many greenlist regions as
 the median one.
-[`normalizeCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 then says how many regions carry reads in every sample, which is what
 the median of ratios rests on, as it does in DESeq2. The paper sets no
 rule per group of samples; the number of regions shared by every library
@@ -1182,7 +1197,7 @@ matched to the samples by name and may cover samples absent from the
 object.
 
 ``` r
-backgroundCounts <- normalizeCounts(counts,
+backgroundCounts <- normalizeRegionCounts(counts,
                                     method = "background",
                                     verbose = FALSE)
 
@@ -1194,7 +1209,7 @@ round(backgroundFactors, 2)
 >  AR_R1881_4h_r3 AR_R1881_24h_r1 AR_R1881_24h_r2 AR_R1881_24h_r3 
 >            1.22            1.25            0.89            0.87
 
-manualCounts <- normalizeCounts(counts,
+manualCounts <- normalizeRegionCounts(counts,
                                 method = "manual",
                                 scalingFactors = backgroundFactors,
                                 factorType = "division",
@@ -1221,7 +1236,7 @@ number of reads each sample put on the exogenous genome, through
 
 ``` r
 
-counts <- normalizeCounts(counts, method = "background")
+counts <- normalizeRegionCounts(counts, method = "background")
 ```
 
   
@@ -1893,7 +1908,8 @@ every parameter the analysis ran with.
 `~ condition` treats the nine libraries as nine independent samples.
 When the replicates are paired, replicate `r1` of every condition coming
 from the same passage of the cells for instance, the pairing goes into
-the formula:
+the formula. The analysis below keeps `~ condition`, so the call is
+shown and not run:
 
 ``` r
 
@@ -1932,7 +1948,8 @@ does for RNA-seq, and the variation between them then becomes part of
 the variation of the biological sample, which is the unit the dispersion
 has to describe. The simplest route is to merge the BAM files of every
 biological sample, with `samtools merge` for instance, and to count them
-through a second sheet holding one row per biological sample:
+through a second sheet holding one row per biological sample. The
+example has no such sheet, so the call is shown and not run:
 
 ``` r
 
@@ -1998,7 +2015,7 @@ one row per region and the region stays the unit of inference.
 
 ``` r
 tiledCounts <- countBackground(tiledCounts, binSize = 10000)
-tiledCounts <- normalizeCounts(tiledCounts, method = "background")
+tiledCounts <- normalizeRegionCounts(tiledCounts, method = "background")
 
 tiledFit <- fitRegions(tiledCounts, design = ~ condition, engine = "edgeR")
 
@@ -2492,6 +2509,10 @@ column of the peak table, so they follow the `FDR` and `log2FC` set
 above and move with
 [`updateThresholds()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/updateThresholds.md).
 
+The over-representation and GSEA calls that follow use *clusterProfiler*
+and *fgsea*, which are not dependencies of this package, so they are
+shown and not run.
+
 ``` r
 
 geneTable <- resultsTable(geneResults)
@@ -2734,19 +2755,19 @@ sessionInfo()
 >   [7] matrixStats_1.5.0           compiler_4.6.2             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
 >  [11] systemfonts_1.3.3           vctrs_0.7.3                
->  [13] stringr_1.6.0               shape_1.4.6.1              
->  [15] pkgconfig_2.0.3             crayon_1.5.3               
+>  [13] stringr_1.6.0               pkgconfig_2.0.3            
+>  [15] shape_1.4.6.1               crayon_1.5.3               
 >  [17] fastmap_1.2.0               XVector_0.52.0             
 >  [19] labeling_0.4.3              Rsamtools_2.28.0           
 >  [21] rmarkdown_2.32              markdown_2.1               
 >  [23] UCSC.utils_1.8.0            ragg_1.5.2                 
 >  [25] purrr_1.2.2                 xfun_0.62                  
->  [27] cachem_1.1.0                cigarillo_1.2.1            
->  [29] litedown_1.0                GenomeInfoDb_1.48.0        
+>  [27] cachem_1.1.0                litedown_1.0               
+>  [29] cigarillo_1.2.1             GenomeInfoDb_1.48.0        
 >  [31] jsonlite_2.0.0              DelayedArray_0.38.2        
->  [33] BiocParallel_1.46.0         cluster_2.1.8.3            
->  [35] parallel_4.6.2              R6_2.6.1                   
->  [37] bslib_0.12.0                stringi_1.8.9              
+>  [33] BiocParallel_1.46.0         parallel_4.6.2             
+>  [35] cluster_2.1.8.3             R6_2.6.1                   
+>  [37] stringi_1.8.9               bslib_0.12.0               
 >  [39] RColorBrewer_1.1-3          limma_3.68.5               
 >  [41] rtracklayer_1.72.0          jquerylib_0.1.4            
 >  [43] Rcpp_1.1.2                  bookdown_0.48              
@@ -2757,7 +2778,7 @@ sessionInfo()
 >  [53] doParallel_1.0.17           ggtext_0.2.0               
 >  [55] codetools_0.2-20            curl_8.1.0                 
 >  [57] lattice_0.23-1              tibble_3.3.1               
->  [59] Biobase_2.72.0              withr_3.0.3                
+>  [59] withr_3.0.3                 Biobase_2.72.0             
 >  [61] S7_1.0.0                    csaw_1.46.0                
 >  [63] evaluate_1.0.5              desc_1.4.3                 
 >  [65] xml2_1.6.0                  circlize_0.4.18            
@@ -2769,17 +2790,17 @@ sessionInfo()
 >  [77] BiocIO_1.22.0               locfit_1.5-9.12            
 >  [79] GenomicAlignments_1.48.0    fs_2.1.0                   
 >  [81] XML_3.99-0.25               grid_4.6.2                 
->  [83] tidyr_1.3.2                 colorspace_2.1-4           
->  [85] edgeR_4.10.7                nlme_3.1-171               
+>  [83] tidyr_1.3.2                 edgeR_4.10.7               
+>  [85] colorspace_2.1-4            nlme_3.1-171               
 >  [87] consensusRegions_0.99.3     restfulr_0.0.17            
 >  [89] cli_3.6.6                   textshaping_1.0.5          
 >  [91] viridisLite_0.4.3           S4Arrays_1.12.1            
 >  [93] ComplexHeatmap_2.28.0       gtable_0.3.6               
 >  [95] sass_0.4.10                 digest_0.6.39              
 >  [97] ggrepel_0.9.8               SparseArray_1.12.3         
->  [99] rjson_0.2.23                farver_2.1.2               
-> [101] htmltools_0.5.9             pkgdown_2.2.1              
-> [103] lifecycle_1.0.5             httr_1.4.9                 
-> [105] GlobalOptions_0.1.4         statmod_1.5.2              
-> [107] gridtext_0.1.6
+>  [99] rjson_0.2.23                htmlwidgets_1.6.4          
+> [101] farver_2.1.2                htmltools_0.5.9            
+> [103] pkgdown_2.2.1               lifecycle_1.0.5            
+> [105] httr_1.4.9                  GlobalOptions_0.1.4        
+> [107] statmod_1.5.2               gridtext_0.1.6
 ```

@@ -98,7 +98,7 @@ normalisation, the region sets and the number of regions used.
 The values are log2 counts per million, with a prior count of 2 added to
 every count and, when `useOffsets = TRUE`, the scaling factors or the
 offsets stored by
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 applied. An object that was never normalised is scaled by the library
 sizes whatever `useOffsets` says, and a message reports it. The most
 variable regions are chosen on the normalised values, so the raw and the
@@ -145,7 +145,7 @@ Sebastian Gregoricchio
 
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
-counts <- normalizeCounts(counts, method = "background", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "background", verbose = FALSE)
 #> calcNormFactors has been renamed to normLibSizes
 
 sampleCorrelation <- computeSampleCorrelation(counts, method = "pearson")

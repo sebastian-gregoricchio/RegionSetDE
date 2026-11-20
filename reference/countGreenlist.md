@@ -4,7 +4,7 @@ Counts the reads falling in the regions of a CUT&RUN or CUT&Tag
 greenlist, the places where the background of the protocol is
 reproducible enough to measure how much material was sequenced. The
 counts are stored in the metadata of the object, where
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 picks them up with `method = "greenlist"`.
 
 ## Usage
@@ -152,7 +152,7 @@ than half as many greenlist regions as the median library, whose factor
 rests on a small part of the list. The paper sets no rule per group of
 samples: what matters for the factors is how many regions carry reads in
 every library, which
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md)
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md)
 reports when it computes them.
 
 ## References
@@ -165,7 +165,7 @@ effective normalizing factors for quantitative epigenome mapping.
 ## See also
 
 [`loadGreenlist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadGreenlist.md),
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`countBackground`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md)
 
 ## Author
@@ -184,7 +184,7 @@ counts <- countReads(peakRegions, sampleSheet = sampleSheet, verbose = FALSE)
 greenlist <- GenomicRanges::GRanges("19", IRanges::IRanges(start = seq(46.5e6, 57.5e6, by = 1e6), width = 2e5))
 
 counts <- countGreenlist(counts, greenlist = greenlist, verbose = FALSE)
-counts <- normalizeCounts(counts, method = "greenlist", verbose = FALSE)
+counts <- normalizeRegionCounts(counts, method = "greenlist", verbose = FALSE)
 #> Warning: Only 4 greenlist regions carry a read in every sample, the factors rest on those alone.
 
 SummarizedExperiment::colData(counts)$scaling.factor

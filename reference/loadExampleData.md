@@ -73,7 +73,7 @@ as the low-signal control. The sets are disjoint, and a window claimed
 by an earlier set is never reused by a later one.
 
 Only the counts are stored on disk. Asking for `"fit"` runs
-[`normalizeCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeCounts.md),
+[`normalizeRegionCounts`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/normalizeRegionCounts.md),
 [`filterRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/filterRegions.md)
 and
 [`fitRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/fitRegions.md)

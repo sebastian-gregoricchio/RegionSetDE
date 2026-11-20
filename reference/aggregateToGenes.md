@@ -206,7 +206,6 @@ Sebastian Gregoricchio
 ``` r
 counts <- loadExampleData("counts", verbose = FALSE)
 fit <- loadExampleData("fit", verbose = FALSE)
-#> calcNormFactors has been renamed to normLibSizes
 
 # Links of your own, four regions per gene
 regionTable <- as.data.frame(SummarizedExperiment::rowRanges(fitCounts(fit)))[, 1:3]

@@ -11,12 +11,11 @@ Source:
 [`DESCRIPTION`](https://github.com/sebastian-gregoricchio/RegionSetDE/blob/devel-tools/DESCRIPTION)
 
 Gregoricchio S (2026). *RegionSetDE: Differential analysis of chromatin
-signal over user-defined genomic region sets, without peak calling*. R
-package version 0.99.0,
+signal over genomic region sets*. R package version 0.99.0,
 <https://github.com/sebastian-gregoricchio/RegionSetDE/>.
 
     @Manual{,
-      title = {RegionSetDE: Differential analysis of chromatin signal over user-defined genomic region sets, without peak calling},
+      title = {RegionSetDE: Differential analysis of chromatin signal over genomic region sets},
       author = {Sebastian Gregoricchio},
       year = {2026},
       note = {R package version 0.99.0},

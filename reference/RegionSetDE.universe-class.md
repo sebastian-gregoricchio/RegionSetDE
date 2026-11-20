@@ -6,6 +6,24 @@ it is compared against. The positions refer to the object the universe
 was built from, so the same universe serves every contrast run on that
 object.
 
+## Usage
+
+``` r
+# S4 method for class 'RegionSetDE.universe'
+show(object)
+```
+
+## Arguments
+
+- object:
+
+  `RegionSetDE.universe` object.
+
+## Value
+
+[`show()`](https://rdrr.io/r/methods/show.html) prints a summary of the
+object to the console.
+
 ## Details
 
 The universe answers the question "more than what". A competitive test
@@ -57,3 +75,28 @@ which counts genome bins for the normalisation.
 ## Author
 
 Sebastian Gregoricchio
+
+## Examples
+
+``` r
+fit <- loadExampleData("fit", verbose = FALSE)
+
+universe <- makeSetUniverse(fit, verbose = FALSE)
+universe
+#> An object of class 'RegionSetDE.universe'
+#>   type            : otherSets 
+#>   matched on      : width, abundance 
+#>   compared against: promoterNonCpG, intergenic, geneBody, promoterCpG 
+#>   sets            : 4 
+#> 
+#>      region.set n.regions n.comparison median.width median.width.comparison
+#>  promoterNonCpG       277         1378         1000                    1000
+#>      intergenic       440         1354         1000                    1000
+#>        geneBody       909          986         1000                    1000
+#>     promoterCpG       269          314         1000                    1000
+#>  median.abundance median.abundance.comparison
+#>              3.77                        3.78
+#>              3.44                        3.76
+#>              3.60                        4.08
+#>              9.81                        3.75
+```

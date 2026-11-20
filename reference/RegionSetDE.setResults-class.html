@@ -42,7 +42,24 @@
     <p>S4 class holding the outcome of a set level test. The table in the <code>results</code> slot has one row per region set and carries the effect size with its confidence interval next to the p-values, since with tens of thousands of regions in a set the p-value stops discriminating long before the effect size does.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S4 method for class 'RegionSetDE.setResults'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/methods/show.html" class="external-link">show</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+    </div>
 
+    <div class="section level2">
+    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
+
+
+<dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
+<dd><p><code>RegionSetDE.setResults</code> object.</p></dd>
+
+</dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p><code><a href="https://rdrr.io/r/methods/show.html" class="external-link">show()</a></code> prints a summary of the object to the console.</p>
+    </div>
     <div class="section level2">
     <h2 id="slots">Slots<a class="anchor" aria-label="anchor" href="#slots"></a></h2>
 
@@ -93,6 +110,32 @@
     <p>Sebastian Gregoricchio</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">setResults</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegionSets.html">testRegionSets</a></span><span class="op">(</span><span class="va">fit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"SHR"</span>, <span class="st">"BN"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">setResults</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> An object of class 'RegionSetDE.setResults'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   test            : set </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   contrast        : condition: SHR vs BN </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   engine          : edgeR </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   methods         : camera, fry </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   universe        : otherSets (matched on width and abundance) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      region.set n.regions mean.log2FC delta.log2FC CI.lower CI.upper CI.type</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     promoterCpG       269     -0.8340      -0.9310   -1.930    0.561  sample</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        geneBody       909      0.2910       0.4070   -0.333    0.919  sample</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      intergenic       440      0.2650       0.2060   -0.171    0.367  sample</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  promoterNonCpG       277     -0.0209      -0.0787   -0.263    0.251  sample</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  camera.FDR fry.FDR inter.region.cor.universe</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       0.938   0.479                     0.378</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       0.938   0.479                     0.453</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       0.938   0.669                     0.382</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       0.938   0.669                     0.350</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

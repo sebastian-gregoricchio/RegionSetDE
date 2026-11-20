@@ -13,6 +13,8 @@ its place.
 loadConsensusPeaks(
   sampleSheet,
   groupBy = NULL,
+  technicalBy = NULL,
+  technicalArguments = NULL,
   blacklist = NULL,
   greylist = NULL,
   regionSets = NULL,
@@ -59,6 +61,32 @@ loadConsensusPeaks(
   String with the column of the sample sheet defining the groups, for
   instance `"condition"`. Default: `NULL`, all the samples form a single
   group.
+
+- technicalBy:
+
+  String with the column of the sample sheet naming the biological
+  sample each library comes from, for instance `"bioRep"`. The libraries
+  of a group sharing a value are technical replicates: their peaks are
+  joined first into one peak set per biological sample, which then
+  enters the consensus of the group as a single replicate. A label found
+  in more than one group, such as `R1` in every condition, names a
+  different sample in each of them. Default: `NULL`, every library is a
+  biological replicate.
+
+- technicalArguments:
+
+  Named list of arguments of
+  [`consensusRegions::runConsensus`](https://rdrr.io/pkg/consensusRegions/man/runConsensus.html),
+  or of
+  [`consensusRegions::buildConsensus`](https://rdrr.io/pkg/consensusRegions/man/buildConsensus.html),
+  for the step joining the technical replicates, for instance
+  `list(replicateType = "biological", minReplicates = 2)` to keep the
+  peaks found in two libraries out of three. They take precedence over
+  the ones this step inherits from the consensus of the groups. The
+  calibration, the recentring and their arguments are reserved to the
+  consensus of the groups. Ignored without `technicalBy`. Default:
+  `NULL`, the arguments of the consensus of the groups, with
+  `replicateType = "technical"` and equal weights.
 
 - blacklist:
 
@@ -262,7 +290,9 @@ loadConsensusPeaks(
 A `RegionSetDE` object. Every region carries `peak.<group>`, telling
 whether the consensus of that group overlaps it, `peak.groups`, the
 number of groups with a consensus peak on it, and `peak.samples`, the
-number of samples with a peak on it. The `consensus` slot (read with
+number of samples with a peak on it. With `technicalBy`, `peak.samples`
+counts the libraries and `peak.biological` the biological samples. The
+`consensus` slot (read with
 [`consensusData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md)),
 read with
 [`consensusData`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md),
@@ -293,6 +323,27 @@ same requirement applied within each group treats them alike, and the
 union keeps the regions found in one group only. A group with a single
 sample has no replicate to agree with, and its peaks stand for the group
 as they are.
+
+Technical replicates, given through `technicalBy`, are joined before the
+consensus of the group. The combination of `consensusRegions` takes
+every replicate as an independent piece of evidence, and two libraries
+of the same biological sample are not: put side by side with the other
+samples of the group, they would count the same sample twice, and a peak
+found in the two libraries of one sample alone would meet a requirement
+of two supporting replicates. Here the libraries of each biological
+sample are joined first, by default keeping the peaks found in all of
+them, and the peak set of every biological sample enters the consensus
+of its group as one replicate. That peak set carries the combined
+p-value of its libraries, which with the Stouffer method is close to
+what a peak caller would report on the pooled reads, and the summit of
+its most significant peak, so that `recentre` still has a summit to work
+from. The calibration, when asked for, runs on the consensus of the
+groups only. A biological sample with a single library keeps its peaks
+as they are. The consensus of every biological sample is kept in
+`consensusData(x)$technical`. Weights taken from the BAM files of the
+sheet, with `weightMethod = "frip"` or `"librarySize"`, describe
+libraries rather than biological samples, and they are refused with
+`technicalBy` unless the values are given through `...`.
 
 The peaks are read by `consensusRegions`, which keeps the standard
 chromosomes only, as
@@ -412,10 +463,29 @@ if (requireNamespace("consensusRegions", quietly = TRUE)) {
         verbose = FALSE
     )
     lengths(regionRanges(splitRegions))
+
+    # Two libraries per biological sample, joined before the consensus of each condition
+    libraryNames <- c("A_1a", "A_1b", "A_2a", "A_2b", "B_1a", "B_1b", "B_2a", "B_2b")
+    technicalSheet <- loadSampleSheet(
+        data.frame(
+            sample = libraryNames,
+            bam = paste0(libraryNames, ".bam"),
+            peaks = peakFiles[c(1, 2, 2, 3, 1, 3, 2, 3)],
+            condition = rep(c("A", "B"), each = 4),
+            bioRep = rep(c("R1", "R1", "R2", "R2"), times = 2)
+        ),
+        checkFiles = FALSE, verbose = FALSE
+    )
+
+    technicalRegions <- loadConsensusPeaks(technicalSheet,
+        groupBy = "condition",
+        technicalBy = "bioRep",
+        verbose = FALSE
+    )
+    names(consensusData(technicalRegions)$technical)
 }
 #> Group A: 3 samples, 292 consensus regions.
 #> Group B: 2 samples, 287 consensus regions.
 #> Total consensus: 292 regions from 2 groups.
-#> firstHalf     other 
-#>         7       285 
+#> [1] "A_R1" "A_R2" "B_R1" "B_R2"
 ```

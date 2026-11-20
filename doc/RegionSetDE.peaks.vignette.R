@@ -90,6 +90,14 @@ data.frame(group = names(consensusData(consensus)$groups),
            twoOfThree = lengths(consensusData(consensus)$groups),
            threeOfThree = lengths(consensusData(strictConsensus)$groups))
 
+## ----technical_replicates, eval = FALSE---------------------------------------
+# technicalConsensus <- loadConsensusPeaks(technicalSheet,
+#                                          groupBy = "condition",
+#                                          technicalBy = "bioRep",
+#                                          blacklist = blacklist,
+#                                          greylist = greylist,
+#                                          seqlevelsStyle = "Ensembl")
+
 ## ----consensus_data-----------------------------------------------------------
 consensusInfo <- consensusData(consensus)
 
@@ -323,6 +331,19 @@ exportResults(results,
               path = file.path(tempdir(), "results"),
               onlyChanging = TRUE,
               splitByDirection = TRUE)
+
+## ----paired_design, eval = FALSE----------------------------------------------
+# pairedFit <- fitRegions(counts,
+#                         design = ~ replicate + condition,
+#                         engine = "edgeR")
+# 
+# pairedResults <- testRegions(pairedFit,
+#                              contrast = c("condition", "R1881_24h", "DMSO"))
+
+## ----technical_counts, eval = FALSE-------------------------------------------
+# # biologicalSheet: one row per biological sample, the merged BAM files in 'bam'
+# technicalCounts <- countReads(technicalConsensus,
+#                               sampleSheet = biologicalSheet)
 
 ## ----tiles_count--------------------------------------------------------------
 tiledCounts <- countReads(consensus,

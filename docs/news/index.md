@@ -96,6 +96,19 @@ First version.
   the results, and the consensus data are kept in the new `consensus`
   slot of `RegionSetDE`, read with
   [`consensusData()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusData.md).
+- [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)
+  takes `technicalBy`, the column of the sheet naming the biological
+  sample each library comes from. The libraries of a biological sample
+  are joined first, by default keeping the peaks found in all of them,
+  and the peak set of every biological sample enters the consensus of
+  its group as one replicate. Put side by side with the other samples,
+  two libraries of the same sample would count it twice, and a peak
+  found in the two libraries of one sample alone would meet a
+  requirement of two supporting replicates. `technicalArguments` changes
+  the rules of the joining step, and its consensus objects are kept in
+  `consensusData()$technical`. With `technicalBy` the regions carry
+  `peak.biological`, the number of biological samples with a peak, next
+  to `peak.samples`, which still counts the libraries.
 - [`consensusGroupList()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/consensusGroupList.md)
   returns the consensus of every group of
   [`loadConsensusPeaks()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md)

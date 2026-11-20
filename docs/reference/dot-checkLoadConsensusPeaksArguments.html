@@ -47,6 +47,8 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.checkLoadConsensusPeaksArguments</span><span class="op">(</span></span>
 <span>  <span class="va">sampleSheet</span>,</span>
 <span>  <span class="va">groupBy</span>,</span>
+<span>  <span class="va">technicalBy</span>,</span>
+<span>  <span class="va">technicalArguments</span>,</span>
 <span>  <span class="va">regionMode</span>,</span>
 <span>  <span class="va">unassignedSet</span>,</span>
 <span>  <span class="va">seed</span>,</span>
@@ -82,6 +84,14 @@
 
 
 <dt id="arg-groupby">groupBy<a class="anchor" aria-label="anchor" href="#arg-groupby"></a></dt>
+<dd><p>See <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
+
+
+<dt id="arg-technicalby">technicalBy<a class="anchor" aria-label="anchor" href="#arg-technicalby"></a></dt>
+<dd><p>See <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
+
+
+<dt id="arg-technicalarguments">technicalArguments<a class="anchor" aria-label="anchor" href="#arg-technicalarguments"></a></dt>
 <dd><p>See <code><a href="loadConsensusPeaks.html">loadConsensusPeaks</a></code>.</p></dd>
 
 
@@ -179,7 +189,7 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with the arguments as checked and completed: <code>consensusArguments</code>, <code>regionMode</code>, <code>sampleSheet</code>.</p>
+    <p>A list with the arguments as checked and completed: <code>consensusArguments</code>, <code>technicalArguments</code>, the arguments of the step joining the technical replicates (<code>NULL</code> without <code>technicalBy</code>), <code>regionMode</code>, <code>sampleSheet</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

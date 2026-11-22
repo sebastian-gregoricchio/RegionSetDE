@@ -126,6 +126,17 @@ install.packages("BiocManager")
 setRepositories(ind = 1:8)
 ```
 
+Until the next Bioconductor release,
+[`consensusRegions`](https://bioconductor.org/packages/devel/bioc/html/consensusRegions.html),
+needed by the peak-based workflow, is available only on the development
+version of Bioconductor, so `BiocManager` has to point at it first:
+
+``` r
+
+BiocManager::install(version = "devel")
+BiocManager::install("consensusRegions")
+```
+
 Building the vignette additionally requires
 [`BiocStyle`](https://bioconductor.org/packages/BiocStyle/), and a few
 of the plotting functions require packages listed under `Suggests`:

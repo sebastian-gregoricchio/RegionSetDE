@@ -71,9 +71,9 @@ regionTable <- as.data.frame(SummarizedExperiment::rowRanges(counts))[1:4, 1:3]
 regionLinks(counts) <- data.frame(regionTable, gene.id = c("11287", "66968", "73824", "20683"))
 
 regionLinks(counts)
-#>                                        region gene.id
-#> promoterNonCpG|region_00002   chr12:4041-5040   11287
-#> promoterNonCpG|region_00003   chr12:6212-7211   66968
-#> promoterNonCpG|region_00005 chr12:10685-11684   73824
-#> promoterNonCpG|region_00006 chr12:13540-14539   20683
+#>              region gene.id
+#> 1   chr12:4041-5040   11287
+#> 2   chr12:6212-7211   66968
+#> 3 chr12:10685-11684   73824
+#> 4 chr12:13540-14539   20683
 ```

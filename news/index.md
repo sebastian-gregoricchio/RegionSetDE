@@ -130,6 +130,11 @@ First version, submitted to Bioconductor.
   fits one model per region with *edgeR*, *limma*-voom, *limma*-trend,
   [`variancePartition::dream`](http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.md)
   or *DESeq2*, reading the normalisation out of the object as offsets.
+  voom and dream receive it as effective library sizes, since the
+  offsets of a `DGEList` are read differently, or not at all, by each
+  version of [`limma::voom`](https://rdrr.io/pkg/limma/man/voom.html),
+  and the `"loess"` offsets of every region go through voom with one
+  library size per observation.
 - [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
   tests a contrast or a named list of them. A contrast can be a
   coefficient name, an expression over the design columns, a numeric

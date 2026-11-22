@@ -310,7 +310,7 @@ topRegions(resList, contrast = "shr", FDR = 1, n = 3)
 #>   stat.distribution df1      df2      p.value          FDR diff.status
 #> 1                 f   1 20.32506 1.148685e-08 2.176757e-05        down
 #> 2                 f   1 19.05860 2.743053e-06 2.599042e-03        down
-#> 3                 f   1 18.45056 1.370844e-05 6.573186e-03        down
+#> 3                 f   1 18.45056 1.370844e-05 6.573178e-03        down
 #>       regionId
 #> 1 region_02996
 #> 2 region_03590

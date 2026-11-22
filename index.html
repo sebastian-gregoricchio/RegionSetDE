@@ -121,8 +121,12 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/setRepositories.html" class="external-link">setRepositories</a></span><span class="op">(</span>ind <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span></span></code></pre></div>
-<p>Building the vignette additionally requires <a href="https://bioconductor.org/packages/BiocStyle/" class="external-link"><code>BiocStyle</code></a>, and a few of the plotting functions require packages listed under <code>Suggests</code>:</p>
+<p>Until the next Bioconductor release, <a href="https://bioconductor.org/packages/devel/bioc/html/consensusRegions.html" class="external-link"><code>consensusRegions</code></a>, needed by the peak-based workflow, is available only on the development version of Bioconductor, so <code>BiocManager</code> has to point at it first:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span>version <span class="op">=</span> <span class="st">"devel"</span><span class="op">)</span></span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"consensusRegions"</span><span class="op">)</span></span></code></pre></div>
+<p>Building the vignette additionally requires <a href="https://bioconductor.org/packages/BiocStyle/" class="external-link"><code>BiocStyle</code></a>, and a few of the plotting functions require packages listed under <code>Suggests</code>:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BiocStyle"</span>, <span class="st">"ComplexHeatmap"</span>, <span class="st">"circlize"</span>, <span class="st">"ggrepel"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Only for the random-effects engine</span></span>
@@ -132,7 +136,7 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 <span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"DESeq2"</span><span class="op">)</span></span></code></pre></div>
 <p><br></p>
 <p>## Quick start</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sebastian-gregoricchio/RegionSetDE/" class="external-link">RegionSetDE</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Region sets: a named list of BED files, GRanges or data.frames</span></span>
@@ -169,7 +173,7 @@ remotes::install_github("sebastian-gregoricchio/RegionSetDE",
 <span><span class="fu"><a href="reference/topRegions.html">topRegions</a></span><span class="op">(</span><span class="va">results</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/resultsTable.html">resultsTable</a></span><span class="op">(</span><span class="va">setResults</span><span class="op">)</span></span></code></pre></div>
 <p>Every object in the package ships with a worked example, so the whole pipeline can be run without any data of your own:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"counts"</span><span class="op">)</span></span>
 <span><span class="va">fit</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/loadExampleData.html">loadExampleData</a></span><span class="op">(</span><span class="st">"fit"</span><span class="op">)</span></span>
 <span></span>

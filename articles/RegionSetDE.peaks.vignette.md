@@ -1622,7 +1622,7 @@ topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5)
 > 5  consensus 19:48582156-48582622      NA       19 48582156 48582622   467
 >      log2FC average.signal average.signal.DMSO average.signal.R1881_4h
 > 1 -4.679189      11.268556           11.343671               12.122663
-> 2  5.332455       9.551916            8.830140                8.697849
+> 2  5.332454       9.551916            8.830140                8.697849
 > 3  1.837375      10.970159            9.047782               10.491821
 > 4  1.702553      11.184304            9.252016               10.751582
 > 5  2.441680      10.216178            9.831098                9.436726
@@ -2423,8 +2423,8 @@ resultsTable(geneSetResults)
 > 6               6   1.431060e-01               Up 0.49435724            Up
 > 7               6   1.644832e-01             Down 0.40515444            Up
 >          fry.p fry.mixed.p camera.FDR     fry.FDR fry.mixed.FDR
-> 1 0.0609328781 0.173464892  0.2066642 0.060932878   0.267104447
-> 2 0.0314734945 0.890129960  0.2066642 0.036719077   0.890129960
+> 1 0.0609328782 0.173464892  0.2066642 0.060932878   0.267104447
+> 2 0.0314734946 0.890129960  0.2066642 0.036719077   0.890129960
 > 3 0.0037837538 0.190788891  0.2066642 0.005297255   0.267104447
 > 4 0.0006494620 0.002840667  0.4943572 0.001515411   0.009942335
 > 5 0.0006494620 0.002840667  0.4943572 0.001515411   0.009942335
@@ -2744,9 +2744,9 @@ sessionInfo()
 > 
 > other attached packages:
 >  [1] ggplot2_4.0.4        dplyr_1.2.1          RegionSetDE_0.99.0  
->  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
->  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
-> [10] BiocStyle_2.40.0    
+>  [4] GenomicRanges_1.65.4 Seqinfo_1.3.2        IRanges_2.47.5      
+>  [7] S4Vectors_0.51.10    BiocGenerics_0.59.13 generics_0.1.4      
+> [10] BiocStyle_2.41.0    
 > 
 > loaded via a namespace (and not attached):
 >   [1] bitops_1.1-0                rlang_1.3.0                
@@ -2754,50 +2754,50 @@ sessionInfo()
 >   [5] GetoptLong_1.1.1            otel_0.3.0                 
 >   [7] matrixStats_1.5.0           compiler_4.6.2             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
->  [11] systemfonts_1.3.3           vctrs_0.7.3                
->  [13] stringr_1.6.0               pkgconfig_2.0.3            
->  [15] shape_1.4.6.1               crayon_1.5.3               
->  [17] fastmap_1.2.0               XVector_0.52.0             
->  [19] labeling_0.4.3              Rsamtools_2.28.0           
+>  [11] systemfonts_1.3.4           vctrs_0.7.3                
+>  [13] stringr_1.6.0               shape_1.4.6.1              
+>  [15] pkgconfig_2.0.3             crayon_1.5.3               
+>  [17] fastmap_1.2.0               XVector_0.53.0             
+>  [19] labeling_0.4.3              Rsamtools_2.29.0           
 >  [21] rmarkdown_2.32              markdown_2.1               
->  [23] UCSC.utils_1.8.0            ragg_1.5.2                 
+>  [23] UCSC.utils_1.9.1            ragg_1.5.2                 
 >  [25] purrr_1.2.2                 xfun_0.62                  
->  [27] cachem_1.1.0                litedown_1.0               
->  [29] cigarillo_1.2.1             GenomeInfoDb_1.48.0        
->  [31] jsonlite_2.0.0              DelayedArray_0.38.2        
->  [33] BiocParallel_1.46.0         parallel_4.6.2             
->  [35] cluster_2.1.8.3             R6_2.6.1                   
->  [37] stringi_1.8.9               bslib_0.12.0               
->  [39] RColorBrewer_1.1-3          limma_3.68.5               
->  [41] rtracklayer_1.72.0          jquerylib_0.1.4            
+>  [27] cachem_1.1.0                cigarillo_1.3.1            
+>  [29] litedown_1.0                GenomeInfoDb_1.49.3        
+>  [31] jsonlite_2.0.0              DelayedArray_0.39.8        
+>  [33] BiocParallel_1.47.0         cluster_2.1.8.3            
+>  [35] parallel_4.6.2              R6_2.6.1                   
+>  [37] bslib_0.12.0                stringi_1.8.9              
+>  [39] RColorBrewer_1.1-3          limma_3.99.5               
+>  [41] rtracklayer_1.73.0          jquerylib_0.1.4            
 >  [43] Rcpp_1.1.2                  bookdown_0.48              
->  [45] SummarizedExperiment_1.42.0 iterators_1.0.14           
->  [47] knitr_1.52                  splines_4.6.2              
->  [49] Matrix_1.7-6                tidyselect_1.2.1           
->  [51] abind_1.4-8                 yaml_2.3.12                
->  [53] doParallel_1.0.17           ggtext_0.2.0               
->  [55] codetools_0.2-20            curl_8.1.0                 
->  [57] lattice_0.23-1              tibble_3.3.1               
->  [59] withr_3.0.3                 Biobase_2.72.0             
->  [61] S7_1.0.0                    csaw_1.46.0                
->  [63] evaluate_1.0.5              desc_1.4.3                 
->  [65] xml2_1.6.0                  circlize_0.4.18            
->  [67] Biostrings_2.80.2           pillar_1.11.1              
->  [69] BiocManager_1.30.27         MatrixGenerics_1.24.0      
->  [71] foreach_1.5.2               RCurl_1.98-1.20            
->  [73] scales_1.4.0                glue_1.8.1                 
->  [75] metapod_1.20.0              tools_4.6.2                
->  [77] BiocIO_1.22.0               locfit_1.5-9.12            
->  [79] GenomicAlignments_1.48.0    fs_2.1.0                   
+>  [45] SummarizedExperiment_1.43.0 iterators_1.0.14           
+>  [47] knitr_1.52                  BiocBaseUtils_1.15.1       
+>  [49] splines_4.6.2               Matrix_1.7-6               
+>  [51] tidyselect_1.2.1            abind_1.4-8                
+>  [53] yaml_2.3.12                 doParallel_1.0.17          
+>  [55] ggtext_0.2.0                codetools_0.2-20           
+>  [57] curl_8.1.0                  lattice_0.23-1             
+>  [59] tibble_3.3.1                Biobase_2.73.2             
+>  [61] withr_3.0.3                 S7_1.0.0                   
+>  [63] csaw_1.47.1                 evaluate_1.0.5             
+>  [65] desc_1.4.3                  xml2_1.6.0                 
+>  [67] circlize_0.4.18             Biostrings_2.81.9          
+>  [69] pillar_1.11.1               BiocManager_1.30.27        
+>  [71] MatrixGenerics_1.25.0       foreach_1.5.2              
+>  [73] RCurl_1.98-1.20             scales_1.4.0               
+>  [75] glue_1.8.1                  metapod_1.21.1             
+>  [77] tools_4.6.2                 BiocIO_1.23.3              
+>  [79] GenomicAlignments_1.49.2    fs_2.1.0                   
 >  [81] XML_3.99-0.25               grid_4.6.2                 
->  [83] tidyr_1.3.2                 edgeR_4.10.7               
->  [85] colorspace_2.1-4            nlme_3.1-171               
+>  [83] tidyr_1.3.2                 colorspace_2.1-4           
+>  [85] edgeR_4.99.15               nlme_3.1-171               
 >  [87] consensusRegions_0.99.3     restfulr_0.0.17            
->  [89] cli_3.6.6                   textshaping_1.0.5          
->  [91] viridisLite_0.4.3           S4Arrays_1.12.1            
->  [93] ComplexHeatmap_2.28.0       gtable_0.3.6               
->  [95] sass_0.4.10                 digest_0.6.39              
->  [97] ggrepel_0.9.8               SparseArray_1.12.3         
+>  [89] cli_3.6.6                   textshaping_1.1.0          
+>  [91] viridisLite_0.4.3           S4Arrays_1.13.3            
+>  [93] ComplexHeatmap_2.29.0       gtable_0.3.6               
+>  [95] sass_0.5.0                  digest_0.6.39              
+>  [97] ggrepel_0.9.8               SparseArray_1.13.5         
 >  [99] rjson_0.2.23                htmlwidgets_1.6.4          
 > [101] farver_2.1.2                htmltools_0.5.9            
 > [103] pkgdown_2.2.1               lifecycle_1.0.5            

@@ -53,9 +53,9 @@ resultRanges(results)
 #>      promoterCpG|region_03798    chr12 46728313-46729312      * |
 #>                                   region.set    region.id   tile.id     log2FC
 #>                                  <character>  <character> <integer>  <numeric>
-#>   promoterNonCpG|region_00012 promoterNonCpG region_00012      <NA> -0.4744875
+#>   promoterNonCpG|region_00012 promoterNonCpG region_00012      <NA> -0.4744876
 #>   promoterNonCpG|region_00017 promoterNonCpG region_00017      <NA> -1.6911510
-#>   promoterNonCpG|region_00019 promoterNonCpG region_00019      <NA>  0.1328365
+#>   promoterNonCpG|region_00019 promoterNonCpG region_00019      <NA>  0.1328366
 #>   promoterNonCpG|region_00020 promoterNonCpG region_00020      <NA>  1.3000608
 #>   promoterNonCpG|region_00026 promoterNonCpG region_00026      <NA> -0.0791789
 #>                           ...            ...          ...       ...        ...
@@ -79,10 +79,10 @@ resultRanges(results)
 #>      promoterCpG|region_03798        7.03435           7.03222
 #>                               average.signal.SHR       stat stat.distribution
 #>                                        <numeric>  <numeric>       <character>
-#>   promoterNonCpG|region_00012            3.07110 0.16629041                 f
-#>   promoterNonCpG|region_00017            2.77439 2.33758830                 f
+#>   promoterNonCpG|region_00012            3.07110 0.16629042                 f
+#>   promoterNonCpG|region_00017            2.77439 2.33758837                 f
 #>   promoterNonCpG|region_00019            3.39054 0.01002874                 f
-#>   promoterNonCpG|region_00020            3.85473 2.08486536                 f
+#>   promoterNonCpG|region_00020            3.85473 2.08486537                 f
 #>   promoterNonCpG|region_00026            3.29321 0.00711448                 f
 #>                           ...                ...        ...               ...
 #>      promoterCpG|region_03781            9.89195    0.95576                 f

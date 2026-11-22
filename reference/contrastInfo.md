@@ -76,5 +76,5 @@ contrastInfo(results)
 
 # The statistics themselves, one per region
 head(resultsTable(results)$stat)
-#> [1] 0.166290413 2.337588301 0.010028735 2.084865356 0.007114484 2.273415136
+#> [1] 0.166290417 2.337588371 0.010028736 2.084865373 0.007114484 2.273415154
 ```

@@ -113,15 +113,15 @@ results
 #>     promoterCpG: 0 up, 1 down
 head(resultsTable(results), 3)
 #>       region.set    region.id tile.id seqnames start   end width     log2FC
-#> 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744875
+#> 1 promoterNonCpG region_00012      NA    chr12 26988 27987  1000 -0.4744876
 #> 2 promoterNonCpG region_00017      NA    chr12 39449 40448  1000 -1.6911510
-#> 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328365
+#> 3 promoterNonCpG region_00019      NA    chr12 44116 45115  1000  0.1328366
 #>   average.signal average.signal.BN average.signal.SHR       stat
-#> 1       3.098695          3.154609           3.071096 0.16629041
-#> 2       3.141973          3.512708           2.774385 2.33758830
+#> 1       3.098695          3.154609           3.071096 0.16629042
+#> 2       3.141973          3.512708           2.774385 2.33758837
 #> 3       3.273341          3.149796           3.390540 0.01002874
 #>   stat.distribution df1      df2   p.value       FDR diff.status     regionId
 #> 1                 f   1 18.94543 0.6880013 0.9200864        null region_00012
-#> 2                 f   1 18.73556 0.1429932 0.7997195        null region_00017
+#> 2                 f   1 18.73556 0.1429931 0.7997195        null region_00017
 #> 3                 f   1 18.45274 0.9213104 0.9807286        null region_00019
 ```

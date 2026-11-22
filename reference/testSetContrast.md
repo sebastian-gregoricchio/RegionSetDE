@@ -170,7 +170,7 @@ resultsTable(setContrast)
 #>         set.1          set.2 n.regions.1 n.regions.2 n.shared.dropped
 #> 1 promoterCpG promoterNonCpG         269         277                0
 #>   n.overlapping.within.1 n.overlapping.within.2 mean.log2FC.1 mean.log2FC.2
-#> 1                      0                      0    -0.8336708   -0.02089479
+#> 1                      0                      0    -0.8336708   -0.02089478
 #>   delta.log2FC  CI.lower  CI.upper CI.type heterogeneity.CI.lower
 #> 1    -0.812776 -1.706428 0.4466904  sample              -2.518293
 #>   heterogeneity.CI.upper inter.region.cor.1 inter.region.cor.2 camera.direction

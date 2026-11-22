@@ -58,23 +58,23 @@ results <- testRegions(fit, contrast = c("condition", "SHR", "BN"), verbose = FA
 
 resultTable <- resultsTable(results)
 head(resultTable)
-#>       region.set    region.id tile.id seqnames  start    end width     log2FC
-#> 1 promoterNonCpG region_00012      NA    chr12  26988  27987  1000 -0.4744875
-#> 2 promoterNonCpG region_00017      NA    chr12  39449  40448  1000 -1.6911510
-#> 3 promoterNonCpG region_00019      NA    chr12  44116  45115  1000  0.1328365
-#> 4 promoterNonCpG region_00020      NA    chr12  46527  47526  1000  1.3000608
-#> 5 promoterNonCpG region_00026      NA    chr12  89229  90228  1000 -0.0791789
-#> 6 promoterNonCpG region_00043      NA    chr12 330751 331750  1000 -1.2370885
+#>       region.set    region.id tile.id seqnames  start    end width      log2FC
+#> 1 promoterNonCpG region_00012      NA    chr12  26988  27987  1000 -0.47448757
+#> 2 promoterNonCpG region_00017      NA    chr12  39449  40448  1000 -1.69115100
+#> 3 promoterNonCpG region_00019      NA    chr12  44116  45115  1000  0.13283658
+#> 4 promoterNonCpG region_00020      NA    chr12  46527  47526  1000  1.30006083
+#> 5 promoterNonCpG region_00026      NA    chr12  89229  90228  1000 -0.07917888
+#> 6 promoterNonCpG region_00043      NA    chr12 330751 331750  1000 -1.23708846
 #>   average.signal average.signal.BN average.signal.SHR        stat
-#> 1       3.098695          3.154609           3.071096 0.166290413
-#> 2       3.141973          3.512708           2.774385 2.337588301
-#> 3       3.273341          3.149796           3.390540 0.010028735
-#> 4       3.490690          2.930994           3.854730 2.084865356
+#> 1       3.098695          3.154609           3.071096 0.166290417
+#> 2       3.141973          3.512708           2.774385 2.337588371
+#> 3       3.273341          3.149796           3.390540 0.010028736
+#> 4       3.490690          2.930994           3.854730 2.084865373
 #> 5       3.220877          3.152202           3.293212 0.007114484
-#> 6       3.411317          3.668027           3.170663 2.273415136
+#> 6       3.411317          3.668027           3.170663 2.273415154
 #>   stat.distribution df1      df2   p.value       FDR diff.status     regionId
 #> 1                 f   1 18.94543 0.6880013 0.9200864        null region_00012
-#> 2                 f   1 18.73556 0.1429932 0.7997195        null region_00017
+#> 2                 f   1 18.73556 0.1429931 0.7997195        null region_00017
 #> 3                 f   1 18.45274 0.9213104 0.9807286        null region_00019
 #> 4                 f   1 20.64203 0.1637725 0.7997195        null region_00020
 #> 5                 f   1 20.56519 0.9335959 0.9807286        null region_00026

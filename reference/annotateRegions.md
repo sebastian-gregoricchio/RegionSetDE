@@ -213,13 +213,13 @@ counts <- annotateRegions(counts,
 )
 
 regionLinks(counts)
-#>                                        region gene.id link.weight weight.source
-#> promoterNonCpG|region_00002   chr12:4041-5040   11287        0.42     ABC score
-#> promoterNonCpG|region_00003   chr12:6212-7211   11287        0.08     ABC score
-#> promoterNonCpG|region_00005 chr12:10685-11684   66968        0.31     ABC score
-#> promoterNonCpG|region_00006 chr12:13540-14539   73824        0.57     ABC score
-#> promoterNonCpG|region_00008 chr12:18501-19500   73824        0.12     ABC score
-#> promoterNonCpG|region_00009 chr12:20855-21854   20683        0.66     ABC score
+#>              region gene.id link.weight weight.source
+#> 1   chr12:4041-5040   11287        0.42     ABC score
+#> 2   chr12:6212-7211   11287        0.08     ABC score
+#> 3 chr12:10685-11684   66968        0.31     ABC score
+#> 4 chr12:13540-14539   73824        0.57     ABC score
+#> 5 chr12:18501-19500   73824        0.12     ABC score
+#> 6 chr12:20855-21854   20683        0.66     ABC score
 head(SummarizedExperiment::rowData(counts)$gene.id)
 #> [1] "11287" "11287" "66968" "73824" "73824" "20683"
 ```

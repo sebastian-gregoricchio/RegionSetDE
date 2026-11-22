@@ -63,7 +63,7 @@
 #'
 #' @importFrom edgeR normLibSizes
 #' @importFrom csaw normFactors normOffsets
-#' @importFrom SummarizedExperiment assay assay<- assayNames colData colData<- rowData
+#' @importFrom SummarizedExperiment assay assay<- assayNames assays<- colData colData<- rowData
 #' @importFrom S4Vectors metadata metadata<-
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
@@ -252,6 +252,11 @@ normalizeRegionCounts <-
         #-------------------------------#
         if (is.null(offsetMatrix)) {
             normalizedMatrix <- sweep(countMatrix, MARGIN = 2, STATS = scalingFactorVector, FUN = "/")
+
+            # The offsets of an earlier loess run would otherwise be read by fitRegions in place of the new factors
+            if ("offset" %in% SummarizedExperiment::assayNames(counts)) {
+                SummarizedExperiment::assays(counts)[["offset"]] <- NULL
+            }
         } else {
             # Centring the offsets on the row keeps the normalised values around the magnitude of the raw ones
             normalizedMatrix <- countMatrix / exp(offsetMatrix - rowMeans(offsetMatrix))

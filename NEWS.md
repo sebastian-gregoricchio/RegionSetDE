@@ -30,7 +30,7 @@ First version, submitted to Bioconductor.
 * `selectSamples()` filters the samples with `dplyr::filter` syntax on the `colData`, and `splitSamples()` splits an object by mark or assay.
 
 ## Fitting and testing
-* `fitRegions()` fits one model per region with *edgeR*, *limma*-voom, *limma*-trend, `variancePartition::dream` or *DESeq2*, reading the normalisation out of the object as offsets.
+* `fitRegions()` fits one model per region with *edgeR*, *limma*-voom, *limma*-trend, `variancePartition::dream` or *DESeq2*, reading the normalisation out of the object as offsets. voom and dream receive it as effective library sizes, since the offsets of a `DGEList` are read differently, or not at all, by each version of `limma::voom`, and the `"loess"` offsets of every region go through voom with one library size per observation.
 * `testRegions()` tests a contrast or a named list of them. A contrast can be a coefficient name, an expression over the design columns, a numeric vector or `c("column", "groupA", "groupB")`, and `pairwiseContrasts()` writes out every pair of levels of a column. Tiled regions are combined back to one row per region through `csaw::combineTests()` or a representative tile.
 * The results carry the distribution of `stat` and its degrees of freedom, for a power calculation for instance, and `contrastInfo()` summarises every contrast of an object.
 * `updateThresholds()` labels the regions again with other `FDR` and `log2FC` cut-offs, without testing again.

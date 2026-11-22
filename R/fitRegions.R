@@ -27,7 +27,7 @@
 #' @return A \code{RegionSetDE.fit} object.
 #'
 #' @details Only one assay type belongs in a model. Marks, antibodies and assays differ in dispersion, in dynamic range and in what their scaling factors mean, so a fit that pools them borrows information between rows that describe unrelated experiments. Split the object with \code{\link{splitSamples}} and normalise each piece on its own before coming here.
-#' Offsets are read from the object rather than recomputed. When \code{\link{normalizeRegionCounts}} produced a matrix of log offsets, in the \code{offset} assay, that matrix is used; otherwise the per-sample \code{scaling.factor} is expanded into one. In both cases \code{edgeR::scaleOffset} puts the offsets back on the scale of the library sizes, which leaves the coefficients readable as log2 fold changes and keeps the fitted values on the scale of the raw counts. Running without offsets is possible and is almost never what you want: the library sizes alone assume that the depth is the only difference between the samples.
+#' Offsets are read from the object rather than recomputed. When \code{\link{normalizeRegionCounts}} produced a matrix of log offsets, in the \code{offset} assay, that matrix is used; otherwise the per-sample \code{scaling.factor} is expanded into one. In both cases \code{edgeR::scaleOffset} puts the offsets back on the scale of the library sizes, which leaves the coefficients readable as log2 fold changes and keeps the fitted values on the scale of the raw counts. voom and dream receive the same values as effective library sizes, and the dream engine refuses the \code{"loess"} offsets, which change along the rows. Running without offsets is possible and is almost never what you want: the library sizes alone assume that the depth is the only difference between the samples.
 #' A design with one sample per condition has no residual degree of freedom, so nothing in the data says how much two libraries differ for reasons unrelated to the treatment. In that case the number is taken from rows assumed not to respond, through \code{\link{estimateNullDispersion}}, and the fit switches from the quasi-likelihood F test to a likelihood ratio test with the dispersion held fixed. It happens here rather than being asked for, since the alternative is a fit that cannot be produced at all, but it is announced when it does: the result is conditional on that number, and \code{\link{checkNullCalibration}} is what turns the assumption into something checkable. \code{edgeR}'s own guidance, when no null rows exist either, is to pick a BCV by experience, around 0.4 for human samples, 0.1 for genetically identical model organisms and 0.01 for technical replicates, and to read the output as descriptive.
 #' The engines answer slightly different questions. \code{"edgeR"} is the default and the safest with few replicates, since the quasi-likelihood F test carries the uncertainty of the dispersion estimate into the p-value. \code{"voom"} is faster on large objects and more flexible on the design, and it is the one that can absorb a repeated-measures structure through \code{block} without spending a coefficient on it. \code{"dream"} extends the same machinery to explicit random effects, which is what a design with several samples per donor asks for. \code{"deseq2"} is included for comparison. It runs the Wald test on the maximum likelihood fold changes (\code{betaPrior = FALSE}) and does not call \code{DESeq2::lfcShrink}, so its fold changes are unshrunken like those of the other engines; shrunken ones can be computed from the object returned by \code{\link{asDESeqDataSet}}. On a few thousand regions it agrees with edgeR almost everywhere.
 #' Four of the five are count models and the fifth is not, which is the distinction that decides the choice on bigWig input. \code{edgeR}, \code{DESeq2}, \code{voom} and \code{dream} all describe the number of fragments falling in an interval: the first two through a negative binomial likelihood, the other two through a mean-variance trend estimated on the count scale. Coverage read out of a bigWig is not that number, and rounding it to an integer does not make it one. \code{"limma"} models the log2 signal with an abundance trend on the residual variance and asks nothing of the values beyond their being continuous, which is what an already normalised track can supply. An object counted from BAM files may use any of the five; one built by \code{\link{countBigwig}} is refused by the count engines unless it was declared \code{countLike}, or unless \code{assumeCountLike} overrides it here.
@@ -598,10 +598,12 @@ fitRegions <-
 #'
 #' @return A list with the \code{fit}, the \code{blocking} and the \code{dispersion} elements.
 #'
+#' @details The offsets of a \code{DGEList} are not read in the same way by every version of \code{limma::voom}: ignored up to limma 3.66, added to the library sizes in 3.68, used in their place afterwards. The normalisation is therefore never left in the \code{DGEList}. It is handed over as effective library sizes by \code{.voomOffsets}, and the \code{"loess"} offsets, one per region and sample, go through the same algorithm written for a library size per observation.
+#'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom edgeR DGEList scaleOffset
-#' @importFrom limma voom lmFit duplicateCorrelation
+#' @importFrom edgeR DGEList
+#' @importFrom limma lmFit duplicateCorrelation
 #'
 #' @noRd
 
@@ -614,12 +616,12 @@ fitRegions <-
              block = NULL,
              robust = TRUE,
              verbose = TRUE) {
+        # The DGEList keeps no offset, the normalisation reaches voom as effective library sizes
         dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
-        if (!is.null(offsetMatrix)) {
-            dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
-        }
-
-        voomObject <- limma::voom(counts = dgeList, design = designMatrix, plot = FALSE)
+        logLibraries <- .effectiveLogLibraries(
+            librarySizes = librarySizes, offsetMatrix = offsetMatrix, nRows = nrow(countMatrix)
+        )
+        voomObject <- .voomOffsets(dgeList = dgeList, designMatrix = designMatrix, logLibraries = logLibraries)
 
         #-------------------------------#
         # Blocked, or not               #
@@ -635,8 +637,8 @@ fitRegions <-
 
             # The first correlation is estimated on unweighted values, the second pass feeds it back into voom
             firstCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
-            voomObject <- limma::voom(
-                counts = dgeList, design = designMatrix, plot = FALSE,
+            voomObject <- .voomOffsets(
+                dgeList = dgeList, designMatrix = designMatrix, logLibraries = logLibraries,
                 block = blockVector, correlation = firstCorrelation
             )
             consensusCorrelation <- limma::duplicateCorrelation(object = voomObject, design = designMatrix, block = blockVector)$consensus.correlation
@@ -657,6 +659,117 @@ fitRegions <-
             blocking = blockingInfo,
             dispersion = list(sigma.median = stats::median(linearFit$sigma, na.rm = TRUE))
         ))
+    } # END function
+
+
+#' @title .effectiveLogLibraries
+#'
+#' @description Turns the library sizes and the offsets of the normalisation into the natural log of an effective library size for every row and sample.
+#'
+#' @param librarySizes Numeric vector with the library size of each sample.
+#' @param offsetMatrix Numeric matrix of log offsets, or \code{NULL}.
+#' @param nRows Integer with the number of rows.
+#'
+#' @return A numeric matrix with one row per region and one column per sample.
+#'
+#' @details The offsets are centred as \code{edgeR::scaleOffset} centres them, so the effective sizes stay on the scale of the library sizes and every engine reads the same normalisation.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @noRd
+
+.effectiveLogLibraries <-
+    function(librarySizes,
+             offsetMatrix = NULL,
+             nRows) {
+        if (is.null(offsetMatrix)) {
+            return(matrix(data = rep(log(librarySizes), each = nRows), nrow = nRows, ncol = length(librarySizes)))
+        }
+
+        # Row means removed and the mean log library size added back, as edgeR::scaleOffset does
+        return(offsetMatrix - rowMeans(offsetMatrix) + mean(log(librarySizes)))
+    } # END function
+
+
+#' @title .voomOffsets
+#'
+#' @description Runs \code{voom} with the normalisation given as effective library sizes, one per sample or one per region and sample.
+#'
+#' @param dgeList \code{DGEList} object with the counts and the samples, without offsets.
+#' @param designMatrix Design matrix.
+#' @param logLibraries Numeric matrix with the natural log of the effective library sizes, as returned by \code{.effectiveLogLibraries}.
+#' @param block Vector with the blocking variable, or \code{NULL}.
+#' @param correlation Numeric value with the correlation within blocks, or \code{NULL}.
+#' @param perObservation Logical value forcing the algorithm written for one library size per observation, or \code{NULL} to use it only when the sizes change along the rows. Default: \code{NULL}.
+#'
+#' @return An \code{EList} object as returned by \code{limma::voom}.
+#'
+#' @details With one effective size per sample this is \code{limma::voom} itself, given the sizes through \code{lib.size}. With sizes that change along the rows, as the \code{"loess"} offsets do, the log-CPM, the mean-variance trend and the weights are computed as \code{limma::voom} computes them, with the library size of each observation in place of the one of its sample and with the lowess span chosen by \code{limma::voom}. The two give the same values when the sizes are constant along the rows.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom limma voom lmFit
+#' @importFrom stats lowess approxfun
+#'
+#' @noRd
+
+.voomOffsets <-
+    function(dgeList,
+             designMatrix,
+             logLibraries,
+             block = NULL,
+             correlation = NULL,
+             perObservation = NULL) {
+        countMatrix <- as.matrix(dgeList$counts)
+        librarySizeMatrix <- exp(logLibraries)
+
+        # Recent limma versions print a recommendation for voomLmFit at every call
+        voomObject <- suppressMessages(limma::voom(
+            counts = dgeList, design = designMatrix, lib.size = librarySizeMatrix[1, ],
+            block = block, correlation = correlation, plot = FALSE
+        ))
+
+        if (is.null(perObservation)) {
+            perObservation <- any(abs(sweep(logLibraries, 2, logLibraries[1, ])) > 1e-8)
+        }
+        if (isFALSE(perObservation)) {
+            return(voomObject)
+        }
+
+        #-------------------------------#
+        # One size per observation      #
+        #-------------------------------#
+        # The steps of limma::voom, with a library size for every region and sample
+        logCPM <- log2((countMatrix + 0.5) / (librarySizeMatrix + 1) * 1e6)
+        linearFit <- limma::lmFit(object = logCPM, design = designMatrix, block = block, correlation = correlation)
+
+        # voom gives equal weights when fewer than two rows have residual degrees of freedom
+        if (sum(linearFit$df.residual > 0) < 2) {
+            voomObject$E <- logCPM
+            voomObject$weights <- matrix(1, nrow = nrow(logCPM), ncol = ncol(logCPM), dimnames = dimnames(logCPM))
+            return(voomObject)
+        }
+
+        # Same span as the one limma::voom used, adaptive or not depending on the version
+        lowessSpan <- voomObject$span
+        if (is.null(lowessSpan)) {
+            lowessSpan <- 0.5
+        }
+
+        meanLogCount <- rowMeans(logCPM) + rowMeans(log2(librarySizeMatrix + 1)) - log2(1e6)
+        rootSigma <- sqrt(linearFit$sigma)
+        allZero <- rowSums(countMatrix) == 0
+        trend <- stats::lowess(x = meanLogCount[!allZero], y = rootSigma[!allZero], f = lowessSpan)
+        trendFunction <- stats::approxfun(x = trend, rule = 2, ties = list("ordered", mean))
+
+        fittedLogCount <- log2(1e-6 * 2^(linearFit$coefficients %*% t(designMatrix)) * (librarySizeMatrix + 1))
+        precisionWeights <- 1 / trendFunction(fittedLogCount)^4
+        dim(precisionWeights) <- dim(fittedLogCount)
+        dimnames(precisionWeights) <- dimnames(logCPM)
+
+        voomObject$E <- logCPM
+        voomObject$weights <- precisionWeights
+        return(voomObject)
     } # END function
 
 
@@ -787,9 +900,11 @@ fitRegions <-
 #'
 #' @return A list with the \code{fit}, the \code{blocking} and the \code{dispersion} elements.
 #'
+#' @details \code{variancePartition::voomWithDreamWeights} takes one library size per sample and does not read the offsets of a \code{DGEList}, so the normalisation is handed over as effective library sizes. The \code{"loess"} offsets, one per region and sample, cannot be carried and are refused.
+#'
 #' @author Sebastian Gregoricchio
 #'
-#' @importFrom edgeR DGEList scaleOffset
+#' @importFrom edgeR DGEList
 #'
 #' @noRd
 
@@ -802,17 +917,25 @@ fitRegions <-
              colTable,
              BPPARAM = NULL) {
         dgeList <- edgeR::DGEList(counts = countMatrix, samples = colTable, lib.size = librarySizes)
-        if (!is.null(offsetMatrix)) {
-            dgeList <- edgeR::scaleOffset(y = dgeList, offset = offsetMatrix)
+        logLibraries <- .effectiveLogLibraries(
+            librarySizes = librarySizes, offsetMatrix = offsetMatrix, nRows = nrow(countMatrix)
+        )
+        if (any(abs(sweep(logLibraries, 2, logLibraries[1, ])) > 1e-8)) {
+            stop("The 'dream' engine takes one normalisation factor per sample, and the 'loess' normalisation gives ",
+                "one per region and sample. Fit with engine = 'edgeR' or 'voom', or normalise with another method.",
+                call. = FALSE
+            )
         }
 
         BPPARAM <- .resolveBPPARAM(BPPARAM = BPPARAM)
 
-        # The weights have to come from the same formula as the fit, a voom run on the fixed part alone underestimates them
+        # The weights have to come from the same formula as the fit, a voom run on the fixed part alone underestimates them.
+        # The normalisation goes in as effective library sizes, the offsets of a DGEList being ignored there
         voomObject <- variancePartition::voomWithDreamWeights(
             counts = dgeList,
             formula = designFormula,
             data = colTable,
+            lib.size = exp(logLibraries[1, ]),
             BPPARAM = BPPARAM,
             quiet = TRUE
         )

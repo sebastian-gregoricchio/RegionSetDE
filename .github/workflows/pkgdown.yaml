@@ -19,6 +19,7 @@ jobs:
       group: pkgdown-${{ github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_BIOC_VERSION: "3.24"
     permissions:
       contents: write
     steps:

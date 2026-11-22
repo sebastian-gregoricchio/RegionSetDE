@@ -22,6 +22,10 @@ on:
 permissions: read-all
 
 jobs:
+  check:
+    env:
+      R_BIOC_VERSION: "3.24"
+
   R-CMD-check-bioc:
     runs-on: ${{ matrix.config.os }}
 

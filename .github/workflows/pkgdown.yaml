@@ -7,6 +7,7 @@
 on:
   push:
     branches: [devel-tools]
+  workflow_dispatch:
 
 name: pkgdown
 
@@ -19,6 +20,8 @@ jobs:
       group: pkgdown-${{ github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # Bioconductor 3.24, the devel branch, runs on R 4.6. consensusRegions is only
+      # there, so pak must not fall back on the release repositories
       R_BIOC_VERSION: "3.24"
     permissions:
       contents: write
@@ -48,6 +51,16 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
+
+      # consensusRegions is in Bioconductor devel but has no source package there
+      # yet, so pak cannot find it. Until it has one, this run adds a 'Remotes'
+      # field pointing at GitHub. It is never committed. Delete this step once the
+      # Bioconductor page of consensusRegions lists a source package
+      - name: Take consensusRegions from GitHub
+        run: |
+          descriptionLines <- readLines("DESCRIPTION", warn = FALSE)
+          writeLines(c(descriptionLines, "Remotes: sebastian-gregoricchio/consensusRegions"), "DESCRIPTION")
+        shell: Rscript {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:

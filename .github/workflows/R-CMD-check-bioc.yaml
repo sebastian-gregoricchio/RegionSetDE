@@ -2,22 +2,25 @@
 # Bioconductor repositories and BiocCheck added.
 #
 # The matrix mirrors the three platforms the Bioconductor build system runs on.
-# There is no 'bioc-version' input on setup-r: BiocManager maps the R version onto
-# the matching Bioconductor version, so R devel gives Bioconductor devel and R
-# release gives Bioconductor release. pak resolves the Bioconductor dependencies
-# from biocViews, so no repository has to be declared by hand. BiocCheck runs once,
-# on devel, since that is the branch a submission is reviewed against.
+# There is no 'bioc-version' input on setup-r, and the R version alone does not
+# say which Bioconductor branch is wanted: R 4.6 serves both 3.23 (release) and
+# 3.24 (devel). R_BIOC_VERSION fixes it to devel, the branch a submission is
+# reviewed against, and every job runs the R release that devel is built with.
+# Change both when Bioconductor moves to the next devel. pak resolves the
+# Bioconductor dependencies from biocViews, so no repository has to be declared by
+# hand. BiocCheck runs once, on Linux.
 #
 # The workflows live on 'devel-tools' because Bioconductor requires the default
 # branch to hold the package source only. A push to 'main' therefore cannot start
 # anything: GitHub reads the workflow definitions from the branch that received the
-# push. The run is started by hand or by the weekly schedule, and the checkout step
+# push. The run is started by hand or by a push to 'devel-tools', and the checkout step
 # below pulls 'main', so the package source is what gets checked.
 name: R-CMD-check-bioc
 
 on:
   push:
     branches: [devel-tools]
+  workflow_dispatch:
 
 permissions: read-all
 
@@ -31,8 +34,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: ubuntu-latest,   r: 'devel',   bioccheck: true}
-          - {os: ubuntu-latest,   r: 'release', bioccheck: false}
+          - {os: ubuntu-latest,   r: 'release', bioccheck: true}
           - {os: macos-latest,    r: 'release', bioccheck: false}
           - {os: windows-latest,  r: 'release', bioccheck: false}
 
@@ -41,6 +43,8 @@ jobs:
       R_KEEP_PKG_SOURCE: no
       R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
       NOT_CRAN: true
+      # Bioconductor 3.24, the devel branch, runs on R 4.6. consensusRegions is only
+      # there, so pak must not fall back on the release repositories
       R_BIOC_VERSION: "3.24"
 
     steps:
@@ -59,14 +63,30 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
+      # consensusRegions is in Bioconductor devel but has no source package there
+      # yet, so pak cannot find it. Until it has one, this run adds a 'Remotes'
+      # field pointing at GitHub. It is never committed. Delete this step once the
+      # Bioconductor page of consensusRegions lists a source package
+      - name: Take consensusRegions from GitHub
+        run: |
+          descriptionLines <- readLines("DESCRIPTION", warn = FALSE)
+          writeLines(c(descriptionLines, "Remotes: sebastian-gregoricchio/consensusRegions"), "DESCRIPTION")
+        shell: Rscript {0}
+
       # 'Suggests' are installed by default, so ComplexHeatmap, DESeq2, BiocStyle
       # and variancePartition must NOT be repeated here: a package named both in
       # DESCRIPTION and in 'extra-packages' gives pak two direct references to
-      # reconcile, which fails
+      # reconcile, which fails. BiocVersion makes BiocManager, and so BiocCheck,
+      # see 3.24 instead of the release that R 4.6 maps to by default
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, bioc::BiocCheck
+          extra-packages: any::rcmdcheck, bioc::BiocCheck, bioc::BiocVersion
           needs: check
+
+      # Back to the DESCRIPTION of 'main': BiocCheck refuses a 'Remotes' field
+      - name: Restore DESCRIPTION
+        run: git checkout -- DESCRIPTION
+        shell: bash
 
       - uses: r-lib/actions/check-r-package@v2
         with:

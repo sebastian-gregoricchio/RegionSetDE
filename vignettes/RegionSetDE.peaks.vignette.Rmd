@@ -924,6 +924,8 @@ How the tiles of a region are put together is a choice about the question. `comb
 
 For a transcription factor like AR, tiles add rows without adding information: a peak of 400 bp cut into 200 bp tiles gives two tiles that nearly always move together, and a test with more rows and the same answer.
 
+On narrow peaks they also cost power. Each tile holds only part of the fragments of its region, and the Simes combination multiplies the p-value of the best tile by the number of tiles, so the strongest p-values of a tiled analysis are several times weaker than those of the whole regions. With few replicates, the FDR is decided by those strongest p-values alone, and several times weaker can mean no call at all. On ATAC-seq data with two replicates per group, where half of the fragments had been removed in silico from a few thousand peaks, the whole regions found about 400 of the changed peaks and the summit windows about 800, while 500 bp and 150 bp tiles found none. The tiles had seen the change (a log2FC close to 1 and most of their p-values below 0.05), but not with p-values strong enough to pass the FDR. For transcription factors and ATAC-seq, count whole regions or, better, summit windows, and keep tiles for marks spread over several kilobases, where every tile still collects plenty of fragments and the change may cover only part of the domain.
+
 <br>
 
 ## Recentring on the summits {#summits}
@@ -945,7 +947,7 @@ The summit is found in the reads, as *DiffBind* finds it: the highest point of t
 
 `summitSource = "peaks"` takes the summits the peak caller wrote in the tenth column of the narrowPeak files instead, averaged over the peaks overlapping the region with weights proportional to their significance. It needs no BAM file, and on this dataset the two place the summits a median of 26 bp apart. `summits = 0` locates the summits and leaves the regions alone, which keeps the counts of whole regions while letting `plotProfile()` align them on the signal.
 
-That puts every site on the same footing and centres the count on where the protein sits, which is what a transcription factor or ATAC-seq analysis usually wants. Widths between 200 and 500 bp suit most factors. It is wrong for broad marks, whose summit is an arbitrary point in a domain: collapsing the domain to a point throws away the thing being measured, and tiles are the tool there.
+That puts every site on the same footing and centres the count on where the protein sits, which is what a transcription factor or ATAC-seq analysis usually wants. The window keeps most of the signal of the site and leaves out the background around it, so it often finds more changes than the whole region, despite holding fewer fragments. Widths between 200 and 500 bp suit most factors. It is wrong for broad marks, whose summit is an arbitrary point in a domain: collapsing the domain to a point throws away the thing being measured, and tiles are the tool there.
 
 On this dataset the summits sit a median of 32 bp from the midpoints of the consensus regions, and 236 bp at most, and none of the windows overlap. The test comes out the same as on whole regions, 82 regions up and one down against DMSO, which is what one expects from a factor whose peaks are narrow and centred already; on a consensus of wide merged regions the two can differ more.
 

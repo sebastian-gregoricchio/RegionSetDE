@@ -523,7 +523,9 @@ topRegions(results, n = 3, set = "promoterCpG", FDR = 1, sortBy = "log2FC")
 
 When the counting was tiled, the p-value of a region is a Simes combination across its tiles. That answers *does any part of this region change* rather than *does the whole region change*, and the distinction matters for wide domains: a long region that moves over one tile in forty comes out with a small p-value and a small overall fold change. The `log2FC` reported is the fold change of the most significant tile, not an average, because that is the quantity matching the p-value; `rep.tile.start` and `rep.tile.end` say where that tile is. `mean.tile.log2FC` beside it averages the tiles over the whole region, weighted by their width, and is the number to quote for the region as a whole. A large gap between the two means that only part of the region moved.
 
-The tile-level table stays available through `tileTable()`, and the [tiles section](RegionSetDE.peaks.vignette.html#tiles) of the second vignette shows it on a tiled object.
+Tiles are meant for broad domains. On narrow peaks, transcription factors or ATAC-seq, each tile holds only part of the fragments and the combination pays for the number of tiles, so the regions counted whole, or recentred on their summits, find more. The [tiles section](RegionSetDE.peaks.vignette.html#tiles) of the second vignette compares the three.
+
+The tile-level table stays available through `tileTable()`, and the same section shows it on a tiled object.
 
 On an object counted per region there are no tiles and `tileTable()` says so rather than returning an empty table.
 
@@ -1208,6 +1210,7 @@ unlink(outputDirectory, recursive = TRUE)
 | Are my p-values trustworthy? | `checkNullCalibration()` | flatness of the histogram |
 | Can I test without replicates? | `estimateNullDispersion()`, then `fitRegions(dispersion = )` | the dispersion from the background, see [Working without replicates](#no_replicates) |
 | Is the competitive comparison fair? | `plotUniverseMatching()` | overlap of the two distributions |
+| How should the regions be counted? | `countReads()`, with `summits = ` for narrow peaks and `tileWidth = ` for broad domains | see [Whole regions, tiles or summits](RegionSetDE.peaks.vignette.html#tiles) |
 | Where in the region did the change happen? | `countReads(tileWidth = )`, then `plotRegion()` | the tile-level profile |
 | What are the counts behind a region, raw or normalised? | `countTable()` | one column per sample, or `format = "long"` with the `colData` attached |
 

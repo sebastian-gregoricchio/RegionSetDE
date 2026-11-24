@@ -5,7 +5,7 @@
 #' @description Counts the reads falling in large genome wide bins, which provide the background distribution used to estimate composition-aware normalisation factors. The bins overlapping the counted regions are removed by default, so that the normalisation is not driven by the signal under study. The result is stored in the metadata of the counts object, where the normalisation step retrieves it.
 #'
 #' @param counts \code{RegionSetDE.counts} object returned by \code{\link{countReads}}.
-#' @param bamFiles Character vector with the paths of the BAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.
+#' @param bamFiles Character vector with the paths of the BAM or CRAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.
 #' @param binSize Numeric value with the width of the bins, in base pairs. Default: \code{10000}.
 #' @param excludeRegions Logical value indicating whether the bins overlapping the regions of \code{counts} must be discarded. Default: \code{TRUE}.
 #' @param minCount Numeric value with the minimum total count required to keep a bin. Default: \code{1}.

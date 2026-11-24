@@ -88,6 +88,8 @@
 #' from regions defined by the user, and
 #' \code{vignette("RegionSetDE.peaks.vignette", package = "RegionSetDE")}
 #' from the peak calls of every sample.
+#'
+#' @useDynLib RegionSetDE, .registration = TRUE
 "_PACKAGE"
 
 

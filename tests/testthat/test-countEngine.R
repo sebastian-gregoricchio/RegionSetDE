@@ -1,5 +1,5 @@
-## The counting engine reads the first mate of each proper pair and rebuilds the
-## fragment from its template length. These tests write small BAM files where the
+## The counting engine matches the two mates of each proper pair and rebuilds the
+## fragment from their 5' ends. These tests write small BAM files where the
 ## expected counts are known by construction: every pair below is placed by hand.
 
 # One proper pair in the forward-reverse orientation, the first mate on the left
@@ -135,16 +135,12 @@ test_that("the read filters apply to the counts and to the library sizes alike",
 })
 
 
-test_that("without the MQ tag the second mate passes whatever its quality", {
-    counts <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = toyPairedBam(mateTag = FALSE), sampleNames = "toy", verbose = FALSE)
+test_that("the second mate is checked on its own record, with or without the MQ tag", {
+    withTag <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = toyPairedBam(), sampleNames = "toy", verbose = FALSE)
+    withoutTag <- RegionSetDE::countReads(toyEngineRegions(), bamFiles = toyPairedBam(mateTag = FALSE), sampleNames = "toy", verbose = FALSE)
 
-    expect_equal(counts$library.size, 4)
-
-    countingMessages <- testthat::capture_messages(RegionSetDE::countReads(toyEngineRegions(),
-        bamFiles = toyPairedBam(mateTag = FALSE),
-        sampleNames = "toy"
-    ))
-    expect_true(any(grepl("No MQ tag", countingMessages)))
+    expect_equal(withoutTag$library.size, 3)
+    expect_identical(SummarizedExperiment::assay(withoutTag, "counts"), SummarizedExperiment::assay(withTag, "counts"))
 })
 
 
@@ -321,11 +317,16 @@ test_that("normalizeRegionCounts warns when the library sizes are partial", {
 })
 
 
-test_that("the CIGAR widths add up the reference operations only", {
-    expect_equal(
-        RegionSetDE:::.cigarReferenceWidth(c("50M", "10S40M", "20M2D30M", "25M3I22M", "25M100N25M")),
-        c(50L, 40L, 52L, 47L, 150L)
-    )
+test_that("the width of a read on the genome adds up the reference operations only", {
+    readLines <- vapply(seq_along(c("50M", "10S40M", "20M2D30M", "25M3I22M", "25M100N25M")), function(i) {
+        singleLine(paste0("read", i), "chr1", 1000L * i, cigar = c("50M", "10S40M", "20M2D30M", "25M3I22M", "25M100N25M")[i])
+    }, character(1))
+    reads <- RegionSetDE:::.scanAlignments(writeToyBam(readLines),
+        which = GenomicRanges::GRanges("chr1", IRanges::IRanges(1L, 20000L)),
+        isPairedEnd = FALSE, minMapq = 0, removeDuplicates = TRUE, maxFragmentLength = 1000
+    )[[1]]
+
+    expect_equal(reads$width, c(50L, 40L, 52L, 47L, 150L))
 })
 
 

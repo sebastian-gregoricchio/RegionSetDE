@@ -27,7 +27,7 @@ countGreenlist(
 
 \item{excludeCounted}{Logical value to indicate whether the greenlist regions overlapping the regions of \code{counts} must be left out, since the reads there carry the signal under study rather than the background of the protocol. Default: \code{TRUE}.}
 
-\item{bamFiles}{Character vector with the paths of the BAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.}
+\item{bamFiles}{Character vector with the paths of the BAM or CRAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.}
 
 \item{minCount}{Numeric value with the minimum total count required to keep a greenlist region. Default: \code{1}.}
 

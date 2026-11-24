@@ -30,6 +30,12 @@ toyBamFile <- function() {
 }
 
 
+# The same alignments as a CRAM file, both contigs in one container (inst/scripts/make-example-cram.sh)
+toyCramFile <- function() {
+    system.file("extdata", "cram", "ex1.cram", package = "RegionSetDE")
+}
+
+
 toyCounts <- function(...) {
     RegionSetDE::countReads(toyRegionSet(),
         bamFiles = toyBamFile(),

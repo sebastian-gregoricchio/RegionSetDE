@@ -76,9 +76,9 @@ plotProfile(
 
 \item{groupBy}{String with the name of a \code{colData} column whose groups are averaged into one profile each, for instance \code{"condition"}. Default: \code{NULL}, one profile per sample.}
 
-\item{signal}{String with the files the signal is read from: \code{"bam"}, the BAM files of \code{\link{countReads}}, \code{"bigwig"}, the bigWig files of the sample sheet or of \code{\link{countBigwig}}, or \code{"auto"}, the BAM files when they are known and the bigWig files otherwise. Default: \code{"auto"}.}
+\item{signal}{String with the files the signal is read from: \code{"bam"}, the BAM or CRAM files of \code{\link{countReads}}, \code{"bigwig"}, the bigWig files of the sample sheet or of \code{\link{countBigwig}}, or \code{"auto"}, the BAM files when they are known and the bigWig files otherwise. Default: \code{"auto"}.}
 
-\item{signalFiles}{Character vector with one BAM or bigWig file per sample, in the order of the samples, overriding the ones recorded in the object. Default: \code{NULL}.}
+\item{signalFiles}{Character vector with one BAM, CRAM or bigWig file per sample, in the order of the samples, overriding the ones recorded in the object. Default: \code{NULL}.}
 
 \item{distance}{Numeric value with the number of base pairs drawn on each side of the centre. Default: \code{1500}.}
 

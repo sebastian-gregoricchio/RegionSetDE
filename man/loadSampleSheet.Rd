@@ -19,7 +19,7 @@ loadSampleSheet(
 
 \item{basePath}{String with the directory the relative paths of the table refer to. Default: \code{NULL}, the directory holding the table when it is read from a file, the working directory otherwise.}
 
-\item{checkFiles}{Logical value to indicate whether the existence of the files, and the index of the BAM files, must be checked. Default: \code{TRUE}.}
+\item{checkFiles}{Logical value to indicate whether the existence of the files, and the index of the BAM and CRAM files, must be checked. Default: \code{TRUE}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
@@ -30,7 +30,7 @@ A data.frame with one row per sample. The standard fields found in the table com
 Reads a table describing the libraries of an experiment, one row per sample, and returns it with the file paths resolved and checked. Beside the sample name and its signal file, a row can point to the peaks called on that sample and to the input library it was sequenced against. Every other column is kept as sample annotation, with no restriction on names or number.
 }
 \details{
-Only \code{sample} and one of \code{bam} and \code{bigwig} are required. The other fields are optional, and so are their values: a sample can come without peaks or without an input, and one input can serve several samples. \code{\link{makeGreylist}} reads each distinct input file once, whatever the number of samples pointing to it.
+Only \code{sample} and one of \code{bam} and \code{bigwig} are required. The \code{bam} field takes CRAM files as well, indexed with \code{samtools index}. The other fields are optional, and so are their values: a sample can come without peaks or without an input, and one input can serve several samples. \code{\link{makeGreylist}} reads each distinct input file once, whatever the number of samples pointing to it.
 
 A DiffBind sample sheet is read as it is. \code{SampleID}, \code{bamReads}, \code{Peaks}, \code{bamControl} and \code{ControlID} take the standard names, while \code{Tissue}, \code{Factor}, \code{Condition}, \code{Treatment}, \code{Replicate} and any other column stay as annotation, available to the design of \code{\link{fitRegions}} under their own names.
 

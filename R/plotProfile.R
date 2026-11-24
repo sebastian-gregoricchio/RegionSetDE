@@ -16,8 +16,8 @@
 #' @param blacklist Regions whose signal must stay out of the figure: a row is left out when its drawn window, \code{distance} on each side of the centre, overlaps them. A \code{GRanges}, a path to a BED-like file, a data.frame, a list of them, or \code{TRUE} for the blacklist stored in the object by \code{\link{applyBlacklist}} or \code{\link{loadConsensusPeaks}}. Default: \code{NULL}.
 #' @param whitelist Regions the rows are restricted to: a row is kept when its region overlaps them. Accepts the same forms as \code{blacklist}, except \code{TRUE}. Default: \code{NULL}.
 #' @param groupBy String with the name of a \code{colData} column whose groups are averaged into one profile each, for instance \code{"condition"}. Default: \code{NULL}, one profile per sample.
-#' @param signal String with the files the signal is read from: \code{"bam"}, the BAM files of \code{\link{countReads}}, \code{"bigwig"}, the bigWig files of the sample sheet or of \code{\link{countBigwig}}, or \code{"auto"}, the BAM files when they are known and the bigWig files otherwise. Default: \code{"auto"}.
-#' @param signalFiles Character vector with one BAM or bigWig file per sample, in the order of the samples, overriding the ones recorded in the object. Default: \code{NULL}.
+#' @param signal String with the files the signal is read from: \code{"bam"}, the BAM or CRAM files of \code{\link{countReads}}, \code{"bigwig"}, the bigWig files of the sample sheet or of \code{\link{countBigwig}}, or \code{"auto"}, the BAM files when they are known and the bigWig files otherwise. Default: \code{"auto"}.
+#' @param signalFiles Character vector with one BAM, CRAM or bigWig file per sample, in the order of the samples, overriding the ones recorded in the object. Default: \code{NULL}.
 #' @param distance Numeric value with the number of base pairs drawn on each side of the centre. Default: \code{1500}.
 #' @param binWidth Numeric value with the width of the bins the signal is averaged over, in base pairs. Default: \code{50}.
 #' @param centre String with the point the regions are aligned on: \code{"summit"}, the \code{summit} column written by \code{\link{countReads}} with \code{summits}, falling back to the midpoint where there is none, or \code{"midpoint"}. Default: \code{"summit"}.
@@ -980,7 +980,7 @@ plotProfile <-
 
             fileType <- if (signal != "auto") {
                 signal
-            } else if (all(grepl("\\.bam$", signalFiles, ignore.case = TRUE))) {
+            } else if (all(grepl("\\.(bam|cram)$", signalFiles, ignore.case = TRUE))) {
                 "bam"
             } else {
                 "bigwig"
@@ -1024,7 +1024,7 @@ plotProfile <-
         if (fileType == "bam") {
             unindexedFiles <- files[!.hasBamIndex(files)]
             if (length(unindexedFiles) > 0) {
-                stop("The following BAM files are not indexed: ", paste(basename(unindexedFiles), collapse = ", "), ".", call. = FALSE)
+                stop("The following BAM or CRAM files are not indexed: ", paste(basename(unindexedFiles), collapse = ", "), ".", call. = FALSE)
             }
         }
 

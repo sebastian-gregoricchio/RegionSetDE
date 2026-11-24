@@ -4,7 +4,7 @@
 #'
 #' @description Estimates the fragment length of single-end libraries from the strand cross-correlation of their reads, the same signal phantompeakqualtools and MACS2 read the fragment size from. Paired-end libraries need no estimate, and for them the median insert size is reported instead.
 #'
-#' @param bamFiles Character vector with the paths of the BAM files, which may name the chromosomes of their assembly in different styles. Default: \code{NULL}, taken from \code{sampleSheet}.
+#' @param bamFiles Character vector with the paths of the BAM or CRAM files, which may name the chromosomes of their assembly in different styles. Default: \code{NULL}, taken from \code{sampleSheet}.
 #' @param regions Regions the reads are collected from: a \code{RegionSetDE} object, a \code{GRangesList}, a named list of \code{GRanges} or a single \code{GRanges}. Default: \code{NULL}, the three longest chromosomes of the BAM files.
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files and the sample names. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.
@@ -310,11 +310,11 @@ estimateFragmentLength <-
 
         hasIndex <- .hasBamIndex(bamFiles)
         if (any(!hasIndex)) {
-            stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
+            stop("The following BAM or CRAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
         }
 
         if (is.null(sampleNames)) {
-            sampleNames <- sub("\\.bam$", "", basename(bamFiles), ignore.case = TRUE)
+            sampleNames <- sub("\\.(bam|cram)$", "", basename(bamFiles), ignore.case = TRUE)
         }
 
         if (length(sampleNames) != length(bamFiles) | any(duplicated(sampleNames))) {

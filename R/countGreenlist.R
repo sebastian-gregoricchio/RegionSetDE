@@ -7,7 +7,7 @@
 #' @param counts \code{RegionSetDE.counts} object returned by \code{\link{countReads}}.
 #' @param greenlist \code{GRanges} with the greenlist regions, typically from \code{\link{loadGreenlist}}, or the path to a BED file holding them.
 #' @param excludeCounted Logical value to indicate whether the greenlist regions overlapping the regions of \code{counts} must be left out, since the reads there carry the signal under study rather than the background of the protocol. Default: \code{TRUE}.
-#' @param bamFiles Character vector with the paths of the BAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.
+#' @param bamFiles Character vector with the paths of the BAM or CRAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.
 #' @param minCount Numeric value with the minimum total count required to keep a greenlist region. Default: \code{1}.
 #' @param pairedEnd Logical value, or one logical value per BAM file, indicating whether the reads must be counted as proper pairs. Default: \code{NULL}, the layouts resolved at the counting step.
 #' @param fragmentLength Numeric value with the length to which single-end reads are extended, or one value per BAM file. Default: \code{NULL}, the lengths used at the counting step, sample by sample.

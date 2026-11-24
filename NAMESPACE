@@ -266,7 +266,6 @@ importFrom(Rsamtools,
   bamFlagTest,
   idxstatsBam,
   scanBam,
-  scanBamFlag,
   scanBamHeader
 )
 importFrom(S4Vectors,
@@ -491,3 +490,4 @@ importFrom(utils,
   read.table,
   write.table
 )
+useDynLib(RegionSetDE, .registration = TRUE)

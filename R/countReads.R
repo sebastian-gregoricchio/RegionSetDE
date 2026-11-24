@@ -2,10 +2,10 @@
 
 #' @title countReads
 #'
-#' @description Counts the reads of a group of BAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the fragment length before the overlap is evaluated. The regions can be recentred on the summit of the signal, as DiffBind does with the peaks of a consensus, or cut into tiles of fixed width, in which case each tile becomes a row of the resulting object. The input libraries of the samples, when there are any, are counted over the same rows and stored beside the counts.
+#' @description Counts the reads of a group of BAM or CRAM files over the regions of a \code{RegionSetDE} object. Paired-end data are counted as fragments, while single-end reads are extended to the fragment length before the overlap is evaluated. The regions can be recentred on the summit of the signal, as DiffBind does with the peaks of a consensus, or cut into tiles of fixed width, in which case each tile becomes a row of the resulting object. The input libraries of the samples, when there are any, are counted over the same rows and stored beside the counts.
 #'
 #' @param regionSet \code{RegionSetDE} object returned by \code{\link{loadRegions}} or \code{\link{loadConsensusPeaks}}, a named \code{GRangesList}, or a single \code{GRanges}, which is loaded by \code{\link{loadRegions}} as one set named \code{regions}.
-#' @param bamFiles Character vector with the paths of the BAM files. Each file must be indexed, and all of them must be aligned to the same assembly, whose chromosomes they may name in different styles (\code{chr1} in some files and \code{1} in others). Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
+#' @param bamFiles Character vector with the paths of the BAM or CRAM files. Each file must be indexed (BAI or CSI for a BAM file, CRAI for a CRAM file), and all of them must be aligned to the same assembly, whose chromosomes they may name in different styles (\code{chr1} in some files and \code{1} in others). Default: \code{NULL}, taken from \code{sampleSheet}, or from the sample sheet a consensus was built from by \code{\link{loadConsensusPeaks}}.
 #' @param sampleSheet Data.frame returned by \code{\link{loadSampleSheet}}, or the path to a sample sheet, providing the BAM files, the input files, the sample names and the annotation in one go. Default: \code{NULL}.
 #' @param sampleNames Character vector with the sample names. Default: \code{NULL}, the BAM file names are used.
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bamFiles}. Default: \code{NULL}.
@@ -16,7 +16,7 @@
 #' @param pairedEnd Logical value, one logical value per BAM file, or the string \code{"auto"} to read the layout from the files themselves. Default: \code{"auto"}.
 #' @param fragmentLength Length to which single-end reads are extended. Either a number applied to every single-end sample; one number per BAM file, matched to the sample names when the vector is named; the name of a column of the sample sheet or of \code{sampleMetadata} holding one value per sample, such as the fragment length computed by phantompeakqualtools; or \code{"auto"}, to estimate it from the reads with \code{\link{estimateFragmentLength}}. Ignored for paired-end samples, whose fragments are rebuilt from the pairs. Default: \code{150}.
 #' @param maxFragmentLength Numeric value with the maximum length accepted for a paired-end fragment. Applied to the paired-end samples only. Default: \code{1000}.
-#' @param minMapq Numeric value with the minimum mapping quality of a read. Default: \code{20}.
+#' @param minMapq Numeric value with the minimum mapping quality of a read. For paired-end data both mates are checked, each on its own record. Default: \code{20}.
 #' @param removeDuplicates Logical value indicating whether the reads flagged as duplicates must be discarded. Default: \code{TRUE}.
 #' @param excludeChromosomes Character vector with the chromosomes left out of the library sizes, written in either naming style, \code{chrM} and \code{MT} both reaching the mitochondrial genome of a file naming it either way, for instance the mitochondrial genome, chrY or the unplaced and alternative contigs. A name matching no chromosome once converted raises a warning, since it would leave that chromosome inside the library sizes without a word. The regions lying on them are still counted: to leave those out as well, filter the regions when loading them. The contigs can be collected from the BAM header, e.g. \code{grep("_|EBV", names(Rsamtools::scanBamHeader(bamFile)[[1]]$targets), value = TRUE)}. Default: \code{NULL}, every chromosome enters the library sizes.
 #' @param blacklist Regions of the assembly that must be dropped before the counting, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}, when there is one. Default: \code{NULL}.
@@ -24,7 +24,7 @@
 #' @param discardListedReads Logical value: \code{TRUE} ignores the reads lying on the blacklist and on the greylist, the way \code{discardRegions} does, so that they enter neither the counts nor the library sizes. It covers the lists given here and those stored in \code{regionSet} by \code{\link{applyBlacklist}}, \code{\link{applyGreylist}} or \code{\link{loadConsensusPeaks}}. \code{FALSE} removes the regions and leaves the reads in the library sizes. Default: \code{TRUE}.
 #' @param discardRegions \code{GRanges} with further regions whose reads must be ignored, on top of the lists handled by \code{discardListedReads}. A fragment is dropped when one of its reads starts inside them. Unlike \code{blacklist}, it removes no region. Default: \code{NULL}.
 #' @param fullLibrarySize Logical value: \code{TRUE} reads every chromosome that is not excluded, even those without any region, so that the library sizes cover the whole library; \code{FALSE} reads only the chromosomes carrying regions, which is much faster for a few regions but leaves library sizes that must not be used for normalisation. Default: \code{TRUE}.
-#' @param inputFiles Character vector with the path of the input BAM file of every sample, \code{NA} for a sample without input. One input can serve several samples and is counted once. Default: \code{NULL}, the \code{input} column of the sample sheet or of \code{sampleMetadata}, when there is one.
+#' @param inputFiles Character vector with the path of the input BAM or CRAM file of every sample, \code{NA} for a sample without input. One input can serve several samples and is counted once. Default: \code{NULL}, the \code{input} column of the sample sheet or of \code{sampleMetadata}, when there is one.
 #' @param countInput Logical value to indicate whether the input files must be counted. Default: \code{TRUE}.
 #' @param summits Numeric value with the half width of the regions recentred on their summit, which then span \code{2 * summits + 1} bp, as with the \code{summits} argument of \code{DiffBind::dba.count}. \code{0} locates the summits and stores them without moving the regions. Default: \code{NULL}, the regions are counted as they are.
 #' @param summitSource String with where the summits are taken from: \code{"reads"}, the highest point of the fragment pileup of the samples, or \code{"peaks"}, the summits written by the peak caller in the narrowPeak files of a consensus built by \code{\link{loadConsensusPeaks}}. Default: \code{"reads"}.
@@ -36,7 +36,7 @@
 #'
 #' @details Regions shared by several sets are counted only once and the values are then copied to every set they belong to, which keeps the running time proportional to the number of distinct regions.
 #'
-#' A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The fragment is rebuilt from the first mate of each proper pair, whose position and template length (TLEN) give its start and width, so the two reads never have to be matched in memory. The pairs therefore have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from the \code{MQ} tag, which \code{samtools fixmate} and Picard write; on files without it only the first mate is checked, and a message says so.
+#' A paired-end fragment is counted in every region it overlaps, including the regions it spans with both reads outside them. The two mates of each proper pair are matched by read name, and the fragment runs from the 5' end of the forward mate to the 5' end of the reverse mate, as in csaw. The template length (TLEN) written by the aligner is not used: aligners do not all compute it alike, and it places a fragment shorter than its reads, whose mates run past each other, at the leftmost read. Mates on the same strand, or running completely past each other, make no fragment. The pairs have to be flagged as proper by the aligner, and those longer than \code{maxFragmentLength} are dropped. The mapping quality of the second mate is read from its own record, so no \code{MQ} tag is needed.
 #'
 #' Counts and library sizes are kept apart. The counts only need the chromosomes carrying regions, and every region is counted, wherever it lies. The library size of a sample is the number of fragments that went through the same filters as the counts, on every chromosome of the BAM files except those in \code{excludeChromosomes}. Leaving out the mitochondrial genome matters in ATAC-seq, where its share of the reads changes from sample to sample. With \code{fullLibrarySize = FALSE} only the chromosomes carrying regions are read, and the library sizes are partial: the counts do not change, but the library sizes are not usable for normalisation, and \code{\link{normalizeRegionCounts}} warns when a method relies on them.
 #'
@@ -53,6 +53,8 @@
 #' A consensus of peaks has regions of every width, and a wide region collects more background than a narrow one around the same summit. With \code{summits}, every region is replaced by a window of fixed width centred on its summit, which is what DiffBind does by default. With \code{summitSource = "reads"} the summit is the middle of the highest stretch of fragment pileup in each sample, averaged over the samples with weights proportional to the height of their pileup, scaled by their depth, so that the samples carrying signal decide where it sits. With \code{summitSource = "peaks"} it is the average of the summits the peak caller wrote for the peaks overlapping the region, weighted by their significance, which needs no BAM file but works only for narrowPeak files. A region with neither reads nor peaks keeps its midpoint. The regions keep their identifiers, so each window can be traced back to the region it came from, and windows of neighbouring regions may overlap, as in DiffBind.
 #'
 #' Regions and BAM files do not need to share the same chromosome naming style, and neither do the BAM files among themselves. The names of the first file are the reference. The regions, the lists, \code{discardRegions} and \code{excludeChromosomes} are brought to them chromosome by chromosome, for the counting only, and every other file is read under its own names. UCSC regions can then be counted on Ensembl alignments, or on a mix of the two, and the object still comes back with the names of the input sets. The same holds for the inputs. What the files cannot differ in is the assembly: two files giving different lengths to the same chromosome are refused. Contigs that some files lack under any name, as scaffolds and decoys often do between two builds of one assembly, hold no read in those files and enter the library sizes of the others, unless they are listed in \code{excludeChromosomes}.
+#'
+#' BAM and CRAM files are read by the same C code, built on htslib, so a CRAM file gives the counts of the BAM file it was made from, and both formats can be mixed in the same call. CRAM files are read without the reference genome they were compressed against: the counting only needs the read name, the position, the flag, the mapping quality and the CIGAR of the reads, which CRAM stores apart from the bases.
 #'
 #' A single \code{GRanges} is taken as one set of regions. It goes through \code{\link{loadRegions}} with its order and its chromosome names kept, the regions with identical coordinates collapsed into one, and the set is called \code{regions}. To give the set another name, to sort it or to split it into several sets, call \code{\link{loadRegions}} or \code{\link{splitLoadRegions}} first.
 #'
@@ -176,7 +178,7 @@ countReads <-
             sampleNames = sampleNames,
             sampleMetadata = sampleMetadata,
             fileColumn = "bam.file",
-            extensionPattern = "\\.bam$"
+            extensionPattern = "\\.(bam|cram)$"
         )
 
         #------------------------#
@@ -290,16 +292,6 @@ countReads <-
 
         countMatrix <- fragmentCounts$counts
         storage.mode(countMatrix) <- "double"
-
-        # Without the MQ tag the quality of the second mate is unknown, the pair then rests on the first mate alone
-        missingMateMapq <- which(pairedEnd & !fragmentCounts$mate.mapq.found)
-
-        if (isTRUE(verbose) & length(missingMateMapq) > 0 & isTRUE(minMapq > 0)) {
-            message(
-                "No MQ tag in: ", paste(sampleTable$sample[missingMateMapq], collapse = ", "),
-                ". For these samples 'minMapq' is applied to the first mate of each pair only."
-            )
-        }
 
         # An empty library breaks every normalisation downstream, and usually points to a wrong layout or to excluding too much
         emptyLibraries <- which(fragmentCounts$library.size == 0)
@@ -1085,7 +1077,7 @@ countReads <-
         hasIndex <- .hasBamIndex(bamFiles)
 
         if (any(!hasIndex)) {
-            stop("The following BAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
+            stop("The following BAM or CRAM files are not indexed: ", paste(basename(bamFiles[!hasIndex]), collapse = ", "), ".", call. = FALSE)
         }
 
         if (!(is.numeric(fragmentLength) | (is.character(fragmentLength) & length(fragmentLength) == 1))) {

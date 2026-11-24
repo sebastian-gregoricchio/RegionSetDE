@@ -7,12 +7,12 @@
 #' @param sampleSheet String with the path to a comma or tab separated file, or a data.frame.
 #' @param columns Named character vector telling which column of the table holds each standard field, for instance \code{c(sample = "library", bam = "file")}. The standard fields are \code{sample}, \code{bam}, \code{bigwig}, \code{peaks}, \code{input} and \code{input.id}. A field not given here is looked for under its own name and then under the one used by DiffBind (\code{SampleID}, \code{bamReads}, \code{Peaks}, \code{bamControl}, \code{ControlID}), ignoring the case. Default: \code{NULL}.
 #' @param basePath String with the directory the relative paths of the table refer to. Default: \code{NULL}, the directory holding the table when it is read from a file, the working directory otherwise.
-#' @param checkFiles Logical value to indicate whether the existence of the files, and the index of the BAM files, must be checked. Default: \code{TRUE}.
+#' @param checkFiles Logical value to indicate whether the existence of the files, and the index of the BAM and CRAM files, must be checked. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A data.frame with one row per sample. The standard fields found in the table come first, under their standard names and with absolute paths, followed by every other column as it was. Samples without an input or without peaks carry \code{NA} there. When the table has inputs, \code{input.id} names each distinct input library, taken from the table when it has such a column and from the file names otherwise.
 #'
-#' @details Only \code{sample} and one of \code{bam} and \code{bigwig} are required. The other fields are optional, and so are their values: a sample can come without peaks or without an input, and one input can serve several samples. \code{\link{makeGreylist}} reads each distinct input file once, whatever the number of samples pointing to it.
+#' @details Only \code{sample} and one of \code{bam} and \code{bigwig} are required. The \code{bam} field takes CRAM files as well, indexed with \code{samtools index}. The other fields are optional, and so are their values: a sample can come without peaks or without an input, and one input can serve several samples. \code{\link{makeGreylist}} reads each distinct input file once, whatever the number of samples pointing to it.
 #'
 #' A DiffBind sample sheet is read as it is. \code{SampleID}, \code{bamReads}, \code{Peaks}, \code{bamControl} and \code{ControlID} take the standard names, while \code{Tissue}, \code{Factor}, \code{Condition}, \code{Treatment}, \code{Replicate} and any other column stay as annotation, available to the design of \code{\link{fitRegions}} under their own names.
 #'
@@ -426,7 +426,7 @@ loadSampleSheet <-
             distinctPaths <- unique(inputPaths[hasInput])
 
             # Two inputs stored under the same file name in different folders still need two names
-            distinctIds <- make.unique(sub("\\.bam$", "", basename(distinctPaths), ignore.case = TRUE), sep = "_")
+            distinctIds <- make.unique(sub("\\.(bam|cram)$", "", basename(distinctPaths), ignore.case = TRUE), sep = "_")
 
             return(distinctIds[match(inputPaths, distinctPaths)])
         }
@@ -508,7 +508,7 @@ loadSampleSheet <-
 
 #' @title .hasBamIndex
 #'
-#' @description Tells whether BAM files come with an index, under any of the names \code{.bamIndexPath} looks for.
+#' @description Tells whether BAM or CRAM files come with an index, under any of the names \code{.bamIndexPath} looks for.
 #'
 #' @param bamFiles Character vector with the paths of the BAM files.
 #'

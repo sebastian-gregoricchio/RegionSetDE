@@ -6,11 +6,11 @@
 #'
 #' @param counts \code{RegionSetDE.counts} object returned by \code{\link{countReads}}, or a \code{RegionSetDE.fit}, whose counts are used.
 #' @param annotationColumns Character vector with the columns of the \code{colData} to add after the sample names, for instance \code{"condition"}. Default: \code{NULL}, none.
-#' @param bamFiles Character vector with the BAM files, in the order of the samples. Default: \code{NULL}, the files recorded by \code{\link{countReads}}.
+#' @param bamFiles Character vector with the BAM or CRAM files, in the order of the samples. Default: \code{NULL}, the files recorded by \code{\link{countReads}}.
 #'
 #' @return A data.frame with one row per sample: \code{sample}, the \code{annotationColumns}, \code{paired.end}, \code{fragment.length} (the length single-end reads were extended to, \code{NA} for paired-end samples), \code{bam.reads} (every record of the BAM file), \code{bam.mapped} (the mapped ones), \code{library.size} (the fragments that went through the filters of the counting), \code{reads.in.regions} and \code{FRiP}, the ratio of the last two. When \code{\link{countReads}} discarded the reads of a blacklist, of a greylist or of other regions, \code{discarded.reads} follows \code{library.size} with the fragments each sample lost to them. When the inputs were counted, \code{input.id}, \code{input.library.size}, \code{input.in.regions} and \code{input.FRiP} give the same numbers for the input of each sample.
 #'
-#' @details The three counts measure different things and are not expected to agree. \code{bam.reads} and \code{bam.mapped} come from the index of each file, so they are read in an instant, and they count alignment records: a paired-end fragment is two of them. \code{library.size} and \code{reads.in.regions} come from the counting, where a paired-end fragment counts once and only after the mapping quality, duplicate and proper pair filters. On paired-end data \code{bam.mapped} is therefore about twice \code{library.size}, less what the filters removed.
+#' @details The three counts measure different things and are not expected to agree. \code{bam.reads} and \code{bam.mapped} come from the index of each BAM file, so they are read in an instant, and they count alignment records: a paired-end fragment is two of them. A CRAM index holds no such counts, so a CRAM file is read once from start to end, decoding only the flag and the chromosome of every record, which takes a few minutes for a large file. \code{library.size} and \code{reads.in.regions} come from the counting, where a paired-end fragment counts once and only after the mapping quality, duplicate and proper pair filters. On paired-end data \code{bam.mapped} is therefore about twice \code{library.size}, less what the filters removed.
 #'
 #' \code{reads.in.regions} counts a fragment once per region it overlaps, the way the counting does. A region shared by several sets is counted once, but a fragment lying across two neighbouring regions, or two tiles of the same region, is counted in both, so on a tiled object the FRiP comes out slightly high.
 #'
@@ -31,7 +31,6 @@
 #'
 #' @seealso \code{\link{countReads}}, \code{\link{countTable}}
 #'
-#' @importFrom Rsamtools idxstatsBam
 #' @importFrom SummarizedExperiment colData rowRanges assay assayNames
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
@@ -79,7 +78,7 @@ libInfo <-
         #------------------------#
         # Reads in the BAM files #
         #------------------------#
-        # The index already knows how many records every chromosome holds, the file itself is never read
+        # The index of a BAM file already knows how many records every chromosome holds. A CRAM index does not, and the file is read once
         if (is.null(bamFiles)) {
             bamReads <- rep(NA_real_, ncol(counts))
             bamMapped <- rep(NA_real_, ncol(counts))
@@ -90,7 +89,7 @@ libInfo <-
             }
 
             indexStats <- lapply(bamFiles, function(bamFile) {
-                Rsamtools::idxstatsBam(.bamWithIndex(bamFile))
+                .alignmentIndexStats(bamFile)
             })
             bamMapped <- vapply(indexStats, function(stats) {
                 sum(as.numeric(stats$mapped))

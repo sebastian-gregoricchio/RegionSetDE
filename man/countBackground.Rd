@@ -24,7 +24,7 @@ countBackground(
 \arguments{
 \item{counts}{\code{RegionSetDE.counts} object returned by \code{\link{countReads}}.}
 
-\item{bamFiles}{Character vector with the paths of the BAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.}
+\item{bamFiles}{Character vector with the paths of the BAM or CRAM files, in the same order as the samples of \code{counts}. Default: \code{NULL}, the files recorded by \code{\link{countReads}} are reused.}
 
 \item{binSize}{Numeric value with the width of the bins, in base pairs. Default: \code{10000}.}
 

@@ -99,13 +99,13 @@ The `sample`, `bam`, `peaks` and `input` columns are the ones the package looks 
 colnames(sampleSheet)
 ```
 
-A sheet carrying only peaks is enough to build a consensus. The BAM files are needed from the counting onwards, and every one of them must be indexed; a BAI or a CSI index both work.
+A sheet carrying only peaks is enough to build a consensus. The alignments are needed from the counting onwards, and every file must be indexed: a BAI or a CSI index for a BAM file, a CRAI index for a CRAM file. The `bam` column takes either format, and CRAM files are read without the reference genome.
 
 <br>
 
 ## Paired-end, single-end, or both
 
-Nothing has to be declared about the layout. `countReads()` takes `pairedEnd = "auto"` by default and reads the flags of the first records of every file, so each library is counted the way it was sequenced. A paired-end fragment is rebuilt from the first mate of each proper pair and counts once; a single-end read is extended to the fragment length of its library, 150 bp unless said otherwise, and counts once as well.
+Nothing has to be declared about the layout. `countReads()` takes `pairedEnd = "auto"` by default and reads the flags of the first records of every file, so each library is counted the way it was sequenced. A paired-end fragment is rebuilt from the two mates of each proper pair, from the 5' end of one to the 5' end of the other, and counts once; a single-end read is extended to the fragment length of its library, 150 bp unless said otherwise, and counts once as well.
 
 Libraries of both kinds can therefore sit in the same analysis. Each one ends up with one count per sequenced fragment, which is the scale the model needs, and the layout the counting settled on is stored in the `paired.end` column of the sample table so that it can be checked afterwards. The two mistakes this avoids are worth knowing, because they fail in opposite directions: a paired-end file forced through the single-end path counts each mate on its own and almost doubles its values, while a single-end file forced through the paired-end path finds no pair and returns a column of zeros. A test of the package counts one of the libraries below next to a single-end copy of itself, and the two agree to within one per cent.
 
@@ -431,7 +431,7 @@ On a tiled object `level` chooses between one row per tile and the tiles summed 
 libInfo(counts, annotationColumns = "condition")
 ```
 
-The columns measure different things and are not expected to agree. `bam.reads` and `bam.mapped` come from the index of each file, so they cost nothing to read, and they count alignment records: a paired-end fragment is two of them. `library.size` is the number of fragments that went through the filters of the counting, each fragment once, which on paired-end data makes it about half of `bam.mapped`, less the duplicates and the reads of low mapping quality. `reads.in.regions` counts the fragments falling in the consensus, and the FRiP is its share of `library.size`.
+The columns measure different things and are not expected to agree. `bam.reads` and `bam.mapped` come from the index of each BAM file, so they cost nothing to read, and they count alignment records (a CRAM index holds no such counts, and a CRAM file is read once from start to end to get them): a paired-end fragment is two of them. `library.size` is the number of fragments that went through the filters of the counting, each fragment once, which on paired-end data makes it about half of `bam.mapped`, less the duplicates and the reads of low mapping quality. `reads.in.regions` counts the fragments falling in the consensus, and the FRiP is its share of `library.size`.
 
 Three to four per cent of the fragments fall in the consensus without ligand, against thirteen to twenty-five per cent after it. This is the enrichment the experiment produced, and holding on to it through the normalisation is the whole difficulty of the next section.
 

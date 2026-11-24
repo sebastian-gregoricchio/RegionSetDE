@@ -271,7 +271,7 @@ loadCounts <-
             sampleNames = sampleNames,
             sampleMetadata = sampleMetadata,
             fileColumn = "source.column",
-            extensionPattern = "\\.bam$"
+            extensionPattern = "\\.(bam|cram)$"
         )
 
         if (!is.null(librarySizes)) {

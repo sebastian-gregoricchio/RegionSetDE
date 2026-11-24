@@ -242,6 +242,7 @@ importFrom(GenomicRanges,
   resize,
   setdiff,
   split,
+  tile,
   union
 )
 importFrom(IRanges,

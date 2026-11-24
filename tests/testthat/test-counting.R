@@ -28,6 +28,38 @@ test_that("countReads tiles the regions when asked", {
 })
 
 
+test_that("equal tiles cover each region without a sliver at its end", {
+    regions <- GenomicRanges::GRanges("chrT", IRanges::IRanges(start = c(1001, 5001, 9001, 13001), width = c(550, 300, 1300, 1010)))
+    tiles <- RegionSetDE:::.tileRegionSets(regions = regions, tileWidth = 500, verbose = FALSE)
+    parentIndex <- rep(seq_along(regions), times = c(1, 1, 3, 2))
+
+    # One tile per 500 bp, rounded, at least one: 550 and 300 bp stay whole
+    expect_equal(length(tiles), 7)
+    expect_equal(S4Vectors::mcols(tiles)$tile.id, c(1, 1, 1, 2, 3, 1, 2))
+
+    # The tiles of a region are adjacent, span it exactly and differ by 1 bp at most
+    tileWidths <- BiocGenerics::width(tiles)
+    expect_true(all(tapply(tileWidths, parentIndex, function(x) diff(range(x))) <= 1))
+    expect_equal(as.numeric(tapply(tileWidths, parentIndex, sum)), BiocGenerics::width(regions))
+    expect_equal(BiocGenerics::start(tiles)[c(1, 2, 3, 6)], BiocGenerics::start(regions))
+})
+
+
+test_that("fixed tiles keep the old cut, with or without the trailing tile", {
+    regions <- GenomicRanges::GRanges("chrT", IRanges::IRanges(start = c(1001, 5001), width = c(550, 300)),
+                                      region.set = "peaks", region.id = c("a", "b"))
+
+    keptTiles <- RegionSetDE:::.tileRegionSets(regions = regions, tileWidth = 500, tileMethod = "fixed", verbose = FALSE)
+    expect_equal(BiocGenerics::width(keptTiles), c(500, 50, 300))
+
+    droppedTiles <- suppressWarnings(RegionSetDE:::.tileRegionSets(regions = regions, tileWidth = 500, tileMethod = "fixed",
+                                                                   partialTiles = FALSE, verbose = FALSE))
+    expect_equal(BiocGenerics::width(droppedTiles), 500)
+
+    expect_error(RegionSetDE:::.tileRegionSets(regions = regions, tileWidth = 500, tileMethod = "sliding", verbose = FALSE), "tileMethod")
+})
+
+
 test_that("countReads carries the sample metadata into colData", {
     metadataTable <- data.frame(
         sample = "example",

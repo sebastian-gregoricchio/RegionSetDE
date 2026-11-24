@@ -15,15 +15,18 @@
 #' @param FDR Numeric value with the adjusted p-value cut-off the count is reported at. Default: \code{0.05}.
 #' @param pValue Numeric value with the raw p-value cut-off the count is reported at. Default: \code{0.05}.
 #' @param strata Numeric value with the number of abundance strata the calibration is broken down over. Default: \code{5}.
+#' @param maxShift Numeric value with the largest distance, in log2, between the median fold change of the regions and the one of the null rows before the two are said to sit on different baselines. Default: \code{0.25}.
 #' @param suggest Logical value to indicate whether a dispersion that would calibrate the null must be searched for when the current one does not. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A list with the p-values of the null rows, the proportions passing the two cut-offs, the same broken down by abundance, the dispersion the fit used, a suggested one when it is off, and the verdict.
+#' @return A list with the p-values of the null rows, the proportions passing the two cut-offs, the same broken down by abundance, the dispersion the fit used, a suggested one when it is off, a check of the normalisation (\code{normalization}) and the verdict. The verdict is \code{"calibrated"}, \code{"too liberal"} or \code{"too conservative"} for the dispersion, or \code{"regions shifted"} when the regions and the null rows do not sit on the same baseline, in which case the verdict on the dispersion alone is kept in \code{dispersion.verdict}.
 #'
 #' @details The logic is the same one that made the dispersion estimable in the first place. Rows assumed not to respond are fitted with the same design, the same offsets, the same dispersion and the same test as the regions, and their p-values are read against what they should look like if nothing is happening: uniform between zero and one, with a fraction \code{pValue} of them below the raw cut-off and essentially none surviving the correction.
 #' Too many small p-values means the dispersion is too low, the fit is treating library-to-library variation as treatment effect, and the regions are inheriting the same optimism at the same rate. Too few means the opposite and costs power rather than credibility. The ratio of what was seen to what was expected is reported as the inflation, and one is what a calibrated fit looks like.
 #' Checking a dispersion on the rows it was fitted to would be calibrated by construction, so \code{\link{estimateNullDispersion}} holds half of them back and this function uses that half by default. Passing \code{subset} yourself overrides it, and a check run against a region set believed to be invariant, with the dispersion estimated on the genome, is stronger still.
 #' The breakdown by abundance is where the answer usually is when the check fails. Overdispersion concentrated in the weakest rows means the filter was too loose and \code{\link{filterRegions}} is the fix; raising the dispersion globally would instead cost real signal in the abundant rows to pay for noise in the faint ones.
+#' The null rows only vouch for the regions if the normalisation puts both on the same baseline. Two samples that differ in the share of their fragments falling in the regions (FRiP) have their regions shifted against the background, while the background bins stay centred, and with \code{"background"} normalisation they are centred by construction, since they set the factors. The check would then call the dispersion calibrated while the regions are far off. For this reason the regions are fitted the same way as the null rows, and the median of their fold changes is compared with the one of the null rows: a distance above \code{maxShift} gives the verdict \code{"regions shifted"}. The shift has two possible readings, a global change of the signal in the regions, where a normalisation on the background or on spike-ins is the right one, or a difference of efficiency between the libraries, where a normalisation on the regions (e.g. \code{"TMM"}) is. The data cannot tell them apart, the experiment has to.
+#' The share of regions more abundant than 99\% of the null rows is reported as well: on those the calibration is extrapolated.
 #'
 #' @examples
 #' fit <- loadExampleData("fit", verbose = FALSE)
@@ -59,6 +62,7 @@ checkNullCalibration <-
              FDR = 0.05,
              pValue = 0.05,
              strata = 5,
+             maxShift = 0.25,
              suggest = TRUE,
              verbose = TRUE) {
         #------------------------#
@@ -131,6 +135,16 @@ checkNullCalibration <-
         nullFDR <- stats::p.adjust(nullPvalues, method = "BH")
 
         #-------------------------------#
+        # The regions, seen the same way #
+        #-------------------------------#
+        normalizationCheck <- .checkNullBaseline(
+            fit = fit, nullObject = nullObject, nullTable = nullTable, source = source,
+            regionSets = regionSets, index = index, minCount = minCount, maxRows = maxRows,
+            contrastVector = contrastObject$vector, useQuasiLikelihood = useQuasiLikelihood,
+            maxShift = maxShift
+        )
+
+        #-------------------------------#
         # Where the miscalibration is   #
         #-------------------------------#
         rawProportion <- mean(nullPvalues < pValue, na.rm = TRUE)
@@ -156,7 +170,7 @@ checkNullCalibration <-
             )
         strataTable$inflation <- strataTable$proportion / pValue
 
-        verdict <- if (rawProportion > 2 * pValue) {
+        dispersionVerdict <- if (rawProportion > 2 * pValue) {
             "too liberal"
         } else if (rawProportion < 0.5 * pValue) {
             "too conservative"
@@ -164,11 +178,18 @@ checkNullCalibration <-
             "calibrated"
         }
 
+        # A dispersion calibrated on rows the regions do not line up with says nothing about the regions
+        verdict <- if (identical(normalizationCheck$status, "regions shifted")) {
+            "regions shifted"
+        } else {
+            dispersionVerdict
+        }
+
         #-------------------------------#
         # What would calibrate it       #
         #-------------------------------#
         suggestedDispersion <- NA_real_
-        if (isTRUE(suggest) & verdict != "calibrated") {
+        if (isTRUE(suggest) & dispersionVerdict != "calibrated") {
             suggestedDispersion <- .suggestDispersion(
                 dgeList = dgeList,
                 design = designMatrix(fit),
@@ -197,6 +218,8 @@ checkNullCalibration <-
             independent = usedHoldout | !identical(source, fitSource),
             contrast = contrastObject$label,
             thresholds = list(FDR = FDR, p.value = pValue),
+            normalization = normalizationCheck,
+            dispersion.verdict = dispersionVerdict,
             verdict = verdict
         )
 
@@ -216,7 +239,7 @@ checkNullCalibration <-
                 ", ", calibration$n.FDR, " below FDR = ", FDR, "."
             )
 
-            if (verdict == "too liberal") {
+            if (dispersionVerdict == "too liberal") {
                 message(
                     "The dispersion of ", signif(dispersionInfo(fit)$common, 3), " is too low.",
                     if (is.finite(suggestedDispersion)) {
@@ -228,7 +251,7 @@ checkNullCalibration <-
                         ""
                     }
                 )
-            } else if (verdict == "too conservative") {
+            } else if (dispersionVerdict == "too conservative") {
                 message("The dispersion is higher than the null rows need, which costs power but not credibility.")
             } else {
                 message("The null p-values are close to uniform, which is what a usable dispersion looks like.")
@@ -242,9 +265,167 @@ checkNullCalibration <-
             if (isFALSE(calibration$independent)) {
                 message("These are the rows the dispersion was fitted to, so this check is not independent of it.")
             }
+
+            .reportNullBaseline(normalizationCheck = normalizationCheck, source = source, maxShift = maxShift)
         }
 
         return(calibration)
+    } # END function
+
+
+#' @title .checkNullBaseline
+#'
+#' @description Fits the regions the way the null rows were fitted and compares the two medians of the fold changes, to tell whether the normalisation puts them on the same baseline.
+#'
+#' @param fit \code{RegionSetDE.fit} object.
+#' @param nullObject List returned by \code{.nullMatrix} for the null rows.
+#' @param nullTable Data.frame returned by \code{.nullTest} for the null rows.
+#' @param source String with where the null rows come from.
+#' @param regionSets Character vector with the sets used as null rows, or \code{NULL}.
+#' @param index Integer vector with the positions of the null rows, or \code{NULL}.
+#' @param minCount Numeric value with the average count a row must carry.
+#' @param maxRows Numeric value with the number of rows kept.
+#' @param contrastVector Numeric vector with the contrast.
+#' @param useQuasiLikelihood Logical value indicating whether the fit used the quasi-likelihood F test.
+#' @param maxShift Numeric value with the largest distance between the two medians, in log2.
+#'
+#' @return A list with the \code{status} (\code{"consistent"}, \code{"regions shifted"} or \code{"not checked"}), the two medians and their distance (\code{shift}), the number of regions used, the share of them more abundant than 99\% of the null rows (\code{regions.above.null}), the normalisation method of the counts and whether it was computed on the null rows themselves (\code{circular}).
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @importFrom SummarizedExperiment rowData
+#' @importFrom edgeR DGEList scaleOffset
+#' @importFrom stats median quantile
+#'
+#' @noRd
+
+.checkNullBaseline <-
+    function(fit,
+             nullObject,
+             nullTable,
+             source,
+             regionSets = NULL,
+             index = NULL,
+             minCount = 10,
+             maxRows = 50000,
+             contrastVector,
+             useQuasiLikelihood = TRUE,
+             maxShift = 0.25) {
+        counts <- fitCounts(fit)
+
+        # The normalisation of the counts: the last one applied is the one the fit read
+        logEntries <- parameterLog(counts)
+        normalizationEntries <- logEntries[names(logEntries) == "normalizeRegionCounts"]
+        normalizationMethod <- if (length(normalizationEntries) > 0) {
+            as.character(normalizationEntries[[length(normalizationEntries)]]$method)
+        } else {
+            NA_character_
+        }
+
+        # The regions, without the rows used as null
+        regionIndex <- seq_len(nrow(counts))
+        if (source == "regionSet") {
+            regionIndex <- regionIndex[!(as.character(SummarizedExperiment::rowData(counts)$region.set) %in% regionSets)]
+        } else if (source == "supplied") {
+            regionIndex <- setdiff(regionIndex, as.integer(index))
+        }
+
+        checkOutput <- list(
+            status = "not checked",
+            region.median.log2FC = NA_real_,
+            null.median.log2FC = stats::median(nullTable$logFC, na.rm = TRUE),
+            shift = NA_real_,
+            n.regions = 0L,
+            regions.above.null = NA_real_,
+            method = normalizationMethod,
+            circular = identical(normalizationMethod, "background") & identical(source, "background")
+        )
+
+        if (length(regionIndex) < 100) {
+            return(checkOutput)
+        }
+
+        regionObject <- .nullMatrix(
+            counts = counts, source = "supplied", index = regionIndex,
+            minCount = minCount, maxRows = maxRows
+        )
+        if (nrow(regionObject$counts) < 100) {
+            return(checkOutput)
+        }
+
+        #-------------------------------#
+        # Same model on the regions     #
+        #-------------------------------#
+        regionList <- edgeR::DGEList(counts = regionObject$counts, lib.size = regionObject$library.size)
+        regionList <- edgeR::scaleOffset(y = regionList, offset = regionObject$offset)
+
+        regionTable <- .nullTest(
+            dgeList = regionList,
+            design = designMatrix(fit),
+            contrastVector = contrastVector,
+            dispersion = dispersionInfo(fit)$common,
+            useQuasiLikelihood = useQuasiLikelihood
+        )
+
+        regionMedian <- stats::median(regionTable$logFC, na.rm = TRUE)
+        shift <- regionMedian - checkOutput$null.median.log2FC
+
+        checkOutput$region.median.log2FC <- regionMedian
+        checkOutput$shift <- shift
+        checkOutput$n.regions <- nrow(regionObject$counts)
+        checkOutput$regions.above.null <- mean(regionObject$abundance > stats::quantile(nullObject$abundance, probs = 0.99, na.rm = TRUE))
+        checkOutput$status <- if (is.finite(shift) && abs(shift) > maxShift) {
+            "regions shifted"
+        } else {
+            "consistent"
+        }
+
+        return(checkOutput)
+    } # END function
+
+
+#' @title .reportNullBaseline
+#'
+#' @description Prints what the comparison of the regions with the null rows found.
+#'
+#' @param normalizationCheck List returned by \code{.checkNullBaseline}.
+#' @param source String with where the null rows come from.
+#' @param maxShift Numeric value with the largest distance between the two medians, in log2.
+#'
+#' @return The status of the check, invisibly. Called for its messages.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @noRd
+
+.reportNullBaseline <-
+    function(normalizationCheck,
+             source,
+             maxShift) {
+        if (identical(normalizationCheck$status, "not checked")) {
+            message("Too few regions to compare with the null rows, the normalisation has not been checked.")
+        } else if (identical(normalizationCheck$status, "regions shifted")) {
+            message(
+                "The regions sit ", round(normalizationCheck$shift, 2), " log2 away from the null rows (more than ", maxShift,
+                "), so the calibration of the null rows does not carry over to them. Either the signal in the regions changed globally, ",
+                "and a normalisation on the background or on spike-ins is the right one, or the libraries differ in the share of fragments ",
+                "in the regions, and a normalisation on the regions (e.g. 'TMM') is. Compare the two before believing the calls."
+            )
+        } else if (isTRUE(normalizationCheck$circular)) {
+            message(
+                "The scaling factors were computed on the background bins, the same kind of rows checked here, so these rows are ",
+                "centred by construction. The regions sit on the same baseline (shift ", round(normalizationCheck$shift, 2), " log2)."
+            )
+        }
+
+        if (is.finite(normalizationCheck$regions.above.null) && normalizationCheck$regions.above.null > 0.25) {
+            message(
+                round(100 * normalizationCheck$regions.above.null), "% of the regions are more abundant than 99% of the null rows: ",
+                "on those the calibration is extrapolated."
+            )
+        }
+
+        return(invisible(normalizationCheck$status))
     } # END function
 
 

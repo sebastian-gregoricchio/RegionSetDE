@@ -626,4 +626,21 @@ test_that("the sets of the object are tested as before", {
     expect_true(all(c("fry.p", "fry.mixed.p", "fry.mixed.FDR") %in% colnames(setTable)))
     expect_true(all(setTable$fry.mixed.p >= 0 & setTable$fry.mixed.p <= 1))
     expect_true(all(setTable$n.up + setTable$n.down <= setTable$n.regions))
+
+    # The competitive version of the mixed question is there as well
+    expect_true(all(c("camera.mixed.p", "camera.mixed.FDR") %in% colnames(setTable)))
+    expect_true(all(setTable$camera.mixed.p >= 0 & setTable$camera.mixed.p <= 1))
+})
+
+
+test_that("the correlation of the folded statistics is the one of their absolute values", {
+    expect_equal(RegionSetDE:::.foldedCorrelation(0), 0)
+    expect_equal(RegionSetDE:::.foldedCorrelation(1), 1)
+    expect_equal(RegionSetDE:::.foldedCorrelation(-0.3), RegionSetDE:::.foldedCorrelation(0.3))
+    expect_true(is.na(RegionSetDE:::.foldedCorrelation(NA_real_)))
+
+    set.seed(1)
+    firstValue <- stats::rnorm(2e5)
+    secondValue <- 0.5 * firstValue + sqrt(1 - 0.5^2) * stats::rnorm(2e5)
+    expect_equal(RegionSetDE:::.foldedCorrelation(0.5), stats::cor(abs(firstValue), abs(secondValue)), tolerance = 0.02)
 })

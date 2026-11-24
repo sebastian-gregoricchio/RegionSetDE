@@ -16,7 +16,8 @@
 #' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
 #' @param regionId String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
 #' @param tileWidth Numeric value with the width of the tiles, to be set when the external matrix has been computed on tiles rather than on whole regions. Default: \code{NULL}.
-#' @param partialTiles Logical value indicating whether the trailing shorter tile of each region has been kept. Default: \code{TRUE}.
+#' @param tileMethod Character string with the way the external matrix cut the regions, as in \code{\link{countReads}}: \code{"equal"} or \code{"fixed"}. A matrix made with fixed windows from the region start (e.g. \code{bedtools makewindows -w}) needs \code{"fixed"}. Default: \code{"equal"}.
+#' @param partialTiles Logical value indicating whether the trailing shorter tile of each region has been kept, with \code{tileMethod = "fixed"} only. Default: \code{TRUE}.
 #' @param missingRegions String indicating what to do with the regions absent from the count table, one among \code{"stop"}, \code{"zero"} or \code{"drop"}. Default: \code{"stop"}.
 #' @param countLike Logical value with which you assert that the imported values are counts, meaning raw fragment or read numbers rather than a normalised signal. Default: \code{TRUE}.
 #' @param librarySizes Numeric vector with the library size of each sample, in the same order as the count columns. Default: \code{NULL}, the column sums of the imported table are used.
@@ -87,6 +88,7 @@ loadCounts <-
              tileWidth = NULL,
              keepMetadata = TRUE,
              regionId = NULL,
+             tileMethod = "equal",
              partialTiles = TRUE,
              missingRegions = "stop",
              countLike = TRUE,
@@ -172,6 +174,7 @@ loadCounts <-
             tileWidth = tileWidth,
             keepMetadata = keepMetadata,
             regionId = regionId,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             verbose = verbose
         )
@@ -290,6 +293,7 @@ loadCounts <-
             matchBy = matchBy,
             startsAt = startsAt,
             tileWidth = tileWidth,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             missingRegions = missingRegions,
             countLike = countLike,

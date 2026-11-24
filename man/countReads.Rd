@@ -13,6 +13,7 @@ countReads(
   tileWidth = NULL,
   keepMetadata = TRUE,
   regionId = NULL,
+  tileMethod = "equal",
   partialTiles = TRUE,
   pairedEnd = "auto",
   fragmentLength = 150,
@@ -45,13 +46,15 @@ countReads(
 
 \item{sampleMetadata}{Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bamFiles}. Default: \code{NULL}.}
 
-\item{tileWidth}{Numeric value with the width of the tiles, in base pairs. Cannot be combined with \code{summits}. Default: \code{NULL}, one row per region.}
+\item{tileWidth}{Numeric value with the width of the tiles, in base pairs (see \code{tileMethod}). Cannot be combined with \code{summits}. Default: \code{NULL}, one row per region.}
 
 \item{keepMetadata}{Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.}
 
 \item{regionId}{String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.}
 
-\item{partialTiles}{Logical value: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.}
+\item{tileMethod}{Character string with the way the regions are cut: \code{"equal"} splits each region into tiles of the same width, as close as possible to \code{tileWidth} (a region narrower than one tile stays whole), \code{"fixed"} cuts tiles of exactly \code{tileWidth} from the start of the region, the last one shorter. Default: \code{"equal"}.}
+
+\item{partialTiles}{Logical value, read only with \code{tileMethod = "fixed"}: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.}
 
 \item{pairedEnd}{Logical value, one logical value per BAM file, or the string \code{"auto"} to read the layout from the files themselves. Default: \code{"auto"}.}
 

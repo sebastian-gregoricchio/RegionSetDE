@@ -45,18 +45,22 @@
 
 #' @title .tileRegionSets
 #'
-#' @description Cuts each region into adjacent tiles of fixed width, propagating the metadata columns of the parent region to all its tiles.
+#' @description Cuts each region into adjacent tiles, propagating the metadata columns of the parent region to all its tiles.
 #'
 #' @param regions \code{GRanges} with the flattened region sets.
 #' @param tileWidth Numeric value with the width of the tiles, in base pairs.
-#' @param partialTiles Logical value: \code{TRUE} keeps the trailing tile even when shorter than \code{tileWidth}, \code{FALSE} discards it. Default: \code{TRUE}.
+#' @param tileMethod Character string: \code{"equal"} splits each region into tiles of the same width, as close as possible to \code{tileWidth}, \code{"fixed"} cuts tiles of exactly \code{tileWidth} from the start of the region. Default: \code{"equal"}.
+#' @param partialTiles Logical value, only read with \code{tileMethod = "fixed"}: \code{TRUE} keeps the trailing tile even when shorter than \code{tileWidth}, \code{FALSE} discards it. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A \code{GRanges} with one element per tile and an extra \code{tile.id} metadata column.
 #'
+#' @details With \code{"equal"} a region of width \emph{w} gets \emph{round(w / tileWidth)} tiles, at least one, whose widths differ by 1 bp at most. A region narrower than a tile stays whole, and no region ends with a sliver: a 550 bp region cut at 500 bp gives one tile of 550 bp instead of 500 + 50. Such a sliver carries few fragments and a poor p-value, and the combination of the tiles pays for it on the whole region.
+#'
 #' @author Sebastian Gregoricchio
 #'
 #' @importFrom IRanges slidingWindows
+#' @importFrom GenomicRanges tile
 #' @importFrom S4Vectors mcols mcols<- elementNROWS
 #' @importFrom BiocGenerics width
 #' @importFrom dplyr filter n_distinct
@@ -67,15 +71,25 @@
 .tileRegionSets <-
     function(regions,
              tileWidth,
+             tileMethod = "equal",
              partialTiles = TRUE,
              verbose = TRUE) {
         tileWidth <- as.integer(tileWidth[1])
         if (is.na(tileWidth) | tileWidth < 1) {
             stop("The 'tileWidth' parameter must be a positive integer.", call. = FALSE)
         }
+        if (!is.character(tileMethod) || length(tileMethod) != 1 || !(tileMethod %in% c("equal", "fixed"))) {
+            stop("The 'tileMethod' parameter must be either \"equal\" or \"fixed\".", call. = FALSE)
+        }
 
-        # A step equal to the width returns adjacent, non overlapping tiles
-        tileList <- IRanges::slidingWindows(x = regions, width = tileWidth, step = tileWidth)
+        # Equal tiles: the number closest to the target width, at least one, rounding the halves up
+        tileList <- if (tileMethod == "equal") {
+            tileNumbers <- pmax(1L, as.integer(floor(BiocGenerics::width(regions) / tileWidth + 0.5)))
+            GenomicRanges::tile(x = regions, n = tileNumbers)
+        } else {
+            # A step equal to the width returns adjacent, non overlapping tiles
+            IRanges::slidingWindows(x = regions, width = tileWidth, step = tileWidth)
+        }
         tilesPerRegion <- S4Vectors::elementNROWS(tileList)
 
         tiles <- unlist(tileList, use.names = FALSE)
@@ -83,7 +97,7 @@
         S4Vectors::mcols(tiles)$tile.id <- unlist(lapply(tilesPerRegion, seq_len), use.names = FALSE)
 
         # A shorter trailing tile collects less signal than its siblings and distorts any per-tile comparison
-        if (isFALSE(partialTiles)) {
+        if (tileMethod == "fixed" & isFALSE(partialTiles)) {
             tileTable <- data.frame(
                 region.key = paste(S4Vectors::mcols(tiles)$region.set, S4Vectors::mcols(tiles)$region.id, sep = "|"),
                 tile.width = BiocGenerics::width(tiles),
@@ -112,7 +126,8 @@
 #' @param tileWidth Numeric value with the width of the tiles. Default: \code{NULL}, one row per region.
 #' @param keepMetadata Logical value to indicate whether the metadata columns of the regions must be carried over. Default: \code{TRUE}.
 #' @param regionId String with the name of a metadata column holding the region identifiers. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
-#' @param partialTiles Logical value indicating whether the trailing shorter tile must be kept. Default: \code{TRUE}.
+#' @param tileMethod Character string with the way the regions are cut, \code{"equal"} or \code{"fixed"}. Default: \code{"equal"}.
+#' @param partialTiles Logical value indicating whether the trailing shorter tile must be kept, with \code{tileMethod = "fixed"} only. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
 #' @return A named \code{GRanges} with the \code{region.set}, \code{region.id} and \code{tile.id} metadata columns, followed by whatever the regions carried.
@@ -129,6 +144,7 @@
 .flattenRegionSets <-
     function(regionSet,
              tileWidth = NULL,
+             tileMethod = "equal",
              partialTiles = TRUE,
              keepMetadata = TRUE,
              regionId = NULL,
@@ -186,7 +202,7 @@
         # Optional tiling #
         #-----------------#
         if (!is.null(tileWidth)) {
-            allRegions <- .tileRegionSets(regions = allRegions, tileWidth = tileWidth, partialTiles = partialTiles, verbose = verbose)
+            allRegions <- .tileRegionSets(regions = allRegions, tileWidth = tileWidth, tileMethod = tileMethod, partialTiles = partialTiles, verbose = verbose)
             names(allRegions) <- paste0(S4Vectors::mcols(allRegions)$region.set, "|", S4Vectors::mcols(allRegions)$region.id, "|tile", S4Vectors::mcols(allRegions)$tile.id)
         } else {
             S4Vectors::mcols(allRegions)$tile.id <- NA_integer_

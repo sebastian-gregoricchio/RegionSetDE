@@ -181,6 +181,31 @@ test_that("the calibration check runs on the rows held out of the estimate", {
 })
 
 
+test_that("the calibration check sees regions shifted against the background", {
+    counts <- singleSampleCounts()
+    fit <- fitRegions(counts, design = ~condition, engine = "edgeR", verbose = FALSE)
+    calibration <- checkNullCalibration(fit, contrast = exampleContrast(), source = "background", suggest = FALSE, verbose = FALSE)
+
+    # The second library puts more of its fragments in the regions, the background bins stay as they are
+    shiftedCounts <- counts
+    countMatrix <- SummarizedExperiment::assay(shiftedCounts, 1)
+    countMatrix[, 2] <- round(countMatrix[, 2] * 1.6)
+    SummarizedExperiment::assay(shiftedCounts, 1) <- countMatrix
+    shiftedFit <- fitRegions(shiftedCounts, design = ~condition, engine = "edgeR", verbose = FALSE)
+    shiftedCalibration <- checkNullCalibration(shiftedFit, contrast = exampleContrast(), source = "background", suggest = FALSE, verbose = FALSE)
+
+    expect_true(is.finite(calibration$normalization$shift))
+    expect_true(calibration$normalization$circular)
+    expect_equal(abs(shiftedCalibration$normalization$shift - calibration$normalization$shift), log2(1.6), tolerance = 0.1)
+
+    expect_equal(shiftedCalibration$normalization$status, "regions shifted")
+    expect_equal(shiftedCalibration$verdict, "regions shifted")
+    expect_true(shiftedCalibration$dispersion.verdict %in% c("calibrated", "too liberal", "too conservative"))
+    expect_message(checkNullCalibration(shiftedFit, contrast = exampleContrast(), source = "background", suggest = FALSE),
+                   "log2 away from the null rows")
+})
+
+
 test_that("the dispersion is recorded in the provenance", {
     counts <- singleSampleCounts()
 

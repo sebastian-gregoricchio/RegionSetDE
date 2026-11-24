@@ -157,8 +157,8 @@ test_that("the tiles stay with their region whatever the row order", {
 
 
 test_that("a mean is weighted by the width of the tiles, maxima and minima are kept", {
-    # 300 bp cut into 120 bp tiles leaves a trailing tile of 60 bp
-    tiledCounts <- toyCounts(tileWidth = 120L)
+    # 300 bp cut into fixed 120 bp tiles leaves a trailing tile of 60 bp
+    tiledCounts <- toyCounts(tileWidth = 120L, tileMethod = "fixed")
     tileTableOut <- countTable(tiledCounts, level = "tile")
     regionKey <- paste(tileTableOut$region.set, tileTableOut$region.id, sep = "|")
 

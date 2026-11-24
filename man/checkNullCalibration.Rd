@@ -16,6 +16,7 @@ checkNullCalibration(
   FDR = 0.05,
   pValue = 0.05,
   strata = 5,
+  maxShift = 0.25,
   suggest = TRUE,
   verbose = TRUE
 )
@@ -43,12 +44,14 @@ checkNullCalibration(
 
 \item{strata}{Numeric value with the number of abundance strata the calibration is broken down over. Default: \code{5}.}
 
+\item{maxShift}{Numeric value with the largest distance, in log2, between the median fold change of the regions and the one of the null rows before the two are said to sit on different baselines. Default: \code{0.25}.}
+
 \item{suggest}{Logical value to indicate whether a dispersion that would calibrate the null must be searched for when the current one does not. Default: \code{TRUE}.}
 
 \item{verbose}{Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.}
 }
 \value{
-A list with the p-values of the null rows, the proportions passing the two cut-offs, the same broken down by abundance, the dispersion the fit used, a suggested one when it is off, and the verdict.
+A list with the p-values of the null rows, the proportions passing the two cut-offs, the same broken down by abundance, the dispersion the fit used, a suggested one when it is off, a check of the normalisation (\code{normalization}) and the verdict. The verdict is \code{"calibrated"}, \code{"too liberal"} or \code{"too conservative"} for the dispersion, or \code{"regions shifted"} when the regions and the null rows do not sit on the same baseline, in which case the verdict on the dispersion alone is kept in \code{dispersion.verdict}.
 }
 \description{
 Runs the contrast of a fit on rows that should not respond to it, and reports how many of them come out significant anyway. On a design with no replicates this is the only empirical check there is on the dispersion that was supplied, and it should be run before any of the results are believed.
@@ -58,6 +61,8 @@ The logic is the same one that made the dispersion estimable in the first place.
 Too many small p-values means the dispersion is too low, the fit is treating library-to-library variation as treatment effect, and the regions are inheriting the same optimism at the same rate. Too few means the opposite and costs power rather than credibility. The ratio of what was seen to what was expected is reported as the inflation, and one is what a calibrated fit looks like.
 Checking a dispersion on the rows it was fitted to would be calibrated by construction, so \code{\link{estimateNullDispersion}} holds half of them back and this function uses that half by default. Passing \code{subset} yourself overrides it, and a check run against a region set believed to be invariant, with the dispersion estimated on the genome, is stronger still.
 The breakdown by abundance is where the answer usually is when the check fails. Overdispersion concentrated in the weakest rows means the filter was too loose and \code{\link{filterRegions}} is the fix; raising the dispersion globally would instead cost real signal in the abundant rows to pay for noise in the faint ones.
+The null rows only vouch for the regions if the normalisation puts both on the same baseline. Two samples that differ in the share of their fragments falling in the regions (FRiP) have their regions shifted against the background, while the background bins stay centred, and with \code{"background"} normalisation they are centred by construction, since they set the factors. The check would then call the dispersion calibrated while the regions are far off. For this reason the regions are fitted the same way as the null rows, and the median of their fold changes is compared with the one of the null rows: a distance above \code{maxShift} gives the verdict \code{"regions shifted"}. The shift has two possible readings, a global change of the signal in the regions, where a normalisation on the background or on spike-ins is the right one, or a difference of efficiency between the libraries, where a normalisation on the regions (e.g. \code{"TMM"}) is. The data cannot tell them apart, the experiment has to.
+The share of regions more abundant than 99\% of the null rows is reported as well: on those the calibration is extrapolated.
 }
 \examples{
 fit <- loadExampleData("fit", verbose = FALSE)

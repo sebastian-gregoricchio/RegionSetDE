@@ -17,6 +17,7 @@ loadCounts(
   tileWidth = NULL,
   keepMetadata = TRUE,
   regionId = NULL,
+  tileMethod = "equal",
   partialTiles = TRUE,
   missingRegions = "stop",
   countLike = TRUE,
@@ -50,7 +51,9 @@ loadCounts(
 
 \item{regionId}{String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.}
 
-\item{partialTiles}{Logical value indicating whether the trailing shorter tile of each region has been kept. Default: \code{TRUE}.}
+\item{tileMethod}{Character string with the way the external matrix cut the regions, as in \code{\link{countReads}}: \code{"equal"} or \code{"fixed"}. A matrix made with fixed windows from the region start (e.g. \code{bedtools makewindows -w}) needs \code{"fixed"}. Default: \code{"equal"}.}
+
+\item{partialTiles}{Logical value indicating whether the trailing shorter tile of each region has been kept, with \code{tileMethod = "fixed"} only. Default: \code{TRUE}.}
 
 \item{missingRegions}{String indicating what to do with the regions absent from the count table, one among \code{"stop"}, \code{"zero"} or \code{"drop"}. Default: \code{"stop"}.}
 

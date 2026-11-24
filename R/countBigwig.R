@@ -11,8 +11,9 @@
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bigwigFiles}. Default: \code{NULL}.
 #' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
 #' @param regionId String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
-#' @param tileWidth Numeric value with the width of the tiles, in base pairs. Default: \code{NULL}, one row per region.
-#' @param partialTiles Logical value: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
+#' @param tileWidth Numeric value with the width of the tiles, in base pairs (see \code{tileMethod}). Default: \code{NULL}, one row per region.
+#' @param tileMethod Character string with the way the regions are cut: \code{"equal"} splits each region into tiles of the same width, as close as possible to \code{tileWidth} (a region narrower than one tile stays whole), \code{"fixed"} cuts tiles of exactly \code{tileWidth} from the start of the region, the last one shorter. Default: \code{"equal"}.
+#' @param partialTiles Logical value, read only with \code{tileMethod = "fixed"}: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
 #' @param summaryFunction String indicating how the per-base values are collapsed into a single value per region, one among \code{"sum"}, \code{"mean"}, \code{"max"} or \code{"min"}. Default: \code{"sum"}.
 #' @param missingAsZero Logical value indicating whether the positions not covered by the bigWig must be treated as zeros rather than as missing values. Default: \code{TRUE}.
 #' @param blacklist Regions of the assembly that must be dropped before the signal is read, typically the list returned by \code{\link{loadBlacklist}}. Either a \code{GRanges}, a path to a BED-like file, a data.frame, or a list of them, which are pooled. The regions overlapping it are removed as \code{\link{applyBlacklist}} removes them, and the list adds to the blacklist already stored in \code{regionSet}. Default: \code{NULL}.
@@ -74,6 +75,7 @@ countBigwig <-
              tileWidth = NULL,
              keepMetadata = TRUE,
              regionId = NULL,
+             tileMethod = "equal",
              partialTiles = TRUE,
              summaryFunction = "sum",
              missingAsZero = TRUE,
@@ -124,6 +126,7 @@ countBigwig <-
             tileWidth = tileWidth,
             keepMetadata = keepMetadata,
             regionId = regionId,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             verbose = verbose
         )
@@ -223,6 +226,7 @@ countBigwig <-
         newParameters <- list(countBigwig = list(
             bigwigFiles = bigwigFiles,
             tileWidth = tileWidth,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             summaryFunction = summaryFunction,
             missingAsZero = missingAsZero,

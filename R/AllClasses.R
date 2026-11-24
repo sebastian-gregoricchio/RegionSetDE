@@ -816,7 +816,7 @@ setMethod(
                 c(
                     "region.set", "set.1", "set.2", "n.regions", "mean.log2FC",
                     "delta.log2FC", "CI.lower", "CI.upper", "CI.type",
-                    "camera.FDR", "fry.FDR", "inter.region.cor.universe"
+                    "camera.FDR", "camera.mixed.FDR", "fry.FDR", "inter.region.cor.universe"
                 ),
                 colnames(object@results)
             )

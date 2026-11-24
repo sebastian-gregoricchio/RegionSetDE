@@ -890,7 +890,7 @@ One row per region, one number per sample. The test asks whether the region as a
 
 ## Tiles
 
-`tileWidth` cuts every region into tiles of that width, and each tile becomes a row of its own.
+`tileWidth` cuts every region into tiles of about that width, and each tile becomes a row of its own. By default the region is split into equal tiles, so a region narrower than one tile stays whole and none ends with a sliver of a few base pairs; `tileMethod = "fixed"` cuts exact widths from the start of the region instead.
 
 ```{r tiles_count}
 tiledCounts <- countReads(consensus,
@@ -1044,7 +1044,7 @@ resultsTable(geneSetResults)
 
 Each pathway is compared against every other region of the object rather than against the other pathways, so `universe`, `matchOn` and `universeSets` do not apply and the universe is recorded as `allRows`. That is the comparison a pathway wants, and it makes the background the peaks that were actually annotated and tested, which is the background this kind of analysis should have and the one most often got wrong.
 
-Read the three p-values as three questions. `camera.FDR` asks whether the pathway moved more than the rest. `fry.FDR` asks whether its peaks moved in the same direction. `fry.mixed.FDR` asks whether they changed at all, in either direction, and is the only one that survives a pathway whose peaks move both ways. `n.up` against `n.down` shows the same thing from the peak level.
+Read the p-values as questions. `camera.FDR` asks whether the pathway moved more than the rest. `fry.FDR` asks whether its peaks moved in the same direction. `fry.mixed.FDR` asks whether they changed at all, in either direction, and survives a pathway whose peaks move both ways. Being self-contained, it is also significant for any large set as soon as many peaks change, so `camera.mixed.FDR`, which asks whether the pathway changed more than the rest in either direction, is the one to call a pathway rearranged on. `n.up` against `n.down` shows the same thing from the peak level.
 
 <br>
 

@@ -11,8 +11,9 @@
 #' @param sampleMetadata Data.frame with the sample annotation, stored in the \code{colData}. When it contains a \code{sample} column the rows are matched by name, otherwise they must follow the order of \code{bamFiles}. Default: \code{NULL}.
 #' @param keepMetadata Logical value to indicate whether the metadata columns carried by the regions must be kept in the \code{rowData}, harmonised across the sets. Default: \code{TRUE}.
 #' @param regionId String with the name of a metadata column holding the region identifiers, for instance a gene name. It must hold a different value for every region of every set. Default: \code{NULL}, the names of the ranges, and their coordinates when they are unnamed.
-#' @param tileWidth Numeric value with the width of the tiles, in base pairs. Cannot be combined with \code{summits}. Default: \code{NULL}, one row per region.
-#' @param partialTiles Logical value: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
+#' @param tileWidth Numeric value with the width of the tiles, in base pairs (see \code{tileMethod}). Cannot be combined with \code{summits}. Default: \code{NULL}, one row per region.
+#' @param tileMethod Character string with the way the regions are cut: \code{"equal"} splits each region into tiles of the same width, as close as possible to \code{tileWidth} (a region narrower than one tile stays whole), \code{"fixed"} cuts tiles of exactly \code{tileWidth} from the start of the region, the last one shorter. Default: \code{"equal"}.
+#' @param partialTiles Logical value, read only with \code{tileMethod = "fixed"}: \code{TRUE} keeps the trailing tile of each region even when narrower than \code{tileWidth}, \code{FALSE} discards it together with the regions narrower than a single tile. Default: \code{TRUE}.
 #' @param pairedEnd Logical value, one logical value per BAM file, or the string \code{"auto"} to read the layout from the files themselves. Default: \code{"auto"}.
 #' @param fragmentLength Length to which single-end reads are extended. Either a number applied to every single-end sample; one number per BAM file, matched to the sample names when the vector is named; the name of a column of the sample sheet or of \code{sampleMetadata} holding one value per sample, such as the fragment length computed by phantompeakqualtools; or \code{"auto"}, to estimate it from the reads with \code{\link{estimateFragmentLength}}. Ignored for paired-end samples, whose fragments are rebuilt from the pairs. Default: \code{150}.
 #' @param maxFragmentLength Numeric value with the maximum length accepted for a paired-end fragment. Applied to the paired-end samples only. Default: \code{1000}.
@@ -113,6 +114,7 @@ countReads <-
              tileWidth = NULL,
              keepMetadata = TRUE,
              regionId = NULL,
+             tileMethod = "equal",
              partialTiles = TRUE,
              pairedEnd = "auto",
              fragmentLength = 150,
@@ -210,6 +212,7 @@ countReads <-
             tileWidth = tileWidth,
             keepMetadata = keepMetadata,
             regionId = regionId,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             excludeChromosomes = excludeChromosomes,
             blacklist = blacklist,
@@ -334,6 +337,7 @@ countReads <-
         counts <- .newReadCountsObject(
             bamFiles = bamFiles,
             tileWidth = tileWidth,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             pairedEnd = pairedEnd,
             maxFragmentLength = maxFragmentLength,
@@ -473,6 +477,7 @@ countReads <-
 #' @param tileWidth See \code{\link{countReads}}.
 #' @param keepMetadata See \code{\link{countReads}}.
 #' @param regionId See \code{\link{countReads}}.
+#' @param tileMethod See \code{\link{countReads}}.
 #' @param partialTiles See \code{\link{countReads}}.
 #' @param excludeChromosomes See \code{\link{countReads}}.
 #' @param blacklist See \code{\link{countReads}}.
@@ -497,6 +502,7 @@ countReads <-
              tileWidth,
              keepMetadata,
              regionId,
+             tileMethod,
              partialTiles,
              excludeChromosomes,
              blacklist,
@@ -513,6 +519,7 @@ countReads <-
             tileWidth = tileWidth,
             keepMetadata = keepMetadata,
             regionId = regionId,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             verbose = verbose
         )
@@ -846,6 +853,7 @@ countReads <-
 #'
 #' @param bamFiles See \code{\link{countReads}}.
 #' @param tileWidth See \code{\link{countReads}}.
+#' @param tileMethod See \code{\link{countReads}}.
 #' @param partialTiles See \code{\link{countReads}}.
 #' @param pairedEnd See \code{\link{countReads}}.
 #' @param maxFragmentLength See \code{\link{countReads}}.
@@ -885,6 +893,7 @@ countReads <-
 .newReadCountsObject <-
     function(bamFiles,
              tileWidth,
+             tileMethod,
              partialTiles,
              pairedEnd,
              maxFragmentLength,
@@ -913,6 +922,7 @@ countReads <-
         newParameters <- list(countReads = list(
             bamFiles = bamFiles,
             tileWidth = tileWidth,
+            tileMethod = tileMethod,
             partialTiles = partialTiles,
             pairedEnd = pairedEnd,
             fragmentLength = sampleFragmentLength,

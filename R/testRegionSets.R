@@ -24,7 +24,7 @@
 #' @param carryCounts Logical value to indicate whether the counts must travel inside the result, so that \code{\link{plotSetSignal}} can draw the signal without being handed the counts object again. Default: \code{TRUE}.
 #' @param verbose Logical value to indicate whether the messages must be printed. Default: \code{TRUE}.
 #'
-#' @return A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always. \code{n.overlapping.within} counts the regions of the set overlapping another region of the same set, while \code{n.up} and \code{n.down} count the regions of it changing in each direction, corrected within the set. The self-contained test reports \code{fry.p} and \code{fry.FDR} for the set moving in one direction, and \code{fry.mixed.p} and \code{fry.mixed.FDR} for it changing in either.
+#' @return A \code{RegionSetDE.setResults} object, or a \code{RegionSetDE.setResultsList} when \code{contrast} is a named list. The table carries \code{CI.lower} and \code{CI.upper} for the interval selected by \code{effectMethod}, \code{CI.type} naming which one that is, and \code{heterogeneity.CI.lower} and \code{heterogeneity.CI.upper} for the region-level one, always. \code{n.overlapping.within} counts the regions of the set overlapping another region of the same set, while \code{n.up} and \code{n.down} count the regions of it changing in each direction, corrected within the set. The self-contained test reports \code{fry.p} and \code{fry.FDR} for the set moving in one direction, and \code{fry.mixed.p} and \code{fry.mixed.FDR} for it changing in either. The competitive test reports \code{camera.p} and \code{camera.FDR} for the set moving in one direction more than its comparison, and \code{camera.mixed.p} and \code{camera.mixed.FDR} for it changing more than its comparison in either direction.
 #'
 #' @details The effect size, not the p-value, is the primary output here. A set of 30,000 promoters tested as if its regions were independent returns a p-value below anything a computer will print for a mean shift of 0.05 log2, which says nothing about whether the shift matters.
 #'
@@ -42,6 +42,8 @@
 #'   \item neither significant: neither test found evidence, which is not the same as evidence of no effect.
 #' }
 #' \code{fry} answers two questions rather than one and both are reported. \code{fry.p} is directional: it asks whether the regions of the set moved the same way, so a set holding regions that gained and regions that lost sees them cancel and comes out unremarkable. \code{fry.mixed.p} asks whether they changed at all, in either direction, and does not cancel. A set returning the mixed p-value without the directional one is being rearranged rather than shifted, which is a finding and not a null result: it is what an enhancer landscape being rewired looks like, and the directional test is blind to it by construction. Quote both, and read a large \code{n.up} alongside a large \code{n.down} as the same thing seen from the region level.
+#'
+#' Being self-contained, \code{fry.mixed.p} is significant for any set holding regions that change, and in an experiment where thousands of regions change, a batch between replicates included, that is every set of a reasonable size: random sets come out significant as often as real ones. \code{camera.mixed.p} is the competitive version of the same question. It runs \code{limma::cameraPR} on the absolute value of the per-region statistics, on their ranks since the folded values are skewed, with the correlation between regions converted to the one of the folded statistics, and keeps the side where the set changes more than its comparison. A set called by \code{camera.mixed.p} is being rearranged more than its comparison is, a set called by \code{fry.mixed.p} alone may only be changing as much as everything else.
 #'
 #' The word for a set gaining what another set lost is redistribution, and it is a claim about two sets rather than about one set and its universe, so it belongs to \code{\link{testSetContrast}}. To argue that a mark did not change globally, an equivalence test against a bounded near-zero interval is what the claim needs; a non-significant \code{fry} is not that. Bear in mind too that any centring normalisation, TMM and background included, removes a genuinely global shift from the data before \code{fry} ever sees it, so the self-contained test is not the place to look for one.
 #'
@@ -295,6 +297,7 @@ testRegionSets <-
         #-------------------------------#
         if ("camera" %in% method) {
             resultTable$camera.FDR <- stats::p.adjust(resultTable$camera.p, method = adjustMethod)
+            resultTable$camera.mixed.FDR <- stats::p.adjust(resultTable$camera.mixed.p, method = adjustMethod)
         }
         if ("fry" %in% method) {
             resultTable$fry.FDR <- stats::p.adjust(resultTable$fry.p, method = adjustMethod)
@@ -700,6 +703,22 @@ testRegionSets <-
 
                         setRow$camera.direction <- as.character(cameraTable$Direction[1])
                         setRow$camera.p <- cameraTable$PValue[1]
+
+                        # The same comparison on the size of the statistics, whatever their sign. The folded values are
+                        # skewed, so the ranks are used, and only the side where the set changes more than its comparison counts
+                        mixedTable <- limma::cameraPR(
+                            statistic = abs(regionStats$stat[universeIndex]),
+                            index = list(set = seq_along(setIndex)),
+                            use.ranks = TRUE,
+                            inter.gene.cor = .foldedCorrelation(correlation = setCorrelation),
+                            sort = FALSE
+                        )
+
+                        setRow$camera.mixed.p <- if (identical(as.character(mixedTable$Direction[1]), "Up")) {
+                            mixedTable$PValue[1] / 2
+                        } else {
+                            1 - mixedTable$PValue[1] / 2
+                        }
                     }
 
                     #-------------------------------#
@@ -733,6 +752,33 @@ testRegionSets <-
 
         return(resultList)
     }
+
+
+#' @title .foldedCorrelation
+#'
+#' @description Converts the correlation between two normal statistics into the correlation between their absolute values, which is what the competitive mixed test of \code{\link{testRegionSets}} is run on.
+#'
+#' @param correlation Numeric value with the correlation between the statistics.
+#'
+#' @return A numeric value between 0 and 1, or the input when it is not finite.
+#'
+#' @details For a bivariate normal with correlation \emph{r}, the absolute values have correlation \emph{(2 / pi) (r asin(r) + sqrt(1 - r^2) - 1) / (1 - 2 / pi)}, close to \emph{r^2}. Passing \emph{r} itself would overstate how much the regions of a set move together and cost power.
+#'
+#' @author Sebastian Gregoricchio
+#'
+#' @noRd
+
+.foldedCorrelation <-
+    function(correlation) {
+        if (!is.numeric(correlation) || length(correlation) != 1 || !is.finite(correlation)) {
+            return(correlation)
+        }
+
+        correlation <- max(-1, min(1, correlation))
+        foldedValue <- (2 / pi) * (correlation * asin(correlation) + sqrt(1 - correlation^2) - 1) / (1 - 2 / pi)
+
+        return(foldedValue)
+    } # END function
 
 
 #' @title .newSetResults

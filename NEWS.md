@@ -11,7 +11,7 @@ First version, submitted to Bioconductor.
 * `applyBlacklist()`, `applyWhitelist()` and `applyGreylist()` restrict the regions and record what they removed in the `filtering.log` slot. A list built for another assembly than the one of the regions is refused.
 
 ## Counting
-* `countReads()` counts BAM files over the regions, once per region or per fixed-width tile through `tileWidth`, and returns a `RegionSetDE.counts` object, which is a `RangedSummarizedExperiment`. Paired-end fragments run from the 5' end of the forward mate to the 5' end of the reverse mate, as in csaw: the two mates are matched by read name rather than trusting the template length, so that pairs whose mates run past each other are placed right, and the mapping quality of the second mate is read from its own record, with no need for the `MQ` tag. `pairedEnd = "auto"` reads the layout from the first records of each file.
+* `countReads()` counts BAM files over the regions, once per region or per tile through `tileWidth`. By default each region is split into equal tiles of about `tileWidth` bp, so a region narrower than one tile stays whole and no region ends with a sliver; `tileMethod = "fixed"` cuts exact widths from the start of the region, and returns a `RegionSetDE.counts` object, which is a `RangedSummarizedExperiment`. Paired-end fragments run from the 5' end of the forward mate to the 5' end of the reverse mate, as in csaw: the two mates are matched by read name rather than trusting the template length, so that pairs whose mates run past each other are placed right, and the mapping quality of the second mate is read from its own record, with no need for the `MQ` tag. `pairedEnd = "auto"` reads the layout from the first records of each file.
 * `summits` recentres the regions on the summit of the pooled pileup, in windows of `2 * summits + 1` bp as `DiffBind::dba.count()` does, and `summitSource = "peaks"` takes the summits written in the narrowPeak files instead.
 * `fragmentLength` takes one value per sample, a column of the sheet or `"auto"`, in which case `estimateFragmentLength()` estimates it from the strand cross-correlation of the reads.
 * The inputs of the samples are counted into an `input` assay, and nothing subtracts them from the counts.
@@ -38,7 +38,7 @@ First version, submitted to Bioconductor.
 * `peakOccupancyTable()` and `plotPeakOccupancy()` cross the groups that called a region with what the test said about it.
 
 ## Region sets
-* `testRegionSets()` tests whole sets, competitively through `limma::cameraPR` and self-contained through `limma::fry`. `fry.p` is the directional test and `fry.mixed.p` the one for a set changing in either direction, and `n.up` and `n.down` count the regions changing inside each set. The effect of a set comes with a confidence interval built on the libraries and a second interval for how much it varies between regions.
+* `testRegionSets()` tests whole sets, competitively through `limma::cameraPR` and self-contained through `limma::fry`. `fry.p` is the directional test and `fry.mixed.p` the one for a set changing in either direction. `camera.mixed.p` is the competitive version of the latter, `limma::cameraPR` on the ranks of the absolute statistics, for a set changing more than its comparison in either direction, and `n.up` and `n.down` count the regions changing inside each set. The effect of a set comes with a confidence interval built on the libraries and a second interval for how much it varies between regions.
 * `makeSetUniverse()` builds the rows a set is compared against, matched on width and abundance.
 * `testSetContrast()` asks whether a contrast affects two sets differently, which is where a redistribution claim belongs.
 * `tileHandling`, `overlapPolicy` and `overlapWithinSet` decide how tiles, sets covering the same chromatin and overlapping regions inside one set are handled.
@@ -50,7 +50,7 @@ First version, submitted to Bioconductor.
 * `aggregateToGenes()` writes one row per gene when a gene table is needed. `direction` reports a gene whose regions disagree as `mixed` rather than deciding for it, next to combined p-values and a weighted score for ranked enrichment.
 
 ## Designs without replicates
-* `estimateNullDispersion()` estimates the dispersion from rows assumed not to respond and holds half of them back, so that `checkNullCalibration()` and `plotNullCalibration()` can check the assumption on rows the estimate never saw.
+* `estimateNullDispersion()` estimates the dispersion from rows assumed not to respond and holds half of them back, so that `checkNullCalibration()` and `plotNullCalibration()` can check the assumption on rows the estimate never saw. `checkNullCalibration()` also fits the regions the same way and compares the median of their fold changes with the one of the null rows, and returns `"regions shifted"` when the two do not sit on the same baseline, the case of libraries differing in their share of fragments in the regions under background normalisation.
 
 ## Plots
 * Regions: `plotVolcano()`, `plotResultsMA()`, `plotRegion()` and `plotTopHeatmap()`.

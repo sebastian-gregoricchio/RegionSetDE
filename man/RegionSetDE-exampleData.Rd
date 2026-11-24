@@ -3,6 +3,9 @@
 \name{RegionSetDE-exampleData}
 \alias{RegionSetDE-exampleData}
 \title{RegionSetDE example data}
+\value{
+This page describes files and creates no object. The files are read with \code{\link{loadExampleData}}, whose help lists what each one returns.
+}
 \description{
 Description of the example objects installed under \code{inst/extdata}
 and of the dataset they come from. The objects are read with \code{\link{loadExampleData}},

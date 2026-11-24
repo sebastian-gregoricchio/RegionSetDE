@@ -104,6 +104,8 @@
 #'
 #' @name RegionSetDE-exampleData
 #'
+#' @return This page describes files and creates no object. The files are read with \code{\link{loadExampleData}}, whose help lists what each one returns.
+#'
 #' @examples
 #' # The counts of the EURATRANS example and the sheet of the AR example
 #' counts <- loadExampleData("counts", verbose = FALSE)

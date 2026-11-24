@@ -104,6 +104,14 @@ test_that("single-end and paired-end libraries are counted together on one scale
         )
     )[[1]]
 
+    # Only the first mates whose mate is in the file: the pairs are rebuilt from both mates, so a first
+    # mate left alone makes no fragment, while written back as a single-end read it would still count
+    mateNames <- Rsamtools::scanBam(RegionSetDE:::.bamWithIndex(pairedFile),
+        param = Rsamtools::ScanBamParam(what = "qname", flag = Rsamtools::scanBamFlag(isSecondMateRead = TRUE))
+    )[[1]]$qname
+    completePairs <- readFields$qname %in% mateNames
+    readFields <- lapply(readFields, function(field) field[completePairs])
+
     singleFlag <- ifelse(readFields$strand == "-", 16L, 0L) + ifelse(bitwAnd(readFields$flag, 1024L) > 0, 1024L, 0L)
     chromosomeLengths <- Rsamtools::scanBamHeader(pairedFile)[[1]]$targets
 

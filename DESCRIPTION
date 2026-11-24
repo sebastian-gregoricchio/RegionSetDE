@@ -66,6 +66,7 @@ Suggests:
   ggrepel,
   knitr,
   lme4,
+  reformulas,
   rmarkdown,
   testthat (>= 3.0.0),
   variancePartition

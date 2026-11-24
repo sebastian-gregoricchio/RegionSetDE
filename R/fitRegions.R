@@ -436,10 +436,14 @@ fitRegions <-
         #-------------------------------#
         fixedFormula <- designFormula
         if (hasRandomTerm) {
-            if (!requireNamespace("lme4", quietly = TRUE)) {
-                stop("The 'lme4' package is needed to separate the random terms from the design.", call. = FALSE)
+            # nobars moved from lme4 to reformulas, which recent lme4 versions depend on
+            if (requireNamespace("reformulas", quietly = TRUE)) {
+                fixedFormula <- reformulas::nobars(designFormula)
+            } else if (requireNamespace("lme4", quietly = TRUE)) {
+                fixedFormula <- lme4::nobars(designFormula)
+            } else {
+                stop("The 'reformulas' package is needed to separate the random terms from the design.", call. = FALSE)
             }
-            fixedFormula <- lme4::nobars(designFormula)
         }
 
         designVariables <- all.vars(fixedFormula)

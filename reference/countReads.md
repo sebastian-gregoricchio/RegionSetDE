@@ -1,6 +1,6 @@
 # countReads
 
-Counts the reads of a group of BAM files over the regions of a
+Counts the reads of a group of BAM or CRAM files over the regions of a
 `RegionSetDE` object. Paired-end data are counted as fragments, while
 single-end reads are extended to the fragment length before the overlap
 is evaluated. The regions can be recentred on the summit of the signal,
@@ -57,11 +57,12 @@ countReads(
 
 - bamFiles:
 
-  Character vector with the paths of the BAM files. Each file must be
-  indexed, and all of them must be aligned to the same assembly, whose
-  chromosomes they may name in different styles (`chr1` in some files
-  and `1` in others). Default: `NULL`, taken from `sampleSheet`, or from
-  the sample sheet a consensus was built from by
+  Character vector with the paths of the BAM or CRAM files. Each file
+  must be indexed (BAI or CSI for a BAM file, CRAI for a CRAM file), and
+  all of them must be aligned to the same assembly, whose chromosomes
+  they may name in different styles (`chr1` in some files and `1` in
+  others). Default: `NULL`, taken from `sampleSheet`, or from the sample
+  sheet a consensus was built from by
   [`loadConsensusPeaks`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadConsensusPeaks.md).
 
 - sampleSheet:
@@ -130,8 +131,9 @@ countReads(
 
 - minMapq:
 
-  Numeric value with the minimum mapping quality of a read. Default:
-  `20`.
+  Numeric value with the minimum mapping quality of a read. For
+  paired-end data both mates are checked, each on its own record.
+  Default: `20`.
 
 - removeDuplicates:
 
@@ -205,10 +207,10 @@ countReads(
 
 - inputFiles:
 
-  Character vector with the path of the input BAM file of every sample,
-  `NA` for a sample without input. One input can serve several samples
-  and is counted once. Default: `NULL`, the `input` column of the sample
-  sheet or of `sampleMetadata`, when there is one.
+  Character vector with the path of the input BAM or CRAM file of every
+  sample, `NA` for a sample without input. One input can serve several
+  samples and is counted once. Default: `NULL`, the `input` column of
+  the sample sheet or of `sampleMetadata`, when there is one.
 
 - countInput:
 
@@ -287,14 +289,17 @@ then copied to every set they belong to, which keeps the running time
 proportional to the number of distinct regions.
 
 A paired-end fragment is counted in every region it overlaps, including
-the regions it spans with both reads outside them. The fragment is
-rebuilt from the first mate of each proper pair, whose position and
-template length (TLEN) give its start and width, so the two reads never
-have to be matched in memory. The pairs therefore have to be flagged as
-proper by the aligner, and those longer than `maxFragmentLength` are
-dropped. The mapping quality of the second mate is read from the `MQ`
-tag, which `samtools fixmate` and Picard write; on files without it only
-the first mate is checked, and a message says so.
+the regions it spans with both reads outside them. The two mates of each
+proper pair are matched by read name, and the fragment runs from the 5'
+end of the forward mate to the 5' end of the reverse mate, as in csaw.
+The template length (TLEN) written by the aligner is not used: aligners
+do not all compute it alike, and it places a fragment shorter than its
+reads, whose mates run past each other, at the leftmost read. Mates on
+the same strand, or running completely past each other, make no
+fragment. The pairs have to be flagged as proper by the aligner, and
+those longer than `maxFragmentLength` are dropped. The mapping quality
+of the second mate is read from its own record, so no `MQ` tag is
+needed.
 
 Counts and library sizes are kept apart. The counts only need the
 chromosomes carrying regions, and every region is counted, wherever it
@@ -398,6 +403,13 @@ and decoys often do between two builds of one assembly, hold no read in
 those files and enter the library sizes of the others, unless they are
 listed in `excludeChromosomes`.
 
+BAM and CRAM files are read by the same C code, built on htslib, so a
+CRAM file gives the counts of the BAM file it was made from, and both
+formats can be mixed in the same call. CRAM files are read without the
+reference genome they were compressed against: the counting only needs
+the read name, the position, the flag, the mapping quality and the CIGAR
+of the reads, which CRAM stores apart from the bases.
+
 A single `GRanges` is taken as one set of regions. It goes through
 [`loadRegions`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadRegions.md)
 with its order and its chromosome names kept, the regions with identical
@@ -479,7 +491,7 @@ head(SummarizedExperiment::rowRanges(summitCounts), 3)
 #>                                    <Rle>         <IRanges>  <Rle> | <character>
 #>   peaks|chr19:46089737-46089961    chr19 46089699-46090099      * |       peaks
 #>   peaks|chr19:46300828-46301307    chr19 46300862-46301262      * |       peaks
-#>   peaks|chr19:46314001-46314455    chr19 46313939-46314339      * |       peaks
+#>   peaks|chr19:46314001-46314455    chr19 46313938-46314338      * |       peaks
 #>                                              region.id   tile.id
 #>                                            <character> <integer>
 #>   peaks|chr19:46089737-46089961 chr19:46089737-46089..      <NA>
@@ -494,7 +506,7 @@ head(SummarizedExperiment::rowRanges(summitCounts), 3)
 #>                                 <numeric> <numeric> <integer> <integer>
 #>   peaks|chr19:46089737-46089961   18.4847   15.9682       103  46089899
 #>   peaks|chr19:46300828-46301307  199.8470  196.3410       236  46301062
-#>   peaks|chr19:46314001-46314455   17.4005   14.9008       186  46314139
+#>   peaks|chr19:46314001-46314455   17.4005   14.9008       186  46314138
 #>   -------
 #>   seqinfo: 1 sequence from hg38 genome; no seqlengths
 

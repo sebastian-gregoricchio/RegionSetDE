@@ -64,7 +64,7 @@ Gregoricchio, Ph.D.</h4>
 Netherlands<br><a class="author_email" href="mailto:#"></a><a href="mailto:s.gregoricchio@nki.nl" class="email">s.gregoricchio@nki.nl</a>
       </address>
                   
-            <h4 data-toc-skip class="date">Last update: 22<sup>th</sup>
+            <h4 data-toc-skip class="date">Last update: 24<sup>th</sup>
 November, 2026</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/sebastian-gregoricchio/RegionSetDE/blob/devel-tools/vignettes/RegionSetDE.vignette.Rmd" class="external-link"><code>vignettes/RegionSetDE.vignette.Rmd</code></a></small>
@@ -449,10 +449,15 @@ is set. A plain <code>GRanges</code> is accepted in place of the object:
 it goes through <code><a href="../reference/loadRegions.html">loadRegions()</a></code> and is counted as a single
 set named <code>regions</code>, its order and its chromosome names
 kept.</p>
-<p>The BAM files have to be aligned to the same assembly, but they do
-not have to name its chromosomes alike. Files written <code>chr1</code>
-and files written <code>1</code> are counted together, and the regions
-can follow either style.</p>
+<p>The alignments can be BAM or CRAM files, and the two formats can be
+mixed. CRAM files are read without the reference genome they were
+compressed against: the counting only needs the name, position, flag,
+mapping quality and CIGAR of the reads, which CRAM stores apart from the
+bases. Every file needs its index, a BAI or CSI for a BAM file and a
+CRAI for a CRAM file. The files have to be aligned to the same assembly,
+but they do not have to name its chromosomes alike. Files written
+<code>chr1</code> and files written <code>1</code> are counted together,
+and the regions can follow either style.</p>
 <p>The four BAM files of the example are not shipped with the package,
 so the counting calls of this section are shown and not run. The
 <code>counts</code> object loaded above is what they return, and
@@ -473,10 +478,14 @@ the counting on alignments that are shipped.</p>
 <span>             BPPARAM <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
 <p>Paired-end libraries are counted as fragments: a fragment counts in
 every region it overlaps, the stretch between its two reads included.
-The BAM files are cut into pieces of at most 50 Mb, shared among the
-workers, so even a single file runs faster on more cores.
-<code>BPPARAM</code> takes a number of cores, as here, or any
-<code>BiocParallelParam</code> object,
+The two mates of each proper pair are matched by read name, and the
+fragment runs from the 5’ end of one to the 5’ end of the other, as in
+<em>csaw</em>. Neither the template length written by the aligner nor
+the <code>MQ</code> tag is needed, and a fragment shorter than its
+reads, whose mates run past each other, keeps its true ends. The files
+are cut into pieces of at most 50 Mb, shared among the workers, so even
+a single file runs faster on more cores. <code>BPPARAM</code> takes a
+number of cores, as here, or any <code>BiocParallelParam</code> object,
 <code>BiocParallel::MulticoreParam(4)</code> or a cluster back end for
 instance, which is used as it is. Left out, everything runs on one
 core.</p>

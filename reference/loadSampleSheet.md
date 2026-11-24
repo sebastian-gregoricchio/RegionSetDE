@@ -45,7 +45,7 @@ loadSampleSheet(
 - checkFiles:
 
   Logical value to indicate whether the existence of the files, and the
-  index of the BAM files, must be checked. Default: `TRUE`.
+  index of the BAM and CRAM files, must be checked. Default: `TRUE`.
 
 - verbose:
 
@@ -63,7 +63,8 @@ a column and from the file names otherwise.
 
 ## Details
 
-Only `sample` and one of `bam` and `bigwig` are required. The other
+Only `sample` and one of `bam` and `bigwig` are required. The `bam`
+field takes CRAM files as well, indexed with `samtools index`. The other
 fields are optional, and so are their values: a sample can come without
 peaks or without an input, and one input can serve several samples.
 [`makeGreylist`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md)

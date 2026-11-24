@@ -121,5 +121,5 @@ if (requireNamespace("consensusRegions", quietly = TRUE)) {
 #> 2         3        61    0    8 53            86.9
 #> 3         4         5    0    1  4            80.0
 #> 4         5         2    0    0  2           100.0
-#> 5         6         9    0    1  8            88.9
+#> 5         6         9    0    0  9           100.0
 ```

@@ -49,8 +49,9 @@ countGreenlist(
 
 - bamFiles:
 
-  Character vector with the paths of the BAM files, in the same order as
-  the samples of `counts`. Default: `NULL`, the files recorded by
+  Character vector with the paths of the BAM or CRAM files, in the same
+  order as the samples of `counts`. Default: `NULL`, the files recorded
+  by
   [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   are reused.
 
@@ -188,6 +189,6 @@ counts <- normalizeRegionCounts(counts, method = "greenlist", verbose = FALSE)
 #> Warning: Only 4 greenlist regions carry a read in every sample, the factors rest on those alone.
 
 SummarizedExperiment::colData(counts)$scaling.factor
-#> [1] 0.8202319 1.2421577 0.8396263 0.8382576 0.9573529 1.2259310 1.1672375
-#> [8] 0.9747252 0.9344800
+#> [1] 0.8209444 1.2449866 0.8403556 0.8389857 0.9595331 1.2269958 1.1682513
+#> [8] 0.9646559 0.9352917
 ```

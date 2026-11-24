@@ -116,8 +116,8 @@ computeProfiles(
 
 - signal:
 
-  String with the files the signal is read from: `"bam"`, the BAM files
-  of
+  String with the files the signal is read from: `"bam"`, the BAM or
+  CRAM files of
   [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
   `"bigwig"`, the bigWig files of the sample sheet or of
   [`countBigwig`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md),
@@ -126,9 +126,9 @@ computeProfiles(
 
 - signalFiles:
 
-  Character vector with one BAM or bigWig file per sample, in the order
-  of the samples, overriding the ones recorded in the object. Default:
-  `NULL`.
+  Character vector with one BAM, CRAM or bigWig file per sample, in the
+  order of the samples, overriding the ones recorded in the object.
+  Default: `NULL`.
 
 - distance:
 

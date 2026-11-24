@@ -26,8 +26,8 @@ libInfo(counts, annotationColumns = NULL, bamFiles = NULL)
 
 - bamFiles:
 
-  Character vector with the BAM files, in the order of the samples.
-  Default: `NULL`, the files recorded by
+  Character vector with the BAM or CRAM files, in the order of the
+  samples. Default: `NULL`, the files recorded by
   [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md).
 
 ## Value
@@ -48,10 +48,13 @@ numbers for the input of each sample.
 ## Details
 
 The three counts measure different things and are not expected to agree.
-`bam.reads` and `bam.mapped` come from the index of each file, so they
-are read in an instant, and they count alignment records: a paired-end
-fragment is two of them. `library.size` and `reads.in.regions` come from
-the counting, where a paired-end fragment counts once and only after the
+`bam.reads` and `bam.mapped` come from the index of each BAM file, so
+they are read in an instant, and they count alignment records: a
+paired-end fragment is two of them. A CRAM index holds no such counts,
+so a CRAM file is read once from start to end, decoding only the flag
+and the chromosome of every record, which takes a few minutes for a
+large file. `library.size` and `reads.in.regions` come from the
+counting, where a paired-end fragment counts once and only after the
 mapping quality, duplicate and proper pair filters. On paired-end data
 `bam.mapped` is therefore about twice `library.size`, less what the
 filters removed.
@@ -105,15 +108,15 @@ libInfo(counts, annotationColumns = "condition")
 #> 8 AR_R1881_24h_r2 R1881_24h       TRUE              NA     10793      10793
 #> 9 AR_R1881_24h_r3 R1881_24h       TRUE              NA     10332      10332
 #>   library.size reads.in.regions   FRiP input.id input.library.size
-#> 1         3588              116 0.0323    input               5353
-#> 2         5469              161 0.0294    input               5353
-#> 3         4183              131 0.0313    input               5353
-#> 4         3582              558 0.1558    input               5353
-#> 5         5121              881 0.1720    input               5353
-#> 6         5806              718 0.1237    input               5353
-#> 7         6326             1139 0.1801    input               5353
-#> 8         4889             1158 0.2369    input               5353
-#> 9         4651              839 0.1804    input               5353
+#> 1         3577              116 0.0324    input               5343
+#> 2         5451              161 0.0295    input               5343
+#> 3         4168              131 0.0314    input               5343
+#> 4         3572              558 0.1562    input               5343
+#> 5         5099              880 0.1726    input               5343
+#> 6         5788              718 0.1240    input               5343
+#> 7         6320             1139 0.1802    input               5343
+#> 8         4879             1157 0.2371    input               5343
+#> 9         4638              837 0.1805    input               5343
 #>   input.in.regions input.FRiP
 #> 1               26     0.0049
 #> 2               26     0.0049

@@ -328,10 +328,15 @@ place of the object: it goes through
 and is counted as a single set named `regions`, its order and its
 chromosome names kept.
 
-The BAM files have to be aligned to the same assembly, but they do not
-have to name its chromosomes alike. Files written `chr1` and files
-written `1` are counted together, and the regions can follow either
-style.
+The alignments can be BAM or CRAM files, and the two formats can be
+mixed. CRAM files are read without the reference genome they were
+compressed against: the counting only needs the name, position, flag,
+mapping quality and CIGAR of the reads, which CRAM stores apart from the
+bases. Every file needs its index, a BAI or CSI for a BAM file and a
+CRAI for a CRAM file. The files have to be aligned to the same assembly,
+but they do not have to name its chromosomes alike. Files written `chr1`
+and files written `1` are counted together, and the regions can follow
+either style.
 
 The four BAM files of the example are not shipped with the package, so
 the counting calls of this section are shown and not run. The `counts`
@@ -358,11 +363,16 @@ counts <-
 
 Paired-end libraries are counted as fragments: a fragment counts in
 every region it overlaps, the stretch between its two reads included.
-The BAM files are cut into pieces of at most 50 Mb, shared among the
-workers, so even a single file runs faster on more cores. `BPPARAM`
-takes a number of cores, as here, or any `BiocParallelParam` object,
-`BiocParallel::MulticoreParam(4)` or a cluster back end for instance,
-which is used as it is. Left out, everything runs on one core.
+The two mates of each proper pair are matched by read name, and the
+fragment runs from the 5’ end of one to the 5’ end of the other, as in
+*csaw*. Neither the template length written by the aligner nor the `MQ`
+tag is needed, and a fragment shorter than its reads, whose mates run
+past each other, keeps its true ends. The files are cut into pieces of
+at most 50 Mb, shared among the workers, so even a single file runs
+faster on more cores. `BPPARAM` takes a number of cores, as here, or any
+`BiocParallelParam` object, `BiocParallel::MulticoreParam(4)` or a
+cluster back end for instance, which is used as it is. Left out,
+everything runs on one core.
 
 The counts and the library sizes are two separate things. Every region
 is counted, wherever it lies, and the counts only need the chromosomes

@@ -43,22 +43,22 @@ tiledFit <- fitRegions(tiledCounts, design = ~condition, verbose = FALSE)
 # The tiles are combined into regions, and their own statistics sit behind the combined ones
 tiledResults <- testRegions(tiledFit, contrast = c("condition", "R1881_24h", "DMSO"), verbose = FALSE)
 head(tileTable(tiledResults), 3)
-#>                                       log2FC average.signal      stat
-#> peaks|chr19:46089737-46089961|tile1 2.594558       9.218571 0.9729137
-#> peaks|chr19:46089737-46089961|tile2 3.470645       9.472299 1.9880706
-#> peaks|chr19:46089737-46089961|tile3 3.233674       9.376084 1.6438457
+#>                                       log2FC average.signal     stat
+#> peaks|chr19:46089737-46089961|tile1 2.589273       9.222686 0.936586
+#> peaks|chr19:46089737-46089961|tile2 3.464802       9.476413 1.913877
+#> peaks|chr19:46089737-46089961|tile3 3.227945       9.380196 1.582482
 #>                                     stat.distribution df1  df2   p.value
-#> peaks|chr19:46089737-46089961|tile1                 f   1 2712 0.3240426
-#> peaks|chr19:46089737-46089961|tile2                 f   1 2712 0.1586574
-#> peaks|chr19:46089737-46089961|tile3                 f   1 2712 0.1999082
+#> peaks|chr19:46089737-46089961|tile1                 f   1 2712 0.3332437
+#> peaks|chr19:46089737-46089961|tile2                 f   1 2712 0.1666471
+#> peaks|chr19:46089737-46089961|tile3                 f   1 2712 0.2085118
 #>                                     average.signal.DMSO average.signal.R1881_4h
-#> peaks|chr19:46089737-46089961|tile1            8.822609                9.565452
-#> peaks|chr19:46089737-46089961|tile2            8.822609                9.805591
-#> peaks|chr19:46089737-46089961|tile3            8.822609                9.690221
+#> peaks|chr19:46089737-46089961|tile1            8.827407                9.570474
+#> peaks|chr19:46089737-46089961|tile2            8.827407                9.810504
+#> peaks|chr19:46089737-46089961|tile3            8.827407                9.695143
 #>                                     average.signal.R1881_24h region.set
-#> peaks|chr19:46089737-46089961|tile1                 9.148300      peaks
-#> peaks|chr19:46089737-46089961|tile2                 9.565067      peaks
-#> peaks|chr19:46089737-46089961|tile3                 9.439105      peaks
+#> peaks|chr19:46089737-46089961|tile1                 9.151145      peaks
+#> peaks|chr19:46089737-46089961|tile2                 9.568140      peaks
+#> peaks|chr19:46089737-46089961|tile3                 9.442123      peaks
 #>                                                   region.id tile.id
 #> peaks|chr19:46089737-46089961|tile1 chr19:46089737-46089961       1
 #> peaks|chr19:46089737-46089961|tile2 chr19:46089737-46089961       2
@@ -76,7 +76,7 @@ head(tileTable(tiledResults), 3)
 #> peaks|chr19:46089737-46089961|tile2 AR_R1881_24h_r1_peak_21400   159 9.71586
 #> peaks|chr19:46089737-46089961|tile3 AR_R1881_24h_r1_peak_21400   159 9.71586
 #>                                          V8      V9 V10       FDR
-#> peaks|chr19:46089737-46089961|tile1 18.4847 15.9682 103 0.5503016
-#> peaks|chr19:46089737-46089961|tile2 18.4847 15.9682 103 0.3900078
-#> peaks|chr19:46089737-46089961|tile3 18.4847 15.9682 103 0.4290677
+#> peaks|chr19:46089737-46089961|tile1 18.4847 15.9682 103 0.5633255
+#> peaks|chr19:46089737-46089961|tile2 18.4847 15.9682 103 0.4116275
+#> peaks|chr19:46089737-46089961|tile3 18.4847 15.9682 103 0.4554716
 ```

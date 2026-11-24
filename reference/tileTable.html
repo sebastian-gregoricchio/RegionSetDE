@@ -83,22 +83,22 @@
 <span class="r-in"><span><span class="co"># The tiles are combined into regions, and their own statistics sit behind the combined ones</span></span></span>
 <span class="r-in"><span><span class="va">tiledResults</span> <span class="op">&lt;-</span> <span class="fu"><a href="testRegions.html">testRegions</a></span><span class="op">(</span><span class="va">tiledFit</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"condition"</span>, <span class="st">"R1881_24h"</span>, <span class="st">"DMSO"</span><span class="op">)</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">tileTable</span><span class="op">(</span><span class="va">tiledResults</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                       log2FC average.signal      stat</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 2.594558       9.218571 0.9729137</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 3.470645       9.472299 1.9880706</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 3.233674       9.376084 1.6438457</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                       log2FC average.signal     stat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 2.589273       9.222686 0.936586</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 3.464802       9.476413 1.913877</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 3.227945       9.380196 1.582482</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                     stat.distribution df1  df2   p.value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1                 f   1 2712 0.3240426</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2                 f   1 2712 0.1586574</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3                 f   1 2712 0.1999082</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1                 f   1 2712 0.3332437</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2                 f   1 2712 0.1666471</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3                 f   1 2712 0.2085118</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                     average.signal.DMSO average.signal.R1881_4h</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1            8.822609                9.565452</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2            8.822609                9.805591</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3            8.822609                9.690221</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1            8.827407                9.570474</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2            8.827407                9.810504</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3            8.827407                9.695143</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                     average.signal.R1881_24h region.set</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1                 9.148300      peaks</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2                 9.565067      peaks</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3                 9.439105      peaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1                 9.151145      peaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2                 9.568140      peaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3                 9.442123      peaks</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                                   region.id tile.id</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 chr19:46089737-46089961       1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 chr19:46089737-46089961       2</span>
@@ -116,9 +116,9 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 AR_R1881_24h_r1_peak_21400   159 9.71586</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 AR_R1881_24h_r1_peak_21400   159 9.71586</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                          V8      V9 V10       FDR</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 18.4847 15.9682 103 0.5503016</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 18.4847 15.9682 103 0.3900078</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 18.4847 15.9682 103 0.4290677</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile1 18.4847 15.9682 103 0.5633255</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile2 18.4847 15.9682 103 0.4116275</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> peaks|chr19:46089737-46089961|tile3 18.4847 15.9682 103 0.4554716</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

@@ -70,7 +70,7 @@
 
 
 <dt id="arg-checkfiles">checkFiles<a class="anchor" aria-label="anchor" href="#arg-checkfiles"></a></dt>
-<dd><p>Logical value to indicate whether the existence of the files, and the index of the BAM files, must be checked. Default: <code>TRUE</code>.</p></dd>
+<dd><p>Logical value to indicate whether the existence of the files, and the index of the BAM and CRAM files, must be checked. Default: <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -83,7 +83,7 @@
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Only <code>sample</code> and one of <code>bam</code> and <code>bigwig</code> are required. The other fields are optional, and so are their values: a sample can come without peaks or without an input, and one input can serve several samples. <code><a href="makeGreylist.html">makeGreylist</a></code> reads each distinct input file once, whatever the number of samples pointing to it.</p>
+    <p>Only <code>sample</code> and one of <code>bam</code> and <code>bigwig</code> are required. The <code>bam</code> field takes CRAM files as well, indexed with <code>samtools index</code>. The other fields are optional, and so are their values: a sample can come without peaks or without an input, and one input can serve several samples. <code><a href="makeGreylist.html">makeGreylist</a></code> reads each distinct input file once, whatever the number of samples pointing to it.</p>
 <p>A DiffBind sample sheet is read as it is. <code>SampleID</code>, <code>bamReads</code>, <code>Peaks</code>, <code>bamControl</code> and <code>ControlID</code> take the standard names, while <code>Tissue</code>, <code>Factor</code>, <code>Condition</code>, <code>Treatment</code>, <code>Replicate</code> and any other column stay as annotation, available to the design of <code><a href="fitRegions.html">fitRegions</a></code> under their own names.</p>
 <p>Relative paths are resolved against <code>basePath</code> and returned as absolute paths, so the table stays valid when the working directory changes. Addresses starting with a protocol, such as <code>https://</code>, are left untouched and are not checked, since <code><a href="countBigwig.html">countBigwig</a></code> can read remote bigWig files.</p>
 <p>The table goes straight into the counting, as the source of the files, of the sample names and of the annotation: <code>countReads(regions, bamFiles = sampleSheet$bam, sampleNames = sampleSheet$sample, sampleMetadata = sampleSheet)</code>.</p>

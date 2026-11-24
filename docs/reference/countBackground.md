@@ -37,8 +37,9 @@ countBackground(
 
 - bamFiles:
 
-  Character vector with the paths of the BAM files, in the same order as
-  the samples of `counts`. Default: `NULL`, the files recorded by
+  Character vector with the paths of the BAM or CRAM files, in the same
+  order as the samples of `counts`. Default: `NULL`, the files recorded
+  by
   [`countReads`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   are reused.
 

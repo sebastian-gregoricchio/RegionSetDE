@@ -176,8 +176,10 @@ both cases
 [`edgeR::scaleOffset`](https://rdrr.io/pkg/edgeR/man/scaleOffset.html)
 puts the offsets back on the scale of the library sizes, which leaves
 the coefficients readable as log2 fold changes and keeps the fitted
-values on the scale of the raw counts. Running without offsets is
-possible and is almost never what you want: the library sizes alone
+values on the scale of the raw counts. voom and dream receive the same
+values as effective library sizes, and the dream engine refuses the
+`"loess"` offsets, which change along the rows. Running without offsets
+is possible and is almost never what you want: the library sizes alone
 assume that the depth is the only difference between the samples. A
 design with one sample per condition has no residual degree of freedom,
 so nothing in the data says how much two libraries differ for reasons

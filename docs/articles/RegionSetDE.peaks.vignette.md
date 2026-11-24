@@ -137,9 +137,11 @@ colnames(sampleSheet)
 > [7] "treatment" "time"      "replicate"
 ```
 
-A sheet carrying only peaks is enough to build a consensus. The BAM
-files are needed from the counting onwards, and every one of them must
-be indexed; a BAI or a CSI index both work.
+A sheet carrying only peaks is enough to build a consensus. The
+alignments are needed from the counting onwards, and every file must be
+indexed: a BAI or a CSI index for a BAM file, a CRAI index for a CRAM
+file. The `bam` column takes either format, and CRAM files are read
+without the reference genome.
 
   
 
@@ -149,10 +151,10 @@ Nothing has to be declared about the layout.
 [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
 takes `pairedEnd = "auto"` by default and reads the flags of the first
 records of every file, so each library is counted the way it was
-sequenced. A paired-end fragment is rebuilt from the first mate of each
-proper pair and counts once; a single-end read is extended to the
-fragment length of its library, 150 bp unless said otherwise, and counts
-once as well.
+sequenced. A paired-end fragment is rebuilt from the two mates of each
+proper pair, from the 5’ end of one to the 5’ end of the other, and
+counts once; a single-end read is extended to the fragment length of its
+library, 150 bp unless said otherwise, and counts once as well.
 
 Libraries of both kinds can therefore sit in the same analysis. Each one
 ends up with one count per sequenced fragment, which is the scale the
@@ -334,9 +336,9 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments       mean      size threshold windows flagged.windows regions
-> 1      5353 0.09351198 0.1836287         2  114488             362     161
+> 1      5343 0.09333729 0.1836449         2  114488             362     161
 >   greylisted.bp
 > 1       1054720
 ```
@@ -358,9 +360,9 @@ S4Vectors::metadata(greylist)$thresholds
 >   input
 > 1 input
 >                                                                               file
-> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
 >   fragments      mean      size threshold windows flagged.windows regions
-> 1      5353 0.9131696 0.1003771        15   11724               3       2
+> 1      5343 0.9114637 0.1004121        15   11724               3       2
 >   greylisted.bp
 > 1         25000
 ```
@@ -642,25 +644,25 @@ consensusInfo$samples
 > 8 AR_R1881_24h_r2 R1881_24h AR_R1881_24h_r2
 > 9 AR_R1881_24h_r3 R1881_24h AR_R1881_24h_r3
 >                                                                                                 peak.file
-> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+> 1      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
 >                                                                                          bam
-> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+> 1      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >   n.peaks n.blacklist n.greylist n.excluded
 > 1      13           0          0          0
 > 2      13           0          0          0
@@ -907,30 +909,30 @@ countTable(counts, format = "long") %>%
 > 3          TRUE           TRUE           2            6 AR_DMSO_r1      0
 > 4          TRUE           TRUE           2            5 AR_DMSO_r1      2
 >                                                                                bam.file
-> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 1 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 3 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 4 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
 >                                                                                                peaks
-> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 1 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 3 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 4 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
 >                                                                              input
-> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 3    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 4    input      DMSO      DMSO   4h        r1       TRUE              NA
 >   library.size discarded.reads input.library.size
-> 1         3570              18               5306
-> 2         3570              18               5306
-> 3         3570              18               5306
-> 4         3570              18               5306
+> 1         3559              18               5296
+> 2         3559              18               5296
+> 3         3559              18               5296
+> 4         3559              18               5296
 ```
 
 On a tiled object `level` chooses between one row per tile and the tiles
@@ -958,36 +960,37 @@ libInfo(counts, annotationColumns = "condition")
 > 8 AR_R1881_24h_r2 R1881_24h       TRUE              NA     10793      10793
 > 9 AR_R1881_24h_r3 R1881_24h       TRUE              NA     10332      10332
 >   library.size discarded.reads reads.in.regions   FRiP input.id
-> 1         3570              18              147 0.0412    input
-> 2         5443              26              187 0.0344    input
-> 3         4158              25              150 0.0361    input
-> 4         3562              20              605 0.1698    input
-> 5         5096              25              931 0.1827    input
-> 6         5779              27              751 0.1300    input
-> 7         6295              31             1149 0.1825    input
-> 8         4871              18             1197 0.2457    input
-> 9         4623              28              872 0.1886    input
+> 1         3559              18              143 0.0402    input
+> 2         5425              26              183 0.0337    input
+> 3         4143              25              149 0.0360    input
+> 4         3552              20              599 0.1686    input
+> 5         5074              25              919 0.1811    input
+> 6         5761              27              747 0.1297    input
+> 7         6289              31             1149 0.1827    input
+> 8         4861              18             1196 0.2460    input
+> 9         4611              27              870 0.1887    input
 >   input.library.size input.in.regions input.FRiP
-> 1               5306               38     0.0072
-> 2               5306               38     0.0072
-> 3               5306               38     0.0072
-> 4               5306               38     0.0072
-> 5               5306               38     0.0072
-> 6               5306               38     0.0072
-> 7               5306               38     0.0072
-> 8               5306               38     0.0072
-> 9               5306               38     0.0072
+> 1               5296               38     0.0072
+> 2               5296               38     0.0072
+> 3               5296               38     0.0072
+> 4               5296               38     0.0072
+> 5               5296               38     0.0072
+> 6               5296               38     0.0072
+> 7               5296               38     0.0072
+> 8               5296               38     0.0072
+> 9               5296               38     0.0072
 ```
 
 The columns measure different things and are not expected to agree.
-`bam.reads` and `bam.mapped` come from the index of each file, so they
-cost nothing to read, and they count alignment records: a paired-end
-fragment is two of them. `library.size` is the number of fragments that
-went through the filters of the counting, each fragment once, which on
-paired-end data makes it about half of `bam.mapped`, less the duplicates
-and the reads of low mapping quality. `reads.in.regions` counts the
-fragments falling in the consensus, and the FRiP is its share of
-`library.size`.
+`bam.reads` and `bam.mapped` come from the index of each BAM file, so
+they cost nothing to read, and they count alignment records (a CRAM
+index holds no such counts, and a CRAM file is read once from start to
+end to get them): a paired-end fragment is two of them. `library.size`
+is the number of fragments that went through the filters of the
+counting, each fragment once, which on paired-end data makes it about
+half of `bam.mapped`, less the duplicates and the reads of low mapping
+quality. `reads.in.regions` counts the fragments falling in the
+consensus, and the FRiP is its share of `library.size`.
 
 Three to four per cent of the fragments fall in the consensus without
 ligand, against thirteen to twenty-five per cent after it. This is the
@@ -1076,11 +1079,11 @@ normalisationEffect <-
 
 dplyr::bind_rows(normalisationEffect)
 >           method up down median.log2FC
-> 1    librarySize 78    2          2.55
-> 2     background 86    2          2.81
-> 3            TMM  8    3          0.77
+> 1    librarySize 77    2          2.55
+> 2     background 88    2          2.82
+> 3            TMM 10    3          0.80
 > 4            RLE  8    4          0.60
-> 5 readsInRegions  3    5          0.34
+> 5 readsInRegions  2    5          0.32
 ```
 
 Same counts, same design, same engine. Library size and background
@@ -1209,9 +1212,9 @@ backgroundFactors <- setNames(sampleInfo(backgroundCounts)$scaling.factor,
                               colnames(backgroundCounts))
 round(backgroundFactors, 2)
 >      AR_DMSO_r1      AR_DMSO_r2      AR_DMSO_r3  AR_R1881_4h_r1  AR_R1881_4h_r2 
->            0.82            1.27            0.97            0.71            1.01 
+>            0.84            1.27            0.96            0.71            1.01 
 >  AR_R1881_4h_r3 AR_R1881_24h_r1 AR_R1881_24h_r2 AR_R1881_24h_r3 
->            1.22            1.25            0.89            0.87
+>            1.21            1.24            0.89            0.86
 
 manualCounts <- normalizeRegionCounts(counts,
                                 method = "manual",
@@ -1268,35 +1271,35 @@ sampleInfo(counts)
 > 8 AR_R1881_24h_r2
 > 9 AR_R1881_24h_r3
 >                                                                                     bam.file
-> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
-> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
-> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
-> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
-> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
-> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
-> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
-> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
-> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
+> 1      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1.bam
+> 2      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r2.bam
+> 3      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r3.bam
+> 4  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1.bam
+> 5  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2.bam
+> 6  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3.bam
+> 7 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1.bam
+> 8 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2.bam
+> 9 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3.bam
 >                                                                                                     peaks
-> 1      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
-> 2      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
-> 3      /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
-> 4  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
-> 5  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
-> 6  /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
-> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
-> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
-> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
+> 1      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r1_peaks.narrowPeak
+> 2      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r2_peaks.narrowPeak
+> 3      /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_DMSO_r3_peaks.narrowPeak
+> 4  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r1_peaks.narrowPeak
+> 5  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r2_peaks.narrowPeak
+> 6  /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_4h_r3_peaks.narrowPeak
+> 7 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r1_peaks.narrowPeak
+> 8 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r2_peaks.narrowPeak
+> 9 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/AR_R1881_24h_r3_peaks.narrowPeak
 >                                                                              input
-> 1 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 2 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 3 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 4 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 5 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 6 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 7 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 8 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
-> 9 /tmp/RtmpssfCMk/temp_libpath24344a26e1e4c3/RegionSetDE/extdata/lncapAR/input.bam
+> 1 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 2 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 3 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 4 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 5 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 6 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 7 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 8 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
+> 9 /tmp/Rtmp7kxQiX/temp_libpath3547697b71c00b/RegionSetDE/extdata/lncapAR/input.bam
 >   input.id condition treatment time replicate paired.end fragment.length
 > 1    input      DMSO      DMSO   4h        r1       TRUE              NA
 > 2    input      DMSO      DMSO   4h        r2       TRUE              NA
@@ -1308,15 +1311,15 @@ sampleInfo(counts)
 > 8    input R1881_24h     R1881  24h        r2       TRUE              NA
 > 9    input R1881_24h     R1881  24h        r3       TRUE              NA
 >   library.size discarded.reads input.library.size norm.factor scaling.factor
-> 1         3570              18               5306   1.1087917      0.8202212
-> 2         5443              26               5306   1.1297964      1.2742403
-> 3         4158              25               5306   1.1236254      0.9680969
-> 4         3562              20               5306   0.9595710      0.7082455
-> 5         5096              25               5306   0.9550120      1.0084424
-> 6         5779              27               5306   1.0150905      1.2155428
-> 7         6295              31               5306   0.9567758      1.2480119
-> 8         4871              18               5306   0.8827831      0.8910149
-> 9         4623              28               5306   0.9042186      0.8661840
+> 1         3559              18               5296   1.1385049      0.8425881
+> 2         5425              26               5296   1.1289638      1.2735974
+> 3         4143              25               5296   1.1197370      0.9646802
+> 4         3552              20               5296   0.9590983      0.7084162
+> 5         5074              25               5296   0.9536704      1.0062391
+> 6         5761              27               5296   1.0088725      1.2086111
+> 7         6289              31               5296   0.9510379      1.2437463
+> 8         4861              18               5296   0.8776336      0.8871382
+> 9         4611              27               5296   0.9021117      0.8649835
 ```
 
 [`countTable()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countTable.md)
@@ -1339,17 +1342,17 @@ countTable(counts, normalized = TRUE) %>%
 > consensus|19:46182368-46182658          FALSE           1            2
 > consensus|19:46300807-46301375           TRUE           2            6
 >                                AR_DMSO_r1 AR_DMSO_r2 AR_DMSO_r3 AR_R1881_4h_r1
-> consensus|19:46089709-46090037          0  0.0000000          0       1.411940
-> consensus|19:46182368-46182658          0  0.0000000          0       2.823879
-> consensus|19:46300807-46301375          0  0.7847813          0       2.823879
+> consensus|19:46089709-46090037          0  0.0000000          0       1.411600
+> consensus|19:46182368-46182658          0  0.0000000          0       2.823199
+> consensus|19:46300807-46301375          0  0.7851775          0       2.823199
 >                                AR_R1881_4h_r2 AR_R1881_4h_r3 AR_R1881_24h_r1
-> consensus|19:46089709-46090037       3.966513      1.6453554       0.0000000
-> consensus|19:46182368-46182658       2.974885      0.8226777       0.8012744
-> consensus|19:46300807-46301375       5.949770      5.7587440      10.4165671
+> consensus|19:46089709-46090037       3.975199       1.654792       0.0000000
+> consensus|19:46182368-46182658       2.981399       0.827396       0.8040225
+> consensus|19:46300807-46301375       5.962798       5.791772      10.4522922
 >                                AR_R1881_24h_r2 AR_R1881_24h_r3
-> consensus|19:46089709-46090037        3.366947        3.463467
-> consensus|19:46182368-46182658        1.122316        2.308978
-> consensus|19:46300807-46301375       22.446314       24.244272
+> consensus|19:46089709-46090037         3.38166        3.468274
+> consensus|19:46182368-46182658         1.12722        2.312183
+> consensus|19:46300807-46301375        22.54440       24.277920
 ```
 
 A normalised value is the raw count divided by the scaling factor of its
@@ -1518,7 +1521,7 @@ results
 > 
 >                   name                         contrast n.regions up down
 >       R1881_4h_vs_DMSO      condition: R1881_4h vs DMSO       109 57    0
->      R1881_24h_vs_DMSO     condition: R1881_24h vs DMSO       109 86    2
+>      R1881_24h_vs_DMSO     condition: R1881_24h vs DMSO       109 87    2
 >  R1881_24h_vs_R1881_4h condition: R1881_24h vs R1881_4h       109  7    1
 ```
 
@@ -1557,17 +1560,17 @@ resultsTable(resultsLate) %>%
 > 2  consensus 19:46182368-46182658      NA       19 46182368 46182658   291
 > 3  consensus 19:46300807-46301375      NA       19 46300807 46301375   569
 >     log2FC average.signal average.signal.DMSO average.signal.R1881_4h
-> 1 4.101975       9.480236            8.830140                9.810520
-> 2 3.546862       9.334321            8.830140                9.705637
-> 3 5.367161      10.970159            9.047782               10.491821
+> 1 4.105089       9.484308            8.834963                9.815668
+> 2 3.550617       9.338330            8.834963                9.710378
+> 3 5.375844      10.974524            9.052785               10.497274
 >   average.signal.R1881_24h      stat stat.distribution df1 df2      p.value
-> 1                 9.583728  6.740346                 f   1 654 9.637352e-03
-> 2                 9.310149  4.448564                 f   1 654 3.531011e-02
-> 3                11.921445 48.857859                 f   1 654 6.803781e-12
+> 1                 9.585845  6.731092                 f   1 654 9.686956e-03
+> 2                 9.312580  4.437887                 f   1 654 3.553004e-02
+> 3                11.923598 49.909230                 f   1 654 4.133789e-12
 >            FDR diff.status peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups
-> 1 1.458988e-02          up     FALSE          TRUE           TRUE           2
-> 2 4.423910e-02          up     FALSE          TRUE          FALSE           1
-> 3 1.059446e-10          up     FALSE          TRUE           TRUE           2
+> 1 1.487152e-02          up     FALSE          TRUE           TRUE           2
+> 2 4.451464e-02          up     FALSE          TRUE          FALSE           1
+> 3 6.436900e-11          up     FALSE          TRUE           TRUE           2
 >   peak.samples
 > 1            5
 > 2            2
@@ -1607,7 +1610,7 @@ resultsTable(results) %>%
   dplyr::count(contrast, diff.status)
 >                contrast diff.status  n
 > 1     R1881_24h_vs_DMSO        down  2
-> 2     R1881_24h_vs_DMSO          up 86
+> 2     R1881_24h_vs_DMSO          up 87
 > 3 R1881_24h_vs_R1881_4h        down  1
 > 4 R1881_24h_vs_R1881_4h          up  7
 > 5      R1881_4h_vs_DMSO          up 57
@@ -1620,33 +1623,33 @@ sorts and trims, and takes the contrast by name:
 topRegions(results, contrast = "R1881_24h_vs_R1881_4h", n = 5)
 >   region.set            region.id tile.id seqnames    start      end width
 > 1  consensus 19:55670391-55670922      NA       19 55670391 55670922   532
-> 2  consensus 19:52645106-52645397      NA       19 52645106 52645397   292
-> 3  consensus 19:46300807-46301375      NA       19 46300807 46301375   569
-> 4  consensus 19:50010024-50010865      NA       19 50010024 50010865   842
+> 2  consensus 19:46300807-46301375      NA       19 46300807 46301375   569
+> 3  consensus 19:50010024-50010865      NA       19 50010024 50010865   842
+> 4  consensus 19:52645106-52645397      NA       19 52645106 52645397   292
 > 5  consensus 19:48582156-48582622      NA       19 48582156 48582622   467
 >      log2FC average.signal average.signal.DMSO average.signal.R1881_4h
-> 1 -4.679189      11.268556           11.343671               12.122663
-> 2  5.332455       9.551916            8.830140                8.697849
-> 3  1.837375      10.970159            9.047782               10.491821
-> 4  1.702553      11.184304            9.252016               10.751582
-> 5  2.441680      10.216178            9.831098                9.436726
+> 1 -4.011489       10.77912           10.902826               11.536726
+> 2  1.835255       10.97452            9.052785               10.497274
+> 3  1.702552       11.18885            9.256583               10.756743
+> 4  5.238373        9.51146            8.834963                8.702850
+> 5  2.442429       10.22042            9.835859                9.441672
 >   average.signal.R1881_24h     stat stat.distribution df1 df2      p.value
-> 1                 8.975919 46.47823                 f   1 654 2.108964e-11
-> 2                10.354043 15.46444                 f   1 654 9.304772e-05
-> 3                11.921445 14.91237                 f   1 654 1.238165e-04
-> 4                12.110644 14.64404                 f   1 654 1.423004e-04
-> 5                10.887098 11.32884                 f   1 654 8.077833e-04
+> 1                 8.978741 29.11325                 f   1 654 9.554694e-08
+> 2                11.923598 15.21187                 f   1 654 1.060297e-04
+> 3                12.113305 15.03550                 f   1 654 1.161655e-04
+> 4                10.283942 14.35631                 f   1 654 1.652311e-04
+> 5                10.889775 11.40034                 f   1 654 7.777930e-04
 >            FDR diff.status peak.DMSO peak.R1881_4h peak.R1881_24h peak.groups
-> 1 2.298771e-09        down     FALSE          TRUE          FALSE           1
-> 2 3.877685e-03          up     FALSE         FALSE           TRUE           1
-> 3 3.877685e-03          up     FALSE          TRUE           TRUE           2
-> 4 3.877685e-03          up     FALSE          TRUE           TRUE           2
-> 5 1.751699e-02          up     FALSE          TRUE           TRUE           2
+> 1 1.041462e-05        down     FALSE          TRUE          FALSE           1
+> 2 4.220681e-03          up     FALSE          TRUE           TRUE           2
+> 3 4.220681e-03          up     FALSE          TRUE           TRUE           2
+> 4 4.502549e-03          up     FALSE         FALSE           TRUE           1
+> 5 1.695589e-02          up     FALSE          TRUE           TRUE           2
 >   peak.samples
 > 1            2
-> 2            2
+> 2            6
 > 3            6
-> 4            6
+> 4            2
 > 5            6
 ```
 
@@ -1797,7 +1800,7 @@ profileData <- computeProfiles(results,
 names(profileData$profiles)
 > [1] "DMSO"      "R1881_4h"  "R1881_24h"
 dim(profileData$profiles$DMSO)
-> [1] 88 60
+> [1] 89 60
 ```
 
 `profiles` holds one matrix per condition, or per sample without
@@ -1863,7 +1866,7 @@ peak.
 peakOccupancyTable(results, contrast = "R1881_24h_vs_DMSO")
 >        occupancy n.regions down null up percent.changed
 > 1         shared        11    0    1 10            90.9
-> 2 R1881_24h only        90    0   17 73            81.1
+> 2 R1881_24h only        90    0   16 74            82.2
 > 3      DMSO only         1    1    0  0           100.0
 > 4           none         7    1    3  3            57.1
 ```
@@ -2029,50 +2032,50 @@ tiledResults <- testRegions(tiledFit,
 
 head(resultsTable(tiledResults), 3)     # one row per region
 >   region.set            region.id seqnames    start      end width   log2FC
-> 1  consensus 19:46089709-46090037       19 46089709 46090037   329 3.854852
-> 2  consensus 19:46182368-46182658       19 46182368 46182658   291 3.169605
-> 3  consensus 19:46300807-46301375       19 46300807 46301375   569 5.341291
+> 1  consensus 19:46089709-46090037       19 46089709 46090037   329 3.858248
+> 2  consensus 19:46182368-46182658       19 46182368 46182658   291 3.173502
+> 3  consensus 19:46300807-46301375       19 46300807 46301375   569 5.350509
 >   average.signal average.signal.DMSO average.signal.R1881_4h
-> 1       9.432795            8.830140                9.810565
-> 2       9.224647            8.830140                9.573591
-> 3      10.953454            9.047857               10.492002
+> 1       9.436882            8.834963                9.815678
+> 2       9.228749            8.834963                9.578595
+> 3      10.957680            9.052801               10.497315
 >   average.signal.R1881_24h      stat stat.distribution df1  df2      p.value
-> 1                 9.456241  5.858349                 f   1 1950 1.559417e-02
-> 2                 9.155047  3.515500                 f   1 1950 6.094667e-02
-> 3                11.895479 45.294650                 f   1 1950 6.664258e-11
+> 1                 9.458555  5.865215                 f   1 1950 1.553365e-02
+> 2                 9.157586  3.518018                 f   1 1950 6.085431e-02
+> 3                11.897835 45.907603                 f   1 1950 4.908578e-11
 >            FDR diff.status n.tiles n.tiles.up n.tiles.down direction
-> 1 2.360783e-02          up       2          2            0        up
-> 2 7.322416e-02        null       2          0            0        up
-> 3 9.080051e-10          up       3          2            0        up
+> 1 2.347341e-02          up       2          2            0        up
+> 2 7.306752e-02        null       2          0            0        up
+> 3 6.386023e-10          up       3          2            0        up
 >   rep.tile.start rep.tile.end mean.tile.log2FC peak.DMSO peak.R1881_4h
-> 1       46089909     46090037         4.006052     FALSE          TRUE
-> 2       46182368     46182567         3.287727     FALSE          TRUE
-> 3       46301007     46301206         4.152827     FALSE          TRUE
+> 1       46089909     46090037         4.009426     FALSE          TRUE
+> 2       46182368     46182567         3.291600     FALSE          TRUE
+> 3       46301007     46301206         4.162160     FALSE          TRUE
 >   peak.R1881_24h peak.groups peak.samples
 > 1           TRUE           2            5
 > 2          FALSE           1            2
 > 3           TRUE           2            6
 head(tileTable(tiledResults), 3)        # one row per tile
 >                                        log2FC average.signal     stat
-> consensus|19:46089709-46090037|tile1 4.103576       9.480226 7.007949
-> consensus|19:46089709-46090037|tile2 3.854852       9.432795 5.858349
-> consensus|19:46182368-46182658|tile1 3.169605       9.224647 3.515500
+> consensus|19:46089709-46090037|tile1 4.106936       9.484306 7.018115
+> consensus|19:46089709-46090037|tile2 3.858248       9.436882 5.865215
+> consensus|19:46182368-46182658|tile1 3.173502       9.228749 3.518018
 >                                      stat.distribution df1  df2     p.value
-> consensus|19:46089709-46090037|tile1                 f   1 1950 0.008180197
-> consensus|19:46089709-46090037|tile2                 f   1 1950 0.015594165
-> consensus|19:46182368-46182658|tile1                 f   1 1950 0.060946667
+> consensus|19:46089709-46090037|tile1                 f   1 1950 0.008134047
+> consensus|19:46089709-46090037|tile2                 f   1 1950 0.015533649
+> consensus|19:46182368-46182658|tile1                 f   1 1950 0.060854308
 >                                      average.signal.DMSO
-> consensus|19:46089709-46090037|tile1             8.83014
-> consensus|19:46089709-46090037|tile2             8.83014
-> consensus|19:46182368-46182658|tile1             8.83014
+> consensus|19:46089709-46090037|tile1            8.834963
+> consensus|19:46089709-46090037|tile2            8.834963
+> consensus|19:46182368-46182658|tile1            8.834963
 >                                      average.signal.R1881_4h
-> consensus|19:46089709-46090037|tile1                9.810565
-> consensus|19:46089709-46090037|tile2                9.810565
-> consensus|19:46182368-46182658|tile1                9.573591
+> consensus|19:46089709-46090037|tile1                9.815678
+> consensus|19:46089709-46090037|tile2                9.815678
+> consensus|19:46182368-46182658|tile1                9.578595
 >                                      average.signal.R1881_24h region.set
-> consensus|19:46089709-46090037|tile1                 9.583511  consensus
-> consensus|19:46089709-46090037|tile2                 9.456241  consensus
-> consensus|19:46182368-46182658|tile1                 9.155047  consensus
+> consensus|19:46089709-46090037|tile1                 9.585796  consensus
+> consensus|19:46089709-46090037|tile2                 9.458555  consensus
+> consensus|19:46182368-46182658|tile1                 9.157586  consensus
 >                                                 region.id tile.id
 > consensus|19:46089709-46090037|tile1 19:46089709-46090037       1
 > consensus|19:46089709-46090037|tile2 19:46089709-46090037       2
@@ -2090,9 +2093,9 @@ head(tileTable(tiledResults), 3)        # one row per tile
 > consensus|19:46089709-46090037|tile2          TRUE           TRUE           2
 > consensus|19:46182368-46182658|tile1          TRUE          FALSE           1
 >                                      peak.samples        FDR
-> consensus|19:46089709-46090037|tile1            5 0.01682635
-> consensus|19:46089709-46090037|tile2            5 0.02858277
-> consensus|19:46182368-46182658|tile1            2 0.08474474
+> consensus|19:46089709-46090037|tile1            5 0.01673143
+> consensus|19:46089709-46090037|tile2            5 0.02845289
+> consensus|19:46182368-46182658|tile1            2 0.08458616
 ```
 
 Tiles are worth it when the shape of a region matters and not only its
@@ -2388,61 +2391,61 @@ resultsTable(geneSetResults)
 > 6 positive regulation of immune effector process         3    3      0
 > 7                              protein secretion         3    2      0
 >   n.comparison n.comparison.overlapping n.overlapping.within mean.log2FC
-> 1          106                        0                    0   0.4752368
-> 2          106                        0                    0   1.4829868
-> 3          105                        0                    0   1.6018540
-> 4          104                        0                    0   2.3421405
-> 5          104                        0                    0   2.3421405
-> 6          106                        0                    0   2.5411034
-> 7          106                        0                    0   2.9944442
->   median.log2FC mean.log2FC.comparison delta.log2FC      CI.lower    CI.upper
-> 1      2.118980               2.961874   -2.4866376 -1.5363488021 -0.02256697
-> 2      1.684666               2.933353   -1.4503664 -1.4058442320 -0.84270149
-> 3      1.821561               2.942638   -1.3407840 -1.0916217727 -0.64491441
-> 4      2.216710               2.919939   -0.5777989  0.0004663243  0.63428257
-> 5      2.216710               2.919939   -0.5777989  0.0004663243  0.63428257
-> 6      2.807857               2.903407   -0.3623032 -0.1341421413  0.72667879
-> 7      2.231478               2.890576    0.1038681 -1.0246264475  0.21961775
+> 1          106                        0                    0    0.485016
+> 2          106                        0                    0    1.494001
+> 3          105                        0                    0    1.613487
+> 4          104                        0                    0    2.355889
+> 5          104                        0                    0    2.355889
+> 6          106                        0                    0    2.554316
+> 7          106                        0                    0    3.003494
+>   median.log2FC mean.log2FC.comparison delta.log2FC     CI.lower    CI.upper
+> 1      2.130421               2.974302   -2.4892855 -1.535281551 -0.02509393
+> 2      1.695222               2.945745   -1.4517446 -1.402855929 -0.84714950
+> 3      1.833584               2.955020   -1.3415327 -1.088129253 -0.64988054
+> 4      2.228673               2.932227   -0.5763378 -0.001795634  0.63505674
+> 5      2.228673               2.932227   -0.5763378 -0.001795634  0.63505674
+> 6      2.819299               2.915736   -0.3614207 -0.135535640  0.72661258
+> 7      2.242300               2.903024    0.1004700 -1.022604583  0.21613618
 >   CI.type heterogeneity.CI.lower heterogeneity.CI.upper inter.region.cor
-> 1  sample              -7.282843               2.309568        0.1796360
-> 2  sample              -3.169317               0.268584        0.0000000
-> 3  sample              -3.008020               0.326452        0.0000000
-> 4  sample              -2.230417               1.074819        0.5301351
-> 5  sample              -2.230417               1.074819        0.5301351
-> 6  sample              -2.118901               1.394295        0.4445880
-> 7  sample              -2.155018               2.362754        0.0000000
+> 1  sample              -7.285996              2.3074252        0.1838480
+> 2  sample              -3.120559              0.2170697        0.0000000
+> 3  sample              -2.957369              0.2743033        0.0000000
+> 4  sample              -2.177842              1.0251667        0.5186259
+> 5  sample              -2.177842              1.0251667        0.5186259
+> 6  sample              -2.068301              1.3454593        0.4335402
+> 7  sample              -2.117694              2.3186345        0.0000000
 >   inter.region.cor.universe median.width sample.delta.log2FC sample.delta.SE
-> 1                 0.2581338        410.0          -0.7794579      0.30932496
-> 2                 0.2554739        319.0          -1.1242729      0.11507213
-> 3                 0.2551143        322.5          -0.8682681      0.09127982
-> 4                 0.2382502        473.0           0.3173744      0.12951350
-> 5                 0.2382502        473.0           0.3173744      0.12951350
-> 6                 0.2435374        296.0           0.2962683      0.17589946
-> 7                 0.2576767        300.0          -0.4025043      0.25424786
+> 1                 0.2472899        410.0          -0.7801877      0.30859052
+> 2                 0.2448230        319.0          -1.1250027      0.11355260
+> 3                 0.2446443        322.5          -0.8690049      0.08955139
+> 4                 0.2281108        473.0           0.3166306      0.13013390
+> 5                 0.2281108        473.0           0.3166306      0.13013390
+> 6                 0.2330152        296.0           0.2955385      0.17617067
+> 7                 0.2472422        300.0          -0.4032342      0.25312329
 >   sample.delta.df sample.delta.p camera.direction   camera.p fry.direction
-> 1               6   4.529521e-02             Down 0.08857037            Up
-> 2               6   6.612194e-05             Down 0.05031989            Up
-> 3               6   7.697930e-05             Down 0.06829183            Up
-> 4               6   4.975612e-02               Up 0.46591083            Up
-> 5               6   4.975612e-02               Up 0.46591083            Up
-> 6               6   1.431060e-01               Up 0.49435724            Up
-> 7               6   1.644832e-01             Down 0.40515444            Up
+> 1               6   4.478659e-02             Down 0.08613583            Up
+> 2               6   6.107654e-05             Down 0.04693097            Up
+> 3               6   6.872770e-05             Down 0.06420506            Up
+> 4               6   5.094632e-02               Up 0.44013878            Up
+> 5               6   5.094632e-02               Up 0.44013878            Up
+> 6               6   1.444419e-01               Up 0.47181016            Up
+> 7               6   1.622602e-01             Down 0.38923762            Up
 >          fry.p fry.mixed.p camera.FDR     fry.FDR fry.mixed.FDR
-> 1 0.0609328781 0.173464892  0.2066642 0.060932878   0.267104447
-> 2 0.0314734945 0.890129960  0.2066642 0.036719077   0.890129960
-> 3 0.0037837538 0.190788891  0.2066642 0.005297255   0.267104447
-> 4 0.0006494620 0.002840667  0.4943572 0.001515411   0.009942335
-> 5 0.0006494620 0.002840667  0.4943572 0.001515411   0.009942335
-> 6 0.0006087384 0.028752728  0.4943572 0.001515411   0.067089699
-> 7 0.0030160084 0.237520569  0.4943572 0.005278015   0.277107331
+> 1 0.0610483139 0.172421921  0.2009836 0.061048314   0.258524591
+> 2 0.0316283097 0.889075098  0.2009836 0.036899695   0.889075098
+> 3 0.0036220322 0.184660422  0.2009836 0.005070845   0.258524591
+> 4 0.0005714662 0.002593439  0.4718102 0.001333421   0.009077036
+> 5 0.0005714662 0.002593439  0.4718102 0.001333421   0.009077036
+> 6 0.0005347941 0.026999253  0.4718102 0.001333421   0.062998258
+> 7 0.0028172046 0.232183176  0.4718102 0.004930108   0.270880372
 >   sample.delta.FDR
-> 1     0.0696585676
-> 2     0.0002694275
-> 3     0.0002694275
-> 4     0.0696585676
-> 5     0.0696585676
-> 6     0.1644832348
-> 7     0.1644832348
+> 1      0.071324842
+> 2      0.000240547
+> 3      0.000240547
+> 4      0.071324842
+> 5      0.071324842
+> 6      0.162260247
+> 7      0.162260247
 ```
 
 Each pathway is compared against every other region of the object rather
@@ -2489,12 +2492,12 @@ geneResults
 >   direction       : up 63, down 1, mixed 1, unchanged 14 
 > 
 >    gene.id  gene.symbol n.regions n.up n.down direction score  p.value      FDR
->     606293        KLKP1         1    1      0        up 0.956 1.14e-17 8.97e-16
->        354         KLK3         2    2      0        up 3.180 2.77e-14 1.09e-12
->  107985325      GP6-AS1         2    1      0        up 2.140 1.31e-13 3.45e-12
->  124904782 LOC124904782         1    1      0        up 0.168 2.02e-13 3.99e-12
->      26085        KLK13         2    2      0        up 2.910 1.42e-12 2.25e-11
->      25888       ZNF473         1    1      0        up 0.225 3.10e-12 4.08e-11
+>     606293        KLKP1         1    1      0        up 0.959 1.71e-18 1.35e-16
+>        354         KLK3         2    2      0        up 3.200 4.90e-15 1.94e-13
+>  107985325      GP6-AS1         2    1      0        up 2.150 5.37e-14 1.41e-12
+>  124904782 LOC124904782         1    1      0        up 0.169 9.70e-14 1.92e-12
+>      26085        KLK13         2    2      0        up 2.920 5.52e-13 8.72e-12
+>      25888       ZNF473         1    1      0        up 0.226 1.63e-12 2.14e-11
 ```
 
 ``` r
@@ -2751,67 +2754,67 @@ sessionInfo()
 > [8] base     
 > 
 > other attached packages:
->  [1] ggplot2_4.0.3        dplyr_1.2.1          RegionSetDE_0.99.0  
+>  [1] ggplot2_4.0.4        dplyr_1.2.1          RegionSetDE_0.99.0  
 >  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
 >  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
 > [10] BiocStyle_2.40.0    
 > 
 > loaded via a namespace (and not attached):
->   [1] bitops_1.1-0                rlang_1.3.0                
->   [3] magrittr_2.0.5              clue_0.3-68                
->   [5] GetoptLong_1.1.1            otel_0.2.0                 
->   [7] matrixStats_1.5.0           compiler_4.6.1             
->   [9] mgcv_1.9-4                  png_0.1-9                  
->  [11] systemfonts_1.3.2           vctrs_0.7.3                
->  [13] stringr_1.6.0               pkgconfig_2.0.3            
->  [15] shape_1.4.6.1               crayon_1.5.3               
->  [17] fastmap_1.2.0               magick_2.9.1               
->  [19] XVector_0.52.0              labeling_0.4.3             
->  [21] Rsamtools_2.28.0            rmarkdown_2.32             
->  [23] markdown_2.0                UCSC.utils_1.8.0           
->  [25] ragg_1.5.2                  purrr_1.2.2                
->  [27] xfun_0.61                   cachem_1.1.0               
->  [29] litedown_0.11               cigarillo_1.2.1            
->  [31] GenomeInfoDb_1.48.0         jsonlite_2.0.0             
->  [33] DelayedArray_0.38.2         BiocParallel_1.46.0        
->  [35] parallel_4.6.1              cluster_2.1.8.3            
->  [37] R6_2.6.1                    stringi_1.8.9              
->  [39] bslib_0.12.0                RColorBrewer_1.1-3         
->  [41] limma_3.68.5                rtracklayer_1.72.0         
->  [43] jquerylib_0.1.4             Rcpp_1.1.2                 
->  [45] bookdown_0.48               SummarizedExperiment_1.42.0
->  [47] iterators_1.0.14            knitr_1.52                 
->  [49] splines_4.6.1               Matrix_1.7-6               
->  [51] tidyselect_1.2.1            rstudioapi_0.19.0          
->  [53] dichromat_2.0-1             abind_1.4-8                
->  [55] yaml_2.3.12                 ggtext_0.2.0               
->  [57] doParallel_1.0.17           codetools_0.2-20           
->  [59] curl_8.0.0                  lattice_0.23-1             
->  [61] tibble_3.3.1                withr_3.0.3                
->  [63] Biobase_2.72.0              S7_0.2.2                   
->  [65] csaw_1.46.0                 evaluate_1.0.5             
->  [67] desc_1.4.3                  xml2_1.6.0                 
->  [69] circlize_0.4.18             Biostrings_2.80.2          
->  [71] pillar_1.11.1               BiocManager_1.30.27        
->  [73] MatrixGenerics_1.24.0       foreach_1.5.2              
->  [75] RCurl_1.98-1.20             commonmark_2.0.0           
->  [77] scales_1.4.0                glue_1.8.1                 
->  [79] metapod_1.20.0              tools_4.6.1                
->  [81] BiocIO_1.22.0               locfit_1.5-9.12            
->  [83] GenomicAlignments_1.48.0    fs_2.1.0                   
->  [85] XML_3.99-0.25               Cairo_1.7-0                
->  [87] grid_4.6.1                  tidyr_1.3.2                
->  [89] edgeR_4.10.5                colorspace_2.1-3           
->  [91] nlme_3.1-171                consensusRegions_0.99.3    
->  [93] restfulr_0.0.17             cli_3.6.6                  
->  [95] textshaping_1.0.5           viridisLite_0.4.3          
->  [97] S4Arrays_1.12.1             ComplexHeatmap_2.28.0      
->  [99] gtable_0.3.6                sass_0.4.10                
-> [101] digest_0.6.39               ggrepel_0.9.8              
-> [103] SparseArray_1.12.3          rjson_0.2.23               
-> [105] htmlwidgets_1.6.4           farver_2.1.2               
-> [107] htmltools_0.5.9             pkgdown_2.2.1              
-> [109] lifecycle_1.0.5             httr_1.4.9                 
-> [111] GlobalOptions_0.1.4         statmod_1.5.2              
-> [113] gridtext_0.1.6
+>   [1] RColorBrewer_1.1-3          rstudioapi_0.19.0          
+>   [3] jsonlite_2.0.0              shape_1.4.6.1              
+>   [5] magrittr_2.0.5              magick_2.9.1               
+>   [7] farver_2.1.2                rmarkdown_2.32             
+>   [9] GlobalOptions_0.1.4         fs_2.1.0                   
+>  [11] BiocIO_1.22.0               ragg_1.5.2                 
+>  [13] vctrs_0.7.3                 Cairo_1.7-0                
+>  [15] Rsamtools_2.28.0            RCurl_1.98-1.20            
+>  [17] htmltools_0.5.9             S4Arrays_1.12.1            
+>  [19] curl_8.0.0                  SparseArray_1.12.3         
+>  [21] sass_0.4.10                 consensusRegions_0.99.3    
+>  [23] bslib_0.12.0                htmlwidgets_1.6.4          
+>  [25] desc_1.4.3                  cachem_1.1.0               
+>  [27] GenomicAlignments_1.48.0    commonmark_2.0.0           
+>  [29] lifecycle_1.0.5             iterators_1.0.14           
+>  [31] pkgconfig_2.0.3             Matrix_1.7-6               
+>  [33] R6_2.6.1                    fastmap_1.2.0              
+>  [35] MatrixGenerics_1.24.0       clue_0.3-68                
+>  [37] digest_0.6.39               colorspace_2.1-3           
+>  [39] textshaping_1.0.5           labeling_0.4.3             
+>  [41] httr_1.4.9                  abind_1.4-8                
+>  [43] mgcv_1.9-4                  compiler_4.6.1             
+>  [45] withr_3.0.3                 doParallel_1.0.17          
+>  [47] csaw_1.46.0                 S7_1.0.0                   
+>  [49] BiocParallel_1.46.0         DelayedArray_0.38.2        
+>  [51] rjson_0.2.23                tools_4.6.1                
+>  [53] otel_0.2.0                  glue_1.8.1                 
+>  [55] restfulr_0.0.17             nlme_3.1-171               
+>  [57] gridtext_0.1.6              grid_4.6.1                 
+>  [59] cluster_2.1.8.3             gtable_0.3.6               
+>  [61] tidyr_1.3.2                 metapod_1.20.0             
+>  [63] xml2_1.6.0                  XVector_0.52.0             
+>  [65] ggrepel_0.9.8               foreach_1.5.2              
+>  [67] pillar_1.11.1               markdown_2.1               
+>  [69] stringr_1.6.0               limma_3.68.5               
+>  [71] circlize_0.4.18             splines_4.6.1              
+>  [73] ggtext_0.2.0                lattice_0.23-1             
+>  [75] rtracklayer_1.72.0          tidyselect_1.2.1           
+>  [77] ComplexHeatmap_2.28.0       locfit_1.5-9.12            
+>  [79] Biostrings_2.80.2           knitr_1.52                 
+>  [81] bookdown_0.48               litedown_0.11              
+>  [83] edgeR_4.10.7                SummarizedExperiment_1.42.0
+>  [85] xfun_0.61                   Biobase_2.72.0             
+>  [87] statmod_1.5.2               matrixStats_1.5.0          
+>  [89] stringi_1.8.9               UCSC.utils_1.8.0           
+>  [91] yaml_2.3.12                 evaluate_1.0.5             
+>  [93] codetools_0.2-20            cigarillo_1.2.1            
+>  [95] tibble_3.3.1                BiocManager_1.30.27        
+>  [97] cli_3.6.6                   systemfonts_1.3.2          
+>  [99] jquerylib_0.1.4             dichromat_2.0-1            
+> [101] Rcpp_1.1.2                  GenomeInfoDb_1.48.0        
+> [103] png_0.1-9                   XML_3.99-0.25              
+> [105] parallel_4.6.1              pkgdown_2.2.1              
+> [107] bitops_1.1-0                viridisLite_0.4.3          
+> [109] scales_1.4.0                purrr_1.2.2                
+> [111] crayon_1.5.3                GetoptLong_1.1.1           
+> [113] rlang_1.3.0
 ```

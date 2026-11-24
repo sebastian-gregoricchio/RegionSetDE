@@ -335,21 +335,21 @@ countTable(tiledCounts, level = "tile")
 #> secondSet|seq2:800-1199|tile3  secondSet seq2:800-1199       3     seq2  1000
 #> secondSet|seq2:800-1199|tile4  secondSet seq2:800-1199       4     seq2  1100
 #>                                end width example
-#> firstSet|seq1:1-400|tile1      100   100      20
-#> firstSet|seq1:1-400|tile2      200   100      58
-#> firstSet|seq1:1-400|tile3      300   100     115
-#> firstSet|seq1:1-400|tile4      400   100     154
-#> firstSet|seq1:800-1199|tile1   899   100     151
-#> firstSet|seq1:800-1199|tile2   999   100     164
-#> firstSet|seq1:800-1199|tile3  1099   100     185
+#> firstSet|seq1:1-400|tile1      100   100      19
+#> firstSet|seq1:1-400|tile2      200   100      57
+#> firstSet|seq1:1-400|tile3      300   100     113
+#> firstSet|seq1:1-400|tile4      400   100     153
+#> firstSet|seq1:800-1199|tile1   899   100     149
+#> firstSet|seq1:800-1199|tile2   999   100     162
+#> firstSet|seq1:800-1199|tile3  1099   100     184
 #> firstSet|seq1:800-1199|tile4  1199   100     181
 #> secondSet|seq2:1-400|tile1     100   100      58
-#> secondSet|seq2:1-400|tile2     200   100     105
-#> secondSet|seq2:1-400|tile3     300   100     178
-#> secondSet|seq2:1-400|tile4     400   100     200
-#> secondSet|seq2:800-1199|tile1  899   100     178
-#> secondSet|seq2:800-1199|tile2  999   100     198
-#> secondSet|seq2:800-1199|tile3 1099   100     206
+#> secondSet|seq2:1-400|tile2     200   100     104
+#> secondSet|seq2:1-400|tile3     300   100     177
+#> secondSet|seq2:1-400|tile4     400   100     199
+#> secondSet|seq2:800-1199|tile1  899   100     177
+#> secondSet|seq2:800-1199|tile2  999   100     197
+#> secondSet|seq2:800-1199|tile3 1099   100     205
 #> secondSet|seq2:800-1199|tile4 1199   100     213
 countTable(tiledCounts, level = "region")
 #> The tiles have been summed into their regions. A fragment overlapping two tiles is counted in both, so these values are higher than the counts of the same regions taken whole.
@@ -359,8 +359,8 @@ countTable(tiledCounts, level = "region")
 #> secondSet|seq2:1-400     secondSet    seq2:1-400     seq2     1  400   400
 #> secondSet|seq2:800-1199  secondSet seq2:800-1199     seq2   800 1199   400
 #>                         n.tiles example
-#> firstSet|seq1:1-400           4     347
-#> firstSet|seq1:800-1199        4     681
-#> secondSet|seq2:1-400          4     541
-#> secondSet|seq2:800-1199       4     795
+#> firstSet|seq1:1-400           4     342
+#> firstSet|seq1:800-1199        4     676
+#> secondSet|seq2:1-400          4     538
+#> secondSet|seq2:800-1199       4     792
 ```

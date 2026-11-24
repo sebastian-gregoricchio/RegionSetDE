@@ -328,10 +328,15 @@ place of the object: it goes through
 and is counted as a single set named `regions`, its order and its
 chromosome names kept.
 
-The BAM files have to be aligned to the same assembly, but they do not
-have to name its chromosomes alike. Files written `chr1` and files
-written `1` are counted together, and the regions can follow either
-style.
+The alignments can be BAM or CRAM files, and the two formats can be
+mixed. CRAM files are read without the reference genome they were
+compressed against: the counting only needs the name, position, flag,
+mapping quality and CIGAR of the reads, which CRAM stores apart from the
+bases. Every file needs its index, a BAI or CSI for a BAM file and a
+CRAI for a CRAM file. The files have to be aligned to the same assembly,
+but they do not have to name its chromosomes alike. Files written `chr1`
+and files written `1` are counted together, and the regions can follow
+either style.
 
 The four BAM files of the example are not shipped with the package, so
 the counting calls of this section are shown and not run. The `counts`
@@ -358,11 +363,16 @@ counts <-
 
 Paired-end libraries are counted as fragments: a fragment counts in
 every region it overlaps, the stretch between its two reads included.
-The BAM files are cut into pieces of at most 50 Mb, shared among the
-workers, so even a single file runs faster on more cores. `BPPARAM`
-takes a number of cores, as here, or any `BiocParallelParam` object,
-`BiocParallel::MulticoreParam(4)` or a cluster back end for instance,
-which is used as it is. Left out, everything runs on one core.
+The two mates of each proper pair are matched by read name, and the
+fragment runs from the 5’ end of one to the 5’ end of the other, as in
+*csaw*. Neither the template length written by the aligner nor the `MQ`
+tag is needed, and a fragment shorter than its reads, whose mates run
+past each other, keeps its true ends. The files are cut into pieces of
+at most 50 Mb, shared among the workers, so even a single file runs
+faster on more cores. `BPPARAM` takes a number of cores, as here, or any
+`BiocParallelParam` object, `BiocParallel::MulticoreParam(4)` or a
+cluster back end for instance, which is used as it is. Left out,
+everything runs on one core.
 
 The counts and the library sizes are two separate things. Every region
 is counted, wherever it lies, and the counts only need the chromosomes
@@ -2820,7 +2830,7 @@ sessionInfo()
 > [8] base     
 > 
 > other attached packages:
->  [1] ggplot2_4.0.3        dplyr_1.2.1          RegionSetDE_0.99.0  
+>  [1] ggplot2_4.0.4        dplyr_1.2.1          RegionSetDE_0.99.0  
 >  [4] GenomicRanges_1.64.0 Seqinfo_1.2.0        IRanges_2.46.0      
 >  [7] S4Vectors_0.50.3     BiocGenerics_0.58.1  generics_0.1.4      
 > [10] BiocStyle_2.40.0    
@@ -2832,55 +2842,53 @@ sessionInfo()
 >   [7] matrixStats_1.5.0           compiler_4.6.1             
 >   [9] mgcv_1.9-4                  png_0.1-9                  
 >  [11] systemfonts_1.3.2           vctrs_0.7.3                
->  [13] stringr_1.6.0               pkgconfig_2.0.3            
->  [15] shape_1.4.6.1               crayon_1.5.3               
+>  [13] stringr_1.6.0               shape_1.4.6.1              
+>  [15] pkgconfig_2.0.3             crayon_1.5.3               
 >  [17] fastmap_1.2.0               magick_2.9.1               
 >  [19] XVector_0.52.0              labeling_0.4.3             
 >  [21] Rsamtools_2.28.0            rmarkdown_2.32             
->  [23] markdown_2.0                UCSC.utils_1.8.0           
->  [25] ragg_1.5.2                  purrr_1.2.2                
->  [27] xfun_0.61                   cachem_1.1.0               
->  [29] litedown_0.11               cigarillo_1.2.1            
->  [31] GenomeInfoDb_1.48.0         jsonlite_2.0.0             
->  [33] DelayedArray_0.38.2         BiocParallel_1.46.0        
->  [35] parallel_4.6.1              cluster_2.1.8.3            
->  [37] R6_2.6.1                    stringi_1.8.9              
->  [39] bslib_0.12.0                RColorBrewer_1.1-3         
->  [41] limma_3.68.5                rtracklayer_1.72.0         
->  [43] jquerylib_0.1.4             Rcpp_1.1.2                 
+>  [23] markdown_2.1                UCSC.utils_1.8.0           
+>  [25] ragg_1.5.2                  xfun_0.61                  
+>  [27] cachem_1.1.0                cigarillo_1.2.1            
+>  [29] litedown_0.11               GenomeInfoDb_1.48.0        
+>  [31] jsonlite_2.0.0              DelayedArray_0.38.2        
+>  [33] BiocParallel_1.46.0         cluster_2.1.8.3            
+>  [35] parallel_4.6.1              R6_2.6.1                   
+>  [37] bslib_0.12.0                stringi_1.8.9              
+>  [39] RColorBrewer_1.1-3          limma_3.68.5               
+>  [41] rtracklayer_1.72.0          jquerylib_0.1.4            
+>  [43] iterators_1.0.14            Rcpp_1.1.2                 
 >  [45] bookdown_0.48               SummarizedExperiment_1.42.0
->  [47] iterators_1.0.14            knitr_1.52                 
->  [49] splines_4.6.1               Matrix_1.7-6               
->  [51] tidyselect_1.2.1            rstudioapi_0.19.0          
->  [53] dichromat_2.0-1             abind_1.4-8                
->  [55] yaml_2.3.12                 ggtext_0.2.0               
->  [57] doParallel_1.0.17           codetools_0.2-20           
->  [59] curl_8.0.0                  lattice_0.23-1             
->  [61] tibble_3.3.1                withr_3.0.3                
->  [63] Biobase_2.72.0              S7_0.2.2                   
->  [65] csaw_1.46.0                 evaluate_1.0.5             
->  [67] desc_1.4.3                  xml2_1.6.0                 
->  [69] circlize_0.4.18             Biostrings_2.80.2          
->  [71] pillar_1.11.1               BiocManager_1.30.27        
->  [73] MatrixGenerics_1.24.0       foreach_1.5.2              
->  [75] RCurl_1.98-1.20             commonmark_2.0.0           
->  [77] scales_1.4.0                glue_1.8.1                 
->  [79] metapod_1.20.0              tools_4.6.1                
->  [81] BiocIO_1.22.0               locfit_1.5-9.12            
->  [83] GenomicAlignments_1.48.0    fs_2.1.0                   
->  [85] XML_3.99-0.25               Cairo_1.7-0                
->  [87] grid_4.6.1                  tidyr_1.3.2                
->  [89] edgeR_4.10.5                colorspace_2.1-3           
->  [91] nlme_3.1-171                consensusRegions_0.99.3    
->  [93] restfulr_0.0.17             cli_3.6.6                  
->  [95] textshaping_1.0.5           viridisLite_0.4.3          
->  [97] S4Arrays_1.12.1             ComplexHeatmap_2.28.0      
->  [99] gtable_0.3.6                sass_0.4.10                
-> [101] digest_0.6.39               ggrepel_0.9.8              
-> [103] SparseArray_1.12.3          rjson_0.2.23               
-> [105] htmlwidgets_1.6.4           farver_2.1.2               
-> [107] htmltools_0.5.9             pkgdown_2.2.1              
-> [109] lifecycle_1.0.5             httr_1.4.9                 
-> [111] GlobalOptions_0.1.4         statmod_1.5.2              
-> [113] gridtext_0.1.6
+>  [47] knitr_1.52                  Matrix_1.7-6               
+>  [49] splines_4.6.1               tidyselect_1.2.1           
+>  [51] rstudioapi_0.19.0           dichromat_2.0-1            
+>  [53] abind_1.4-8                 yaml_2.3.12                
+>  [55] doParallel_1.0.17           ggtext_0.2.0               
+>  [57] codetools_0.2-20            curl_8.0.0                 
+>  [59] lattice_0.23-1              tibble_3.3.1               
+>  [61] Biobase_2.72.0              withr_3.0.3                
+>  [63] S7_1.0.0                    csaw_1.46.0                
+>  [65] evaluate_1.0.5              desc_1.4.3                 
+>  [67] xml2_1.6.0                  circlize_0.4.18            
+>  [69] Biostrings_2.80.2           pillar_1.11.1              
+>  [71] BiocManager_1.30.27         MatrixGenerics_1.24.0      
+>  [73] foreach_1.5.2               RCurl_1.98-1.20            
+>  [75] commonmark_2.0.0            scales_1.4.0               
+>  [77] glue_1.8.1                  metapod_1.20.0             
+>  [79] tools_4.6.1                 BiocIO_1.22.0              
+>  [81] locfit_1.5-9.12             GenomicAlignments_1.48.0   
+>  [83] fs_2.1.0                    XML_3.99-0.25              
+>  [85] Cairo_1.7-0                 grid_4.6.1                 
+>  [87] colorspace_2.1-3            edgeR_4.10.7               
+>  [89] nlme_3.1-171                restfulr_0.0.17            
+>  [91] cli_3.6.6                   textshaping_1.0.5          
+>  [93] viridisLite_0.4.3           S4Arrays_1.12.1            
+>  [95] ComplexHeatmap_2.28.0       gtable_0.3.6               
+>  [97] sass_0.4.10                 digest_0.6.39              
+>  [99] ggrepel_0.9.8               SparseArray_1.12.3         
+> [101] rjson_0.2.23                htmlwidgets_1.6.4          
+> [103] farver_2.1.2                htmltools_0.5.9            
+> [105] pkgdown_2.2.1               lifecycle_1.0.5            
+> [107] httr_1.4.9                  GlobalOptions_0.1.4        
+> [109] statmod_1.5.2               gridtext_0.1.6
 ```

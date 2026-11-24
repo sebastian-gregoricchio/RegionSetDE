@@ -34,7 +34,7 @@ makeGreylist(
 
 - inputFiles:
 
-  Character vector with the paths of the input BAM files, or the
+  Character vector with the paths of the input BAM or CRAM files, or the
   data.frame returned by
   [`loadSampleSheet`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/loadSampleSheet.md),
   in which case every distinct file of its `input` column is used once
@@ -185,7 +185,7 @@ inputFile <- system.file("extdata", "ex1.bam", package = "Rsamtools")
 
 greylist <- makeGreylist(inputFile, binSize = 200, maxGap = 200)
 #> Counting 1 input libraries over 32 windows of 200 bp...
-#>   ex1: more than 331 fragments per window (mean 97.9), 0 windows flagged, 0 regions, 0 Mb.
+#>   ex1: more than 331 fragments per window (mean 97.3), 0 windows flagged, 0 regions, 0 Mb.
 #> Greylist: 0 regions, 0 Mb (0% of the genome), flagged by at least 1 of 1 inputs.
 greylist
 #> GRanges object with 0 ranges and 2 metadata columns:
@@ -200,8 +200,8 @@ S4Vectors::metadata(greylist)$thresholds
 #> 1   ex1
 #>                                                                               file
 #> 1 /home/s.gregoricchio/R/x86_64-pc-linux-gnu-library/4.6/Rsamtools/extdata/ex1.bam
-#>   fragments   mean     size threshold windows flagged.windows regions
-#> 1      1566 97.875 1.947997       331      32               0       0
+#>   fragments    mean     size threshold windows flagged.windows regions
+#> 1      1557 97.3125 1.920844       331      32               0       0
 #>   greylisted.bp
 #> 1             0
 

@@ -59,10 +59,13 @@ First version, submitted to Bioconductor.
 - [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md)
   counts BAM files over the regions, once per region or per fixed-width
   tile through `tileWidth`, and returns a `RegionSetDE.counts` object,
-  which is a `RangedSummarizedExperiment`. Paired-end fragments are
-  rebuilt from the first mate and its template length, and
-  `pairedEnd = "auto"` reads the layout from the first records of each
-  file.
+  which is a `RangedSummarizedExperiment`. Paired-end fragments run from
+  the 5’ end of the forward mate to the 5’ end of the reverse mate, as
+  in csaw: the two mates are matched by read name rather than trusting
+  the template length, so that pairs whose mates run past each other are
+  placed right, and the mapping quality of the second mate is read from
+  its own record, with no need for the `MQ` tag. `pairedEnd = "auto"`
+  reads the layout from the first records of each file.
 - `summits` recentres the regions on the summit of the pooled pileup, in
   windows of `2 * summits + 1` bp as
   [`DiffBind::dba.count()`](https://rdrr.io/pkg/DiffBind/man/dba.count.html)
@@ -80,6 +83,21 @@ First version, submitted to Bioconductor.
 - BAM files, bigWig files, regions and lists naming the chromosomes of
   one assembly in different styles, `chr1` in some and `1` in others,
   are matched name by name. CSI indices are found as well as BAI ones.
+- CRAM files are read wherever BAM files are, in
+  [`countReads()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countReads.md),
+  [`countBackground()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBackground.md),
+  [`countGreenlist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countGreenlist.md),
+  [`makeGreylist()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/makeGreylist.md),
+  [`estimateFragmentLength()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/estimateFragmentLength.md),
+  [`computeProfiles()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/computeProfiles.md),
+  [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+  and the sample sheet, and both formats can be mixed. BAM and CRAM
+  files are read by the same C code, built on Rhtslib, so they give the
+  same counts; CRAM files are read without the reference genome,
+  decoding only the fields CRAM stores apart from the bases. For a CRAM
+  file
+  [`libInfo()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/libInfo.md)
+  reads the whole file once, since a CRAM index holds no read counts.
 - [`countBigwig()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/countBigwig.md)
   counts coverage from bigWig files without rounding it, and the
   negative binomial and voom engines refuse such an object unless
@@ -131,6 +149,11 @@ First version, submitted to Bioconductor.
   fits one model per region with *edgeR*, *limma*-voom, *limma*-trend,
   [`variancePartition::dream`](http://DiseaseNeurogenomics.github.io/variancePartition/reference/dream-method.md)
   or *DESeq2*, reading the normalisation out of the object as offsets.
+  voom and dream receive it as effective library sizes, since the
+  offsets of a `DGEList` are read differently, or not at all, by each
+  version of [`limma::voom`](https://rdrr.io/pkg/limma/man/voom.html),
+  and the `"loess"` offsets of every region go through voom with one
+  library size per observation.
 - [`testRegions()`](https://sebastian-gregoricchio.github.io/RegionSetDE/reference/testRegions.md)
   tests a contrast or a named list of them. A contrast can be a
   coefficient name, an expression over the design columns, a numeric
